@@ -7429,6 +7429,27 @@ function genOffers(){
     }
   }
 }
+/* ── 📒 영입·방출 기록 — "내가 쟤를 언제 데려왔더라?"를 위한 장부 ── */
+function tfLogAdd(kind, p, other, fee, wage, ct){
+  if(!Array.isArray(G.tfLog)) G.tfLog=[];
+  G.tfLog.unshift({k:kind, n:p.name, pos:p.pos, o:other||"", fee:Math.round((fee||0)*10)/10,
+                   wage:wage!=null?Math.round(wage*10)/10:null, ct:ct||null, s:G.season, d:G.day||0});
+  G.tfLog=G.tfLog.slice(0,200);
+}
+function tfLogView(){
+  const L=G.tfLog||[];
+  const mk=(list, title, ic)=>`<div class="card" style="flex:1;min-width:280px"><h3>${ic} ${title} <span class="small">(${list.length})</span></h3>
+    ${list.length?`<div class="tblScroll" style="max-height:320px;overflow-y:auto"><table>
+      <tr><th>시즌</th><th>선수</th><th>상대</th><th>이적료</th><th>조건</th></tr>
+      ${list.map(x=>`<tr><td class="small">${x.s}${G.cal&&x.d!=null?" · "+dateLabel(x.d):""}</td>
+        <td><b>${x.n}</b> <span class="small pos-${x.pos}">${x.pos}</span></td>
+        <td>${x.o||"-"}</td>
+        <td>${x.fee?`<b class="money">${x.fee}억</b>`:'<span class="small">-</span>'}</td>
+        <td class="small">${x.wage!=null?`연봉 ${x.wage}억`:""}${x.ct?` · ${x.ct}년`:""}</td></tr>`).join("")}
+    </table></div>`:`<p class="small">아직 기록이 없습니다.</p>`}</div>`;
+  return `<div class="msg info">이번 커리어에서 영입·방출·판매한 선수들의 장부입니다. 최근이 위로 옵니다.</div>
+  <div class="row">${mk(L.filter(x=>x.k==="in"),"영입한 선수","📥")}${mk(L.filter(x=>x.k==="out"),"방출·판매한 선수","📤")}</div>`;
+}
 function completeSale(pid, tid, fee, swapPid){
   const ut=userTeam(), buyer=G.teams[tid];
   const p=ut.players.find(x=>x.id===pid); if(!p) return false;
@@ -7452,6 +7473,7 @@ function completeSale(pid, tid, fee, swapPid){
   ut.players.splice(ut.players.indexOf(p),1); buyer.players.push(p); joinClub(buyer, p);
   p.unhappy=0; p.uWhy=""; p.promise=null; p.morale=80;
   ut.budget=Math.round((ut.budget+fee)*10)/10; buyer.budget=Math.round((buyer.budget-fee)*10)/10;
+  try{ tfLogAdd("out", p, buyer.short+" (판매)", fee, null, null); }catch(e){}
   if(swapP){
     buyer.players.splice(buyer.players.indexOf(swapP),1); ut.players.push(swapP); joinClub(ut, swapP);
     swapP.unhappy=0; swapP.uWhy=""; swapP.promise=null; swapP.sulk=0; swapP.noMove=false; swapP.morale=75; swapP.ct=Math.max(swapP.ct||1,1);
@@ -7855,6 +7877,21 @@ function negoToAgent(N,p,say){
   say("player",`${p.name}: "조건 좋네요. 나머지는 제 에이전트와 마무리하시죠."`);
   say("agent",`${N.agent.name} (${N.agent.n}): "마지막 관문입니다. 제 수수료는 ${N.agAsk}억입니다."`);
 }
+/* 선수가 원하는 계약 기간 — 어리면 길게 눌러앉고 싶고, 서른 넘으면 구단이 짧게 자른다 */
+function negoPrefYears(p){ const a=G.season-p.by; return a<=23?4 : a<=27?3 : a<=30?2 : 1; }
+function negoSetYears(y){
+  const N=G.nego; if(!N || N.stage!=="wage") return;
+  const p=negoPlayerOf(N); if(!p) return;
+  y=clamp(Math.round(y),1,5);
+  if(!N.prefYears) N.prefYears=negoPrefYears(p);
+  if(N.wageAsk0==null){ N.wageAsk0=N.wageAsk; N.wageMin0=N.wageMin; }
+  /* 희망보다 짧으면 "불안 수당"을 얹어 부르고, 길게 보장해 주면 조금 양보한다 */
+  const k=clamp(1 + Math.max(0, N.prefYears-y)*0.07 - Math.max(0, y-N.prefYears)*0.03, 0.85, 1.30);
+  N.years=y;
+  N.wageAsk=Math.round(N.wageAsk0*k*10)/10;
+  N.wageMin=Math.round(N.wageMin0*k*10)/10;
+  saveGame(); show("nego");
+}
 function negoClose(){
   const N=G.nego; const ut=userTeam(), from=N.fromId?G.teams[N.fromId]:null;
   const p=negoPlayerOf(N);
@@ -7883,8 +7920,10 @@ function negoClose(){
   }
   else { G.freeAgents=G.freeAgents.filter(x=>x.id!==p.id); }
   ut.players.push(p); joinClub(ut, p);   // 일단 빈 번호를 주고, 아래에서 감독이 직접 고를 기회를 준다
-  p.wage=N.agreedWage; p.morale=82; p.unhappy=0; p.uWhy=""; p.promise=null; p.ct=1+R(3);
+  p.wage=N.agreedWage; p.morale=82; p.unhappy=0; p.uWhy=""; p.promise=null;
+  p.ct=clamp(N.years||negoPrefYears(p),1,5);   // 협상 테이블에서 정한 계약 기간
   affSet(p, 62+R(12));   // 나를 원해서 데려온 감독 — 시작부터 호의적이다
+  try{ tfLogAdd("in", p, from?from.short:(N.os?(p.osClub||"해외"):"FA"), N.agreedFee||0, N.agreedWage, p.ct); }catch(e){}
   if(p.ovr>=75){ adjustTrust("owner",5,`${p.name} 영입`); adjustTrust("fans",7,`${p.name} 영입`); }
   bumpHype(ut, hypeFromSigning(ut, p, N.agreedFee||0), `${p.name} 영입`);
   // 선수 포함 딜 마무리 — fee 협상 때 합의된 "내 선수"를 실제로 상대 구단에 함께 넘긴다
@@ -7944,6 +7983,7 @@ function releasePlayer(pid){
     ut.players.splice(ut.players.indexOf(p),1);
     p.sulk=0; p.noMove=false; p.unhappy=0; p.uWhy=""; p.promise=null; p.morale=60; p.ct=1;
     G.freeAgents=G.freeAgents||[]; G.freeAgents.push(p);
+    try{ tfLogAdd("out", p, `방출 (위약금 ${cost}억)`, 0, null, null); }catch(e){}
     G.transferBids=G.transferBids.filter(b=>b.pid!==pid);
     G.offers=(G.offers||[]).filter(o=>o.pid!==pid);
     queueFarewell(p, "자유계약(FA)");
@@ -8165,6 +8205,7 @@ function osAiSign(p, t){
   (G.osGone=G.osGone||[]).push(p.name);
   t.players.push(p); joinClub(t, p);
   p.wage=wage; p.morale=80; p.unhappy=0; p.uWhy=""; p.promise=null; p.ct=1+R(3);
+  try{ tfLogAdd("in", p, (p.osClub||"해외"), fee, wage, p.ct); }catch(e){}
   if(typeof affSet==="function") affSet(p, 55+R(10));
   try{ bumpHype(t, hypeFromSigning(t, p, fee), `${p.name} 영입`); }catch(e){}
   const V={p:p.name, c:t.short, t:t.short, m:fee, o:p.osClub||""};
@@ -8290,6 +8331,7 @@ function migrateSave(){
   if(!Array.isArray(G.osGone))   G.osGone=[];
   if(!Array.isArray(G.friendlies)) G.friendlies=[];
   if(!Array.isArray(G.pgMade)) G.pgMade=[];
+  if(!Array.isArray(G.tfLog)) G.tfLog=[];
   if(!G.negoBlock) G.negoBlock={};
   if(!G.staff) G.staff={delegatePre:false, handled:{}, log:[]};
   if(!G.staff.handled) G.staff.handled={};
@@ -9326,7 +9368,15 @@ function edSetTeam(field, v){
 function edSetPlayerQ(p, field, v){
   if(field==="name"){ const nm=String(v).trim().slice(0,14); if(nm){ const old=p.name; p.name=nm; renameEverywhere([[old,nm]]); } }
   else if(field==="pos"){ if(["GK","DF","MF","FW"].indexOf(v)>=0 && p.pos!==v){ p.pos=v; } }
-  else if(field==="prefPos"){ if(SLOT_FAM[v]){ p.prefPos=v; } }
+  else if(field==="prefPos"){ if(SLOT_FAM[v]){
+    p.prefPos=v;
+    /* ⚠ 제보 — 주 포지션만 바뀌고 능숙도는 옛 자리에 남아, 새 주 포지션이 "미숙함"으로 떴다.
+       새 주 포지션 기준의 기본 능숙도(본 자리 100 + 인접 자리)를 깔되,
+       이미 경기로 익힌 자리는 그대로 존중한다(max 병합 — 배운 걸 빼앗지 않는다). */
+    const fresh=initPosFam(p);
+    if(!p.posFam) p.posFam=fresh;
+    else for(const k of FAM_POS) p.posFam[k]=Math.max(p.posFam[k]||0, fresh[k]||0);
+  } }
   else if(field==="by"){ const n=edNum(v,1980,2012,0); if(n!=null) p.by=n; }
   else if(field==="h"){ const n=edNum(v,155,215,0); if(n!=null) p.h=n; }
   else if(field==="w"){ const n=edNum(v,48,115,0); if(n!=null) p.w=n; }
@@ -9897,6 +9947,7 @@ function pgCreate(toList){
     if(PG.mv>0) tmp.mvFix=PG.mv;
     if(PG.dest==="os"){ tmp.osClub=PG.osClub; tmp.osNat=PG.osNat||(PG.frn?"해외":"대한민국"); }
     if(!Array.isArray(G.pgMade)) G.pgMade=[];
+  if(!Array.isArray(G.tfLog)) G.tfLog=[];
     const snap=pgSnap(tmp, PG); snap.applied=0;
     G.pgMade.push(snap); G.pgMade=G.pgMade.slice(-100);
     saveGame();
@@ -9945,6 +9996,7 @@ function pgCreate(toList){
   /* 📜 생성 목록 — 만들어진 순간의 깨끗한 스냅샷을 남긴다. 공유 파일의 원본이 된다. */
   try{
     if(!Array.isArray(G.pgMade)) G.pgMade=[];
+  if(!Array.isArray(G.tfLog)) G.tfLog=[];
     const snap=pgSnap(p, PG); snap.applied=1; snap.appliedWhere=where;
     G.pgMade.push(snap);
     G.pgMade=G.pgMade.slice(-100);
@@ -10032,6 +10084,7 @@ function pgImportMade(input){
 바로 게임에 들어가지 않습니다 — 목록에 보관되고, 원하는 선수만 <b>⚡ 인게임 적용</b>으로 들여올 수 있습니다.`,
         ()=>{
           if(!Array.isArray(G.pgMade)) G.pgMade=[];
+  if(!Array.isArray(G.tfLog)) G.tfLog=[];
           let ok=0, dup=0;
           for(const o of obj.players.slice(0,100)){
             if(!o || !o.name){ continue; }
@@ -13446,13 +13499,39 @@ function squadTh(k, label, title){
   return `<th class="clickable" title="${title||label} 기준 정렬" onclick="setSquadSort('${k}')"
     style="${on?"color:var(--gold)":""}">${label}${on?(squadSort.dir>0?" ▾":" ▴"):""}</th>`;
 }
+/* FM식 포지션 필터 — 그룹(GK/DF/MF/FW) 또는 세부 자리(LB·CB·DM·ST …)로 거른다.
+   세부 자리는 "그 자리를 소화할 수 있는가"(능숙도 55+)로 본다 — 주 포지션만 보면
+   LB 요원을 찾을 때 능숙한 백업 멀티 자원이 안 보인다. */
+let SQ_POSF="all";
+function sqSetPosF(v){ SQ_POSF=v||"all"; show("squad"); }
+const SQ_SLOT_LIST=["GK","LB","CB","RB","LWB","RWB","DM","CM","LM","RM","CAM","LW","RW","ST"];
+function sqPosFilter(list){
+  const f=SQ_POSF;
+  if(!f || f==="all") return list;
+  if(f==="GK"||f==="DF"||f==="MF"||f==="FW") return list.filter(p=>p.pos===f);
+  // 세부 자리 — 소화 가능(55+)한 선수를 그 자리 능숙도 순으로
+  return list.filter(p=>getPosFam(p,f)>=55)
+             .sort((a,b)=>getPosFam(b,f)-getPosFam(a,f) || playerLevel(b)-playerLevel(a));
+}
+function sqPosFBar(){
+  const chip=(v,l)=>`<button class="mini ${SQ_POSF===v?"sel":""}" style="padding:3px 10px;font-size:11.5px" onclick="sqSetPosF('${v}')">${l}</button>`;
+  return `<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+    ${chip("all","전체")}${chip("GK","GK")}${chip("DF","DF")}${chip("MF","MF")}${chip("FW","FW")}
+    <select onchange="sqSetPosF(this.value)" style="font-size:11.5px;padding:3px 6px">
+      <option value="">— 세부 포지션 —</option>
+      ${SQ_SLOT_LIST.map(s=>`<option value="${s}" ${SQ_POSF===s?"selected":""}>${s} · ${SLOT_LABEL[s]||s}</option>`).join("")}
+    </select>
+    ${SQ_SLOT_LIST.includes(SQ_POSF)?`<span class="small">— <b>${SQ_POSF}</b>를 소화할 수 있는 선수(능숙도 55+), 그 자리 능숙도 순</span>`:""}
+  </div>`;
+}
 function squad(){
   // 스쿼드를 열면 새 부상 알림은 확인된 것으로 본다(부상 자체는 계속 표시된다)
   for(const p of userTeam().players){ if(p.inj>0) p._injSeen=true; else if(p._injSeen) delete p._injSeen; }
   const t=userTeam();
-  const hit=attrQActive().length ? t.players.filter(attrQPass) : t.players;
-  const rows=squadSorted(hit)
-   .map(p=>`<tr><td class="small numCell clickable" title="등번호 지정" onclick="openNumberPicker(${p.id})">${p.no||"-"}</td><td class="pos-${p.pos}"><b>${p.pos}</b></td>
+  const hit=sqPosFilter(attrQActive().length ? t.players.filter(attrQPass) : t.players);
+  const slotF=SQ_SLOT_LIST.includes(SQ_POSF)?SQ_POSF:null;
+  const rows=(slotF?hit:squadSorted(hit))
+   .map(p=>`<tr><td class="small numCell clickable" title="등번호 지정" onclick="openNumberPicker(${p.id})">${p.no||"-"}</td><td class="pos-${p.pos}"><b>${slotF?`${prefSlotOf(p)} <span class="small" style="color:${famLevel(getPosFam(p,slotF)).c}">${SQ_POSF} ${getPosFam(p,slotF)}</span>`:p.pos}</b></td>
    <td class="clickable" onclick="openPlayerMenu(event,${p.id})" oncontextmenu="showPlayerInfoPopup(event,${p.id})">${nmF(p)}${pTags(p)}</td>
    <td>${moodIcon(p)} ${mor(p.morale)}</td>
    <td title="감독 개인 호감도 ${Math.round(aff(p))}/100">${affLabel(aff(p)).ic} <span style="color:${affLabel(aff(p)).c};font-weight:700">${Math.round(aff(p))}</span></td>
@@ -13463,7 +13542,9 @@ function squad(){
    <td class="small">${marketValue(p)}억</td></tr>`).join("");
   return `<h2>👥 스쿼드 (${t.players.length}명 · 외국인 ${t.players.filter(p=>p.frn).length}명)</h2>
   <div class="msg info">선수 이름 클릭 = <b>개인 면담 · 이적명단 등록 · 방출</b> 메뉴 · 😠 불만 방치 시 이적 요청, 🤬 태업</div>
+  ${sqPosFBar()}
   ${attrQBox()}
+  ${SQ_POSF!=="all"?`<div class="psCount">필터 <b>${SQ_POSF}</b> — <b>${hit.length}명</b> / 전체 ${t.players.length}명</div>`:""}
   ${attrQActive().length?`<div class="psCount">조건에 맞는 선수 <b>${hit.length}명</b> / 전체 ${t.players.length}명</div>`:""}
   <div class="card"><div class="tblScroll"><table><tr>
     ${squadTh("no","#","등번호")}${squadTh("pos","포지션")}${squadTh("name","이름")}
@@ -15969,6 +16050,11 @@ function negoCard(){
       <span class="small">이번 협상 예상 지출 <b>${Math.round(((N.agreedFee!==undefined?N.agreedFee:curAsk)+(N.agreedAg||0))*10)/10}억</b>
         → 잔여 <b style="color:${ut.budget-((N.agreedFee!==undefined?N.agreedFee:curAsk)+(N.agreedAg||0))<0?"var(--red)":"var(--green)"}">${Math.round((ut.budget-((N.agreedFee!==undefined?N.agreedFee:curAsk)+(N.agreedAg||0)))*10)/10}억</b></span>
     </div>
+    ${N.stage==="wage"?`<div style="margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:8px">
+      📜 계약 기간:
+      ${[1,2,3,4,5].map(y=>`<button class="mini ${(N.years||N.prefYears||negoPrefYears(p))===y?"sel":""}" style="padding:3px 10px" onclick="negoSetYears(${y})">${y}년</button>`).join(" ")}
+      <span class="small" style="margin-left:6px">선수 희망 <b>${N.prefYears||negoPrefYears(p)}년</b> — 희망보다 짧으면 연봉을 더 부르고, 길게 보장하면 조금 양보합니다</span>
+    </div>`:""}
     ${(()=>{ if(N.stage!=="wage") return "";
       try{
         const mind=N.mind || (N.mind=playerMoveMind(p, from, ut));
@@ -17044,6 +17130,8 @@ function transfer(){
       <span class="small">예산 <b class="money">${t.budget}억</b> · 이름 일부나 초성(ㅅㅇㅁ)으로도 찾을 수 있습니다</span></h3>
       ${psSearchBox()}
       <div id="psList">${psResults()}</div></div>`;
+  } else if(tfTab==="log"){
+    body=tfLogView();
   } else if(tfTab==="rumor"){
     body=rumorTab();
   } else if(tfTab==="fa"){
@@ -17058,7 +17146,7 @@ function transfer(){
   ${(G.offers||[]).length?`<div class="msg good">📨 처리 대기 중인 타 구단 제의 <b>${G.offers.length}건</b> — <b>타 구단 제의</b> 탭에서 확인하세요.</div>`:""}
   <div style="margin-bottom:12px">${armyUserClub()
     ? tabBtn("army","🎖️ 입대 지원")+" "+tabBtn("rumor","📰 루머")
-    : tabBtn("search","🔍 선수 검색")+" "+tabBtn("fa","🆓 FA 시장")+" "+tabBtn("world","🌍 해외 이적시장")+" "+tabBtn("scout","🔎 스카우트"+((scoutState().list||[]).length?` (${scoutState().list.length})`:""))+" "+tabBtn("rumor","📰 루머"+((rumorList().filter(r=>r.fromId===t.id||r.toId===t.id).length)?" 🔴":""))}</div>
+    : tabBtn("search","🔍 선수 검색")+" "+tabBtn("fa","🆓 FA 시장")+" "+tabBtn("world","🌍 해외 이적시장")+" "+tabBtn("scout","🔎 스카우트"+((scoutState().list||[]).length?` (${scoutState().list.length})`:""))+" "+tabBtn("rumor","📰 루머"+((rumorList().filter(r=>r.fromId===t.id||r.toId===t.id).length)?" 🔴":""))+" "+tabBtn("log","📒 영입·방출 기록")}</div>
   ${body}`;
 }
 /* ═══════════════════════════════════════════════════════════════
