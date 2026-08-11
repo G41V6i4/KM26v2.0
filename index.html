@@ -71,6 +71,7 @@ tr:hover td{background:#1c2129;}
 .tag.u22{background:#1f6feb33; color:#79c0ff;}
 .tag.frn{background:#8957e533; color:#d2a8ff;}
 /* 외국인 선수 — 아이콘 대신 이름 자체를 밝은 보라색으로 */
+.hgN{color:#3fb950;}
 .frnN{color:#d2a8ff !important;}
 /* 전술판 하단 안내 — 회색이면 잘 안 읽힌다 */
 .tacHint{margin-top:6px;font-size:13px;line-height:1.6;color:#e6edf3}
@@ -2900,6 +2901,10 @@ function shiftCho(ch){
   const i=c-0xAC00, cho=(i/588)|0;
   return String.fromCharCode(0xAC00 + CHO_NEXT[cho]*588 + (i%588));
 }
+/* 🌱 홈그로운 — 외국 국적이지만 국내 유스에서 자란 선수. K리그 홈그로운 제도에 따라
+   외국인 쿼터를 먹지 않는다. 이름은 초록색으로 표시된다. (개명 전 원본 이름 기준) */
+const HOMEGROWN_NAMES=["바또"];
+function frnQ(p){ return !!(p && p.frn && !p.hg); }   // "쿼터를 차지하는 외국인"인가
 function fictName(name, frn){
   if(!name || NAME_KEEP.has(name)) return name;
   const h=name[0];
@@ -3017,13 +3022,13 @@ function bestXISlots(t, formation){
   for(const p of pool) for(const sl of slots){ const v=slotPickScore(p,sl); if(v>0) cand.push({p,sl,v}); }
   cand.sort((a,b)=>b.v-a.v);
   const usedP=new Set(), usedS=new Set();
-  let frnCount=(gk&&gk.frn)?1:0;
+  let frnCount=frnQ(gk)?1:0;
   for(const c of cand){
     if(usedS.size>=slots.length) break;
     if(usedP.has(c.p.id)||usedS.has(c.sl)) continue;
-    if(c.p.frn && frnCount>=frnLim) continue;         // 외국인 동시 출전 제한 (K1 5 / K2 4)
+    if(frnQ(c.p) && frnCount>=frnLim) continue;         // 외국인 동시 출전 제한 (K1 5 / K2 4)
     usedP.add(c.p.id); usedS.add(c.sl); slotOf[c.p.id]=c.sl; xi.push(c.p);
-    if(c.p.frn) frnCount++;
+    if(frnQ(c.p)) frnCount++;
   }
   // 그래도 자리가 남으면(국내 선수 부족 등) 제한을 풀고 채운다
   if(xi.length<11){
@@ -3062,9 +3067,9 @@ function fixOneGK(t, xi){
   const out=xi.filter(p=>p && (p.pos!=="GK" || p.id===keep.id));
   const has=q=>out.some(z=>z.id===q.id);
   const frnLim=t.div===1?5:4;
-  let frnN=out.filter(p=>p.frn).length;
+  let frnN=out.filter(frnQ).length;
   const pool=t.players.filter(q=>avail(q) && q.pos!=="GK" && !has(q)).sort((a,b)=>(b.ovr||0)-(a.ovr||0));
-  for(const q of pool){ if(out.length>=11) break; if(q.frn && frnN>=frnLim) continue; out.push(q); if(q.frn) frnN++; }
+  for(const q of pool){ if(out.length>=11) break; if(frnQ(q) && frnN>=frnLim) continue; out.push(q); if(frnQ(q)) frnN++; }
   for(const q of pool){ if(out.length>=11) break; if(!has(q)) out.push(q); }   // 그래도 모자라면 제한을 푼다
   /* ⚠ 필드 자원이 정말 없으면(스쿼드 붕괴) 여분 골키퍼를 빼기만 해서는 열한 명이 안 된다.
      일곱 명으로 뛰느니 예비 키퍼를 필드에 세운다 — 실제 구단도 그렇게 한다. */
@@ -3078,7 +3083,7 @@ function bestXI(t, formation){
   // 유저가 직접 짠 선발이 있으면 그대로 존중한다
   if(t.isUser && G.userXI && G.userXI.length){
     const manual = G.userXI.map(id=>t.players.find(p=>p.id===id)).filter(p=>p&&avail(p));
-    if(manual.length===11 && manual.filter(p=>p.frn).length<=frnLim && manual.filter(p=>p.pos==="GK").length===1) return manual;
+    if(manual.length===11 && manual.filter(frnQ).length<=frnLim && manual.filter(p=>p.pos==="GK").length===1) return manual;
     if(manual.length===11 && manual.filter(p=>p.pos==="GK").length>1) return fixOneGK(t, manual);
     /* ⚠ 예전엔 한 명이라도 못 뛰게 되면(부상·퇴장·태업) 손으로 짜 둔 열한 명을 통째로 버리고
        자동 편성으로 되돌렸다. 그래서 퇴장 다음 경기의 선발이 완전히 뒤집혀 보였다.
@@ -3086,13 +3091,13 @@ function bestXI(t, formation){
     if(manual.length>=7){
       const out=manual.slice();
       const has=(p)=>out.some(q=>q.id===p.id);
-      let frnN=out.filter(p=>p.frn).length;
+      let frnN=out.filter(frnQ).length;
       // 골키퍼가 빠졌으면 먼저 채운다
       if(!out.some(p=>p.pos==="GK")){
         const gk=t.players.filter(p=>avail(p)&&p.pos==="GK"&&!has(p))
                           .sort((a,b)=>slotPickScore(b,"GK")-slotPickScore(a,"GK"))[0]
                || pickEmergencyGK(t.players.filter(p=>avail(p)&&!has(p)));
-        if(gk){ out.push(gk); if(gk.frn) frnN++; }
+        if(gk){ out.push(gk); if(frnQ(gk)) frnN++; }
       }
       // 나머지는 자동 편성이 뽑은 순서대로 메운다
       const auto=bestXISlots(t, formation).xi;
@@ -3101,8 +3106,8 @@ function bestXI(t, formation){
         if(out.length>=11) break;
         if(has(p) || !avail(p)) continue;
         if(p.pos==="GK" && gkFull()) continue;      // 골키퍼는 한 명이면 충분하다
-        if(p.frn && frnN>=frnLim) continue;
-        out.push(p); if(p.frn) frnN++;
+        if(frnQ(p) && frnN>=frnLim) continue;
+        out.push(p); if(frnQ(p)) frnN++;
       }
       if(out.length<11){   // 그래도 모자라면 제한을 풀고 채운다
         for(const p of t.players){
@@ -3160,13 +3165,13 @@ function autoPickXI(){
   for(const p of pool) for(const sl of fieldSlots){ const v=rolePick(p,sl); if(v>0) cand.push({p,sl,v}); }
   cand.sort((a,b)=>b.v-a.v);
   const usedP=new Set(), usedS=new Set();
-  let frnN=(gk&&gk.frn)?1:0;
+  let frnN=frnQ(gk)?1:0;
   for(const c of cand){
     if(usedS.size>=fieldSlots.length) break;
     if(usedP.has(c.p.id)||usedS.has(c.sl)) continue;
-    if(c.p.frn && frnN>=frnLim) continue;
+    if(frnQ(c.p) && frnN>=frnLim) continue;
     usedP.add(c.p.id); usedS.add(c.sl); slotOf[c.p.id]=c.sl; xi.push(c.p);
-    if(c.p.frn) frnN++;
+    if(frnQ(c.p)) frnN++;
   }
   if(xi.length<11){ // 국내 자원이 모자라면 쿼터를 풀고 채운다
     for(const c of cand){
@@ -4310,8 +4315,10 @@ function liveRates(M){
      — 실측: 총공세를 써도 실점이 기본 전술과 똑같았다(1.54 vs 1.55).
      이제 눈금 그대로 비례한다. 앞으로 나올수록 뒤가 열린다. */
   const OPP_MENT=0.085;
-  const atkH=Math.max(0.15, 1.15+(hs-as)*0.045+(mH-1)*0.18+(mA-2)*OPP_MENT+tbH+shapeH.atk);
-  const atkA=Math.max(0.15, 0.95+(as-hs)*0.045+(mA-1)*0.18+(mH-2)*OPP_MENT+tbA+shapeA.atk);
+  /* ⚠ 제보 — 2D 엔진과 결과 결이 너무 다르다. 실측: 전력차 3+ 인데 강팀 승률 36%(동전 던지기 이하),
+     경기당 2.12골. 전력 계수를 두 배 가까이 세우고 볼륨을 소폭 올려 2D(강팀이 이기고, ~2.7골)와 맞춘다. */
+  const atkH=Math.max(0.15, 1.30+(hs-as)*0.085+(mH-1)*0.18+(mA-2)*OPP_MENT+tbH+shapeH.atk);
+  const atkA=Math.max(0.15, 1.10+(as-hs)*0.085+(mA-1)*0.18+(mH-2)*OPP_MENT+tbA+shapeA.atk);
   M.rates={atkH, atkA, hs, as, defShapeH:shapeH.def, defShapeA:shapeA.def};
 }
 /* 다음 분으로 미뤄둔 판정(현재는 VAR 판독만)을 이번 분 시작 시점에 공개한다.
@@ -4507,7 +4514,11 @@ function procMinute(M, me, opp, atk, key){
     }
     const penEnd=penW, redEnd=penEnd+redWidth, yellowEnd=redEnd+yellowWidth;
     if(r<penEnd && onPitch(opp).length){ // 페널티 헌납
-      const ox=onPitch(opp); const taker=pickW(ox,{FW:8,MF:2,DF:0.3,GK:0}, opp.team);
+      const ox=onPitch(opp);
+      let taker=null;
+      try{ const K=opp.team.tactic && opp.team.tactic.kickers;
+        if(K && Array.isArray(K.pk)) for(const pid of K.pk){ const x=ox.find(z=>z.p.id===pid); if(x){ taker=x; break; } } }catch(e){}
+      if(!taker) taker=pickW(ox,{FW:8,MF:2,DF:0.3,GK:0}, opp.team);
       const oppKey=key==="h"?"a":"h";
       ev(M,opp,F_(COMM.pen,{p:taker.p.name}),"big",false,{kind:"pen_action",atkSide:oppKey,shooterId:taker.p.id});
       st[oppKey+"S"]++; st[oppKey+"T"]++;
@@ -4552,6 +4563,10 @@ function procMinute(M, me, opp, atk, key){
    판독 대상이 아니었거나) 확정된 골에 한해 호출된다. isOG(자책골)면 골은 공격팀(me) 쪽 스코어에 더해지지만,
    실제로 공을 넣은 선수(ogScorer, 상대팀 수비수)의 개인 득점 기록에는 반영하지 않고 별도로 자책골만 남긴다. */
 function finalizeGoal(M, me, key, shooter, isPen, isOG, ogScorer, prefix){
+  /* 득점자 명단 — VAR 취소는 여기 오지 않으므로 실제 골만 기록된다 */
+  if(!Array.isArray(M.sc)) M.sc=[];
+  M.sc.push({n:isOG?(ogScorer&&ogScorer.p?ogScorer.p.name:"?"):(shooter&&shooter.p?shooter.p.name:"?"),
+             side:key, min:M.min||0, og:isOG?1:0, pen:isPen?1:0});
   if(key==="h") M.hg++; else M.ag++;
   let txt;
   if(isOG){
@@ -4708,17 +4723,27 @@ COMM.subOur=["🔁 {t}, 선수를 바꿉니다. {o} 나가고 {i} 들어갑니�
 COMM.subMore=["🔁 {t}, 한 번에 둘을 바꿉니다 — 먼저 {o} 나가고 {i}입니다.",
   "🔁 {t} 벤치가 두 장을 씁니다. {o} 대신 {i}, 그리고 한 명 더 있습니다.",
   "🔁 {t}의 이중 교체. 우선 {o}과/와 {i}이/가 교대합니다."];
-COMM.subOpp=["🔁 {t}도 손을 씁니다 — {o} 나가고 {i} 들어갑니다.",
+COMM.subOpp=["🔁 {t} 벤치가 움직입니다 — {o} 나가고 {i} 들어갑니다.",
   "🔁 {t} 벤치, {o}을/를 불러들이고 {i}을/를 넣습니다.",
   "🔁 {t}의 교체. {i}이/가 몸을 다 풀었습니다. {o}과/와 교대합니다.",
-  "🔁 상대 벤치가 반응합니다. {o} 아웃, {i} 인.",
-  "🔁 {t}, {i}을/를 투입하며 흐름을 바꾸려 합니다."];
-function canEnter(sd, outX, p){ // 외국인 동시 출전 한도 + 골키퍼 중복 검사
+  "🔁 {t}, {i}을/를 투입하며 흐름을 바꾸려 합니다.",
+  "🔁 {t} 감독이 {o}을/를 부릅니다. {i} 투입."];
+/* 우리가 먼저 바꾼 직후의 상대 교체 — 이때만 "맞대응" 뉘앙스가 성립한다 */
+COMM.subOppReact=["🔁 {t}도 곧바로 손을 씁니다 — {o} 나가고 {i} 들어갑니다.",
+  "🔁 우리 교체를 보고 {t} 벤치가 반응합니다. {o} 아웃, {i} 인.",
+  "🔁 맞교체입니다. {t}, {i}을/를 꺼내 듭니다."];
+/* 전반 이른 교체 — 대개 좋은 신호가 아니다 */
+COMM.subEarly=["🔁 이른 시간의 교체입니다 — {t}, {o} 대신 {i}. 몸 상태가 좋지 않아 보였습니다.",
+  "🔁 벌써 카드를 씁니다. {t}의 {o}, 아쉬운 표정으로 나옵니다. {i} 투입."];
+/* 종반 승부수 */
+COMM.subLate=["🔁 {t}의 마지막 카드 — {o} 나가고 {i}. 이 교체가 승부를 가를 수 있습니다.",
+  "🔁 종료가 머지않았습니다. {t}, {i}을/를 넣으며 마지막 승부수를 던집니다."];
+function canEnter(sd, outX, p){ // 외국인 동시 출전 한도 + 골키퍼 중복 검사 (홈그로운은 쿼터 미적용)
   /* 골키퍼를 넣으려면 지금 골문에 선 선수가 나가야 한다 — 안 그러면 키퍼가 둘이 된다 */
   if(p.pos==="GK" && onPitch(sd).some(x=>x!==outX && x.p.pos==="GK")) return false;
-  if(!p.frn) return true;
+  if(!frnQ(p)) return true;
   const lim=sd.team.div===1?5:4;
-  return onPitch(sd).filter(x=>x!==outX&&x.p.frn).length+1<=lim;
+  return onPitch(sd).filter(x=>x!==outX&&frnQ(x.p)).length+1<=lim;
 }
 function autoSubFor(M, sd, key, outX){
   if(sd.subs>=5) { return; }
@@ -4939,7 +4964,7 @@ function instantMatch(home, away, opts={}){
 /* 도움 인정 시간 — 이 시간 안에 들어온 패스만 도움으로 기록한다 */
 const ASSIST_WINDOW=8;
 /* 어떤 엔진으로 경기를 치를지. "sim"=연속 2D 매치엔진, "text"=기존 분 단위 엔진 */
-function matchEngine(){ return (G.opt && G.opt.engine) || "sim"; }
+function matchEngine(){ return "sim"; }   // 분 단위 엔진은 내 경기용으로는 은퇴 — AI 경기 전용이다
 /* 연속 매치엔진으로 유저 경기를 끝까지 치른다 — 결과·기록·해설이 모두 M에 남는다.
    기존 stepMinute 경로와 똑같은 모양의 M을 돌려주므로 뒤쪽(순위표·평점·뉴스·라커룸)은 손댈 게 없다. */
 function simMatchFull(M){
@@ -4978,6 +5003,9 @@ function newGame(teamId){
        ageV2:true, htV1:true, specV1:true};   // 선수를 만들 때 이미 나이·키만큼 몸을 깎았다 — 다시 읽어도 두 번 깎지 않는다
   for(const d of D1){ const t=mkTeam(d,1); G.teams[t.id]=t; G.k1.push(t.id); }
   for(const d of D2){ const t=mkTeam(d,2); G.teams[t.id]=t; G.k2.push(t.id); }
+  /* 홈그로운 표시 — 개명 전 원본 이름으로 찾는다 */
+  for(const id in G.teams) for(const p of G.teams[id].players)
+    if(p.frn && HOMEGROWN_NAMES.includes(p.name)) p.hg=1;
   /* 실존 인물 보호 — 명단이 완성된 뒤 한 번에 성씨를 바꾼다 (위 fictName 주석 참고)
      ⚠ 바꾼 이름이 우연히 "다른 실존 선수"의 원래 이름과 겹치면(조민규→주민규 ↔ 실제 주민규)
        보호가 무의미해진다 — 그 경우 초성을 한 칸 더 밀어 비켜 간다. */
@@ -5005,11 +5033,17 @@ function buildSeason(){
     for(const p of t.players){p.apps=0;p.goals=0;p.assists=0;p.rTot=0;p.seasonRating=0;p.talkR=-9;p.promise=null;p.unhappy=Math.max(0,(p.unhappy||0)-1);
       p.fApps=0;p.fGoals=0;p.fAssists=0;p.fRTot=0;p.fRating=0;}
   }
-  /* K1 정규 라운드 = 3로빈. 12팀이면 33R, 14팀이면 39R.
-     2026 승강제로 리그가 12→14팀으로 늘어나므로 팀 수를 하드코딩하지 않는다. */
+  /* K1 정규 라운드 — 팀 수에 따라 실제 K리그 방식을 따른다.
+       12팀(2026): 3로빈 33R + 파이널 5R = 팀당 38경기
+       14팀(2027~): 2로빈 26R + 파이널 조별 2로빈 12경기 = 팀당 38경기 (2013 K리그 검증 방식)
+     ⚠ 제보 — 14팀에 3로빈을 그대로 쓰니 46라운드·팀당 45경기가 됐다. */
   const rr1 = roundRobin(G.k1);                                  // 2로빈 = 2(N-1)
-  const rr1b = roundRobin(shuffled(G.k1)).slice(0, k1Robin());    // 3번째 로빈 = N-1
-  G.k1Fix = [...rr1, ...rr1b];
+  if(k1N()>=14){
+    G.k1Fix = rr1;                                               // 14팀 — 정규는 2로빈 26R
+  } else {
+    const rr1b = roundRobin(shuffled(G.k1)).slice(0, k1Robin()); // 3번째 로빈 = N-1
+    G.k1Fix = [...rr1, ...rr1b];
+  }
   G.k2Fix = roundRobin(shuffled(G.k2));      // 17팀 → 32R + 휴식, 총 32~34R
   G.r1=0; G.r2=0; G.phase="league"; G.splitDone=false; G.results=[]; G.poResults=[]; G.userXI=null;
   // 스플릿(파이널 라운드 5경기)은 33R 이후에 붙는다 — 달력은 그만큼 넉넉히 잡아 둔다
@@ -5058,7 +5092,11 @@ const NEWS_CAT={
 };
 /* 외국인 선수 이름 — 동그라미 아이콘 대신 이름 자체를 밝은 보라색으로 칠한다.
    포메이션 카드처럼 좁은 자리에서 아이콘 한 글자가 이름을 잘라먹는 걸 막는다. */
-function nmF(p){ return p&&p.frn ? `<span class="frnN">${p.name}</span>` : (p?p.name:""); }
+function nmF(p){
+  if(!p) return "";
+  if(p.hg) return `<span class="hgN" title="홈그로운 — 국내 유스 출신 외국 국적 선수. 외국인 쿼터를 차지하지 않습니다">${p.name}</span>`;
+  return p.frn ? `<span class="frnN">${p.name}</span>` : p.name;
+}
 function feedList(){ if(!G.feed) G.feed=[]; return G.feed; }
 function pushFeed(o){
   const L=feedList();
@@ -5084,6 +5122,42 @@ function mgrName(t){
   return t.mgr;
 }
 /* ── 경기 한 건에서 뽑아내는 소식 ─────────────────────────── */
+/* 득점 기록이 없는 옛 리포트 — 경기 이벤트의 골 장면(scene)에서 복원한다 */
+function scFromEvents(events){
+  const out=[];
+  for(const e of (events||[])){
+    const sc=e && e.scene; if(!sc) continue;
+    const k=String(sc.kind||"");
+    if(k!=="sim_goal" && k!=="shot_goal" && k!=="pen_goal" && k!=="shot_owngoal") continue;
+    const own=k==="shot_owngoal";
+    const pid=own?sc.ogScorerId:(sc.scorerId!=null?sc.scorerId:sc.shooterId);
+    if(pid==null) continue;
+    const p=(typeof findAnyPlayer==="function")?findAnyPlayer(pid):null;
+    out.push({n:p?p.name:"?", side:sc.atkSide||sc.side||"h", min:e.min||0, og:own?1:0, pen:k==="pen_goal"?1:0});
+  }
+  return out;
+}
+/* 스코어 아래에 붙는 득점자 줄 — 홈 왼쪽·원정 오른쪽, 같은 선수는 시간을 묶는다 (12' 45' 78') */
+function scLineHtml(sc, h, a){
+  if(!Array.isArray(sc) || !sc.length) return "";
+  const gp=(side)=>{
+    const m={};
+    for(const g of sc){ if(g.side!==side) continue;
+      const k=g.n+(g.og?" (자책)":""); (m[k]=m[k]||[]).push(`${g.min}'${g.pen?"(PK)":""}`); }
+    return Object.entries(m).map(([n,ts])=>`${n} ${ts.join(" ")}${ts.length>=3?" <span class=\"tag star\">해트트릭</span>":""}`).join(", ");
+  };
+  const hs=gp("h"), as=gp("a");
+  return `<div class="small" style="display:flex;justify-content:space-between;gap:10px;margin:-2px 0 6px;padding:0 4px">
+    <span style="text-align:left">${hs?`⚽ ${hs}`:""}</span><span style="text-align:right">${as?`⚽ ${as}`:""}</span></div>`;
+}
+/* 한 경기에서 2골 이상 넣은 선수 — [{n, side, k}] */
+function multiScorers(M){
+  const m={};
+  for(const g of (M.sc||[])){ if(g.og) continue; const key=g.side+"|"+g.n; m[key]=(m[key]||0)+1; }
+  return Object.entries(m).filter(([k,v])=>v>=2)
+    .map(([k,v])=>({side:k.split("|")[0], n:k.split("|")[1], k:v}))
+    .sort((x,y)=>y.k-x.k);
+}
 function matchNews(M, div, rnd){
   if(!M || (M.opts&&(M.opts.friendly||M.opts.noTable))) return;
   const h=M.home, a=M.away, hg=M.hg, ag=M.ag;
@@ -5094,6 +5168,30 @@ function matchNews(M, div, rnd){
   const score=`${hg}-${ag}`;
   const mine = h.isUser||a.isUser;
   const out=[];   // 이 경기에서 나온 소식들
+
+  /* ⚽ 해트트릭·멀티골 — 리그 어느 경기든 사람이 헤드라인이 되는 순간 */
+  try{
+    for(const ms of multiScorers(M)){
+      const mt=ms.side==="h"?h:a;
+      if(ms.k>=3){
+        out.push({cat:"star", ic:"👑", tone:feedTone(mt.id,true), tid:mt.id,
+          head:`${ms.n}, 해트트릭 대활약 — ${mt.short} ${score} ${ms.side==="h"?"승리 견인":"원정 폭격"}`,
+          sub:`${dv} ${rd} · ${h.short} ${score} ${a.short} — ${ms.n}이(가) 혼자 ${ms.k}골을 몰아치며 경기를 끝냈다.`});
+        if(mt.isUser){
+          socialFill(SOC.hatOur, 4+R(3), 1, {p:ms.n, t:mt.short});
+          fmkFill(FMK.hatOur, 3+R(2), {p:ms.n, t:mt.short});
+          try{ rivalFill(RIV.hatRiv, 2+R(2), -1, {p:ms.n, t:mt.short}); }catch(e){}
+        } else if(G.jobless){
+          pushSocial(F_(pick(["{p} 해트트릭 실화냐 ㅋㅋ 오늘 리그 주인공은 정해졌다","{p} 3골 몰아치기 봤냐. 이런 날 직관한 사람이 승자다"]), {p:ms.n}), 1);
+        }
+      } else if(mt.isUser || ms.k>=2 && Math.random()<0.35){
+        out.push({cat:"star", ic:"⚽", tone:feedTone(mt.id,true), tid:mt.id,
+          head:`${ms.n}, 멀티골 폭발 — ${mt.short} 공격을 홀로 이끌다`,
+          sub:`${dv} ${rd} · ${h.short} ${score} ${a.short} — ${ms.n}이(가) 두 골을 책임졌다.`});
+        if(mt.isUser){ socialFill(SOC.multiOur, 2+R(2), 1, {p:ms.n, t:mt.short}); fmkFill(FMK.multiOur, 2, {p:ms.n, t:mt.short}); }
+      }
+    }
+  }catch(e){}
 
   /* 관중 — 기사에 늘 따라붙는 한 줄 */
   const att=M.att||0;
@@ -5314,10 +5412,11 @@ function advance(){
   if(G.phase==="seasonEnd"){ startNewSeason(); return {type:"newseason"}; }
   /* 새 시즌 주장단이 정해지지 않았으면 경기를 치를 수 없다 — FM처럼 프리시즌에 반드시 거치는 절차다.
      스태프 회의로 보내고, 확정하면 다시 진행할 수 있다. */
-  if(capNeeded()){ show("staff"); return {type:"needCaptain"}; }
+  if(!G.jobless && capNeeded()){ show("staff"); return {type:"needCaptain"}; }
   if(G.phase==="pre"){
     const f=friendlyOn(G.day) || ((G.day||0)>=((G.cal&&G.cal.openOff)||0)-1 ? null : null);
-    if(f){
+    if(f && G.jobless){ f.done=true; }              // 무직 — 옛 팀 친선경기는 조용히 지나간다
+    if(f && !G.jobless){
       const ut=userTeam(), opp=G.teams[f.oppId];
       G.pendingFriendly=f;
       return {type:"live", tag:"프리시즌 친선경기",
@@ -5330,14 +5429,21 @@ function advance(){
     if(!G.poQueue.length){ endSeason(); return {type:"seasonEnd"}; }
     const m=G.poQueue[0];
     const hid=resolvePOid(m.h), aid=resolvePOid(m.a);
-    if(hid===G.userTeamId||aid===G.userTeamId){
+    if(!G.jobless && (hid===G.userTeamId||aid===G.userTeamId)){
       G.poQueue.shift(); G.pendingPO={m,hid,aid};
       return {type:"live", M:createMatch(G.teams[hid],G.teams[aid],{noTable:true}), tag:m.tag};
     }
     return runPOInstant();
   }
-  const uf=findUserFixture();
+  const uf=G.jobless?null:findUserFixture();
   if(uf){ // 유저 경기 → 라이브 중계
+    /* ⚫ 킥오프 전 최소 인원 검사 — 실제 규정처럼 7명을 못 채우면 경기 없이 0-3 몰수패다.
+       (제보: 선수단을 전부 패서 단체 태업 → 7명 미만으로도 킥오프가 됐다)
+       유스 긴급 콜업(ensureSquad)이 먼저 한 번 더 시도되고, 그래도 안 되면 몰수. */
+    const ut0=userTeam();
+    try{ ensureSquad(ut0); }catch(e){}
+    const okN=ut0.players.filter(avail).length;
+    if(okN<7) return forfeitUserMatch(uf, okN);
     return {type:"live", M:createMatch(G.teams[uf.hid],G.teams[uf.aid],{})};
   }
   completeRound(null); // 휴식 라운드
@@ -5368,6 +5474,29 @@ function pruneUserLineup(){
   if(t.tactic && t.tactic.benchSel){
     t.tactic.benchSel=t.tactic.benchSel.filter(id=>{ const p=t.players.find(x=>x.id===id); return p && avail(p); });
   }
+}
+/* ⚫ 몰수패 — 최소 인원(7명) 미달. 경기 없이 상대의 3-0 승리로 기록된다. */
+function forfeitUserMatch(uf, okN){
+  const t=userTeam(), home=G.teams[uf.hid], away=G.teams[uf.aid];
+  const hg=home.isUser?0:3, ag=home.isUser?3:0;
+  const div=t.div, r=div===1?G.r1:G.r2;
+  for(const [tt,gf,ga] of [[home,hg,ag],[away,ag,hg]]){
+    tt.GF+=gf; tt.GA+=ga;
+    if(gf>ga){ tt.W++; tt.Pts+=3; tt.form.push("W"); }
+    else { tt.L++; tt.form.push("L"); }
+  }
+  G.results.push({s:G.season, div, r:r+1, hid:uf.hid, aid:uf.aid, hg, ag, att:0, forfeit:1});
+  addNews(`⚫ <b>몰수패</b> — ${t.name}, 출전 가능 선수 ${okN}명. 최소 인원(7명)을 채우지 못해 <b>0-3 몰수패</b> 처리되었습니다.`, "warn");
+  addNews(`🏛️ 연맹, ${t.short} 몰수패 공식 확인 — "구단 운영 책임을 엄중히 본다"`, "warn", "club");
+  adjustTrust("owner", -12, "몰수패 — 선수단 붕괴");
+  adjustTrust("fans", -10, "몰수패");
+  t.morale=clamp((t.morale||70)-6, 40, 99);
+  try{ socialFill(SOC.forfeitOur, 4+R(2), -1, {t:t.short, n:okN}); fmkFill(FMK.forfeitOur, 3+R(2), {t:t.short, n:okN}); rivalOnManager(false); }catch(e){}
+  lastMatch={type:"match", res:{hg, ag, events:[{min:0, type:"bad", txt:`⚫ 몰수패 — 출전 가능 선수 ${okN}명 (최소 7명)`}], sc:[]}, h:home, a:away, att:0};
+  completeRound(null);   // 나머지 경기 진행 + 라운드 마감 (우리 경기는 이미 기록됐다)
+  saveGame();
+  notify(`⚫ <b>몰수패.</b> 출전 가능 선수가 ${okN}명뿐입니다 — 0-3 패배로 기록되었습니다. 태업·부상·징계부터 수습하세요.`,"warn");
+  return {type:"round", forfeit:1};
 }
 /* 라운드 마무리: 유저 경기 결과 반영 + AI 경기 일괄 시뮬 + 후처리 */
 function completeRound(M){
@@ -5404,13 +5533,15 @@ function completeRound(M){
     // 이번 경기 결과가 다음 홈경기 관중에 반영된다
     updateHype(ut, M.home.isUser?M.hg:M.ag, M.home.isUser?M.ag:M.hg, M.home.isUser);
   }
+  const skipU=!G.jobless;    // 무직이면 옛 팀 경기도 AI 시뮬에 포함된다
   if(ut.div===1){
-    if(G.r1<G.k1Fix.length) playRound(1,true);
+    if(G.r1<G.k1Fix.length) playRound(1,skipU);
     if(G.r2<G.k2Fix.length) playRound(2,false);
   } else {
-    if(G.r2<G.k2Fix.length) playRound(2,true);
+    if(G.r2<G.k2Fix.length) playRound(2,skipU);
     if(G.r1<G.k1Fix.length) playRound(1,false);
   }
+  if(G.jobless){ try{ joblessTick(); }catch(e){} }
   playACLIfDue();
   if(!G.splitDone && G.r1>=splitAt()) makeSplit();
   const k1done=G.r1>=G.k1Fix.length, k2done=G.r2>=G.k2Fix.length;
@@ -5445,15 +5576,54 @@ function completeRound(M){
     if(p.promise){
       if(p.apps-p.promise.apps0>=p.promise.need){ p.promise=null; p.unhappy=0; p.morale=clamp(p.morale+5,30,99);
         affAdd(p, +12, "약속 이행"); addMood(`🤝 ${p.name}과의 출전 약속 이행 — 신뢰가 깊어졌습니다. (호감도 상승)`); }
-      else if(--p.promise.rounds<=0){ p.promise=null; p.unhappy=Math.min(3,p.unhappy+2); p.morale=clamp(p.morale-8,30,99);
-        affAdd(p, -16, "약속 불이행"); addMood(`💢 ${p.name}: "약속이 다르잖습니까!" — 출전 약속 불이행 (호감도 급락)`); }
+      else if(--p.promise.rounds<=0){
+        /* 💢 약속을 어겼다 — 여기서부터는 유기적으로 굴러간다.
+           이적시장이 열려 있으면 → 공개 이적 요청 (제의가 들어오기 시작한다)
+           닫혀 있으면 → "가지도 못하게 막아 놓고" 태업으로 폭발한다 */
+        p.promise=null;
+        p.promiseBroken=(p.promiseBroken||0)+1;      // 같은 입에서 나온 약속은 두 번 안 믿는다
+        p.morale=clamp(p.morale-8,30,99);
+        affAdd(p, -16, "약속 불이행");
+        p.unhappy=3;
+        if(transferOpen()){
+          p.uWhy="약속 불이행 — 이적 요청";
+          addMood(`💢 ${p.name}: "약속이 다르잖습니까! 저를 원하는 팀으로 보내 주십시오." — <b>공개 이적 요청</b>`);
+          addNews(`🚨 ${p.name}, 출전 약속 불이행에 공개 이적 요청 — "구단이 먼저 약속을 어겼다"`, "warn", "club");
+        } else {
+          p.uWhy="약속 불이행";
+          p.sulk=Math.max(p.sulk||0, 3+R(3));
+          addMood(`🤬 ${p.name}: "약속도 어기고, 이적시장도 닫혔고... 저더러 어쩌라는 겁니까." — <b>태업 돌입</b> (${p.sulk}R)`);
+        }
+      }
+    }
+    /* 🔁 이적 요청 ↔ 태업 전환 — 시장이 닫히면 나갈 길이 없어 태업으로, 열리면 태업을 멈추고 기다린다 */
+    if(p.unhappy>=3 && String(p.uWhy||"").includes("이적 요청")){
+      if(!transferOpen() && p.sulk<=0 && Math.random()<0.30){
+        p.sulk=2+R(3);
+        addMood(`🤬 ${p.name} — 이적 요청 중인데 시장이 닫혀 있습니다. 훈련장에 나오지 않습니다. (태업 ${p.sulk}R)`);
+      } else if(transferOpen() && p.sulk>0 && String(p.uWhy||"").includes("약속 불이행")){
+        p.sulk=0;
+        addMood(`🚪 ${p.name} — 이적시장이 열리자 태업을 멈췄습니다. "제의가 오면 보내 주십시오. 그때까지는 뜁니다."`);
+      }
+    }
+    /* 태업으로 폭발했던 약속 불이행자도 시장이 열리면 이적 요청 모드로 전환 */
+    if(p.uWhy==="약속 불이행" && transferOpen()){
+      p.uWhy="약속 불이행 — 이적 요청"; p.sulk=0;
+      addMood(`🚪 ${p.name} — 시장이 열렸습니다. 태업 대신 공개 이적 요청으로 방향을 틀었습니다.`);
     }
     if(p.unhappy>0){
       p.morale=clamp(p.morale-2,30,99);
       if(p.unhappy<3&&Math.random()<0.07){ p.unhappy++; if(p.unhappy>=3) addMood(`🚨 ${p.name}, 구단에 공개적으로 이적을 요청했습니다! (사유: ${p.uWhy})`); }
     } else if(rp>6 && p.inj<=0 && p.ovr>=tAvg-1){
       const affK=clamp(1.8 - aff(p)/62, 0.35, 1.9);
-      if(p.apps<rp*0.3 && Math.random()<0.08*affK){ p.unhappy=1; p.uWhy="출전 시간"; addMood(`😠 ${p.name}이(가) 출전 기회 부족에 불만을 갖기 시작했습니다. (스쿼드 탭에서 면담 가능)`); }
+      if(String(p.uWhy||"").includes("폭행") && aff(p)>=55 && Math.random()<0.06){
+        p.unhappy=Math.max(0,p.unhappy-1); if(p.unhappy===0){ p.uWhy=""; addMood(`🕊️ ${p.name} — 시간이 지나며 폭행의 앙금이 조금씩 가라앉는 듯합니다.`); }
+      }
+      if(p.ovr>=tAvg+2 && p.apps<rp*0.45 && Math.random()<0.12*affK){
+        p.unhappy=2; p.uWhy="출전 시간";
+        addMood(`😡 주전급 ${p.name}이(가) 출전 시간에 강하게 불만을 표했습니다 — "제 자리는 벤치가 아닙니다." (면담 권장)`);
+      }
+      else if(p.apps<rp*0.3 && Math.random()<0.08*affK){ p.unhappy=1; p.uWhy="출전 시간"; addMood(`😠 ${p.name}이(가) 출전 기회 부족에 불만을 갖기 시작했습니다. (스쿼드 탭에서 면담 가능)`); }
       else if(p.wage<wageExpect(p.ovr,p.frn,(teamOfPlayer(p)||{}).div)*0.6 && Math.random()<0.04*affK){ p.unhappy=1; p.uWhy="연봉"; addMood(`😠 ${p.name} 측이 연봉 인상을 원하고 있습니다. (스쿼드 탭에서 면담 가능)`); }
     }
   }
@@ -6318,10 +6488,14 @@ function wagePct(t){ return t.wageCap ? Math.round(totalWage(t)/t.wageCap*100) :
 /* 팀 수에 따라 달라지는 값들 — 12팀: 정규 33R + 파이널 5R / 14팀: 39R + 6R */
 function k1N(){ return (G.k1||[]).length||12; }
 function k1Robin(){ return k1N()-1; }
-function splitAt(){ return k1Robin()*3; }          // 정규 라운드가 끝나는 지점
+function splitAt(){ return k1N()>=14 ? k1Robin()*2 : k1Robin()*3; }   // 정규 라운드가 끝나는 지점 (14팀은 2로빈)
 /* 파이널 라운드 수 — 그룹 인원이 짝수면 (인원-1) 라운드, 홀수면 부전승이 끼므로 인원만큼 돈다.
    12팀 → 6팀씩 5R / 14팀 → 7팀씩 7R (매 라운드 한 팀은 쉰다). */
-function splitRounds(){ const half=Math.floor(k1N()/2); return half%2===0 ? half-1 : half; }
+function splitRounds(){
+  const half=Math.floor(k1N()/2);
+  const one = half%2===0 ? half-1 : half;      // 6팀 5R / 7팀 7R(부전승 포함)
+  return k1N()>=14 ? one*2 : one;              // 14팀 파이널은 조별 2로빈(팀당 12경기) — 총 38경기를 맞춘다
+}
 function makeSplit(){
   G.splitDone=true;
   const tbl=tableOf(1), half=Math.floor(k1N()/2), R2=splitRounds();
@@ -6588,6 +6762,7 @@ function ageDecline(p, drop){ // 33세 이상: 세부 능력치도 함께 하락
 }
 function startNewSeason(){
   G.season++;
+  G.hiredAtR=0;   // 새 시즌 — 유예 기준점 초기화
   loanReturnAll();
   // 완장은 시즌마다 새로 정한다 (capInfo 가 시즌이 바뀐 걸 보고 set 을 내린다)
   for(const id in G.teams){ const t=G.teams[id]; if(t.cap) t.cap.set=false; }          // 임대 나간 선수들이 원 소속으로 돌아온다
@@ -6862,7 +7037,8 @@ function renewSubmit(){
   const ask=renewAsk(p);
   if(Math.random()<ch){
     p.wage=RENEW.wage; p.ct=RENEW.years; p.morale=clamp(p.morale+6,20,99);
-    p.unhappy=0; p.uWhy=""; affAdd(p, 5, "재계약");
+    if(!String(p.uWhy||"").includes("폭행")){ p.unhappy=0; p.uWhy=""; }   // 폭행의 기억은 돈으로 지워지지 않는다
+    affAdd(p, 5, "재계약");
     if(RENEW.promise) p.promise={rounds:8, need:5, apps0:p.apps||0};
     markRenewed(p);
     const wasCt=RENEW.wasCt;
@@ -6926,14 +7102,30 @@ function renewPersuade(kind){
   const t=userTeam(); if(!RENEW) return;
   const p=t.players.find(x=>x.id===RENEW.pid); if(!p) return;
   p._persuadeR=(t.div===1?G.r1:G.r2);
-  const w=RENEW.lastWage||renewAsk(p).want, y=RENEW.lastYears||renewAsk(p).years;
-  if(Math.random()<persuadeChance(p, kind, "renew")){
+  const ask=renewAsk(p);
+  let w=RENEW.lastWage||ask.want, y=RENEW.lastYears||ask.years;
+  /* ⚠ 제보 — "연봉 크게 깎아서 제시 → 협상 결렬 → 말로 구슬리면" 그 저연봉 그대로 사인되는 악용.
+     ① 모욕적인 제시 후의 설득은 잘 통하지 않는다 — 깎은 폭만큼 성공률이 깎인다.
+     ② 설득이 통해도 선수가 바보는 아니다 — 마음은 잡되, 연봉은 기대치 근처로 다시 부른다. */
+  const lowball=clamp((ask.want-w)/Math.max(ask.want,0.1), 0, 1);
+  const ch=clamp(persuadeChance(p, kind, "renew") - lowball*0.50, 0.03, 0.92);
+  if(Math.random()<ch){
+    if(lowball>0.12){
+      const w2=Math.round(Math.max(w, ask.want*0.93)*10)/10;
+      RENEW._wageFixed = (w2>w) ? {from:w, to:w2} : null;
+      w=w2;
+    } else RENEW._wageFixed=null;
     p.wage=w; p.ct=y; p.morale=clamp(p.morale+7,20,99);
-    p.unhappy=0; p.uWhy=""; affAdd(p, 7, "감독 설득으로 재계약"); markRenewed(p);
+    if(!String(p.uWhy||"").includes("폭행")){ p.unhappy=0; p.uWhy=""; }
+    affAdd(p, 7, "감독 설득으로 재계약"); markRenewed(p);
+    const fixedNote=RENEW._wageFixed
+      ? `
+
+<span class="small" style="color:var(--gold)">다만 조건은 다시 불렀습니다 — 연봉 ${RENEW._wageFixed.from}억 → <b>${RENEW._wageFixed.to}억</b> ("마음은 잡혔습니다. 연봉은 성의를 보여 주십시오.")</span>` : "";
     RENEW={pid:p.id, done:"ok", wage:w, years:y, say:pick(
       kind==="vision"?[`"...그 그림, 저도 보고 싶습니다. 남겠습니다."`,`"3년 뒤가 궁금해지네요. 사인하죠."`]
      :kind==="respect"?[`"그 말씀 하나면 됐습니다. 남겠습니다."`,`"필요하다고 해 주시니... 조건은 됐습니다."`]
-     :[`"...알겠습니다. 다시 생각해 보겠습니다. 남죠."`,`"기분은 좀 그렇지만, 맞는 말씀입니다."`])};
+     :[`"...알겠습니다. 다시 생각해 보겠습니다. 남죠."`,`"기분은 좀 그렇지만, 맞는 말씀입니다."`])+fixedNote};
     notify(`📝 <b>${p.name}</b> 설득 성공 — 재계약 (연봉 ${w}억 · ${y}년)`,"good");
     renewSocial(p, "ok");
   } else {
@@ -7432,6 +7624,8 @@ function genOffers(){
 /* ── 📒 영입·방출 기록 — "내가 쟤를 언제 데려왔더라?"를 위한 장부 ── */
 function tfLogAdd(kind, p, other, fee, wage, ct){
   if(!Array.isArray(G.tfLog)) G.tfLog=[];
+  if(G.jobless && !G.mgrFree) G.mgrFree={from:null, reason:"", s:G.season, off:[], block:{}, weeks:0};
+  if(G.mgrFree && !G.mgrFree.block) G.mgrFree.block={};
   G.tfLog.unshift({k:kind, n:p.name, pos:p.pos, o:other||"", fee:Math.round((fee||0)*10)/10,
                    wage:wage!=null?Math.round(wage*10)/10:null, ct:ct||null, s:G.season, d:G.day||0});
   G.tfLog=G.tfLog.slice(0,200);
@@ -7588,8 +7782,8 @@ function sellDemand(){
   if(!p){ G.snego=null; notify("🤝 그 선수는 더 이상 우리 소속이 아닙니다. 협상을 종료합니다.","warn"); show("nego"); return; }
   /* 트레이드를 요구하면 현금은 0원이어도 성립한다 (선수 대 선수) */
   const wantP = N.wantPid ? buyer.players.find(x=>x.id===N.wantPid) : null;
-  if(!isFinite(val)||val<0){ if(wantP) val=0; else { alert("요구액을 입력하세요 (억 단위)"); if(el) el.focus(); return; } }
-  if(!wantP && val<=0){ alert("요구액을 입력하세요 (억 단위)"); if(el) el.focus(); return; }
+  if(!isFinite(val)||val<0){ if(wantP) val=0; else { gameAlert("요구액을 입력하세요 (억 단위)"); if(el) el.focus(); return; } }
+  if(!wantP && val<=0){ gameAlert("요구액을 입력하세요 (억 단위)"); if(el) el.focus(); return; }
   N.tries++;
   const say=(w,t)=>N.log.push({w,t});
   if(wantP){
@@ -7654,10 +7848,10 @@ function blockNego(pid, why){
 }
 function startNego(pid, fromId){
   if(armyGate("선수 영입")) return;
-  if(!transferOpen()){ alert("이적시장이 닫혀 있습니다."); return; }
+  if(!transferOpen()){ gameAlert("이적시장이 닫혀 있습니다."); return; }
   const left=negoBlockDaysLeft(pid);
-  if(left>0){ alert(`협상이 결렬된 지 얼마 되지 않았습니다.\n\n${left}일 뒤에 다시 접촉할 수 있습니다.`); return; }
-  if(G.nego){ alert("이미 진행 중인 협상이 있습니다. 먼저 마무리하거나 중단하세요."); return; }
+  if(left>0){ gameAlert(`협상이 결렬된 지 얼마 되지 않았습니다.\n\n${left}일 뒤에 다시 접촉할 수 있습니다.`); return; }
+  if(G.nego){ gameAlert("이미 진행 중인 협상이 있습니다. 먼저 마무리하거나 중단하세요."); return; }
   const from=G.teams[fromId]; const p=from.players.find(x=>x.id===pid); if(!p) return;
   if(p.army && p.army.out){
     const own=p.army.own&&G.teams[p.army.own];
@@ -7665,7 +7859,7 @@ function startNego(pid, fromId){
       ()=>{}, {okLabel:"알겠습니다", cancelLabel:""});
     return;
   }
-  if(from.players.length<=20){ alert(`${from.short} 구단: "스쿼드 사정상 어떤 제안도 받지 않겠습니다."`); return; }
+  if(from.players.length<=20){ gameAlert(`${from.short} 구단: "스쿼드 사정상 어떤 제안도 받지 않겠습니다."`); return; }
   const refuseLine=clubRefusesToSell(from, p);
   if(refuseLine){
     blockNego(pid, `${from.short} 협상 거부`);
@@ -7704,7 +7898,7 @@ function negoOffer(){
      숫자가 아니거나 음수·비정상 값이면 여기서 잘라낸다. */
   const raw=el ? String(el.value||"").trim() : "";
   const val=raw==="" ? NaN : Math.round(parseFloat(raw)*10)/10;
-  if(!isFinite(val)||val<0){ alert("금액을 입력하세요 (억 단위)"); if(el) el.focus(); return; }
+  if(!isFinite(val)||val<0){ gameAlert("금액을 입력하세요 (억 단위)"); if(el) el.focus(); return; }
   const ut=userTeam(), from=N.fromId?G.teams[N.fromId]:null;
   const p=negoPlayerOf(N);
   if(!p){ G.nego=null; show("nego"); return; }
@@ -7975,9 +8169,9 @@ function cancelNego(){
 function releasePlayer(pid){
   if(armyGate("선수 방출")) return;
   const ut=userTeam(); const p=ut.players.find(x=>x.id===pid); if(!p) return;
-  if(ut.players.length<=18){ alert("스쿼드가 18명 이하면 방출할 수 없습니다."); return; }
+  if(ut.players.length<=18){ gameAlert("스쿼드가 18명 이하면 방출할 수 없습니다."); return; }
   const cost=Math.round(p.wage*(p.ct||1)*0.7*10)/10;
-  if(ut.budget<cost){ alert(`위약금 ${cost}억을 지급할 예산이 부족합니다. (보유 ${ut.budget}억)`); return; }
+  if(ut.budget<cost){ gameAlert(`위약금 ${cost}억을 지급할 예산이 부족합니다. (보유 ${ut.budget}억)`); return; }
   showConfirm(`<b>${p.name} 방출 (계약 해지)</b>\n\n· 잔여 계약: ${p.ct||1}년 (연봉 ${p.wage}억)\n· 합의 해지 위약금: 잔여 연봉의 70% = ${cost}억\n· 방출 후 선수는 FA(자유계약) 신분 — 타 구단이 이적료 없이 영입 가능\n\n진행하시겠습니까?`, ()=>{
     ut.budget=Math.round((ut.budget-cost)*10)/10;
     ut.players.splice(ut.players.indexOf(p),1);
@@ -8275,8 +8469,8 @@ function negoPlayerOf(N){
 }
 function startFANego(pid){
   if(armyGate("FA 영입")) return;
-  if(!transferOpen()){ alert("이적시장이 닫혀 있습니다. (FA 계약도 윈도우 기간에만 가능)"); return; }
-  if(G.nego){ alert("이미 진행 중인 영입 협상이 있습니다."); return; }
+  if(!transferOpen()){ gameAlert("이적시장이 닫혀 있습니다. (FA 계약도 윈도우 기간에만 가능)"); return; }
+  if(G.nego){ gameAlert("이미 진행 중인 영입 협상이 있습니다."); return; }
   const p=(G.freeAgents||[]).find(x=>x.id===pid); if(!p) return;
   const at=AGENT_T[p.id%3];
   const wBase=wageExpect(p.ovr,p.frn,(teamOfPlayer(p)||{}).div);
@@ -8336,6 +8530,8 @@ function migrateSave(){
   if(!Array.isArray(G.friendlies)) G.friendlies=[];
   if(!Array.isArray(G.pgMade)) G.pgMade=[];
   if(!Array.isArray(G.tfLog)) G.tfLog=[];
+  if(G.jobless && !G.mgrFree) G.mgrFree={from:null, reason:"", s:G.season, off:[], block:{}, weeks:0};
+  if(G.mgrFree && !G.mgrFree.block) G.mgrFree.block={};
   if(!G.negoBlock) G.negoBlock={};
   if(!G.staff) G.staff={delegatePre:false, handled:{}, log:[]};
   if(!G.staff.handled) G.staff.handled={};
@@ -8362,6 +8558,7 @@ function migrateSave(){
     if(!t.tactic.zone) t.tactic.zone={};
     if(!t.tactic.role) t.tactic.role={};
     if(!Array.isArray(t.tactic.benchSel)) t.tactic.benchSel=[];
+    if(!t.tactic.kickers) t.tactic.kickers={pk:[], fk:[], ck:[]};
     if(t.tactic.presetCur==null) t.tactic.presetCur=0;
     if(!Array.isArray(t.tactic.presets) || t.tactic.presets.length!==PRESET_N)
       t.tactic.presets=new Array(PRESET_N).fill(null);
@@ -8390,6 +8587,14 @@ function migrateSave(){
     if(p.txp==null) p.txp=0; if(p.tpt==null) p.tpt=0;
     if(!Array.isArray(p.traits)) p.traits=[];
     if(!p.posFam) p.posFam=initPosFam(p);
+  }
+  /* 홈그로운 소급 — 개명 전(바또)·후(사또) 이름 모두 찾는다 */
+  if(!G.hgV1){
+    try{
+      for(const id in G.teams) for(const p of G.teams[id].players)
+        if(p.frn && (HOMEGROWN_NAMES.includes(p.name) || HOMEGROWN_NAMES.map(n=>fictName(n,1)).includes(p.name))) p.hg=1;
+      G.hgV1=true;
+    }catch(e){}
   }
   /* 윙어의 LM/RM 능숙도 소급 — 인접표를 올리기 전에 만들어진 선수들도 같은 대우를 받는다 */
   if(!G.famWingV1){
@@ -9111,8 +9316,17 @@ function syncGoalPanel(s){
   const sc=s.byId ? s.byId(cel.scorerId) : null;
   const nm=sc&&sc.p?sc.p.name:"득점";
   const min=Math.max(1, Math.floor((cel.clock||s.clock)/60));
+  /* 도움 — K리그 규정으로 판정된 마지막 패스 주인. 자책골·도움 없음이면 표기 없음 */
+  let astTxt="";
+  try{
+    const gt=s.goalTag;
+    if(!cel.own && gt && gt.sid===cel.scorerId && gt.aid){
+      const ap=s.byId(gt.aid);
+      if(ap && ap.p) astTxt=`도움 ${ap.p.name}`;
+    }
+  }catch(e){}
   if(phase==="off") showGoalPanel(cel.side, nm, min, "", true);
-  else              showGoalPanel(cel.side, nm, min, cel.own?"자책골":"");
+  else              showGoalPanel(cel.side, nm, min, cel.own?"자책골":astTxt);
 }
 let goalPanelShownFor=null;
 function drawHighlightFrame(cv, hl){
@@ -9132,6 +9346,7 @@ function drawHighlightFrame(cv, hl){
     ag.x=px; ag.y=py; ag._rx=px; ag._ry=py;
     ag.face=lerpAngle(rec.face, nx.face, k);
   }
+  s._hlOwner = (f.oi!==undefined) ? (f.oi||null) : undefined;   // 이 프레임의 볼 소유자 (흰 링용)
   const b=s.ball, bs=[b.x,b.y,b.z,b._rx,b._ry];
   const bx=lerp(f.bx, nf.bx, k), by=lerp(f.by, nf.by, k);
   b.x=bx; b.y=by; b._rx=bx; b._ry=by; b.z=lerp(f.bz, nf.bz, k);
@@ -9153,6 +9368,7 @@ function drawHighlightFrame(cv, hl){
     c2.fillText("🎬 다시보기", 22, 25);
   }
   // 원래 좌표로 되돌린다 — 재생이 끝나면 경기가 그 자리에서 이어져야 한다
+  s._hlOwner=undefined;
   for(const [ag,x,y,fc,rx,ry] of save){ ag.x=x; ag.y=y; ag.face=fc; ag._rx=rx; ag._ry=ry; }
   b.x=bs[0]; b.y=bs[1]; b.z=bs[2]; b._rx=bs[3]; b._ry=bs[4];
   if(rs){ s.ref.x=rs[0]; s.ref.y=rs[1]; s.ref._rx=rs[2]; s.ref._ry=rs[3]; }
@@ -9175,7 +9391,9 @@ function drawSimWatch(cv, simOverride){
   const IY=(o)=> (o._ry===undefined||far(o)) ? o.y : lerp(o._ry, o.y, AL);
   for(const a of s.agents){
     const isGK=a.slot==="GK";
-    const owner = s.ball.ownerId===a.id;
+    /* 흰 링(볼 소유) — 재생 중에는 "그 프레임의" 소유자를 따라간다. 안 그러면 리플레이에서
+       드리블하는 선수를 놔두고, 장면이 끝난 시점의 소유자(예: 공 잡은 키퍼)에게 링이 붙는다. */
+    const owner = (s._hlOwner!==undefined) ? (s._hlOwner===a.id) : (s.ball.ownerId===a.id);
     const ax=IX(a), ay=IY(a);
     const af=lerpAngle(a._rf, a.face, AL);
     const R0=isGK?11:9.5;
@@ -9419,6 +9637,7 @@ function edSetPlayerQ(p, field, v){
     else for(const k of FAM_POS) p.posFam[k]=Math.max(p.posFam[k]||0, fresh[k]||0);
   } }
   else if(field==="by"){ const n=edNum(v,1980,2012,0); if(n!=null) p.by=n; }
+  else if(field==="hg"){ p.hg = (String(v).trim()==="1") ? 1 : 0; }
   else if(field==="h"){ const n=edNum(v,155,215,0); if(n!=null) p.h=n; }
   else if(field==="w"){ const n=edNum(v,48,115,0); if(n!=null) p.w=n; }
   else if(field==="wage"){ const n=edNum(v,0.1,3000,1); if(n!=null) p.wage=n; }
@@ -10005,6 +10224,8 @@ function pgCreate(toList){
     if(PG.dest==="os"){ tmp.osClub=PG.osClub; tmp.osNat=PG.osNat||(PG.frn?"해외":"대한민국"); }
     if(!Array.isArray(G.pgMade)) G.pgMade=[];
   if(!Array.isArray(G.tfLog)) G.tfLog=[];
+  if(G.jobless && !G.mgrFree) G.mgrFree={from:null, reason:"", s:G.season, off:[], block:{}, weeks:0};
+  if(G.mgrFree && !G.mgrFree.block) G.mgrFree.block={};
     const snap=pgSnap(tmp, PG); snap.applied=0;
     G.pgMade.push(snap); G.pgMade=G.pgMade.slice(-100);
     saveGame();
@@ -10054,6 +10275,8 @@ function pgCreate(toList){
   try{
     if(!Array.isArray(G.pgMade)) G.pgMade=[];
   if(!Array.isArray(G.tfLog)) G.tfLog=[];
+  if(G.jobless && !G.mgrFree) G.mgrFree={from:null, reason:"", s:G.season, off:[], block:{}, weeks:0};
+  if(G.mgrFree && !G.mgrFree.block) G.mgrFree.block={};
     const snap=pgSnap(p, PG); snap.applied=1; snap.appliedWhere=where;
     G.pgMade.push(snap);
     G.pgMade=G.pgMade.slice(-100);
@@ -10142,6 +10365,8 @@ function pgImportMade(input){
         ()=>{
           if(!Array.isArray(G.pgMade)) G.pgMade=[];
   if(!Array.isArray(G.tfLog)) G.tfLog=[];
+  if(G.jobless && !G.mgrFree) G.mgrFree={from:null, reason:"", s:G.season, off:[], block:{}, weeks:0};
+  if(G.mgrFree && !G.mgrFree.block) G.mgrFree.block={};
           let ok=0, dup=0;
           for(const o of obj.players.slice(0,100)){
             if(!o || !o.name){ continue; }
@@ -10373,6 +10598,8 @@ function editorView(){
         ${ED_ROW("포지션 그룹", posSel)}
         ${ED_ROW("주 포지션", prefSel)}
         ${ED_ROW(`출생년 (현재 ${age}세)`, ED_IN("edSetPlayer","by",p.by,70))}
+        ${p.frn?ED_ROW(`홈그로운 <span class="small">국내 유스 출신 외국인 — 쿼터 미적용</span>`,
+          `<select onchange="edSetPlayer('hg', this.value)"><option value="0" ${p.hg?"":"selected"}>아니오</option><option value="1" ${p.hg?"selected":""}>예 (초록 표시)</option></select>`):""}
         ${ED_ROW("키 (cm)", ED_IN("edSetPlayer","h",p.h||180,60))}
         ${ED_ROW("몸무게 (kg)", ED_IN("edSetPlayer","w",p.w||74,60))}
         <div class="edSec">계약 · 가치</div>
@@ -10569,13 +10796,9 @@ function settingsView(){
   </div>
   <div class="card">
     <h3>🧠 경기 엔진</h3>
-    <p class="small" style="margin-bottom:10px">내 팀 경기를 어떤 엔진으로 치를지 고릅니다. AI 구단끼리의 경기는 속도 때문에 언제나 빠른 엔진으로 처리됩니다.</p>
-    <button class="mini ${matchEngine()==="sim"?"sel":""}" onclick="setEngine('sim')">🟢 연속 2D 매치엔진</button>
-    <button class="mini ${matchEngine()==="text"?"sel":""}" onclick="setEngine('text')">📝 기존 분 단위 엔진</button>
-    <p class="small" style="margin-top:8px;color:var(--sub)">
-      <b>연속 2D</b> — 0.2초 단위로 22명이 실제로 움직여 만든 결과입니다. 전술·역할·포지션 능숙도가 그대로 반영되고,
-      세트피스와 오프사이드도 규칙대로 처리됩니다.<br>
-      <b>분 단위</b> — 1분마다 확률로 상황을 뽑는 기존 방식. 가볍고 빠릅니다.</p>
+    <p class="small">내 팀 경기는 <b>연속 2D 매치엔진</b>으로 치릅니다 — 0.2초 단위로 22명이 실제로 움직이고,
+      전술·역할·능숙도·세트피스·오프사이드가 규칙대로 반영됩니다.<br>
+      AI 구단끼리의 경기는 속도 때문에 빠른 엔진으로 처리하되, 결과 분포(득점·전력 반영)를 2D와 맞춰 두었습니다.</p>
   </div>
   <div class="card">
     <h3>🎬 골 장면 리플레이</h3>
@@ -10604,6 +10827,11 @@ function setEngine(e){
 }
 let VIEW="home", lastMatch=null, selSwap=null, FLASH=null;
 function flash(txt, cls){ FLASH={txt, cls:cls||"info"}; }
+/* 브라우저 alert() 대신 인게임 패널 — 모든 안내가 게임 화면 안에서 뜬다 */
+function gameAlert(msg){
+  try{ showConfirm(`⚠️ ${String(msg).replace(/\n/g,"<br>")}`, ()=>{}, {okLabel:"확인", cancelLabel:""}); }
+  catch(e){ flash(String(msg),"warn"); }
+}
 function notify(txt, cls){ addNews(txt); flash(txt, cls); } // 뉴스 + 즉시 배너
 function ovrCls(o){ return o>=76?"s":o>=72?"a":o>=67?"b":"c"; }
 /* FM식 별점 등급 (58=0.5★ ~ 88+=5★, 0.5 단위) — 전술판에서 숫자 OVR 대신 사용 */
@@ -11187,7 +11415,8 @@ function tickMoney(){
   if(!M.lastPay){ M.lastPay=key; return; }        // 첫 실행은 기준점만 잡는다
   M.lastPay=key;
   const pay=Math.round(mgrSalary()/12*100)/100;
-  mePay(pay, "감독 월급");
+  if(G.jobless) meLog("🕊️ 무직 — 이번 달 월급 없음 (집세·관리비는 그대로 나간다)");
+  else mePay(pay, "감독 월급");
   if(M.debt>0){
     const cut=Math.round(Math.min(M.debt, pay*0.5)*100)/100;
     if(cut>0){ mePay(-cut, `미납 징계금 상환 (잔액 ${(M.debt-cut).toFixed(2)}억)`); M.debt=Math.round((M.debt-cut)*100)/100; }
@@ -11462,8 +11691,13 @@ function show(v){
   if(typeof closeRoleMenu==="function") closeRoleMenu();   // 화면을 옮기면 열려 있던 역할 패널을 닫는다
   const freshTactics = (v==="tactics" && VIEWPREV!=="tactics");
   if(freshTactics) tacBase=null;          // 렌더 도중 초기화되는 값(벤치 등록 등)까지 반영한 뒤에 기준선을 잡는다
-  $("#main").innerHTML=fx+V[v]();
-  if(freshTactics){ tacBaseline(); $("#main").innerHTML=fx+V[v](); }
+  /* 무직 — 팀 관리 화면은 잠긴다. 구경(순위표·기록실·뉴스·관전·개인 삶)은 자유다. */
+  if(G.jobless){
+    const lockedV=["squad","tactics","transfer","nego","offers","finance","youth","staff","contract","renew","loan","match","player"];
+    if(lockedV.includes(v)){ v="home"; VIEW="home"; document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("on",b.dataset.v==="home")); }
+  }
+  $("#main").innerHTML=fx+((G.jobless && v==="home")?joblessView():V[v]());
+  if(freshTactics){ tacBaseline(); $("#main").innerHTML=fx+((G.jobless && v==="home")?joblessView():V[v]()); }
   if(!G.seen) G.seen={};
   G.seen[v]=notifCount(v); // 이 탭을 확인했으니 알림 해제
   renderNavDots();
@@ -11496,7 +11730,7 @@ function notifCount(tab){
     case "tactics": {
       const xi=bestXI(ut);
       let c=0;
-      if(xi.filter(p=>p.frn).length > (ut.div===1?5:4)) c++;                              // 외국인 초과
+      if(xi.filter(frnQ).length > (ut.div===1?5:4)) c++;                              // 외국인 초과
       if(xi.some(p=>p.inj>0||p.ban>0||p.sulk>0)) c++;                                     // 못 뛰는 선수가 선발에
       if(typeof tacDirty==="function" && tacDirty()) c++;                                  // 저장 안 한 전술 변경
       return c;
@@ -11547,6 +11781,7 @@ function home(){
     mh=`<div class="card"><h3>${tag||"지난 경기"} 리포트</h3>
     <div class="vsRow"><span>${h.name}</span><span>${a.name}</span></div>
     <div class="scoreBig">${res.hg} : ${res.ag}</div>
+    ${scLineHtml((res.sc&&res.sc.length)?res.sc:scFromEvents(res.events), h, a)}
     ${att0?`<div class="small" style="text-align:center;margin:-4px 0 6px;color:#c9d4e0">🏟️ ${stadOf(h).n} · 관중 <b style="color:#fff">${att0.toLocaleString()}</b>명${isSellout(h,att0)?' <span class="tag star">매진</span>':""}</div>`:""}
     ${cardLine(st.hY||0, st.aY||0, st.hR||0, st.aR||0)}
     <div id="matchLog">${imp.map(e=>`<div class="evt-${e.type}"><b>${e.min}'</b> ${e.t?`[${e.t}] `:""}${e.txt}</div>`).join("")||'<div class="info">주요 장면 없이 종료되었습니다.'}</div></div>`;
@@ -13262,7 +13497,7 @@ function fmkListOf(side){ return (G.fmk||[]).filter(x=>sideOf(x)===side); }
 function fmkCard(side, n){
   const list=fmkListOf(side||"o").slice(0, n||12);
   const rival = side==="r";
-  return `<div class="card"><h3>🔥 FM코리아 ${rival?`<span class="sideTag riv">타구단 팬</span>`:`<span class="sideTag own">우리 구단 팬</span>`}
+  return `<div class="card"><h3>🔥 FM코리아 ${G.jobless?`<span class="sideTag own">팬 반응</span>`:rival?`<span class="sideTag riv">타구단 팬</span>`:`<span class="sideTag own">우리 구단 팬</span>`}
     <span class="small">— 축구 커뮤니티 (수위 주의)</span></h3>
   ${list.length?`<div class="fmkList">${list.map(x=>`
     <div class="fmkRow ${x.tone>0?"pos":x.tone<0?"neg":""}">
@@ -13289,7 +13524,7 @@ function socialCard(side, n){
   const all=socListOf(rival?"r":"o");
   const list=all.slice(0, n||14);
   const mood=socialMood(all, rival);
-  return `<div class="card"><h3>💬 소셜미디어 ${rival?`<span class="sideTag riv">타구단 팬</span>`:`<span class="sideTag own">우리 구단 팬</span>`}
+  return `<div class="card"><h3>💬 소셜미디어 ${G.jobless?`<span class="sideTag own">팬 반응</span>`:rival?`<span class="sideTag riv">타구단 팬</span>`:`<span class="sideTag own">우리 구단 팬</span>`}
     <span class="small">— ${rival?"우리를 보는 시선":"팬 여론"}: <b style="color:${mood.c}">${mood.t}</b></span></h3>
   ${list.length?`<div class="socFeed">${list.map(x=>`
     <div class="socPost ${x.tone>0?"pos":x.tone<0?"neg":""}${rival?" riv":""}">
@@ -13360,6 +13595,11 @@ function socialTabView(){
   const nOwn=socListOf("o").length+fmkListOf("o").length;
   const nRiv=socListOf("r").length+fmkListOf("r").length;
   const btn=(k,l,c)=>`<button class="mini socSideBtn ${socSide===k?"sel":""}" onclick="setSocSide('${k}')">${l} <b>${c}</b></button>`;
+  if(G.jobless){
+    /* 무직 — 우리 구단이라는 개념이 없다. 진영 구분 없이 리그 팬들의 반응을 한 줄기로 본다. */
+    return `<p class="small" style="margin:0 2px 8px;color:#a9b4c0">무직 중에는 각 구단 팬들이 자기 팀 경기를 두고 떠드는 소리가 흘러갑니다.</p>
+    ${socialCard("o")}${fmkCard("o")}`;
+  }
   return `<div class="socSideBar">
     ${btn("o","🏠 우리 구단 팬",nOwn)}${btn("r","🌐 타구단 팬",nRiv)}
   </div>
@@ -14153,7 +14393,17 @@ function doSlap(pid){
     /* 터졌다 — 이건 폭행이고, 세상이 다 안다 */
     p.sulk=Math.max(p.sulk||0, 5+R(4));
     p.unhappy=3; p.uWhy="감독의 폭행"; p.noMove=false;
+    p._slapR=(t.div===1?G.r1:G.r2);                 // 언제 맞았는가 — 사과 수용률이 시간에 따라 풀린다
     affAdd(p, -55, "감독의 폭행");
+    /* 👀 목격자 — 라커룸의 2~3명이 "동료가 맞는 걸 봤다"는 이유로 불만을 갖는다.
+       온화한 선수(pers 2)가 가장 크게 동요한다. 폭력은 맞은 사람만의 문제가 아니다. */
+    {
+      const wit=t.players.filter(q=>q!==p && !q.unhappy && q.inj<=0)
+        .sort((a,b)=>((b.pers===2)?1:0)-((a.pers===2)?1:0) || Math.random()-0.5)
+        .slice(0, 2+R(2));
+      for(const q of wit){ q.unhappy=1; q.uWhy="동료 폭행 목격"; affAdd(q, -6, "동료 폭행 목격"); }
+      if(wit.length) addMood(`👀 ${wit.map(q=>q.name).join(", ")} — 동료가 맞는 장면을 본 뒤 감독을 피하고 있습니다. (사유: 동료 폭행 목격)`);
+    }
     p.morale=25;
     t.morale=Math.round(clamp((t.morale||70)-9,40,99)*100)/100;
     for(const q of t.players){ if(q.id!==p.id) affAdd(q, -12, `${p.name} 폭행 사건`); }
@@ -14205,8 +14455,11 @@ function talkCard(p){
     ${!(p.sulk>0)&&badForm?`<button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px;border-color:var(--red)" ${talked?"disabled":""} onclick="talkTo(${p.id},'scoldPublic')">📣 팀 전체 앞에서 공개 질책 <span class="small">(효과도 위험도 크다)</span></button>`:""}
     <button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px;border-color:var(--red);color:#ff9d95" ${talked?"disabled":""} onclick="openSlap(${p.id})">👋 뺨을 후려친다 <span class="small">${(()=>{ const c=slapCase(p); return c.g>=45?"(명분 충분)":c.g>=20?"(명분 있음)":c.g>=0?"⚠ (명분 약함 — 폭행으로 남습니다)":"⚠ (명분 없음 — 커리어가 끝날 수 있습니다)"; })()}</span></button>
     ${tutorBlock(p)}
+    ${p.sulk>0&&String(p.uWhy||"").includes("폭행")?`<h3>불만 해결</h3>
+      <button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px;border-color:var(--gold)" onclick="talkTo(${p.id},'apologize')">🙇 폭행을 진심으로 사과한다 <span class="small">(태업 중에도 사과만은 들어줍니다 — 태업 기간도 줄어듭니다)</span></button>`:""}
     ${p.unhappy>0&&!(p.sulk>0)?`<h3>불만 해결</h3>
-      ${p.uWhy.includes("출전")?`<button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px" onclick="talkTo(${p.id},'promise')">🤝 출전 시간 약속 <span class="small">(6R 내 3경기 — 못 지키면 크게 악화)</span></button>`:""}
+      ${p.uWhy.includes("폭행")?`<button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px;border-color:var(--gold)" onclick="talkTo(${p.id},'apologize')">🙇 폭행을 진심으로 사과한다 <span class="small">(성격·시간·관계에 따라 받아들일 수도, 아닐 수도)</span></button>`:""}
+      ${p.uWhy.includes("출전")?`<button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px${p.promiseBroken?";opacity:.55":""}" onclick="talkTo(${p.id},'promise')">🤝 출전 시간 약속 <span class="small">${p.promiseBroken?"(한 번 어겼습니다 — 더는 믿지 않습니다)":"(6R 내 3경기 — 못 지키면 이적 요청/태업으로 번집니다)"}</span></button>`:""}
       ${p.uWhy.includes("연봉")?`<button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px" onclick="talkTo(${p.id},'raise')">💰 연봉 25% 인상 <span class="small">(${p.wage}억 → ${Math.round(p.wage*1.25*10)/10}억)</span></button>`:""}
       <button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px" onclick="talkTo(${p.id},'allow')">🚪 이적 허용 (리스트 등록)</button>`:""}
     <p class="small" style="margin-top:6px">성격에 따라 반응이 다릅니다. 다혈질은 질책에 폭발할 수도, 자극받을 수도 있습니다. 면담은 라운드당 1회.</p>
@@ -14584,8 +14837,50 @@ function talkTo(pid, kind){
       if(vet&&Math.random()<0.4) txt=`"어린 친구들이 잘 따라와 줘서 고맙죠. 요즘은 지도자 욕심도 생깁니다."`;
     }
   } else if(kind==="promise"){
+    if(p.promiseBroken){
+      TALKMSG={txt:`${p.name}: ${pick([`"또 약속입니까? 한 번 어긴 약속을 두 번 믿을 만큼 어리지 않습니다."`,`"말은 됐습니다. 이번엔 경기로 보여 주시든가, 보내 주시든가요."`])}`, d:-2};
+      affAdd(p, -3, "빈말이 된 약속");
+      saveGame(); show("player"); return;
+    }
     p.promise={apps0:p.apps, need:3, rounds:6}; p.unhappy=0; d=6;
     txt=pick([`"정말입니까? 좋습니다, 감독님을 믿겠습니다."`,pers===1?`"약속하신 겁니다. 어기시면... 다음 대화는 제 에이전트와 하시게 될 겁니다."`:`"기회만 주시면 됩니다. 후회 안 하실 겁니다."`])+` <i>(6라운드 내 3경기 출전 약속)</i>`;
+  } else if(kind==="apologize"){
+    /* 🙇 폭행 사과 — 돈이나 약속으로 덮을 수 없는 불만이다. 사과만이 입구고, 그마저 쉽지 않다.
+       시간이 지날수록(폭행 직후엔 냉담), 관계가 남아 있을수록, 온화한 성격일수록 받아들인다. */
+    const since=r-(p._slapR!=null?p._slapR:r);                    // 폭행 후 지난 라운드
+    let ok=0.22 + (aff(p)-40)*0.008 + Math.min(0.20, since*0.04);
+    if(pers===2) ok+=0.18;            // 온화 — 용서가 빠르다
+    if(pers===3) ok-=0.15;            // 다혈질 — 쉽게 안 잊는다
+    if(pers===1) ok-=0.06;            // 야심가 — 계산부터 한다
+    if(p.sulk>0) ok-=0.10;            // 태업 중이면 대화 자체가 차갑다
+    ok=clamp(ok, 0.05, 0.85);
+    if(Math.random()<ok){
+      p.unhappy=Math.max(0, p.unhappy-2);
+      if(p.unhappy===0) p.uWhy="";
+      p.sulk=Math.max(0, (p.sulk||0)-2);
+      affAdd(p, 10, "감독의 진심 어린 사과");
+      d=6;
+      txt=pick([
+        `"...사과, 받겠습니다. 다만 두 번은 없습니다, 감독님."`,
+        pers===2?`"사람이 실수할 수도 있죠. ...잊어보겠습니다."`:`"시간이 좀 걸렸지만... 그 말씀이 듣고 싶었습니다."`,
+        `"라커룸 앞에서도 한번 말씀해 주십시오. 저만 맞은 게 아니라 다들 봤으니까요."`]);
+      /* 목격자들도 사과 소식에 절반쯤 누그러진다 */
+      let calmed=0;
+      for(const q of t.players){
+        if(q!==p && q.uWhy==="동료 폭행 목격" && Math.random()<0.6){
+          q.unhappy=Math.max(0,(q.unhappy||0)-1); if(q.unhappy===0) q.uWhy="";
+          affAdd(q, 4, "감독의 공개 사과"); calmed++;
+        }
+      }
+      if(calmed) addMood(`🙇 감독의 사과가 라커룸에 전해졌습니다 — 지켜보던 동료 ${calmed}명의 마음이 조금 풀렸습니다.`);
+    } else {
+      affAdd(p, -4, "받아들여지지 않은 사과");
+      d=-2;
+      txt=pick([
+        `"...사과로 될 일이었으면 애초에 손을 올리지 마셨어야죠."`,
+        pers===3?`"늦었습니다. 전 그날을 잊지 않습니다."`:`"...조금 더 시간이 필요합니다. 지금은 아닙니다."`,
+        `"말은 감사합니다. 근데 볼 때마다 그날이 떠오릅니다."`]);
+    }
   } else if(kind==="raise"){
     p.wage=Math.round(p.wage*1.25*10)/10; p.unhappy=0; p.uWhy=""; d=7;
     txt=pick([`"구단이 저를 인정해주는군요. 연봉 ${p.wage}억, 바로 사인하겠습니다."`,pers===1?`"진작 이러셨어야죠. 좋습니다, ${p.wage}억."`:`"감사합니다. 이 대우, 그라운드에서 갚겠습니다."`]);
@@ -14659,7 +14954,7 @@ function usePreset(i){
 function clearPreset(i){
   const t=userTeam(); const ps=tacPresets(t);
   i=clamp(i|0,0,PRESET_N-1);
-  if(t.tactic.presetCur===i){ alert("사용 중인 전술은 지울 수 없습니다."); return; }
+  if(t.tactic.presetCur===i){ gameAlert("사용 중인 전술은 지울 수 없습니다."); return; }
   showConfirm(`<b>전술 ${i+1}번을 비웁니다</b>\n\n저장된 포메이션·역할·지시가 모두 사라집니다.`, ()=>{
     ps[i]=null; saveGame(); refreshTactics();
   }, {okLabel:"비우기", danger:true});
@@ -14792,6 +15087,31 @@ function fmSetDuty(pid, dk){
   const rd=getRole(t,p,slotOf[p.id]||prefSlotOf(p));
   setRole(pid, rd.r, dk);
 }
+let FMTAB="info";           // 전술판 우측 탭: info=선발 정보 · kick=전담 키커
+/* 🎯 전담 키커 패널 — 종류별 1~3순위. 능력치 힌트(PK/FK/코너)를 함께 보여 준다. */
+function kickerPanel(t, xi){
+  const K=kickersOf(t);
+  const pool=t.players.filter(avail).sort((a,b)=>b.ovr-a.ovr);
+  const hint=(p,kind)=>{
+    const a=p.attr||{};
+    const v=kind==="pk"?(a.pen||0):kind==="fk"?(a.fre||0):(a.cor||0);
+    return attr20(v);
+  };
+  const row=(kind,label,attrName)=>{
+    const cur=K[kind]||[];
+    return `<div style="margin-bottom:12px"><b>${label}</b> <span class="small">— ${attrName} 능력치가 성공률을 좌우합니다</span><br>
+      ${[0,1,2].map(i=>`<select style="max-width:170px;margin:4px 4px 0 0" onchange="setKicker('${kind}',${i},this.value)">
+        <option value="">${i+1}순위 — 자동</option>
+        ${pool.map(p=>`<option value="${p.id}" ${cur[i]===p.id?"selected":""}>${p.name} (${attrName} ${hint(p,kind)})</option>`).join("")}
+      </select>`).join("")}</div>`;
+  };
+  return `<div style="padding:6px 4px">
+    <p class="small" style="margin-bottom:10px">그라운드에 있는 <b>가장 높은 순위</b>의 선수가 찹니다. 전원 벤치·결장이면 엔진이 능력치로 자동 선택합니다.</p>
+    ${row("pk","🅿️ 페널티킥 키커","페널티킥")}
+    ${row("fk","🎯 프리킥 키커","프리킥")}
+    ${row("ck","🚩 코너킥 키커","코너킥")}
+  </div>`;
+}
 const REST_PAGE=6;          // "그 외 명단" 한 페이지에 보여줄 인원
 /* 벤치·그 외 명단 보기 정렬 — 열 머리글을 눌러 정렬한다. 표시만 바뀌고
    S번호(실제 벤치 슬롯)는 선수에게 붙어 다닌다. 두 명단이 각자의 정렬 상태를 갖는다. */
@@ -14847,6 +15167,23 @@ function sqHeadRow(scope, sticky){
 }
 /* 교체 명단(9명)을 직접 지정한다 — ⬆ 벤치로 올리고 ⬇ 그 외 명단으로 내린다.
    내린 선수는 자동 보충이 도로 데려오지 않도록, 빈 자리를 그 선수 제외 후보로 채워 9명을 확정한다. */
+/* ── 🎯 전담 키커 — PK·FK·코너 각각 1~3순위. 경기에서는 그라운드에 있는 최상위 순위가 찬다. ── */
+function kickersOf(t){
+  if(!t.tactic.kickers) t.tactic.kickers={pk:[], fk:[], ck:[]};
+  for(const k of ["pk","fk","ck"]) if(!Array.isArray(t.tactic.kickers[k])) t.tactic.kickers[k]=[];
+  return t.tactic.kickers;
+}
+function setKicker(kind, idx, pid){
+  const t=userTeam(), K=kickersOf(t);
+  pid=pid?parseInt(pid,10):0;
+  K[kind]=K[kind]||[];
+  if(pid){ // 같은 선수를 다른 순위에 중복 지정하면 이전 자리를 비운다
+    K[kind]=K[kind].map(x=>x===pid?0:x);
+    K[kind][idx]=pid;
+  } else K[kind][idx]=0;
+  while(K[kind].length && !K[kind][K[kind].length-1]) K[kind].pop();
+  saveGame(); refreshTactics();
+}
 function benchPin(pid){
   const t=userTeam();
   if(Array.isArray(t.tactic.benchExcl)) t.tactic.benchExcl=t.tactic.benchExcl.filter(id=>id!==pid);
@@ -14942,14 +15279,15 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
     .map(p=>subRow(p, "✕", p.sulk>0?`태업 ${p.sulk}R`:(p.inj>0?`부상 ${p.inj}주`:"출장정지"), "out")).join("");
   return `<div class="fmTableWrap">
     <div class="fmTabs">
-      <span class="fmTab on">👁 선발 정보</span>
+      <span class="fmTab ${FMTAB==="kick"?"":"on"} clickable" onclick="FMTAB='info';refreshTactics()">👁 선발 정보</span>
+      <span class="fmTab ${FMTAB==="kick"?"on":""} clickable" onclick="FMTAB='kick';refreshTactics()">🎯 전담 키커</span>
       ${liveM?`<span class="fmChip">${mb.length}/9 교체</span>
       <span class="fmChip">${5-((liveM.home.isUser?liveM.h:liveM.a).subs||0)}/5 교체 기회</span>`:""}
       <button class="mini" style="margin-left:auto;padding:4px 10px;font-size:11.5px"
         title="지금 포메이션 배치와 역할은 그대로 두고, 각 자리에 가장 잘 맞는 선수로 다시 뽑습니다"
         onclick="autoPickXI();selSwap=null;refreshTactics()">🔄 자동 선발</button>
     </div>
-    <div class="tblScroll"><table class="fmTable">
+    ${FMTAB==="kick"?kickerPanel(t, xi):`<div class="tblScroll"><table class="fmTable">
       <tr><th>선발</th><th>역할</th><th>임무</th><th>전술적 능력</th><th>선수</th><th>포지션</th><th>컨디션</th><th>경고</th><th>반응</th><th>평점</th></tr>
       ${rows}
       <tr class="fmDiv"><td colspan="10"><span class="fmSecLbl">🪑 교체 명단 (${mb.length}/9)${t.tactic&&t.tactic.benchManual?` <span class="small" style="color:var(--gold)">직접 편성</span>`:""}</span>${benchSortBtns()}${
@@ -14964,7 +15302,7 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
           <table class="fmTable" style="margin:0;width:100%">${sqHeadRow("rest", true)}${restRows}</table>
         </div></td></tr>`:""}
       ${outRows?`<tr class="fmDiv"><td colspan="10"><span class="fmSecLbl">🚑 출전 불가</span></td></tr>${outRows}`:""}
-    </table></div>
+    </table></div>`}
     ${selSwap!==null?`<div class="msg good" style="margin-top:8px">🔁 <b>${t.players.find(p=>p.id===selSwap)?.name}</b> 선택됨 — 바꿀 선수를 클릭하세요. (같은 선수 다시 클릭 시 취소)</div>`:""}
   </div>`;
 }
@@ -15018,7 +15356,7 @@ function tactics(){
   };
   const mb2=matchBench(t);
   // 선발 요약 — 외국인 쿼터·전력·사기는 라인업을 짜면서 계속 보게 되는 값이라 전술판 위쪽에 둔다
-  const xiInfo=`<div class="msg info" style="margin:8px 0">외국인 선발 ${xi.filter(p=>p.frn).length}/${t.div===1?5:4} <span class="small">(K리그1 5명·K리그2 4명 동시 출전, 등록 무제한)</span> · 선발 전력 ${teamStars(Math.round(xi.reduce((s,p)=>s+p.ovr,0)/11*10)/10, "선발 11인")} · 선발 사기 ${mor(xi.reduce((s,p)=>s+p.morale,0)/11)}</div>`;
+  const xiInfo=`<div class="msg info" style="margin:8px 0">외국인 선발 ${xi.filter(frnQ).length}/${t.div===1?5:4}${xi.some(p=>p.hg)?` <span class="small" style="color:#3fb950">+홈그로운 ${xi.filter(p=>p.hg).length}</span>`:""} <span class="small">(K리그1 5명·K리그2 4명 동시 출전, 등록 무제한)</span> · 선발 전력 ${teamStars(Math.round(xi.reduce((s,p)=>s+p.ovr,0)/11*10)/10, "선발 11인")} · 선발 사기 ${mor(xi.reduce((s,p)=>s+p.morale,0)/11)}</div>`;
   return `<div class="tacTopBar">
     <h2 style="margin:0">📋 전술 — <span style="color:var(--gold)">${liveFormName}</span> <span class="small">(${styleName(t)})</span></h2>
     ${tacSaveBar(t)}
@@ -15467,6 +15805,18 @@ function swapSlots(pidA, pidB){
   if(!slotA || !slotB || slotA==="GK" || slotB==="GK"){ refreshTactics(); return; }
   setZone(t, pidA, POS_ROW[slotB]); setSlot(t, pidA, slotB);
   setZone(t, pidB, POS_ROW[slotA]); setSlot(t, pidB, slotA);
+  /* 역할은 "자리"에 대한 지시다 — 두 선수가 자리를 맞바꾸면 역할·임무도 자리를 따라간다.
+     새 자리에서 맡을 수 없는 역할이면 지워서 그 슬롯 기본 역할로 돌아가게 한다. */
+  try{
+    const T=t.tactic, rMap=T.role||(T.role={});
+    const slotA=T.slot?T.slot[pidA]:null, slotB=T.slot?T.slot[pidB]:null;   // 이미 맞바꾼 뒤의 슬롯
+    const rA=rMap[pidA], rB=rMap[pidB];
+    const fit=(rd,sl)=>rd && ROLE_BY_KEY[rd.r] && (!sl || !ROLE_GRP[sl] || ROLE_BY_KEY[rd.r].grp.includes(ROLE_GRP[sl]));
+    const nA = fit(rB, slotA) ? {r:rB.r, d:rB.d} : null;
+    const nB = fit(rA, slotB) ? {r:rA.r, d:rA.d} : null;
+    if(nA) rMap[pidA]=nA; else delete rMap[pidA];
+    if(nB) rMap[pidB]=nB; else delete rMap[pidB];
+  }catch(e){}
   if(liveM) liveM.xiDirty=true;
   refreshTactics();
 }
@@ -15495,11 +15845,11 @@ function confirmSwap(a,b){
     const newXI=ids.map(id=>id===outId?inId:id);
     const ps=newXI.map(id=>t.players.find(p=>p.id===id));
     const frnLim=t.div===1?5:4;
-    if(ps.filter(p=>p.frn).length>frnLim){ alert(`외국인 선수는 최대 ${frnLim}명까지 동시 출전 가능합니다 (${divName(t.div)} 규정).`); refreshTactics(); return; }
+    if(ps.filter(frnQ).length>frnLim){ gameAlert(`외국인 선수는 최대 ${frnLim}명까지 동시 출전 가능합니다 (${divName(t.div)} 규정 · 홈그로운 제외).`); refreshTactics(); return; }
     const gkN=ps.filter(p=>p&&p.pos==="GK").length;
-    if(gkN>1){ alert("골키퍼는 한 명만 선발로 낼 수 있습니다."); refreshTactics(); return; }
-    if(gkN<1){ alert("선발에 골키퍼가 없습니다. 골키퍼를 한 명 넣어 주세요."); refreshTactics(); return; }
-    if(ps.filter(p=>p.pos==="GK").length!==1){ alert("골키퍼는 정확히 1명 선발해야 합니다. (GK끼리 교체하세요)"); refreshTactics(); return; }
+    if(gkN>1){ gameAlert("골키퍼는 한 명만 선발로 낼 수 있습니다."); refreshTactics(); return; }
+    if(gkN<1){ gameAlert("선발에 골키퍼가 없습니다. 골키퍼를 한 명 넣어 주세요."); refreshTactics(); return; }
+    if(ps.filter(p=>p.pos==="GK").length!==1){ gameAlert("골키퍼는 정확히 1명 선발해야 합니다. (GK끼리 교체하세요)"); refreshTactics(); return; }
     // 새로 선발에 들어오는 선수는 나간 선수의 정확한 세부 위치(zone/slot)를 그대로 물려받는다 —
     // 그렇지 않으면 computeRenderSlots가 이 선수를 "슬롯 미지정"으로 보고 자동배치 패턴에 따라
     // 엉뚱한 자리에 배치해버린다(라이브 교체 때 subIn()에서 이미 고친 것과 같은 버그).
@@ -15508,6 +15858,15 @@ function confirmSwap(a,b){
       const oldSlot=(t.tactic.slot && t.tactic.slot[outId]) || null;
       setZone(t, inId, oldZone);
       if(oldSlot) setSlot(t, inId, oldSlot);
+      /* ⚠ 제보 — 역할은 선수 id 로 저장되어, 교체하면 그 자리에 지정한 역할(메짤라 등)이
+         새 선수의 옛 역할이나 기본값으로 바뀌었다. 라이브 교체(subIn)와 똑같이,
+         나간 선수가 맡던 역할·임무를 그 자리에서 맡을 수 있는 한 그대로 물려준다. */
+      const rMap=t.tactic.role || (t.tactic.role={});
+      const oldRole=rMap[outId];
+      if(oldRole && ROLE_BY_KEY[oldRole.r]){
+        const grp=oldSlot ? ROLE_GRP[oldSlot] : null;
+        if(!grp || ROLE_BY_KEY[oldRole.r].grp.includes(grp)) rMap[inId]={r:oldRole.r, d:oldRole.d};
+      }
     }
     G.userXI=newXI; saveGame(); refreshTactics();
   }, {okLabel:"교체", onCancel:refreshTactics});
@@ -15709,12 +16068,12 @@ function confirmLiveSwap(a,b){
   if(aOut && bIn){ outEntry=aOut; inP=bIn; }
   else if(bOut && aIn){ outEntry=bOut; inP=aIn; }
   else { renderLiveTactics(); return; } // 벤치끼리는 교체 의미 없음
-  if(sd.subs>=5){ alert("교체 카드를 모두 사용했습니다 (5명)."); renderLiveTactics(); return; }
-  if((outEntry.p.pos==="GK")!==(inP.pos==="GK")){ alert("골키퍼는 골키퍼와만 교체할 수 있습니다."); renderLiveTactics(); return; }
-  if(inP.frn){
+  if(sd.subs>=5){ gameAlert("교체 카드를 모두 사용했습니다 (5명)."); renderLiveTactics(); return; }
+  if((outEntry.p.pos==="GK")!==(inP.pos==="GK")){ gameAlert("골키퍼는 골키퍼와만 교체할 수 있습니다."); renderLiveTactics(); return; }
+  if(frnQ(inP)){
     const lim=userTeam().div===1?5:4;
-    const cnt=onPitch(sd).filter(x=>x!==outEntry&&x.p.frn).length+1;
-    if(cnt>lim){ alert(`외국인 동시 출전 한도 초과 (${divName(userTeam().div)}: 최대 ${lim}명)`); renderLiveTactics(); return; }
+    const cnt=onPitch(sd).filter(x=>x!==outEntry&&frnQ(x.p)).length+1;
+    if(cnt>lim){ gameAlert(`외국인 동시 출전 한도 초과 (${divName(userTeam().div)}: 최대 ${lim}명 · 홈그로운 제외)`); renderLiveTactics(); return; }
   }
   const isGapFill = outEntry===gap;
   showConfirm(`<b>${isGapFill?'🚑 부상 공백 채우기':'🔁 선수 교체'}</b>\n\n${outEntry.p.name} (${outEntry.p.pos}) OUT${isGapFill?' (이미 부상으로 이탈)':''}\n${inP.name} (${inP.pos}) IN\n\n교체하시겠습니까? (${sd.subs}/5 → ${sd.subs+1}/5)`, ()=>{
@@ -15993,8 +16352,28 @@ function situationCard(){
   if(G.snego){ const sp=t.players.find(x=>x.id===G.snego.pid); if(sp) items.push(`💼 판매 협상 진행 중: <b>${sp.name}</b> ← ${G.teams[G.snego.tid].short} (현재 제시 ${G.snego.bid}억)`); }
   if((G.offers||[]).length) items.push(`📨 타 구단 제의 <b>${G.offers.length}건</b> 처리 대기`);
   if(!items.length) return "";
-  return `<div class="card" style="border-color:#d29922"><h3>📋 구단 상황판</h3>
-  ${items.map(i=>`<div style="padding:4px 0;border-bottom:1px solid #21262d">${i}</div>`).join("")}</div>`;
+  /* ⚠ 제보 — 선수단 40명을 팬 감독의 상황판이 100줄이 됐다.
+     ① 같은 종류는 묶어서 요약(3건 초과 시 접힌 요약줄) ② 전체 접기 토글 ③ 펼쳐도 스크롤 박스. */
+  const fold=!!(G.opt && G.opt.sitFold);
+  const head=`<h3 class="clickable" onclick="G.opt=G.opt||{};G.opt.sitFold=${fold?"false":"true"};saveGame();show('home')"
+    title="눌러서 ${fold?"펼치기":"접기"}">📋 구단 상황판 <span class="small">(${items.length}건)</span>
+    <span class="small" style="float:right">${fold?"▸ 펼치기":"▾ 접기"}</span></h3>`;
+  if(fold) return `<div class="card" style="border-color:#d29922">${head}</div>`;
+  /* 같은 이모지(=같은 종류)끼리 묶어, 4건 이상이면 앞 3건 + "외 N명" 요약으로 줄인다 */
+  const groups={};
+  for(const it of items){ const k=it.slice(0,2); (groups[k]=groups[k]||[]).push(it); }
+  const SIT_SHOW=3;
+  const rows=[];
+  for(const k in groups){
+    const g=groups[k];
+    if(g.length<=SIT_SHOW){ rows.push(...g); continue; }
+    const open=!!(G.opt && G.opt.sitOpen && G.opt.sitOpen[k]);
+    rows.push(...(open?g:g.slice(0,SIT_SHOW)));
+    rows.push(`<span class="clickable" style="color:var(--gold)" onclick="G.opt=G.opt||{};G.opt.sitOpen=G.opt.sitOpen||{};G.opt.sitOpen['${k}']=${open?"false":"true"};saveGame();show('home')">${open?`▴ ${k} 접기`:`▾ 같은 상황 ${g.length-SIT_SHOW}건 더 보기`}</span>`);
+  }
+  return `<div class="card" style="border-color:#d29922">${head}
+  <div style="max-height:300px;overflow-y:auto;overscroll-behavior:contain">
+  ${rows.map(i=>`<div style="padding:4px 0;border-bottom:1px solid #21262d">${i}</div>`).join("")}</div></div>`;
 }
 /* ---------- 협상 탭 ---------- */
 function negoView(){
@@ -19554,6 +19933,7 @@ function startInterview(stage, M, cont){
 function relLabel(){ const r=G.press.rel; return r>=65?"우호적 🟢":r>=35?"중립 🟡":"냉랭 🔴"; }
 /* ---------- 구단주 · 팬 신뢰도 (FM식 이사회/서포터 신뢰) ---------- */
 function adjustTrust(kind, delta, reason){
+  if(G.jobless) return;   // 무직 — 우리가 관리하는 팀이 없다
   if(!G.trust) G.trust={owner:70, fans:70, log:[]};
   if(!delta) return;
   G.trust[kind]=clamp(Math.round((G.trust[kind]+delta)*10)/10,0,100);
@@ -20656,6 +21036,11 @@ RIV.sueWatch=[
  ["사과문 캡처 우리 갤에도 돌고 있음 ㅋㅋ",0],
  ["결과 나오면 알려줘라. 팝콘 준비함",0],
  ["저 감독 승소하면 우리 팬들도 조심해야 하는 거 아니냐",0]];
+/* 상대 팬 — 남의 선수 해트트릭은 배가 아프다 */
+RIV.hatRiv=[
+ ["{t} {p}한테 3골 맞는 팀은 뭐 하는 팀이냐",-1],
+ ["{p} 저 선수 우리랑 붙을 때만 아니면 응원한다",0],
+ ["{t} 팬들 오늘 축제겠네 부럽다...",-1]];
 /* 상대 팬 — 심판 폭행은 남의 집 불구경으로도 웃지 못한다 */
 RIV.refSlap=[
  ["{t} 감독이 심판을 때렸다고?? 리그 전체 망신이다",-1],
@@ -21494,11 +21879,12 @@ function boardState(){
 }
 function sackCheck(){
   const t=userTeam(); if(!t) return false;
+  if(G.jobless) return false;
   if(G.phase==="sacked" || G.phase==="seasonEnd") return false;
   if(!G.trust) return false;
   const b=boardState();
   const rd=t.div===1?G.r1:G.r2;
-  if(rd<SACK_GRACE) return false;               // 부임 직후 유예
+  if(rd-(G.hiredAtR||0)<SACK_GRACE) return false;   // 부임 직후 유예 (중도 부임이면 그 라운드부터 센다)
   // ── 공언한 시즌 목표와 실제 순위의 괴리 — 구단주는 이걸 가장 크게 본다
   if(G.goal && rd>=8 && rd%2===0){
     const pos=tableOf(t.div).findIndex(x=>x.isUser)+1;
@@ -21601,17 +21987,345 @@ function boardModal(title, body, cls){
     if(typeof VIEW!=="undefined" && VIEW && !liveM){ try{ show(VIEW); }catch(e){} } };
 }
 /* 경질 확정 */
+/* ═══ 🕊️ 무직 감독 — 경질 뒤의 삶 ═══
+   경질 → 무직(리그는 AI로 계속 돈다) → 타 구단 지원 or 제의 → 부임.
+   평판(mgrRep)이 좋을수록 더 좋은 구단의 문이 열린다. */
+function mgrRep(){
+  let v=30;
+  try{ v+=clamp(mgrPrestige()*0.5, 0, 25); }catch(e){}
+  try{ v+=Math.min(20, mgrSeasons()*4); }catch(e){}
+  if(G.sack && G.sack.pos) v+=clamp((8-G.sack.pos)*1.5, -10, 8);   // 잘리기 전 순위도 이력서다
+  v+=(G.mgrFree && G.mgrFree.repMod)||0;                            // 무직 중 활동(연수·방송·사고)의 흔적
+  return clamp(Math.round(v), 5, 90);
+}
+function jobTier(t){ return clamp(Math.round(teamOVR(t)-60), 1, 30) + (t.div===1?8:0); }
+/* ── 무직 시절의 피드 — 관점이 바뀐다 ──────────────────────────
+   팀이 없으니 "우리 팀" 반응이 나올 수 없다. 소셜은 리그 전체를 구경하는 중립 계정들의
+   잡담이 되고, 가끔 무직 감독 본인의 근황이 가십으로 오르내린다. */
+/* 무직 = 유저가 팀이 없는 것뿐이다. 피드는 여전히 각 구단 "팬"들의 목소리다 —
+   이긴 팀 팬은 신나고, 진 팀 팬은 속이 터진다. 매 라운드 결과를 두고 떠든다. */
+const SOC_JOBLESS_WIN=[
+ ["오늘 {w} 경기력 미쳤다 ㅋㅋ {l} 상대로 완승",1],
+ ["{w} {hg}:{ag} 승! 이 맛에 축구 본다",1],
+ ["{w} 팬 {n}년차인데 오늘 같은 날이 제일 행복하다",1],
+ ["{l}전 이겼으니 이번 주는 발 뻗고 잔다",1],
+ ["{w} 이 기세면 순위 더 올라간다 진짜",1]];
+const SOC_JOBLESS_LOSE=[
+ ["{l} 이게 뭐냐 진짜... {w}한테 이렇게 지는 게 맞냐",-1],
+ ["{l} {hg}:{ag} 패배. 오늘 경기 본 시간 환불해 달라",-1],
+ ["{l} 감독은 오늘 라인업 설명 좀 해봐라",-1],
+ ["또 졌네... {l} 팬은 인내심 수련하는 자리다",-1],
+ ["{w}전 지고 나니까 다음 경기가 벌써 무섭다",-1]];
+const SOC_JOBLESS_DRAW=[
+ ["{h} {hg}:{ag} {a} — 이길 수 있는 경기를 비겼다 답답하네",0],
+ ["무승부면 뭐... 승점 1점이라도 챙긴 걸 다행으로 여겨야 하나",0],
+ ["{h}전 비긴 게 잘한 건지 못한 건지 모르겠다",0]];
+const SOC_JOBLESS_MGR=[
+ ["{m} 요즘 뭐 하나 했더니 경기장에서 직관하고 있더라",0],
+ ["{m} 야인 생활 {w}주차. 슬슬 어디든 잡는 거 아니냐",0],
+ ["{m} 다음 행선지 어디일 것 같음? 하위권 쪽 물밑 접촉설 돈다",0],
+ ["잘린 감독치고 평가 나쁘지 않던데. 재취업 금방 할 듯",1],
+ ["{t}는 감독 자르고 뭐가 나아졌냐? ㅋㅋ",-1],
+ ["{m} 해설위원 하면 잘할 것 같지 않냐",1]];
+const FMK_JOBLESS=[
+ ["{m} 근황: 무직 {w}주차 ㅋㅋ 직관석에서 목격됨",0],
+ ["감독 없는 삶 개꿀일 듯. 매주 욕 안 먹잖아",1],
+ ["{m} 유튜브나 해라 전술 분석 컨텐츠 각인데",1],
+ ["{t} 팬들아 니네 전 감독 요즘 평화로워 보이더라",0],
+ ["무직 감독 특) 남의 경기 보면서 훈수 두고 싶어서 손이 떨림",1],
+ ["이번 주도 감독 시장 조용하네. {m} 몸값 떨어지는 소리 들린다",-1]];
+/* ── 🎲 무직 인카운터 — 야인 생활에도 일은 벌어진다 ──
+   틱마다 낮은 확률로 하나가 열리고, 무직 홈 화면의 카드에서 선택한다. 2주 방치하면 조용히 사라진다. */
+const JOBLESS_ENC={
+  tv:{ ic:"📺", t:"방송 해설 출연 제의",
+    d:"케이블 축구 채널에서 주말 경기 해설을 제안했습니다. 출연료도 괜찮고, 얼굴을 비추면 감독 시장에 이름이 다시 돌 겁니다. 다만 생방송은 말 한마디가 무섭습니다.",
+    a:"🎙️ 출연한다", b:"거절한다" },
+  study:{ ic:"✈️", t:"해외 지도자 연수", cost:3,
+    d:"협회 소개로 유럽 구단 2주 참관 연수 자리가 났습니다. 사비 3억이 들지만, 이력서에 '최신 전술 연수' 한 줄이 생깁니다.",
+    a:"✈️ 떠난다 (−3억)", b:"보류한다" },
+  lecture:{ ic:"🎓", t:"축구협회 특강 요청",
+    d:"지도자 과정 수강생들에게 '실전 감독론' 특강을 해달라는 요청입니다. 강사료 1억. 협회에 눈도장도 찍힙니다.",
+    a:"🎓 수락한다 (+1억)", b:"거절한다" },
+  inter:{ ic:"🗞️", t:"언론 인터뷰 요청",
+    d:"스포츠지에서 근황 인터뷰를 요청했습니다. 담백하게 갈 수도, 경질시킨 전 구단을 저격해 화제를 만들 수도 있습니다.",
+    a:"🔥 전 구단을 저격한다", b:"🍵 담백하게 근황만" },
+  pupil:{ ic:"🍚", t:"옛 제자의 연락",
+    d:"전 구단에서 지도했던 선수가 밥을 사겠다며 연락해 왔습니다. \"감독님 요즘 어떠세요. 저희끼리는 아직 감독님 얘기 합니다.\"",
+    a:"🍚 만나러 간다", b:"다음에 보자고 한다" },
+  chicken:{ ic:"🍗", t:"치킨집 창업 권유", cost:5,
+    d:"지인이 상가 자리가 났다며 치킨집 동업을 제안합니다. \"감독님 이름 걸면 대박이에요.\" ...축구계가 이 소식을 들으면 어떻게 볼지는 모르겠습니다.",
+    a:"🍗 차린다 (−5억)", b:"정중히 거절한다" }
+};
+function joblessEncTick(){
+  const J=G.mgrFree; if(!J || J.enc) return;
+  if(Math.random()>0.22) return;
+  const keys=Object.keys(JOBLESS_ENC).filter(k=>!(J.encDone&&J.encDone[k]) && !(k==="chicken"&&J.chicken));
+  if(!keys.length) return;
+  const k=pick(keys);
+  J.enc={k, until:(G.day||0)+14};
+  notify(`${JOBLESS_ENC[k].ic} <b>${JOBLESS_ENC[k].t}</b> — 무직 홈 화면에서 확인하세요.`,"info");
+}
+function joblessEncChoose(ok){
+  const J=G.mgrFree; if(!J || !J.enc) return;
+  const k=J.enc.k, E=JOBLESS_ENC[k], mv={m:joblessMgrName(), t:J.from?(G.teams[J.from]||{}).short||"":""};
+  if(!J.encDone) J.encDone={};
+  J.encDone[k]=1; J.enc=null;
+  J.repMod=J.repMod||0;
+  if(!ok){ // 거절/보류 — 담백 인터뷰만 예외적으로 소소한 이득
+    if(k==="inter"){ J.repMod+=1; addNews(`🗞️ ${joblessMgrName()}, 인터뷰에서 담담한 근황 — "축구는 늘 그립습니다."`);
+      pushSocial(F_("{m} 인터뷰 봤는데 점잖게 잘하더라. 어디든 곧 잡을 듯",{m:mv.m}), 1); }
+    saveGame(); show("home"); return;
+  }
+  if(k==="tv"){
+    if(Math.random()<0.82){
+      mePay(2+R(2), "방송 해설 출연료"); J.repMod+=3;
+      addNews(`📺 ${joblessMgrName()}, 주말 경기 해설 데뷔 — 차분한 진행으로 호평`);
+      pushSocial(F_("{m} 해설 은근 잘하네 ㅋㅋ 현장 감각 살아있다. 재취업 각",{m:mv.m}), 1);
+      fmkPush(F_("{m} 해설 데뷔 봤냐 전술 짚는 게 다르긴 하더라",{m:mv.m}), 1);
+    } else {
+      J.repMod-=3;
+      addNews(`📺 ${joblessMgrName()}, 생방송 해설 중 실언 — "저 팀은 감독이 문제" 발언 논란`);
+      fmkPush(F_("{m} 해설하다 사고침 ㅋㅋㅋ 남의 감독 욕을 생방에서 하네",{m:mv.m}), -1);
+    }
+  } else if(k==="study"){
+    if(me().cash<3){ flash("사비가 부족합니다 (3억 필요).","warn"); J.encDone[k]=0; J.enc={k, until:(G.day||0)+7}; show("home"); return; }
+    mePay(-3, "해외 지도자 연수");
+    J.repMod+=5;
+    addNews(`✈️ ${joblessMgrName()}, 유럽 구단 참관 연수 — "돌아오면 다른 감독이 되어 있을 것"`);
+    pushSocial(F_("{m} 유럽 연수 갔다더라. 준비된 감독이라는 소리 나온다",{m:mv.m}), 1);
+  } else if(k==="lecture"){
+    mePay(1, "축구협회 특강료"); J.repMod+=2;
+    addNews(`🎓 ${joblessMgrName()}, 지도자 과정 특강 — "경질도 커리어다" 발언에 웃음바다`);
+    fmkPush(F_("{m} 특강 짤 돌던데 \"경질도 커리어다\" ㅋㅋ 멘탈 좋네",{m:mv.m}), 1);
+  } else if(k==="inter"){
+    J.repMod+=2;
+    addNews(`🗞️ [단독] ${joblessMgrName()}, 전 구단 작심 발언 — "선수단은 좋았다. 문제는 위에 있었다"`);
+    pushSocial(F_("{m} 저격 인터뷰 떴다 ㅋㅋ {t} 프런트 발끈하겠는데",mv), 0);
+    fmkPush(F_("{m} 인터뷰 수위 보소 ㅋㅋ 다리 불태우네. 근데 화제성은 확실히 잡음",mv), 0);
+    fmkPush(F_("{t} 팬인데 저 말 반박을 못 하겠다...",mv), -1);
+  } else if(k==="pupil"){
+    mePay(-0.2, "옛 제자와 식사");
+    J.repMod+=1;
+    meLog("🍚 옛 제자와 저녁 — 오랜만에 축구 얘기로 웃었다.");
+    pushSocial(F_("어제 고깃집에서 {m}이랑 {t} 선수 같이 있는 거 봤다는 목격담 떴다. 훈훈하네",mv), 1);
+  } else if(k==="chicken"){
+    if(me().cash<5){ flash("사비가 부족합니다 (5억 필요).","warn"); J.encDone[k]=0; J.enc={k, until:(G.day||0)+7}; show("home"); return; }
+    mePay(-5, "치킨집 개업");
+    J.chicken=1; J.repMod-=2;
+    addNews(`🍗 ${joblessMgrName()}, 치킨집 개업 — 간판은 "볼 점유율 치킨"`);
+    fmkPush(F_("{m} 치킨집 차림 ㅋㅋㅋㅋ 개업 화환에 전 구단 서포터즈 이름 있던데",mv), 1);
+    fmkPush("볼 점유율 치킨 ㅋㅋ 4-4-2 세트 시키면 윙 8조각 오냐", 1);
+    pushSocial(F_("{m} 이제 축구 접는 건가... 치킨은 맛있다더라",mv), 0);
+  }
+  saveGame(); show("home");
+}
+function joblessMgrName(){
+  const J=G.mgrFree||{};
+  const t=J.from?G.teams[J.from]:null;
+  return t?`전 ${t.short} 감독`:"그 무직 감독";
+}
+function joblessSocialTick(){
+  const J=G.mgrFree; if(!J) return;
+  const mv={m:joblessMgrName(), t:J.from?(G.teams[J.from]||{}).short||"":"", w:J.weeks||1};
+  /* ① 이번 라운드 결과 — 각 팀 팬들이 자기 팀 경기를 두고 떠든다 (이긴 팬은 신나고, 진 팬은 터진다) */
+  const recent=(G.results||[]).slice(-11).filter(r=>r.s===G.season);
+  if(recent.length){
+    const n=2+R(2);
+    for(let i=0;i<n;i++){
+      const r=pick(recent);
+      const h=G.teams[r.hid], a=G.teams[r.aid];
+      if(!h||!a) continue;
+      const win = r.hg>r.ag?h : r.ag>r.hg?a : null;
+      const lose= r.hg>r.ag?a : r.ag>r.hg?h : null;
+      const vars={h:h.short, a:a.short, hg:r.hg, ag:r.ag, w:win?win.short:"", l:lose?lose.short:"", n:1+R(15)};
+      const it = !win ? pick(SOC_JOBLESS_DRAW)
+               : Math.random()<0.5 ? pick(SOC_JOBLESS_WIN) : pick(SOC_JOBLESS_LOSE);
+      pushSocial(F_(it[0], vars), it[1]);
+    }
+  }
+  /* ② 무직 감독 본인 가십 */
+  if(Math.random()<0.35){ const it=pick(SOC_JOBLESS_MGR); pushSocial(F_(it[0], mv), it[1]); }
+  if(Math.random()<0.35){ const it=pick(FMK_JOBLESS); fmkPush(F_(it[0], mv), it[1]); }
+  /* ③ 시모·독고는 무직도 놓치지 않는다 */
+  if(Math.random()<0.15 && G.fmk){
+    const h2=pick(SOC_TROLL);
+    G.fmk.unshift({txt:pick([
+      "잘린 감독이 아직도 기사에 나오네 ㅋㅋ 세금리그는 뉴스도 재활용이냐",
+      "무직 감독 근황이 왜 궁금하냐 ㅋㅋ 니들 인생이나 챙겨라",
+      "세금리그는 감독도 세금으로 놀고먹네 ㅉㅉ"]),
+      tone:-1, u:h2[0], e:h2[1], up:R(25), dn:120+R(400), v:800+R(4000),
+      d:(G.day||0), s:G.season, sd:"o", troll:1});
+    G.fmk=trimBySide(G.fmk, FMK_MAX);
+  }
+}
+/* 라운드마다 — 제의가 오거나, 온 제의가 삭는다 */
+function joblessTick(){
+  const J=G.mgrFree; if(!J) return;
+  J.weeks=(J.weeks||0)+1;
+  try{ joblessSocialTick(); }catch(e){}
+  try{ joblessEncTick(); }catch(e){}
+  if(J.enc && (G.day||0)>J.enc.until) J.enc=null;              // 2주 방치 — 조용히 사라진다
+  if(J.chicken && Math.random()<0.3){
+    const inc=Math.round((0.2+R(4)/10)*100)/100;
+    mePay(inc, "치킨집 수입");
+    if(Math.random()<0.25) fmkPush(pick([
+      "볼 점유율 치킨 갔다 옴. 사장님이 계속 전술 얘기함 ㅋㅋ",
+      "치킨집 사장님(전 감독)이 포장 기다리는 동안 K리그 중계 틀어놓고 훈수 두더라",
+      "볼 점유율 치킨 후기: 반반 시켰더니 \"밸런스가 중요하다\"고 하심"]), 1);
+  }
+  J.off=(J.off||[]).filter(o=>{
+    if((G.day||0)>o.due){ addNews(`📪 ${(G.teams[o.tid]||{}).name||"구단"}의 감독직 제의가 철회되었습니다.`); return false; }
+    return true;
+  });
+  if(J.off.length>=2 || Math.random()<0.5) return;
+  const rep=mgrRep();
+  const cands=Object.values(G.teams).filter(t=>!t.isUser && t.id!==J.from && !J.off.some(o=>o.tid===t.id));
+  for(const t of cands){
+    const tbl=tableOf(t.div), pos=tbl.findIndex(x=>x.id===t.id)+1, n=tbl.length;
+    const bad=clamp((pos-n*0.5)/n, -0.5, 0.5);                    // 하위권일수록 감독을 갈고 싶다
+    const losses=t.form.slice(-5).filter(x=>x==="L").length;
+    let w=0.015 + bad*0.10 + losses*0.02;
+    w*=clamp(1+(rep-jobTier(t)*2)/60, 0.3, 2.0);                  // 급이 안 맞으면 연락도 없다
+    if(Math.random()<clamp(w,0,0.28)){
+      J.off.push({tid:t.id, due:(G.day||0)+14});
+      addNews(`📬 <b>${t.name}</b>이(가) 감독직을 제의했습니다 — 2주 안에 답해야 합니다.`, "good");
+      notify(`📬 <b>${t.name}</b> 감독직 제의가 도착했습니다!`,"good");
+      /* 제의설은 곧바로 커뮤니티에 샌다 */
+      try{
+        pushSocial(fixJosa(F_(pick([
+          ["{o}이/가 {m}한테 접촉했다는 소문 있던데",0],
+          ["{o} 차기 감독 후보에 {m} 올랐다는 기사 봤냐",0],
+          ["{o} 지금 감독 바꿀 때 되긴 했지",0]])[0], {o:t.short, m:joblessMgrName()})), 0);
+        fmkPush(fixJosa(F_(pick([
+          "{o} → {m} 제의설 떴다 ㅋㅋ 성사되면 꿀잼",
+          "{o}이/가 {m} 데려간다고? 이 리그 감독 시장 좁긴 좁다"]), {o:t.short, m:joblessMgrName()})), 0);
+      }catch(e){}
+      break;
+    }
+  }
+}
+function applyJob(tid){
+  const J=G.mgrFree; if(!J) return;
+  const t=G.teams[tid]; if(!t || t.isUser) return;
+  if((J.block[tid]||0) > (G.day||0)){ flash("최근에 거절당한 구단입니다 — 시간을 두고 다시 지원하세요.","warn"); show("home"); return; }
+  const rep=mgrRep();
+  const tbl=tableOf(t.div), pos=tbl.findIndex(x=>x.id===t.id)+1, n=tbl.length;
+  const struggling = pos>n*0.65 || t.form.slice(-5).filter(x=>x==="L").length>=3;
+  let pr=0.16 + (rep-jobTier(t)*2)/100 + (struggling?0.22:0) - (t.div===1?0.06:0);
+  pr=clamp(pr, 0.04, 0.75);
+  if(Math.random()<pr){
+    if(!J.off.some(o=>o.tid===tid)) J.off.push({tid, due:(G.day||0)+10});
+    saveGame();
+    showConfirm(`<b>📬 ${t.name}이(가) 지원을 긍정적으로 검토했습니다!</b>
+
+· 현재 ${divName(t.div)} ${pos}위 (최근 5경기 ${t.form.slice(-5).join(" ")||"-"})
+· 지금 부임하시겠습니까?
+
+<span class="small">보류하면 제의 목록에 열흘간 남아 있습니다.</span>`,
+      ()=>takeJob(tid), {okLabel:"🤝 부임한다", cancelLabel:"보류"});
+  } else {
+    J.block[tid]=(G.day||0)+35;
+    addNews(`📪 ${t.name} — "현 체제를 유지하기로 했습니다." (감독직 지원 거절)`);
+    try{ fmkPush(F_(pick([
+      "{m}이 {o}에 지원했다가 까였다는 소문 ㅋㅋ",
+      "{o}: \"현 체제 유지\" = 정중한 거절 공식 멘트지",
+      "{m} 재취업 쉽지 않네. 눈을 낮추든가 해야"]), {o:t.short, m:joblessMgrName()}), -1); }catch(e){}
+    flash(`📪 ${t.short}이(가) 정중히 거절했습니다. (35일간 재지원 불가)`,"warn");
+    saveGame(); show("home");
+  }
+}
+function declineJobOffer(tid){
+  const J=G.mgrFree; if(!J) return;
+  J.off=(J.off||[]).filter(o=>o.tid!==tid);
+  addNews(`🙅 ${(G.teams[tid]||{}).name||"구단"}의 감독직 제의를 거절했습니다.`);
+  saveGame(); show("home");
+}
+function takeJob(tid){
+  const t=G.teams[tid]; if(!t) return;
+  const J=G.mgrFree||{};
+  const old=J.from?G.teams[J.from]:null;
+  t.isUser=true; G.userTeamId=tid;
+  G.jobless=0; G.mgrFree=null;
+  G.trust={owner:56+R(10), fans:50+R(12), log:[]};
+  G.press={rel:50, skip:(G.press&&G.press.skip)||0};
+  G.board={stage:0, ultiFrom:null, ultiPts:0, warned:0, ultiCool:0, ultiSaved:0};
+  G.hiredAtR = t.div===1?G.r1:G.r2;
+  G.goal=null;                                     // 중도 부임 — 이번 시즌 공식 목표는 없다
+  G.userXI=null;
+  if(t.tactic){ t.tactic.benchSel=[]; t.tactic.benchExcl=[]; t.tactic.benchManual=false; }
+  for(const p of t.players){ affSet(p, 48+R(12)); p.talkR=-9; }
+  if(J.chicken){ meLog("🍗 볼 점유율 치킨 — 감독 복귀로 사장님 대행 체제 전환."); try{ fmkPush("볼 점유율 치킨 사장님 감독 복귀 ㅋㅋ 가게는 이모님이 보신다더라", 1); }catch(e){} }
+  meLog(`🤝 ${t.name} 감독 부임 — 월급이 다시 나온다.`);
+  addNews(`🤝 <b>${t.name}, 신임 감독 선임</b> — ${old?`전 ${old.name} 감독이 지휘봉을 잡는다`:"새 사령탑 부임"}`, "good");
+  try{ socialFill(SOC.hiredNew, 3+R(2), 0, {t:t.short}); fmkFill(FMK.hiredNew, 2+R(2), {t:t.short}); }catch(e){}
+  saveGame();
+  show("home");
+  notify(`🤝 <b>${t.name}</b> 감독으로 부임했습니다! 유예 ${SACK_GRACE}라운드 안에 팀을 파악하세요.`,"good");
+}
+/* 무직 홈 화면 */
+function joblessView(){
+  const J=G.mgrFree||{off:[],block:{},weeks:0};
+  const rep=mgrRep();
+  const offCards=(J.off||[]).map(o=>{
+    const t=G.teams[o.tid]; if(!t) return "";
+    const tbl=tableOf(t.div), pos=tbl.findIndex(x=>x.id===t.id)+1;
+    const left=Math.max(0, o.due-(G.day||0));
+    return `<div class="card" style="border-color:var(--gold)">
+      <h3>📬 ${t.name} <span class="small">— ${divName(t.div)} ${pos}위 · 답변 기한 D-${left}</span></h3>
+      <p class="small">최근 5경기: ${t.form.slice(-5).map(f=>f==="W"?"🟢":f==="D"?"🟡":"🔴").join("")||"-"} · 예산 ${t.budget}억 · 스쿼드 ${t.players.length}명</p>
+      <div style="display:flex;gap:8px">
+        <button class="mini" style="flex:1;padding:10px;border-color:var(--gold);color:var(--gold);font-weight:800" onclick="takeJob('${t.id}')">🤝 수락하고 부임</button>
+        <button class="mini" style="padding:10px" onclick="declineJobOffer('${t.id}')">거절</button>
+      </div></div>`;
+  }).join("");
+  const rows=Object.values(G.teams).filter(t=>!t.isUser && t.id!==J.from)
+    .sort((a,b)=>a.div-b.div || (tableOf(a.div).findIndex(x=>x.id===a.id)) - (tableOf(b.div).findIndex(x=>x.id===b.id)))
+    .map(t=>{
+      const tbl=tableOf(t.div), pos=tbl.findIndex(x=>x.id===t.id)+1;
+      const blocked=(J.block[t.id]||0) > (G.day||0);
+      return `<tr><td>${divName(t.div)}</td><td><b>${t.name}</b></td><td>${pos}위</td>
+        <td>${t.form.slice(-5).map(f=>f==="W"?"🟢":f==="D"?"🟡":"🔴").join("")||"-"}</td>
+        <td>${blocked?`<span class="small">재지원 대기</span>`:`<button class="mini" style="padding:2px 10px" onclick="applyJob('${t.id}')">📨 지원</button>`}</td></tr>`;
+    }).join("");
+  return `<h2>🕊️ 무직 감독</h2>
+  <div class="msg warn"><b>${(G.sack&&G.sack.team)||"전 구단"}</b>에서 경질된 뒤 ${J.weeks||0}주째 — 월급은 끊겼지만 집세는 나갑니다.
+    리그는 계속 돌아갑니다. <b>진행 ▶</b>으로 시간을 보내면 제의가 오고, 아래에서 직접 지원할 수도 있습니다.</div>
+  <div class="card"><h3>📇 감독 평판 <b style="color:var(--gold)">${rep}</b><span class="small"> /90 — 위신·경력·마지막 성적으로 계산됩니다. 평판보다 급이 높은 구단은 연락이 잘 오지 않습니다.</span></h3>
+    <p class="small">경질 사유: ${(G.sack&&G.sack.reason)||"-"} · 당시 성적 ${(G.sack&&G.sack.rec)||"-"} (${(G.sack&&G.sack.pos)||"-"}위)</p></div>
+  ${J.enc&&JOBLESS_ENC[J.enc.k]?(()=>{ const E=JOBLESS_ENC[J.enc.k];
+    return `<div class="card" style="border-color:var(--green)">
+      <h3>${E.ic} ${E.t} <span class="small">— D-${Math.max(0,J.enc.until-(G.day||0))}</span></h3>
+      <p class="small" style="margin:4px 0 10px">${E.d}</p>
+      <div style="display:flex;gap:8px">
+        <button class="mini" style="flex:1;padding:10px;border-color:var(--green);color:var(--green);font-weight:700" onclick="joblessEncChoose(true)">${E.a}</button>
+        <button class="mini" style="padding:10px" onclick="joblessEncChoose(false)">${E.b}</button>
+      </div></div>`; })():""}
+  ${J.chicken?`<div class="card"><p class="small">🍗 <b>볼 점유율 치킨</b> 영업 중 — 라운드마다 소소한 수입이 들어옵니다. 부임하면 사장님 대행 체제로 갑니다.</p></div>`:""}
+  ${offCards||`<div class="card"><p class="small">📭 아직 도착한 제의가 없습니다. 흔들리는 구단(연패·하위권)일수록 문이 빨리 열립니다.</p></div>`}
+  <div class="card"><h3>📨 감독직 지원</h3>
+    <p class="small" style="margin-bottom:6px">거절당하면 그 구단에는 35일간 다시 지원할 수 없습니다. 하위권·연패 구단이 잘 받아 줍니다.</p>
+    <div class="tblScroll" style="max-height:380px;overflow-y:auto"><table>
+      <tr><th>리그</th><th>구단</th><th>순위</th><th>최근 5경기</th><th></th></tr>${rows}</table></div></div>`;
+}
 function doSack(reason){
   const t=userTeam();
-  G.phase="sacked";
   G.sack={reason, s:G.season, r:t.div===1?G.r1:G.r2,
           rec:`${t.W}승 ${t.Dw}무 ${t.L}패`, pos:tableOf(t.div).findIndex(x=>x.isUser)+1,
           owner:Math.round(G.trust.owner), fans:Math.round(G.trust.fans),
-          team:t.name, goal:G.goal?G.goal.n:null};
+          team:t.name, tid:t.id, goal:G.goal?G.goal.n:null};
+  /* 경질은 끝이 아니다 — 무직이다. 옛 팀은 AI가 맡고(감독 없이도 리그는 돈다),
+     userTeamId 는 그대로 둔다(달력·라운드 진행이 이 팀의 일정을 축으로 돌기 때문).
+     isUser 만 내리면 경기는 AI 시뮬로 흐르고, 유저는 구경꾼이 된다. */
+  t.isUser=false;
+  try{ assignAITactics(t); }catch(e){}
+  G.jobless=1;
+  G.mgrFree={from:t.id, reason, s:G.season, off:[], block:{}, weeks:0};
+  G.userXI=null;
   addNews(`🪑 <b>${t.name}, 감독 경질</b> — ${reason}`);
   socialFill(SOC.sacked, 4+R(2), -1, {t:t.short});
   fmkFill(FMK.sacked, 4+R(2), {t:t.short});
   rivalOnManager(false);
+  meLog(`🪑 ${t.name}에서 경질 — 무직. 월급이 끊겼다.`);
   saveGame();
   showSackScreen();
 }
@@ -21619,7 +22333,7 @@ function showSackScreen(){
   const k=G.sack||{}; const t=userTeam();
   VIEW="home";
   document.querySelectorAll(".navbtn").forEach(b=>b.classList.remove("on"));
-  const btn=$("#advBtn"); if(btn){ btn.disabled=true; btn.textContent="경질됨"; }
+  const btn=$("#advBtn"); if(btn){ btn.disabled=false; }   // 무직으로도 시간은 흐른다
   const tbl=(G.social||[]).slice(0,6).map(x=>`<div class="small" style="padding:2px 0">💬 ${x.txt}</div>`).join("");
   const fmk=(G.fmk||[]).slice(0,5).map(x=>`<div class="small" style="padding:2px 0">🔥 ${x.txt}</div>`).join("");
   $("#main").innerHTML=`<h2>🪑 경질</h2>
@@ -21634,8 +22348,10 @@ function showSackScreen(){
   </div>
   <div class="card stCard"><h3>💬 여론</h3>${tbl}${fmk}</div>
   <div class="card">
-    <p class="small">경질된 감독의 이야기는 여기서 끝입니다. 새 구단에서 다시 시작하시겠습니까?</p>
-    <button class="bigbtn" style="width:100%;max-width:none" onclick="restartAfterSack()">🔄 새 커리어 시작 ▶</button>
+    <p class="small">여기서 끝이 아닙니다 — <b>무직 감독</b>으로 남아 타 구단에 지원하거나 제의를 기다릴 수 있습니다.
+      리그는 계속 돌아가고, 시간이 흐를수록 흔들리는 구단의 문이 열립니다.</p>
+    <button class="bigbtn" style="width:100%;max-width:none" onclick="show('home')">🕊️ 무직으로 커리어 계속 ▶</button>
+    <button class="mini" style="display:block;width:100%;margin-top:8px;padding:10px" onclick="restartAfterSack()">🔄 아니면 새 커리어 시작</button>
   </div>`;
   window.scrollTo(0,0);
 }
@@ -21645,6 +22361,47 @@ function restartAfterSack(){
     location.reload();
   }, {okLabel:"새로 시작", danger:true});
 }
+SOC.forfeitOur=[
+ ["몰수패?? 프로 구단이 선수 7명을 못 채워서 몰수패???",-1],
+ ["살다 살다 우리 팀이 몰수패 당하는 걸 다 본다",-1],
+ ["선수단이 단체로 등을 돌렸다는 거잖아 이거... 감독 뭐 하는 거냐",-1],
+ ["몰수패는 구단 역사에 영원히 남는다. 부끄러운 줄 알아라",-1],
+ ["티켓 값 환불해라. 경기 자체가 없었잖아",-1],
+ ["이 감독은 팀을 지휘하는 게 아니라 해체하고 있다",-1]];
+FMK.forfeitOur=[
+ ["{t} 몰수패 ㅋㅋㅋㅋ K리그 역사에 남을 사건",-1],
+ ["선수 {n}명 남아서 몰수패 실화냐 ㄷㄷ",-1],
+ ["감독이 선수단을 팼다는 소문이 사실인가 봄...",-1],
+ ["몰수패 나오는 구단은 처음 본다 리그 수준 어쩌냐",-1]];
+SOC.hatOur=[
+ ["{p} 해트트릭 실화냐!!! 오늘 밤 하이라이트 무한재생 간다",1],
+ ["{p} 유니폼 사러 갑니다. 오늘부로 최애 등극",1],
+ ["한 명이 세 골을 넣는 걸 직관하는 기분... 이 맛에 축구 본다",1],
+ ["{p} 공 가져갔지? 해트트릭 볼은 챙겨야지 ㅋㅋ",1],
+ ["다음 경기 {p} 선발 아니면 폭동이다",1]];
+FMK.hatOur=[
+ ["{t} {p} 해트트릭 ㄷㄷㄷ 리그 폼 미쳤다",1],
+ ["{p} 오늘 3골 넣고 평점 몇이냐 10점 줘라",1],
+ ["해트트릭 나온 날은 자다가도 웃음 나옴 ㅋㅋ",1],
+ ["{p} 이적료 오르는 소리 여기까지 들린다",1]];
+SOC.multiOur=[
+ ["{p} 멀티골! 오늘 혼자 다 했다",1],
+ ["{p} 두 골 ㅋㅋ 요즘 폼이 심상치 않다",1],
+ ["{p} 이 기세면 다음 경기 해트트릭 간다",1]];
+FMK.multiOur=[
+ ["{t} {p} 멀티골 폭발 ㅋㅋ 에이스 인정",1],
+ ["{p} 요즘 미쳤네 득점왕 경쟁 각",1]];
+SOC.hiredNew=[
+ ["새 감독 왔다. 이번엔 좀 다르길 바란다",0],
+ ["전 구단에서 잘린 감독인데... 반신반의다",-1],
+ ["부임 기자회견 보니까 말은 잘하더라. 축구로 보여줘",0],
+ ["감독 바뀌면 한 달은 반짝한다던데 그 한 달이라도 보자",0],
+ ["새 술은 새 부대에. 선수단 개편 기대한다",1]];
+FMK.hiredNew=[
+ ["{t} 신임 감독 선임 ㅋㅋ 재취업 성공했네",0],
+ ["잘린 감독 데려오는 구단 심리가 궁금하다",-1],
+ ["{t} 이번 감독은 몇 라운드 버틸까 배팅 간다",0],
+ ["중도 부임은 원래 첫 5경기가 전부다",0]];
 SOC.sacked=[
  ["{t} 감독 경질... 예상은 했지만 막상 보니 착잡하다",-1],
  ["결국 이렇게 되는구나. 다음 감독은 좀 오래 갔으면",0],
@@ -24767,6 +25524,9 @@ function passLaunchSpeed(distIso, over){
 function findBestPass(carrier, mates, opps, ctx){
   const opts=evaluatePassOptions(carrier, mates, opps, ctx);
   if(!opts.length) return null;
+  /* ⚡ 역습 — 옆으로 돌리는 안전한 패스보다 전진 옵션이 크게 가산된다.
+     수비가 대형을 갖추기 전 몇 초가 역습 전술의 존재 이유다. */
+  if(ctx.counter) opts.sort((x,y)=>(y.score+(y.forward||0)*0.65)-(x.score+(x.forward||0)*0.65));
   const opt=ctx.pick ? ctx.pick(opts) : opts[0];
   if(!opt) return null;
 
@@ -24789,7 +25549,8 @@ function findBestPass(carrier, mates, opps, ctx){
   const runFast = thru ? clamp(0.62+(opt.to.topSpeed!=null?opt.to.topSpeed:0.6)*0.78, 0.62, 1.45) : 1;
   /* 제보: 1대1이 너무 자주 나온다(측정 경기당 10회) — 스루패스가 사실상 상한(0.9)에 붙어 살았다.
      기본 시도율을 낮추고 상한을 절반으로. 대신 성공한 1대1의 마무리는 resolveShot 에서 현실화했다. */
-  const thruP = thru ? clamp((0.10 + skill*0.26)*spaceK*runFast*(1 + FX(carrier,"killer")) * (1 - thru.crowd*0.22), 0, 0.45) : 0;
+  const thruP = thru ? clamp((0.10 + skill*0.26)*spaceK*runFast*(1 + FX(carrier,"killer")) * (1 - thru.crowd*0.22)
+                             * (ctx.counter?1.8:1), 0, ctx.counter?0.62:0.45) : 0;   // ⚡ 역습 창에는 찔러 본다
   /* 긴 패스 / 짧은 패스 선호 — "몇 m부터 길게 차는가"의 문턱 자체를 움직인다.
      예전에는 특성만 읽었고(TP.longPass), 게다가 shortPass 가지는 아래 기본 분기와
      조건이 완전히 같아 아무 일도 하지 않는 죽은 줄이었다. 역할(딥라잉 플레이메이커의
@@ -25606,6 +26367,7 @@ class MatchSim{
     // 실제 경기로 쓸 때만 M에 기록하고 해설을 낸다. 관전용 시뮬에서는 끈다(세이브를 건드리면 안 되므로).
     this.emitEvents=!!this.opts.live;
     this.lastAssist=null;
+    try{ simPick=null; }catch(e){}   // 이전 경기에서 클릭해 둔 선수 선택(금색 링)이 새 경기로 넘어오지 않게
     this.halfDone=false;
     /* ⚠ 후반에 골문을 바꿔 선 상태인지. 이 값이 없어서 교체만 하면 전반 진영으로 되돌아갔다. */
     this.ends=0;
@@ -25774,10 +26536,11 @@ class MatchSim{
     // 그 프레임만 보고 알 수 있어야 득점자 패널이 미리 뜨지 않는다.
     const cel=b.celebrate;
     const cg = cel ? {s:cel.side, id:cel.scorerId, t:+cel.t.toFixed(2),
-                      dis:!!cel.disallowed, own:!!cel.own} : null;
+                      dis:!!cel.disallowed, own:!!cel.own, vc:!!cel.varCheck} : null;
     // ⚠ 심판도 함께 기록해야 한다. 예전에는 빠져 있어서, 하이라이트가 재생되는 동안
     //    화면의 심판만 실시간 위치(=멈춰 있는 값)에 그대로 남아 "심판이 안 움직인다"로 보였다.
     this.buf.push({t:this.t, clock:this.clock, bx:b.x, by:b.y, bz:b.z, st:this.matchState, a,
+                   oi:b.ownerId||0,                                   // 이 순간의 볼 소유자 — 재생 때 흰 링이 이걸 따른다
                    rx:rf?rf.x:0.5, ry:rf?rf.y:0.4, cg});
     if(this.buf.length>HL_BUF_MAX) this.buf.shift();
   }
@@ -25859,14 +26622,23 @@ class MatchSim{
     const scorer=this.byId(sh.shooterId);
     const sx=this.entryOf(scorer);
     if(sx){ sx.goals++; if(sx.p) sx.p.goals=(sx.p.goals||0)+1; }
+    /* 득점자 명단 — 결과창·리포트·해트트릭 기사에 쓴다 */
+    if(!Array.isArray(this.M.sc)) this.M.sc=[];
+    this.M.sc.push({n:scorer&&scorer.p?scorer.p.name:"?", side, min:this.M.min||Math.ceil(this.clock/60)||0});
     // 도움 — 마지막 패스가 같은 팀이고 8초 이내여야 인정
     let ax=null;
     const la=this.lastAssist;
-    if(la && la.side===side && la.id!==sh.shooterId && (this.t-la.t)<ASSIST_WINDOW){
+    /* K리그 개정 규정 — 시간·터치 제한 없음. 마지막 패스가 유효(굴절 없음·소유 연속)하기만 하면
+       득점자가 수비 몇 명을 제치고 얼마나 몰고 갔든 도움으로 인정한다.
+       유효성은 lastAssist 의 생존 여부가 담보한다: 상대 터치·골대·리바운드가 끼면 이미 지워져 있다. */
+    if(la && la.side===side && la.id!==sh.shooterId){
       const ap=this.byId(la.id);
       ax=this.entryOf(ap);
       if(ax){ ax.assists++; if(ax.p) ax.p.assists=(ax.p.assists||0)+1; }
     }
+    /* ⚽/🅰️ 이름표 — 시작 시점은 공이 그물에 닿는 순간(celebrate 생성부)이 정한다. 여기서는 도움만 채운다 */
+    if(this.goalTag && this.goalTag.sid===sh.shooterId) this.goalTag.aid=(ax&&la)?la.id:null;
+    else this.goalTag={sid:sh.shooterId, aid:(ax&&la)?la.id:null, until:this.t+6};
     this.lastAssist=null;
     this.syncStats();
     if(this.emitEvents){
@@ -26813,7 +27585,8 @@ class MatchSim{
     }
     const T=TAC(carrier.team);
     const selfPress=pressureOn(carrier, opps, T.press);
-    const pctx={dir:carrier.dir, press:T.press, passSkill:carrier.passSkill, selfPress, defs:opps};
+    const pctx={dir:carrier.dir, press:T.press, passSkill:carrier.passSkill, selfPress, defs:opps,
+                counter:this.counterOn(key)?1:0};   // ⚡ 역습 창 — 패스 선택이 앞을 본다
     const opts=evaluatePassOptions(carrier, mates, opps, pctx);
     // 골키퍼 배급 — 짧은 횡패스로 돌리지 않고 전방으로 길게 연결한다
     if(carrier.slot==="GK"){
@@ -26906,7 +27679,7 @@ class MatchSim{
     const oneOnOne = shot && shot.clear && shot.g.distM<18;
     // 특성: 공을 가지면 멈춤 / 공을 오래 소유 / 템포 조절 — 볼을 더 오래 쥔다
     const holdTr = 1 + FX(carrier,"hold");
-    if(!oneOnOne && (!best || (best.score<-0.45 && selfPress<0.4))){ this.ball.hold=(0.6+Math.random()*0.7)*TEMPO*holdTr; return; } // 몰고 간다
+    if(!oneOnOne && (!best || (best.score<-0.45 && selfPress<0.4))){ this.ball.hold=(0.6+Math.random()*0.7)*TEMPO*holdTr*this.tempoK(key)*(this.counterOn(key)?0.55:1); return; } // 몰고 간다
     // 압박이 극심하고 옵션도 나쁘면 걷어낸다(롱볼)
     // 역할: 안정형 수비수/안정형 풀백/인버티드 풀백은 애매하면 그냥 걷어낸다
     const cf=FX(carrier,"clearFirst");
@@ -27286,6 +28059,28 @@ class MatchSim{
       }
     }
   }
+  /* 🎯 전담 키커 — 감독이 정한 순위 중 그라운드에 있는 첫 번째. 없으면 null(엔진 자동). */
+  designatedKicker(side, kind){
+    try{
+      const team=this.rec(side).team;
+      const K=team.tactic && team.tactic.kickers;
+      if(!K || !Array.isArray(K[kind])) return null;
+      for(const pid of K[kind]){
+        if(!pid) continue;
+        const a=this.side(side).find(x=>x.id===pid && x.slot!=="GK");
+        if(a) return a;
+      }
+    }catch(e){}
+    return null;
+  }
+  /* ⏱️ 템포 — 전술 슬라이더가 2D의 "공 잡고 있는 시간"을 실제로 줄이고 늘린다.
+     (제보 — 역습·템포가 화면에서만 조절되고 엔진에는 반영되지 않았다) */
+  tempoK(side){
+    try{ const T=TAC(this.rec(side).team); return clamp(1.12-(T.tempo!=null?T.tempo:2)*0.06, 0.85, 1.15); }
+    catch(e){ return 1; }
+  }
+  /* ⚡ 역습 창 — 소유권을 빼앗은 순간부터 몇 초간, 역습 전술 팀은 앞만 본다 */
+  counterOn(side){ return this._cw && this._cw.side===side && this.t<this._cw.until; }
   giveTo(a){
     const b=this.ball;
     // 공을 선수 발밑으로 순간이동시키지 않는다. 소유권만 넘기고, 공은 rollBall 이
@@ -27295,9 +28090,19 @@ class MatchSim{
       if(a.side===b._passer.side) this.stats[b._passer.side].crossOk++;
       b.isCross=false;
     }
+    /* 도움 규정 — 상대 선수(키퍼 포함)의 몸에 맞거나 소유가 넘어가면 "마지막 패스"는 무효다 */
+    if(this.lastAssist && a.side!==this.lastAssist.side) this.lastAssist=null;
+    /* 소유권 탈환 감지 — 역습 전술 팀이 자기 진영에서 공을 끊었으면 역습 창이 열린다 */
+    if(a.side!==this.possSide){
+      try{
+        const T=TAC(a.team);
+        const own=a.dir>0?a.x:1-a.x;
+        this._cw = (T.counter && own<0.55) ? {side:a.side, until:this.t+7} : null;
+      }catch(e){ this._cw=null; }
+    }
     this.lastTouch=a.side;                       // 마지막으로 볼에 손댄 팀
     b.ownerId=a.id; b.state="SETTLED"; b.x=a.x; b.y=a.y;
-    b.hold=(1.8+Math.random()*1.6)*TEMPO;   // 볼 터치 후 다음 행동까지 (평균 약 4.2초)
+    b.hold=(1.8+Math.random()*1.6)*TEMPO*this.tempoK(a.side)*(this.counterOn(a.side)?0.55:1);   // 볼 터치 후 다음 행동까지
     this.possSide=a.side;
   }
   /* 매 틱 경기 규칙을 점검하고 상태를 갱신한다.
@@ -27321,8 +28126,19 @@ class MatchSim{
       if(f){ tx=f.x-0.020; ty=f.y-0.018; spd=SIM_REF_SPEED*1.5; }
       else { tx=fs.spot.x; ty=fs.spot.y; }
     } else {
-      // 볼에서 비스듬히 뒤쪽으로 떨어져 따라간다
-      tx=b.x-0.035; ty=b.y-SIM_REF_TRAIL;
+      /* 실제 주심의 "대각선 시스템" —
+         · 볼을 비스듬히 뒤에서 따라가되, 골라인·페널티 박스 안까지 파고들지 않는다
+           (골라인 근처는 부심 담당 구역이다)
+         · 볼이 측면에 있으면 반대쪽 대각선으로 살짝 비켜서 시야각을 확보한다 */
+      tx=b.x-0.035;
+      ty=b.y-SIM_REF_TRAIL + (0.5-b.y)*0.30;          // 반대편 대각선 편향 — 플레이를 심판과 부심 사이에 둔다
+      /* 종방향 순찰 한계 — 페널티 아크 언저리(양쪽 박스 진입선 밖)까지만 내려간다 */
+      const X_MIN=0.145, X_MAX=0.855;                  // 박스 라인(0.835) 바깥 + 여유
+      tx=clamp(tx, X_MIN, X_MAX);
+      /* 볼이 박스 깊숙이 들어가면 쫓아 들어가지 않고 아크 부근에서 각을 잡는다 */
+      if(b.x>X_MAX) ty=lerp(ty, 0.5+(b.y-0.5)*0.45, 0.5);
+      if(b.x<X_MIN) ty=lerp(ty, 0.5+(b.y-0.5)*0.45, 0.5);
+      ty=clamp(ty, 0.10, 0.90);                        // 터치라인 밖·구석까지 밀리지 않는다
     }
     const mx=(clamp01(tx)-r.x)*PITCH_AR, my=clamp01(ty)-r.y, ml=Math.hypot(mx,my);
     if(ml>1e-6){
@@ -27334,6 +28150,8 @@ class MatchSim{
   /* 반칙이 일어났다 — 경기를 멈추고 심판을 부른다. */
   startFoulScene(fouler, victim, slide, danger){
     const b=this.ball;
+    this.pendingOff=null;   // 휘슬이 불렸다 — 이전 공격의 늦은 깃발은 무효
+
     // 위험도 — 슬라이딩·위험 지역·뒤에서 들어간 태클일수록 무겁다
     const fromBehind = (victim.x-fouler.x)*victim.dir > 0.004;
     let sev = (slide?0.42:0.14) + (danger?0.20:0) + (fromBehind?0.18:0);
@@ -27718,6 +28536,11 @@ class MatchSim{
   /* 세트피스 시작 — 키커를 지정하고 세리머니를 건다 */
   beginSetPiece(kind, kicker, spot, outAt){
     const b=this.ball;
+    this.lastAssist=null;   // 데드볼 — 마지막 패스 연결이 끊겼다 (코너·프리킥 딜리버리가 새로 세팅한다)
+    /* ⚠ 제보 — PK 골이 오프사이드로 취소되는 사건. "늦게 올라가는 깃발"(pendingOff)이
+       이전 공격에서 남은 채 세트피스를 넘어와, PK 득점 순간 그 깃발이 올라갔다.
+       플레이가 죽고 새로 시작되면 이전 상황의 깃발은 무효다. */
+    this.pendingOff=null;
     const out = outAt || {x:b.x, y:b.y};      // 공이 나가 멈춘 자리 — 여기서부터 회수한다
     b.setPiece={kind, kickerId:kicker.id, spot:{x:clamp01(spot.x),y:clamp01(spot.y)},
                 out:{x:clamp01(out.x), y:clamp01(out.y)},
@@ -27789,11 +28612,14 @@ class MatchSim{
     const out={x:b.x, y:b.y};                       // 공이 나가 멈춘 자리 — 여기서 회수한다
     const spot={x: outAt===0 ? 0.01 : 0.99, y: y<0.5 ? 0.02 : 0.98};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false;
-    let best=null,bd=1e9;
-    for(const a of this.side(side)){
-      if(a.slot==="GK") continue;
-      const d=Math.hypot((a.x-spot.x)*PITCH_AR, a.y-spot.y);
-      if(d<bd){ bd=d; best=a; }
+    let best=this.designatedKicker(side, "ck");
+    if(!best){
+      let bd=1e9;
+      for(const a of this.side(side)){
+        if(a.slot==="GK") continue;
+        const d=Math.hypot((a.x-spot.x)*PITCH_AR, a.y-spot.y);
+        if(d<bd){ bd=d; best=a; }
+      }
     }
     if(!best) best=this.side(side)[0];
     b.ownerId=best.id; this.possSide=side; this.lastTouch=side;
@@ -27828,8 +28654,8 @@ class MatchSim{
     const gx=dir>0?1:0;
     const distM=Math.hypot((gx-spot.x)*PITCH_LEN_M, (0.5-spot.y)*ISO_TO_M);
     if(distM<FK_DIRECT_M){
-      let bk=null, bs=-1;
-      for(const a of this.side(side)){
+      let bk=this.designatedKicker(side, "fk"), bs=-1;
+      if(!bk) for(const a of this.side(side)){
         if(a.slot==="GK") continue;
         const s=(a.fkSkill||0.5);
         if(s>bs){ bs=s; bk=a; }
@@ -27901,12 +28727,15 @@ class MatchSim{
     const out={x:b.x, y:b.y};
     const spot={x: dir>0 ? PEN_SPOT_ADV : 1-PEN_SPOT_ADV, y:0.5};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false; b.isCross=false;
-    // 전담 키커 — 페널티 능력치(침착성 포함)가 가장 좋은 필드 플레이어
-    let kicker=null, bs=-1;
-    for(const a of mine){
-      if(a.slot==="GK") continue;
-      const s=(a.penSkill||0.5);
-      if(s>bs){ bs=s; kicker=a; }
+    // 전담 키커 — 감독 지정이 먼저, 없으면 페널티 능력치(침착성 포함)가 가장 좋은 필드 플레이어
+    let kicker=this.designatedKicker(side, "pk");
+    if(!kicker){
+      let bs=-1;
+      for(const a of mine){
+        if(a.slot==="GK") continue;
+        const s=(a.penSkill||0.5);
+        if(s>bs){ bs=s; kicker=a; }
+      }
     }
     if(!kicker) kicker=mine[0];
     b.ownerId=kicker.id; this.possSide=side; this.lastTouch=side;
@@ -27966,7 +28795,7 @@ class MatchSim{
       let pb = BLOCK_P*(1-bl.d/0.16)*(0.60+(bl.o.tackleSkill||0.6)*0.70);
       pb *= 1 - (bl.off/BLOCK_W)*0.50;
       if(Math.random()<pb){
-        st.shotBlocked++; ost.block++;
+        st.shotBlocked++; ost.block++; this.lastAssist=null;   // 수비 몸에 맞음 — 도움 무효 (규정)
         this.cap(oKey, COMM.lvBlock, {p:this.nm(bl.o)});
         // 골문 가까이에서 막힌 공은 상당수가 그대로 골라인을 넘어간다 → 코너킥
         if(g.distM<20 && Math.random()<BLOCK_CORNER_P){
@@ -28008,7 +28837,7 @@ class MatchSim{
       }
       if(deflected) acc += (Math.random()-0.5)*0.35;      // 굴절되면 어디로 갈지 알 수 없다
       if(Math.random() > clamp(acc, 0.06, isPen?0.97:0.92)){
-        st.shotOff++;
+        st.shotOff++; this.lastAssist=null;   // 빗나간 슛 — 이후 혼전 득점에 도움 없음
         if(isPen) st.penMiss++;
         if(this.emitEvents){
           this.say(side, F_(COMM.shotOn,{p:shooter.p.name}), "txt");
@@ -28050,7 +28879,7 @@ class MatchSim{
       // 진짜 단독 1대1 — 수비 커버 없이 슈터가 코스를 고른다. 키퍼 혼자서 다 막아낼 수는 없다.
       if(this._soloShot) save -= 0.17;
       if(Math.random() < clamp(save, isPen?0.03:0.06, 0.93)){
-        st.shotSaved++; ost.save++;
+        st.shotSaved++; ost.save++; this.lastAssist=null;   // 키퍼 몸에 맞음 — 리바운드 득점에 도움 없음 (규정)
         if(isPen) st.penSaved++;
         if(this.emitEvents) this.say(side, F_(COMM.save,{p:shooter.p.name, g:gk&&gk.p?gk.p.name:"골키퍼"}), "txt");
         this.markHighlight("save", side, HL_W.save);
@@ -28159,6 +28988,7 @@ class MatchSim{
         const hitBar  = off<GOAL_HALF+GOAL_POST && Math.abs(zAt-CROSSBAR_Z)<GOAL_POST*1.6;
         if(hitPost || hitBar){
           this.stats[sh.side].woodwork++;
+          this.lastAssist=null;                     // 골대 굴절 — 이후 득점은 도움 없음 (규정)
           this.lastEvent={kind:hitBar?"CROSSBAR":"POST", side:sh.side, t:this.t};
           b.x=clamp01(gx - (gx>0.5?1:-1)*0.004); b.y=clamp01(yAt); b.z=Math.max(0,zAt);
           if(hitBar){ b.vz=-Math.abs(b.vz)*POST_BOUNCE; b.vx*=-POST_BOUNCE*0.6; }
@@ -28229,6 +29059,7 @@ class MatchSim{
           this.markHighlight("goal", side, HL_W.goal);
           b.inNet=true; b.vx*=0.55; b.vy*=0.55; b.vz*=0.35; b.ownerId=null;
           b.celebrate={t:0, side, oKey, scorerId:sh.shooterId, varCheck:true, varSh:sh};
+          // VAR 검토 중에는 ⚽ 이름표를 달지 않는다 — 인정이 확정된 순간(아래 확정 처리)에 단다
           this.syncClock();
           const nm=this.nm(this.byId(sh.shooterId));
           this.say(side, F_(COMM.varCheck, Object.assign({p:nm}, refVars(this.M))), "info", {kind:"var_check", side});
@@ -28246,6 +29077,8 @@ class MatchSim{
         b.inNet=true;                                  // 그물 저항 → 급격히 감속
         b.vx*=0.55; b.vy*=0.55; b.vz*=0.35;
         b.celebrate={t:0, side, oKey, scorerId:sh.shooterId};
+        { const _sid=(b.celebrate&&b.celebrate.scorerId)||null, _prev=this.goalTag;
+          this.goalTag={sid:_sid, aid:(_prev&&_prev.sid===_sid)?_prev.aid:null, until:this.t+6}; }   // 도움(recordGoal이 채움)을 덮어쓰지 않는다
         b.ownerId=null;
         return;
       }
@@ -31635,7 +32468,18 @@ const SUB_PAUSE_MS=2200;   // 교체 장면에서 중계가 멈춰 있는 시간
 /* 교체 해설 — 캡션 바에 팀 색을 입혀 읽어 준다 */
 function announceSub(sx){
   const more = liveM && liveM.subQueue && liveM.subQueue.length>1;
-  const pool = more ? COMM.subMore : (sx.isUser ? COMM.subOur : COMM.subOpp);
+  /* "…도 손을 씁니다"는 우리가 먼저 바꾼 직후에만 성립한다 — 아니면 그냥 벤치가 움직이는 것 */
+  if(liveM && !Array.isArray(liveM._subHist)) liveM._subHist=[];
+  const hist=(liveM && liveM._subHist)||[];
+  const prev=hist[hist.length-1];
+  const react = !sx.isUser && prev && prev.user && (sx.min-prev.min)<=8;
+  if(liveM) hist.push({user:!!sx.isUser, min:sx.min||0});
+  let pool;
+  if(more) pool=COMM.subMore;
+  else if(sx.min<=30 && !sx.isUser) pool=COMM.subEarly;
+  else if(sx.min>=78) pool=COMM.subLate;
+  else if(sx.isUser) pool=COMM.subOur;
+  else pool = react ? COMM.subOppReact : COMM.subOpp;
   const txt = F_(pool, {t:sx.team, o:sx.out, i:sx.in});
   const bar=document.getElementById("pitchCaption");
   if(bar){
@@ -31855,10 +32699,10 @@ function finishLive(){
     const {m,hid,aid}=G.pendingPO; G.pendingPO=null;
     applyMatchResult(M);
     poResolve(m, hid, aid, M.hg, M.ag);
-    lastMatch={type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events}, h:M.home, a:M.away, tag:m.tag, att:M.att||0};
+    lastMatch={type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, tag:m.tag, att:M.att||0};
     saveGame();
   } else {
-    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events}, h:M.home, a:M.away, att:M.att||0};
+    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, att:M.att||0};
     completeRound(M);
   }
   socialOnResult(M);  // 팬들은 휘슬이 울리는 순간 이미 떠들기 시작한다
