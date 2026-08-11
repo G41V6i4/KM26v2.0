@@ -32692,7 +32692,7 @@ function finishLive(){
     const mine=M.home.isUser?M.hg:M.ag, his=M.home.isUser?M.ag:M.hg;
     const opp=M.home.isUser?M.away:M.home;
     addNews(`🤝 연습경기: ${ut.short} ${mine}-${his} ${opp.short}`);
-    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events}, h:M.home, a:M.away, friendly:true, att:M.att||0};
+    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, friendly:true, att:M.att||0};
     checkPreseasonEnd();
     saveGame();
   } else if(G.pendingPO){
@@ -33057,7 +33057,7 @@ function runDelegatedFriendly(M){
   addNews(`🤝 연습경기(위임): ${t.short} ${mine}-${his} ${opp.short}`);
   staffLog(`수석코치가 ${opp.short}전 연습경기를 지휘했습니다. (${mine}-${his})`);
   checkPreseasonEnd();
-  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events}, h:M.home, a:M.away, friendly:true, att:M.att||0};
+  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, friendly:true, att:M.att||0};
   saveGame();
   const outcome = mine>his?"win":mine===his?"draw":"loss";
   const cls = outcome==="win"?"good":outcome==="loss"?"warn":"info";
