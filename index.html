@@ -7905,7 +7905,7 @@ function negoClose(){
   if(from){ from.budget=Math.round((from.budget+N.agreedFee)*10)/10; from.players.splice(from.players.indexOf(p),1); }
   else if(N.os){
     G.overseas=(G.overseas||[]).filter(x=>x.id!==p.id);
-    (G.osGone=G.osGone||[]).push(p.name);     // 한 번 떠난 선수는 해외 시장에 다시 뜨지 않는다
+    (G.osGone=G.osGone||[]).push(p.osKey||p.name);     // 한 번 떠난 선수는 해외 시장에 다시 뜨지 않는다 (원본 키 기준)
     if(G.scout){                              // 스카우트가 찾아온 선수라면 보고서에서 지운다
       const was=(G.scout.list||[]).length;
       G.scout.list=(G.scout.list||[]).filter(x=>x.id!==p.id);
@@ -8130,9 +8130,13 @@ function mkOverseas(d){
 function overseasList(){
   if(!Array.isArray(G.overseas)) G.overseas=[];
   if(!Array.isArray(G.osGone)) G.osGone=[];
-  const have={}; for(const q of G.overseas) have[q.name]=1;
+  /* ⚠ 개명 → 복제 버그의 뿌리 — 이름으로만 채움 여부를 판단하면, 에디터로 이름을 바꾼 순간
+     원본 이름이 "빠졌다"고 보고 같은 선수를 또 만든다. 원본 키(osKey)로 판단한다. */
+  for(const q of G.overseas) if(!q.osKey) q.osKey=q.name;   // 옛 세이브 백필
+  const have={}; for(const q of G.overseas) have[q.osKey||q.name]=1;
   for(const d of OVERSEAS_DEF)
-    if(!have[d.name] && G.osGone.indexOf(d.name)<0){ try{ G.overseas.push(mkOverseas(d)); }catch(e){} }
+    if(!have[d.name] && G.osGone.indexOf(d.name)<0){
+      try{ const np=mkOverseas(d); np.osKey=d.name; G.overseas.push(np); }catch(e){} }
   return G.overseas;
 }
 /* ═══════════════════════════════════════════════════════════════
@@ -8202,7 +8206,7 @@ function osAiSign(p, t){
   p.osLink=null;
   t.budget=Math.round((t.budget-fee)*10)/10;
   G.overseas=(G.overseas||[]).filter(x=>x.id!==p.id);
-  (G.osGone=G.osGone||[]).push(p.name);
+  (G.osGone=G.osGone||[]).push(p.osKey||p.name);
   t.players.push(p); joinClub(t, p);
   p.wage=wage; p.morale=80; p.unhappy=0; p.uWhy=""; p.promise=null; p.ct=1+R(3);
   try{ tfLogAdd("in", p, (p.osClub||"해외"), fee, wage, p.ct); }catch(e){}
@@ -9296,7 +9300,44 @@ function saveInfoHtml(){
 let ED={tid:null, pid:null, tab:"team"};
 
 function edTeam(){ return ED.tid ? G.teams[ED.tid] : null; }
-function edPlayer(){ const t=edTeam(); return (t && ED.pid!=null) ? t.players.find(p=>p.id===ED.pid) : null; }
+function edPlayer(){
+  if(ED.pid==null) return null;
+  if(ED.tid==="fa") return (G.freeAgents||[]).find(p=>p.id===ED.pid)||null;
+  if(ED.tid==="os") return (G.overseas||[]).find(p=>p.id===ED.pid)||null;
+  const t=edTeam(); return t ? t.players.find(p=>p.id===ED.pid) : null;
+}
+/* 🔍 에디터 선수 검색 — 팀을 고를 필요 없이 이름(초성 포함)으로 바로 찾아 수정한다 */
+let ED_Q="";
+function edSearchRefresh(v){
+  ED_Q=String(v||"");
+  const el=document.getElementById("edSearchRes");
+  if(el) el.innerHTML=edSearchResults(ED_Q);
+}
+function edSearchResults(qRaw){
+  const q=psNorm(qRaw);
+  if(!q) return `<p class="small" style="margin:4px 0">이름 일부나 초성(ㅅㅇㅁ)으로 리그 전체에서 찾습니다.</p>`;
+  const pool=[];
+  for(const id in G.teams){ const ot=G.teams[id];
+    for(const p2 of ot.players) pool.push({p:p2, ot, tid:id, lbl:ot.short}); }
+  for(const p2 of (G.freeAgents||[])) pool.push({p:p2, ot:null, tid:"fa", lbl:"🆓 FA"});
+  /* ⚠ 해외 시장은 탭을 처음 열 때 생성되는 지연 목록이다 — G.overseas 를 그냥 읽으면
+     해외 탭을 한 번도 안 연 세이브에서 텅 비어 "검색이 안 되는" 것처럼 보인다. */
+  let osArr=[]; try{ osArr=overseasList(); }catch(e){ osArr=G.overseas||[]; }
+  for(const p2 of osArr) pool.push({p:p2, ot:null, tid:"os", lbl:"🌍 "+(p2.osClub||"해외")});
+  const hits=pool.map(e=>({...e, sc:psScore(e, q)})).filter(e=>e.sc>0)
+                 .sort((a,b)=>b.sc-a.sc || sortLv(b.p)-sortLv(a.p)).slice(0,8);
+  if(!hits.length) return `<p class="small" style="margin:4px 0">"${qRaw}" — 조건에 맞는 선수가 없습니다.</p>`;
+  return hits.map(e=>`<button class="mini" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;margin-bottom:4px;padding:8px 10px" onclick="edPickPlayer('${e.tid}',${e.p.id})">
+    <b class="${e.p.frn?"frnN":""}">${psMark(e.p.name, q)}</b>
+    <span class="small pos-${e.p.pos}">${e.p.pos}</span>
+    <span class="small">${e.lbl}</span>
+    <span class="small" style="margin-left:auto">${abilityStars(e.p)}</span>
+  </button>`).join("");
+}
+function edPickPlayer(tid, pid){
+  ED.tid=tid; ED.pid=pid; ED.tab="player"; ED_Q="";
+  show("editor");
+}
 function edGo(k,v){
   if(k==="tid"){ ED.tid=v||null; ED.pid=null; }
   else if(k==="pid"){ ED.pid=v?parseInt(v,10):null; }
@@ -9634,6 +9675,22 @@ function edApplyOne(e){
       return true;
     }
     const i=C.findIndex(x=>x.n===e.f); if(i>=0) C.splice(i,1);
+    return true;
+  }
+  /* FA·해외 시장 선수에 대한 수정 — 가상 팀 취급 */
+  if(e.tid==="fa" || e.tid==="os"){
+    const arr = e.tid==="fa" ? (G.freeAgents||[]) : (G.overseas||[]);
+    const fakeT={players:arr};
+    const p2=edFindPlayer(fakeT, {name:e.pn}, null);
+    if(!p2) return false;
+    if(e.k==="p") edSetPlayerQ(p2, e.f, e.v);
+    else if(e.k==="a") edSetAttrQ(p2, e.f, e.v);
+    else if(e.k==="f") edSetFamQ(p2, e.f, e.v);
+    else if(e.k==="tr"){
+      if(!Array.isArray(p2.traits)) p2.traits=[];
+      if(e.v==="+"){ if(TRAIT_BY_KEY[e.f] && p2.traits.indexOf(e.f)<0 && p2.traits.length<TRAIT_MAX) p2.traits.push(e.f); }
+      else p2.traits=p2.traits.filter(k2=>k2!==e.f);
+    } else return false;
     return true;
   }
   const t=G.teams[e.tid]; if(!t) return false;
@@ -10259,6 +10316,8 @@ function editorView(){
   const tabBtn=(k,l)=>`<button class="mini ${ED.tab===k?'sel':''}" style="padding:7px 14px" onclick="edGo('tab','${k}')">${l}</button>`;
   const teamSel=`<select onchange="edGo('tid', this.value)" style="max-width:220px">
     <option value="">— 팀 선택 —</option>
+    ${ED.tid==="fa"?`<option value="fa" selected>🆓 FA 시장</option>`:""}
+    ${ED.tid==="os"?`<option value="os" selected>🌍 해외 이적시장</option>`:""}
     ${Object.values(G.teams).sort((a,b)=>a.div-b.div||a.name.localeCompare(b.name,"ko")).map(x=>
       `<option value="${x.id}" ${ED.tid===x.id?"selected":""}>${x.div===2?"[K2] ":""}${x.name}${x.isUser?" ★":""}</option>`).join("")}
   </select>`;
@@ -10278,11 +10337,21 @@ function editorView(){
       ${ED_ROW("훈련시설 (1~5) <span class=\"small\">육성 — 성장 속도·훈련 부상·특급 확률</span>", ED_IN("edSetTeam","trainLv",trainLv(t),50))}
       ${ED_ROW("스카우팅 등급 (1~5)", ED_IN("edSetTeam","scoutLv",t.scoutLv||1,50))}`;
   } else if(ED.tab==="player"){
-    if(!t){ body=`<p class="small">위에서 팀을 먼저 고르세요.</p>`; }
+    const vRoster = ED.tid==="fa" ? (G.freeAgents||[]) : ED.tid==="os" ? (G.overseas||[]) : null;
+    if(!t && !vRoster){ body=`<div style="margin-bottom:8px">
+        <input type="text" inputmode="text" value="${ED_Q}" placeholder="🔍 선수 이름 검색 (초성 가능) — 팀 선택 없이 바로"
+          style="width:100%;max-width:320px" oninput="edSearchRefresh(this.value)">
+        <div id="edSearchRes" style="max-width:320px;margin-top:4px">${ED_Q?edSearchResults(ED_Q):""}</div>
+      </div><p class="small">또는 위에서 팀을 골라 명단에서 선택하세요.</p>`; }
     else {
-      const plSel=`<select onchange="edGo('pid', this.value)" style="max-width:220px">
+      const edSearchBox=`<div style="margin-bottom:8px">
+        <input type="text" inputmode="text" value="${ED_Q}" placeholder="🔍 선수 이름 검색 (초성 가능) — 팀 선택 없이 바로"
+          style="width:100%;max-width:320px" oninput="edSearchRefresh(this.value)">
+        <div id="edSearchRes" style="max-width:320px;margin-top:4px">${ED_Q?edSearchResults(ED_Q):""}</div>
+      </div>`;
+      const plSel=edSearchBox+`<select onchange="edGo('pid', this.value)" style="max-width:220px">
         <option value="">— 선수 선택 —</option>
-        ${t.players.slice().sort((a,b)=>b.ovr-a.ovr).map(x=>
+        ${(vRoster||t.players).slice().sort((a,b)=>b.ovr-a.ovr).map(x=>
           `<option value="${x.id}" ${ED.pid===x.id?"selected":""}>${x.name} (${x.pos} ${dispOvr(x)})</option>`).join("")}
       </select>`;
       if(!p){ body=plSel+`<p class="small" style="margin-top:8px">선수를 고르면 항목이 열립니다.</p>`; }
@@ -14268,7 +14337,8 @@ function cmpResults(qRaw){
   for(const id in G.teams){ const ot=G.teams[id];
     for(const p2 of ot.players){ if(p2.id!==CURP) pool.push({p:p2, ot, fa:false}); } }
   for(const p2 of (G.freeAgents||[])) if(p2.id!==CURP) pool.push({p:p2, ot:null, fa:true});
-  for(const p2 of (G.overseas||[])) if(p2.id!==CURP) pool.push({p:p2, ot:{short:p2.osClub||"해외", name:p2.osClub||"해외"}, fa:false});
+  { let osArr2=[]; try{ osArr2=overseasList(); }catch(e){ osArr2=G.overseas||[]; }
+    for(const p2 of osArr2) if(p2.id!==CURP) pool.push({p:p2, ot:{short:p2.osClub||"해외", name:p2.osClub||"해외"}, fa:false}); }
   const hits=pool.map(e=>({...e, sc:psScore(e, q)})).filter(e=>e.sc>0)
                  .sort((a,b)=>b.sc-a.sc || sortLv(b.p)-sortLv(a.p)).slice(0,8);
   if(!hits.length) return `<p class="small" style="margin:4px 0">"${qRaw}" — 조건에 맞는 선수가 없습니다.</p>`;
@@ -16200,8 +16270,10 @@ function genRumor(){
             `${to.short}이/가 ${from.short}의 ${p.name}에게 관심을 보이고 있다`]));
   }
   // ③-2 해외 이적시장 — K리그 구단들도 외국인 시장을 들여다본다
-  if(roll<0.80 && Array.isArray(G.overseas) && G.overseas.length){
-    const p=pick(G.overseas);
+  if(roll<0.80){
+    let osR=[]; try{ osR=overseasList(); }catch(e){ osR=G.overseas||[]; }
+    if(!osR.length) return null;
+    const p=pick(osR);
     const to=Math.random()<0.4 ? ut : pick(others);
     const fee=Math.round((p.fee||marketValue(p))*(0.85+Math.random()*0.5)*10)/10;
     return mk("foreign", p.id, null, to.id,
