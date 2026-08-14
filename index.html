@@ -2720,22 +2720,21 @@ function gainPosFam(p, slot, mins){
   if(!p.posFam) p.posFam=initPosFam(p);
   const k=SLOT_FAM[canonSlot(slot)]||SLOT_FAM[slot];
   if(!k) return;
-  const age=(G.season - p.by);
-  // 20세 1.0 → 27세 0.5 → 33세 0.16. 나이가 들수록 새 자리를 배우기 어렵다.
-  const young=clamp((34-age)/14, 0.10, 1.25);
-  const a=p.attr||{};
-  const apt=0.6+((a.tea||60)/100*0.25 + (a.dec||60)/100*0.25);
+  /* 한 경기를 소화하면 그 자리 능숙도 +1.
+     · 출전 시간 비례 — 풀타임 +1, 후반 교체 45분이면 +0.5
+     · 15분 미만 출전은 배우는 게 없다 (막판 시간 끌기 투입)
+     · 100에서 멈춘다. 나이·재능 페널티 없음 — 뛰면 는다, 단순하고 예측 가능하게 */
+  if(mins<15) return;
   const cur=p.posFam[k]||0;
-  const room=(100-cur)/100;                                 // 익숙할수록 더디게
-  const g=FAM_GAIN*(mins/90)*young*apt*(0.25+room);
-  p.posFam[k]=clamp(cur+g, 0, 100);
-  // 다른 자리는 아주 조금씩 잊는다 (자연스러움 아래로만)
+  if(cur>=100) return;
+  p.posFam[k]=clamp(cur + FAM_GAIN*Math.min(1, mins/90), 0, 100);
+  /* 오래 안 선 자리를 조금씩 잊는 건 유지 — 대신 아주 완만하게, 바닥(FAM_FLOOR) 아래로는 안 내려간다 */
   for(const q of FAM_POS){
     if(q===k || q==="GK") continue;
     if(p.posFam[q]>FAM_FLOOR) p.posFam[q]=Math.max(FAM_FLOOR, p.posFam[q]-FAM_DECAY);
   }
 }
-const FAM_GAIN=4.2;    // 한 경기 풀타임으로 오르는 기본 능숙도
+const FAM_GAIN=1;      // 한 경기 풀타임으로 오르는 능숙도 — 시즌 풀타임이면 +38
 const FAM_DECAY=0.10;  // 뛰지 않은 자리가 한 경기마다 잊히는 정도
 const FAM_FLOOR=1;     // 한 번 배운 자리는 완전히 잊지는 않는다
 function posFitLevel(p, slot){
@@ -3569,6 +3568,16 @@ function setZone(t,pid,zone){
    slot은 화면 표시·포지션별 별점 계산 전용 세부 좌표다. ── */
 /* 전술판 라인 — FM처럼 세분화한다. 한 줄은 항상 5칸이고, 그 라인에 없는 자리는 null(빈 칸).
    위(공격)에서 아래(수비) 순서: FW → AM → MF → DM → WB → DF */
+/* 옛 FM식 명단 나열 순서 — 우측부터, 스트라이커는 마지막. 표(명단)에만 쓰고 경기장 배치는 ROW_SLOTS 그대로. */
+const LIST_SLOTS={
+  SW:["SW"],
+  DF:["RB","RCB","CB","LCB","LB"],
+  WB:["RWB","LWB"],
+  DM:["RDM","DM","LDM"],
+  MF:["RM","RCM","CM","LCM","LM"],
+  AM:["RAM","CAM","LAM"],
+  FW:["RW","LW","RS","ST","LS"]
+};
 const ROW_SLOTS={
   SW:[null,null,"SW",null,null],
   DF:["LB","LCB","CB","RCB","RB"],
@@ -5929,7 +5938,7 @@ const STADIUM={
   gangwon:  {n:"강원하이원아레나",     cap:20000, avg: 6500},
   anyang:   {n:"안양종합운동장",       cap:17143, avg: 6400},
   jeju:     {n:"제주월드컵경기장",     cap:29791, avg: 5500},
-  gwangju:  {n:"광주축구전용구장",     cap:10007, avg: 4600},
+  gwangju:  {n:"광주월드컵경기장",     cap:40245, avg: 4600},
   suwonfc:  {n:"수원종합운동장",       cap:11806, avg: 4500},
   gimcheon: {n:"김천종합운동장",       cap:25000, avg: 2600},
   suwon:    {n:"수원월드컵경기장",     cap:44031, avg:11500},
@@ -9206,6 +9215,17 @@ const SAVE_VER=7;
 function migrateSave(){
   if(!G || !G.teams) return;
   const from=G.ver||0;
+  /* 대전 수비진 능숙도 보정 — 기존 세이브에도 반영 */
+  try{
+    const dj=G.teams.daejeon;
+    if(dj && dj.players){
+      const FIX={"박규현":"DL","안톤":"DC","조성권":"DC","서영재":"DL"};
+      for(const p of dj.players){
+        const k=FIX[p.name];
+        if(k){ if(!p.posFam) p.posFam=initPosFam(p); p.posFam[k]=Math.max(p.posFam[k]||0,100); }
+      }
+    }
+  }catch(e){}
   /* 마르쿠스(경남)·오베르단(전북) — 스쿼드를 떠나 외국인 이적시장으로 (기존 세이브 반영) */
   try{
     const gn=G.teams.gyeongnam;
@@ -16248,7 +16268,7 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
   const order=[];
   if(gkP) order.push([gkP,"GK","GK"]);
   for(const band of BANDS){
-    for(const sl of ROW_SLOTS[band]){
+    for(const sl of (LIST_SLOTS[band]||ROW_SLOTS[band])){
       if(!sl) continue;
       for(const p of xi) if(p!==gkP && slotOf[p.id]===sl) order.push([p, SLOT_SHORT[sl]||sl, sl]);
     }
@@ -16954,7 +16974,7 @@ function fmLiveTable(t, pitchAndGap, bench, slotOf, sd){
   const order=[];
   if(gkX) order.push([gkX,"GK","GK"]);
   for(const band of BANDS){
-    for(const sl of ROW_SLOTS[band]){
+    for(const sl of (LIST_SLOTS[band]||ROW_SLOTS[band])){
       if(!sl) continue;
       for(const x of pitchAndGap) if(x!==gkX && slotOf[x.p.id]===sl) order.push([x, SLOT_SHORT[sl]||sl, sl]);
     }
