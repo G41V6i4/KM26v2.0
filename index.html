@@ -1175,17 +1175,17 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
 ===================================================== */
 const CUR_YEAR = 2026;
 const D1 = [
-{id:"ulsan", name:"울산 호랑이 FC", short:"울산", col:"#0053a0", col2:"#ffd24f", budget:180, fans:52,
+{id:"ulsan", name:"울산 HD FC", short:"울산", col:"#0053a0", col2:"#ffd24f", budget:180, fans:52,
  players:[["조현우","GK",1991,80],["황병근","GK",1994,70],["최주호","GK",2004,67],
  ["김영권","DF",1990,77],["정승현","DF",1994,74],["서명관","DF",2003,72],["이재익","DF",1999,71],["트로야크","DF",1997,74,1],["윤종규","DF",1998,74],["강상우","DF",1993,75],["조현택","DF",2001,73],["심상민","DF",1993,71],["토마스","DF",1998,72,1],
  ["보야니치","MF",1994,75,1],["이규성","MF",1994,74],["이진현","MF",1997,72],["이동경","MF",1997,78],["이희균","MF",1998,73],["류성민","MF",2004,68],["박우진","MF",2003,68],["조민서","MF",2004,67],
  ["말컹","FW",1994,78,1],["야고","FW",1999,76,1],["에릭","FW",1997,75,1],["페드링요","FW",1999,75,1],["벤지","FW",1998,73,1],["장시영","FW",2002,72],["이민혁","FW",2002,71],["허율","FW",2001,71],["정재상","FW",2004,69],["최석현","DF",2003,75]]},
-{id:"jeonbuk", name:"전북 닥공 FC", short:"전북", col:"#0a8547", col2:"#c5a253", budget:200, fans:55,
+{id:"jeonbuk", name:"전북 현대 모터스", short:"전북", col:"#0a8547", col2:"#c5a253", budget:200, fans:55,
  players:[["송범근","GK",1997,76],["이주현","GK",1998,71],["전지완","GK",2003,66],
  ["박지수","DF",1994,75],["연제운","DF",1994,74],["김영빈","DF",1991,73],["조위제","DF",2001,73],["김태환","DF",1989,74],["김태현","DF",1996,73],["최우진","DF",2004,71],["이상명","DF",2003,69],["김하준","DF",2002,68],
  ["오베르단","MF",1995,78,1],["이영재","MF",1994,75],["맹성웅","MF",1998,74],["김진규","MF",1997,74],["감보아","MF",1997,74,1],["강상윤","MF",2004,72],["츄마시","MF",1999,72,1],["기티스","MF",2000,71,1],["김준영","MF",2004,68],
  ["이승우","FW",1998,78],["티아고","FW",1998,77,1],["콤파뇨","FW",1996,76,1],["이동준","FW",1997,74],["모따","FW",1999,74,1],["김승섭","FW",1996,72],["박주영","FW",2003,69],["정대영","FW",2006,65],["이한결","MF",2007,64]]},
-{id:"daejeon", name:"대전 시티즌", short:"대전", col:"#7c1c2c", col2:"#00815c", budget:170, fans:46,
+{id:"daejeon", name:"대전 하나 시티즌", short:"대전", col:"#7c1c2c", col2:"#00815c", budget:170, fans:46,
  players:[["이창근","GK",1993,75],["이준서","GK",1998,71],["김민수","GK",2005,65],
  ["안톤","DF",1994,76,1],["김문환","DF",1995,75],["하창래","DF",1994,74],["이명재","DF",1993,74],["김민덕","DF",1996,74],["서영재","DF",1995,73],["강윤성","DF",1997,73],["박규현","DF",2001,72],["조성권","DF",2001,72],["김진야","DF",1998,72],["임종은","DF",1990,71],["오재석","DF",1990,69],
  ["이순민","MF",1994,75],["이현식","MF",1996,74],["밥신","MF",1998,74,1],["마사","MF",1995,73,1],["서진수","MF",2000,73],["김준범","MF",1998,72],["김봉수","MF",1999,72],["김현욱","MF",1995,71],
@@ -1210,12 +1210,12 @@ const D1 = [
  ["김진수","DF",1992,75],["최준","DF",1999,75],["박수일","DF",1996,74],["야잔","DF",1996,74,1],["바베츠","DF",1996,74,1],["이상민","DF",1998,73],["이한도","DF",1994,73],["안재민","DF",2003,70],["박성훈","DF",2003,69],
  ["정승원","MF",1997,73],["이승모","MF",1998,72],["로스","MF",1996,73,1],["황도윤","MF",2003,70],["정현우","MF",2004,71],["김지원","MF",2004,69],["손정범","MF",1998,68],
  ["안데르손","FW",1997,76,1],["송민규","FW",1999,76],["클리말라","FW",1998,75,1],["조영욱","FW",1999,75],["후이즈","FW",1997,74,1],["천성훈","FW",2003,72],["문선민","FW",1992,72],["바또","FW",1999,72,1],["고필관","FW",2005,68],["윤기욱","FW",2005,66],["박장한결","MF",2004,67]]},
-{id:"pohang", name:"포항 쇠돌이 FC", short:"포항", col:"#c8102e", col2:"#000000", budget:120, fans:38,
+{id:"pohang", name:"포항 스틸러스", short:"포항", col:"#c8102e", col2:"#000000", budget:120, fans:38,
  players:[["황인재","GK",1994,74],["윤평국","GK",1993,72],["김호진","GK",2003,65],
  ["박찬용","DF",1996,74],["전민광","DF",1993,73],["조성욱","DF",1995,72],["어정원","DF",1999,72],["김동진","DF",2003,71],["신광훈","DF",1987,70],["김예성","DF",2000,69],["진시우","DF",2003,68],["이수아","DF",2005,66],
  ["기성용","MF",1989,74],["김승호","MF",1998,71],["김용학","MF",2001,71],["니시야 켄토","MF",1999,72,1],["김범준","MF",2002,68],["이창우","MF",2004,67],["강민준","MF",2005,66],["백승원","MF",2006,65],
  ["조르지","FW",1996,75,1],["주닝요","FW",1997,74,1],["완델손","FW",1994,74,1],["트란지스카","FW",1995,74,1],["안재준","FW",2003,71],["정한민","FW",2001,71],["황재환","FW",2001,69],["조상혁","FW",2003,68],["황서웅","FW",2005,66],["홍성민","FW",2006,64]]},
-{id:"jeju", name:"제주 감귤 FC", short:"제주", col:"#f36f21", col2:"#e4002b", budget:100, fans:24,
+{id:"jeju", name:"제주 SK FC", short:"제주", col:"#f36f21", col2:"#e4002b", budget:100, fans:24,
  players:[["김동준","GK",1994,75],["안찬기","GK",1998,70],["주승민","GK",2003,64],
  ["토비아스","DF",1994,74,1],["세레스틴","DF",1997,73,1],["정운","DF",1989,73],["임창우","DF",1992,72],["김륜성","DF",2002,71],["김재우","DF",1998,71],["장민규","DF",2000,70],["유인수","DF",1994,72],["김재민","DF",2003,69],["허강준","DF",2004,68],["박민재","DF",2005,65],
  ["이창민","MF",1994,75],["권창훈","MF",1994,74],["남태희","MF",1991,74],["김건웅","MF",1997,72],["오재혁","MF",2002,71],["권기민","MF",2003,67],["김준하","MF",2005,66],
@@ -1238,17 +1238,17 @@ const D1 = [
 ];
 /* K리그2 17팀 — 팀 기본정보 + 간판 선수(실명) + 자동 생성 스쿼드 */
 const D2 = [
-{id:"suwon", name:"개랑 FC", short:"수원", col:"#004b9e", col2:"#e4002b", budget:70, fans:40, base:70,
+{id:"suwon", name:"수원 삼성 블루윙즈", short:"수원", col:"#004b9e", col2:"#e4002b", budget:70, fans:40, base:70,
  stars:[["양형모","GK",1991,74],["이기제","DF",1991,72],["한호강","DF",1993,70],["이종성","MF",1992,70],["전진우","FW",1999,73],["김현","FW",1993,71]]},
 {id:"daegu", name:"대구 FC", short:"대구", col:"#87ceeb", col2:"#0b2a53", budget:60, fans:30, base:69,
  stars:[["오승훈","GK",1988,72],["홍정운","DF",1994,70],["세징야","FW",1989,74,1],["김진혁","FW",1993,72]]},
 {id:"suwonfc", name:"수원 FC", short:"수원FC", col:"#1b4fa0", col2:"#e4002b", budget:55, fans:16, base:68,
  stars:[["안데르손 오사코","FW",1996,71,1],["김도윤","MF",2003,68]]},
-{id:"busan", name:"부산 갈매기 FC", short:"부산", col:"#c8102e", col2:"#1c1c1c", budget:55, fans:22, base:68,
+{id:"busan", name:"부산 아이파크", short:"부산", col:"#c8102e", col2:"#1c1c1c", budget:55, fans:22, base:68,
  stars:[["라마스","MF",1994,73,1],["페신","FW",1997,72,1]]},
 {id:"jeonnam", name:"전남 드래곤즈", short:"전남", col:"#ffd200", col2:"#0b6138", budget:50, fans:15, base:68,
  stars:[["발디비아","MF",1994,75,1],["플라나","FW",1996,72,1]]},
-{id:"seoule", name:"서울 한강 FC", short:"서울E", col:"#12275c", col2:"#ffffff", budget:50, fans:14, base:67,
+{id:"seoule", name:"서울 이랜드 FC", short:"서울E", col:"#12275c", col2:"#ffffff", budget:50, fans:14, base:67,
  stars:[["유정완","FW",1996,69]]},
 {id:"seongnam", name:"성남 FC", short:"성남", col:"#101010", col2:"#e6e6e6", budget:50, fans:16, base:66,
  stars:[["이종호","FW",1992,68]]},
@@ -5150,9 +5150,8 @@ function newGame(teamId){
   /* 홈그로운 표시 — 개명 전 원본 이름으로 찾는다 */
   for(const id in G.teams) for(const p of G.teams[id].players)
     if(p.frn && HOMEGROWN_NAMES.includes(p.name)) p.hg=1;
-  /* 🕶️ 가명화 재적용 (요청) — 선수 실명을 성씨 시프트로 가공한다.
-     에디터 DB·홈그로운 매칭은 fictName 양방향 호환 코드가 처리한다. */
-  for(const id in G.teams) for(const p of G.teams[id].players) p.name=fictName(p.name, p.frn?1:0);
+  /* 선수 이름 — 실명 유지. (가명화를 두 차례 시도했으나 되돌렸다.
+     fictName 계열 함수는 에디터 DB 매칭 호환용으로 남아 있다.) */
   const ut=G.teams[teamId]; ut.isUser=true;
   for(const id in G.teams) assignAITactics(G.teams[id]);
   buildSeason();
@@ -5911,16 +5910,16 @@ const STADIUM={
      k: corp 기업 · civic 시민·도민 · mixed 도·시민 복합 또는 컨소시엄 · army 군경
      o: 운영 주체 */
 const CLUB_TYPE={
-  seoul:    {k:"corp",  o:"쥬에스 스포츠"},
-  jeonbuk:  {k:"corp",  o:"형대자동차"},
-  ulsan:    {k:"corp",  o:"HK형대"},
-  jeju:     {k:"corp",  o:"SQ에너지"},
-  pohang:   {k:"corp",  o:"포스콘"},
-  daejeon:  {k:"corp",  o:"한아금융그룹"},
-  suwon:    {k:"corp",  o:"체일기획"},
-  busan:    {k:"corp",  o:"HKC형대산업개발"},
-  jeonnam:  {k:"corp",  o:"포스콘"},
-  seoule:   {k:"corp",  o:"이랜두그룹"},
+  seoul:    {k:"corp",  o:"GS스포츠"},
+  jeonbuk:  {k:"corp",  o:"현대자동차"},
+  ulsan:    {k:"corp",  o:"HD현대"},
+  jeju:     {k:"corp",  o:"SK에너지"},
+  pohang:   {k:"corp",  o:"포스코"},
+  daejeon:  {k:"corp",  o:"하나금융그룹"},
+  suwon:    {k:"corp",  o:"제일기획"},
+  busan:    {k:"corp",  o:"HDC현대산업개발"},
+  jeonnam:  {k:"corp",  o:"포스코"},
+  seoule:   {k:"corp",  o:"이랜드그룹"},
   gangwon:  {k:"civic", o:"강원특별자치도"},
   incheon:  {k:"civic", o:"인천광역시"},
   anyang:   {k:"civic", o:"안양시"},
@@ -12082,8 +12081,8 @@ function renderTeamPick(){
   <p class="small">2026 시즌 실제 로스터 기반 · 파이널 라운드 스플릿 · 승강 플레이오프 · 외국인 무제한 등록(동시 출전 K1 5명/K2 4명) · 실시간 매치엔진 · 기자회견 · 유스 아카데미</p>
   ${saved}
   ${sel ? `<div class="pkOverlay" onclick="if(event.target===this)pickCancel()">${pickPanel(sel[0], sel[1])}</div>` : ""}
-  <h3>K리그1 — 한아은행 K리그1 2026</h3><div class="teamgrid">${D1.map(d=>card(d,1)).join("")}</div>
-  <h3>K리그2 — 한아은행 K리그2 2026 (17팀 체제)</h3><div class="teamgrid">${D2.map(d=>card(d,2)).join("")}</div>
+  <h3>K리그1 — 하나은행 K리그1 2026</h3><div class="teamgrid">${D1.map(d=>card(d,1)).join("")}</div>
+  <h3>K리그2 — 하나은행 K리그2 2026 (17팀 체제)</h3><div class="teamgrid">${D2.map(d=>card(d,2)).join("")}</div>
   <p class="small">※ 능력치는 실제 기록·활약을 바탕으로 한 추정치입니다.</p>
   <p class="pkNote">이 게임에 등장하는 모든 인물·구단·사건은 <b>가상</b>이며, 실존 인물 및 단체와 아무런 관련이 없습니다.<br>
     선수·감독·심판의 이름과 능력치는 게임 진행을 위한 창작물이고, 게임 안에서 벌어지는 모든 언행은 실제 인물의 발언이나 성향과 무관합니다.<br>
@@ -26175,8 +26174,20 @@ function drawPitchBase(ctx, cv){
   ctx.strokeRect(pad,boxY,boxW,boxH); ctx.strokeRect(W-pad-boxW,boxY,boxW,boxH);
   const gaW=(W-2*pad)*0.06, gaH=(H-2*pad)*0.24, gaY=pad+(H-2*pad-gaH)/2;
   ctx.strokeRect(pad,gaY,gaW,gaH); ctx.strokeRect(W-pad-gaW,gaY,gaW,gaH);
-  const goalH=(H-2*pad)*0.14, goalY=pad+(H-2*pad-goalH)/2, goalD=6;
+  const goalH=(H-2*pad)*0.14, goalY=pad+(H-2*pad-goalH)/2;
+  const goalD=(W-2*pad)*GOAL_NET_DEPTH;              // 골 깊이 = 물리 골망 깊이와 일치
   ctx.strokeRect(pad-goalD,goalY,goalD,goalH); ctx.strokeRect(W-pad,goalY,goalD,goalH);
+  /* 🥅 골망 — 그물눈. 공이 이 안에 멈춰야 골이라는 게 한눈에 보인다 */
+  ctx.save();
+  ctx.strokeStyle="rgba(255,255,255,.22)"; ctx.lineWidth=1;
+  const mesh=Math.max(3, 3.2*kpb);
+  for(const gx0 of [pad-goalD, W-pad]){
+    ctx.beginPath();
+    for(let x=gx0+mesh; x<gx0+goalD; x+=mesh){ ctx.moveTo(x, goalY); ctx.lineTo(x, goalY+goalH); }
+    for(let y=goalY+mesh; y<goalY+goalH; y+=mesh){ ctx.moveTo(gx0, y); ctx.lineTo(gx0+goalD, y); }
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 function drawDotXY(ctx, cv, nx, ny, color, r){
   const k=cvK(cv), {x,y}=pitchToCanvasXY(cv,nx,ny);
@@ -27331,7 +27342,7 @@ function chooseShotType(shooter, g, ball, gk, opt){
   if(o.clear && g.distM<20){
     const r=Math.random();
     // 특성: 로빙 슛 선호 / 키퍼 제치기 / 휘어차기
-    if(r < 0.22+fin*0.16+(TT.lob?0.34:0))            return SHOT_TYPE.CHIP;      // 키퍼 키를 넘긴다
+    if(g.distM>5 && r < 0.22+fin*0.16+(TT.lob?0.34:0)) return SHOT_TYPE.CHIP;    // 키퍼 키를 넘긴다 (5m 안에서는 넘길 공간이 없다)
     if(TT.round && r < 0.60)                          return SHOT_TYPE.PLACED;    // 제치고 밀어 넣는다
     // 감아차기는 특성뿐 아니라 역할(인사이드 포워드·인버티드 윙어)도 부여한다.
     // TT.curl 만 읽던 시절에는 역할이 준 curl 값이 통째로 버려졌다 — FX로 둘을 합쳐 읽는다.
@@ -27460,6 +27471,7 @@ const GK_SWEEP_MIN=0.48;    // 이 값을 넘는 스위퍼 성향부터 박스 �
 const GK_SWEEP_PUSH=0.30;   // 최상급 스위퍼가 추가로 전진하는 거리 (약 27m)
 const GK_TURN_DIST=0.10;    // 목표가 이보다 멀면 몸을 돌려 달린다(스위핑), 가까우면 볼을 보며 스텝
 const POST_BOUNCE = 0.62;           // 골대를 맞고 튕겨 나가는 정도
+const GOAL_NET_DEPTH = 0.020;       // 골망 깊이 (≈2.2m) — 공은 이 안에서만 머문다
 const NET_DRAG = 0.28;              // 그물에 걸린 공 — 급격히 감속하며 흔들린다
 const WALL_BOUNCE = 0.45;           // 광고판·펜스에 맞고 되튀는 정도
 
@@ -27544,6 +27556,7 @@ function decaySpin(b){
   if(Math.abs(b.spin.back)<0.004) b.spin.back=0;
 }
 function stepBallPhysics(b){
+  const _px=b.x, _py=b.y, _pz=b.z||0;
   b.x += b.vx*SIM_DT/PITCH_AR;
   b.y += b.vy*SIM_DT;
   if(b.z>0 || b.vz>0){                       // 공중
@@ -27595,6 +27608,34 @@ function stepBallPhysics(b){
     }
   }
   decaySpin(b);
+  /* 🥅 골대 프레임 충돌 — 크로스·클리어·루즈볼 등 물리 궤적은 골대를 뚫지 못한다.
+     (슛은 SHOT 상태의 연출 경로가 자체 woodwork 판정을 갖는다 — 이중 처리 금지) */
+  if(!b.inNet && b.state!=="SHOT"){
+    for(const gx of [0,1]){
+      if((_px-gx)*(b.x-gx)>=0) continue;                 // 이번 틱에 골라인 평면 통과 없음
+      const f=(gx-_px)/((b.x-_px)||1e-9);
+      const yAt=_py+(b.y-_py)*f, zAt=_pz+((b.z||0)-_pz)*f;
+      const off=Math.abs(yAt-0.5);
+      const hitPost = Math.abs(off-GOAL_HALF)<GOAL_POST && zAt<CROSSBAR_Z+GOAL_POST;
+      const hitBar  = off<GOAL_HALF+GOAL_POST && Math.abs(zAt-CROSSBAR_Z)<GOAL_POST*1.6;
+      if(hitPost || hitBar){
+        b.x = gx - Math.sign(b.x-_px)*0.0018;            // 프레임 앞(또는 뒤)에서 되튄다
+        b.y = yAt; b.z=Math.max(0, zAt);
+        if(hitBar){ b.vz=-Math.abs(b.vz||0.02)*POST_BOUNCE; b.vx*=-POST_BOUNCE*0.6; }
+        else { b.vx*=-POST_BOUNCE; b.vy=(yAt<0.5?-1:1)*Math.abs(b.vy||0.03)*POST_BOUNCE; }
+        b.bounced=(b.bounced||0)+1;
+        break;
+      }
+    }
+  }
+  /* 🥅 골망 가둠 — 그물 안에 들어간 공은 뒷그물·옆그물·프레임을 뚫지 못한다 (제보: 골문 관통) */
+  if(b.inNet){
+    const half=GOAL_HALF-0.0015;
+    if(b.x>1+GOAL_NET_DEPTH){ b.x=1+GOAL_NET_DEPTH; b.vx=-Math.abs(b.vx)*0.20; }
+    else if(b.x<-GOAL_NET_DEPTH){ b.x=-GOAL_NET_DEPTH; b.vx=Math.abs(b.vx)*0.20; }
+    if((b.x>1||b.x<0) && Math.abs(b.y-0.5)>half){ b.y=0.5+Math.sign(b.y-0.5)*half; b.vy*=-0.20; }
+    if(b.z>CROSSBAR_Z*0.96 && (b.x>1||b.x<0)){ b.z=CROSSBAR_Z*0.96; b.vz=-Math.abs(b.vz)*0.2; }
+  }
   if(Math.hypot(b.vx, b.vy) < BALL_STOPV && b.z<=0){ b.vx=0; b.vy=0; }
 }
 /* 마찰로 감속하는 이동 곡선. 진행률 p(0~1)를 "이미 간 거리 비율"로 바꾼다.
@@ -30603,7 +30644,9 @@ class MatchSim{
     st.goalDisallowed=(st.goalDisallowed||0)+1;
     st.offside++;
     const sc=this.byId(sh.shooterId), nm=this.nm(sc);
-    b.inNet=true; b.vx*=0.55; b.vy*=0.55; b.vz*=0.35; b.ownerId=null;
+    b.inNet=true; b.vx*=0.55; b.vy*=0.55; b.vz*=0.35;
+    { const dirIn=b.x>0.5?1:-1; if(Math.abs(b.vx)<0.085) b.vx=dirIn*0.085; } b.ownerId=null;
+    { const dirIn=b.x>0.5?1:-1; if(Math.abs(b.vx)<0.085) b.vx=dirIn*0.085; }
     // 짧은 환호 뒤 취소 — 세리머니 객체에 표시를 달아 재개 방식을 바꾼다
     b.celebrate={t:0, side, oKey:this.opp(side), scorerId:sh.shooterId,
                  disallowed:true, offSpot:{x:off.x, y:off.y, by:off.by}};
@@ -31855,6 +31898,27 @@ class MatchSim{
             if(cd<1e-6){ cx2=-a.dir; cy2=0; cd=1; }
             tx=clamp01(b.x+(cx2/cd)*ko*1.05/PITCH_AR); ty=clamp01(b.y+(cy2/cd)*ko*1.05);
             spd=Math.max(spd, SPD.RUN*(cd<ko*0.5?1.25:1.0));
+          }
+        }
+        /* 🚩 온사이드 유지 (제보: ST가 수비라인보다 앞에 박혀 멍때림) —
+           의도 스팟은 라인을 지키지만 1.6초 캐시라, 수비 라인이 빠르게 올라오면 그 사이
+           공격수가 라인 뒤에 남는다. 매 틱 「지금 라인」으로 목표를 당긴다.
+           스루패스 추격(_chase)은 이 경로를 안 타므로 침투는 그대로 산다.
+           공보다 뒤에 있으면 온사이드(규칙 그대로) — 공 위치까지는 허용한다. */
+        if(key===this.possSide && a.slot!=="GK" && !b.setPiece && b.state!=="SHOT"){
+          const r0=a.offRole;
+          if(r0===OFF_ROLE.RUN||r0===OFF_ROLE.CHANNEL||r0===OFF_ROLE.INSIDE||
+             r0===OFF_ROLE.FARPOST||r0===OFF_ROLE.THIRD||r0===OFF_ROLE.HALF){
+            if(this._olAt!==this.t){ this._olAt=this.t; this._ol={}; }
+            if(this._ol[key]===undefined)
+              this._ol[key]=oppLineX(this.side(this.opp(key)), a.dir);
+            const lx=this._ol[key];
+            const mg=0.008+(1-(a.offTiming||0.6))*0.015;
+            const cap = a.dir>0 ? Math.max(lx-mg, b.x) : Math.min(lx+mg, b.x);
+            if(a.dir>0){ if(tx>cap) tx=cap; } else { if(tx<cap) tx=cap; }
+            /* 이미 라인 뒤에 갇혀 있다면 어슬렁대지 않고 뛰어서 온사이드로 돌아온다 */
+            const overNow = a.dir>0 ? (a.x-cap) : (cap-a.x);
+            if(overNow>0.014) spd=Math.max(spd, SPD.RUN*1.05);
           }
         }
         // 목표 위치 부드럽게 하기 —
@@ -34002,6 +34066,8 @@ class MatchSim{
     /* 빗나간 슛은 공이 정확히 골라인(1.0) 위에서 멈췄다 — 라인 밖 1.3m로 옮겨 회수 (제보) */
     b.x = dir>0 ? -0.012 : 1.012;
     b.y = clamp01(b.y); b.vx=0; b.vy=0; b.vz=0; b.z=0;
+    /* 골문 폭 안(그물 뒤)에 놓으면 골처럼 보인다 — 골대 옆으로 비껴 놓는다 */
+    if(Math.abs(b.y-0.5)<GOAL_HALF+0.010) b.y=0.5+(b.y>=0.5?1:-1)*(GOAL_HALF+0.016);
     const out={x:b.x, y:b.y};                       // 공이 나가 멈춘 자리 — 여기서 회수한다
     const spot={x: dir>0 ? 0.06 : 0.94, y:0.5};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false;
@@ -34248,7 +34314,11 @@ class MatchSim{
     this._shotCtx=SC;
     /* 🎯 어디를 노리는가 — 골문을 점 하나로 보지 않는다. 키퍼가 치우친 반대쪽 값이 오른다. (§17·§18) */
     const corner = Math.random() < 0.25+skill*0.45;
-    const aimOff = corner ? 0.72+Math.random()*0.26 : Math.random()*0.62;
+    /* ⚠ 예전 코너 조준(0.72~0.98)은 포스트 안쪽 10cm까지 노렸다 — 산탄 σ≈2m를 얹으면
+       잘 찬 슛일수록 빗나가는 자살 조준이었다(1대1 전환율 6% 실측의 최대 지분).
+       프로는 σ를 감안해 구석 「안쪽 여유」를 노린다: 0.52~0.74 (1.9~2.7m).
+       정면(0~0.62)도 하한을 올려 키퍼 정면으로 차는 슛을 줄인다. */
+    const aimOff = corner ? 0.52+Math.random()*0.22 : 0.18+Math.random()*0.40;
     let aimSide = (Math.random()<0.5?-1:1);
     if(gk && !isPen){
       const off=(gk.y-0.5)/GOAL_HALF;                       // 키퍼가 치우친 쪽(+1=아래)
@@ -34378,6 +34448,12 @@ class MatchSim{
           acc -= clamp(SC.bodyOff/Math.PI, 0, 1)*0.18*(1-cover*0.35);   // 몸이 돌아간 만큼
         }
       }
+      /* 🥅 1대1 침착 (제보: 1대1 전환율 6%) — 통로가 비고 골문이 가까우면 마무리에 여유가 있다.
+         침착성이 좋을수록 크다. (blk는 등 뒤 추격자도 세므로 「완전히 깨끗한」 1대1만 받는 보정) */
+      if(!isFK && !isPen && g.distM<15 && blk.list.length===0){
+        const cmp11=(shooter.p&&shooter.p.attr&&attr20(shooter.p.attr.cmp)/20)||0.6;
+        acc += 0.08 + cmp11*0.08;
+      }
       if(deflected) acc += (Math.random()-0.5)*0.35;      // 굴절되면 어디로 갈지 알 수 없다
       /* 🎯 명중 여부를 동전으로 정하지 않는다 (§19·§20·§57).
          조준점에 오차를 실어 「실제 착탄점」을 만들고, 그 점이 골문 안인지 기하로 본다.
@@ -34396,8 +34472,14 @@ class MatchSim{
          아무리 잘 찬 슛에도 최소한의 흩어짐은 남는다. */
       /* ST 침투 개편(채널·패서 인지)으로 1대1 급 기회가 늘어 결정률이 42%까지 뛰었다.
          키퍼 도달로는 안 잡힌다(4경기 비트 동일 실측) — 산탄 하한으로 잡는다. */
-      const sigY=Math.max(GOAL_HALF*0.86, GOAL_HALF*3.15*(1.02-_A))*(isPen?0.50:1);
-      const sigZ=Math.max(CROSSBAR_Z*0.64, CROSSBAR_Z*2.05*(1.02-_A))*(isPen?0.50:1);
+      /* 📐 산탄은 각도 오차다 — 절대 오차가 거리 무관 3.15m 고정이라, 7m 1대1도 16m 슛과
+         같은 폭으로 튀며 전환율이 6%까지 무너졌다(실측 47회 중 3골, 제보 다수).
+         거리 비례 계수: 8m에서 절반, 16m 기준 1.0, 장거리는 소폭 가중. */
+      const dK=clamp(g.distM/16, 0.45, 1.15);
+      /* 하한 0.86→0.55 — 옛 결정률 42% 억제용 하한이 acc 0.92 슈터의 11m 슛에도 σ2.2m를
+         강제해 1대1이 무너졌다. 거리 스케일(dK)·키퍼 물리가 있으니 하한은 「최소한의 손맛」만. */
+      const sigY=Math.max(GOAL_HALF*0.55, GOAL_HALF*3.15*(1.02-_A))*dK*(isPen?0.50:1);
+      const sigZ=Math.max(CROSSBAR_Z*0.45, CROSSBAR_Z*2.05*(1.02-_A))*dK*(isPen?0.50:1);
       this._shotAim={y:aimY, z:aimZ, sy:sigY, sz:sigZ, acc:_A};
       aimY = aimY + _gs()*sigY;
       aimZ = Math.max(0, aimZ + _gs()*sigZ);
@@ -34504,7 +34586,10 @@ class MatchSim{
       /* 상황 계수(save)는 「막기 좋은 상황인가」만 곱한다. 키퍼의 실력은
          gkReachBase(키·점프·민첩)와 diveV(반사·민첩), reactT(예측·반사·집중),
          그리고 gkPosError(서 있는 자리)로 이미 물리량에 들어가 있다. */
-      const reach=(gkReachBase(gk) + diveV*tAvail) * clamp(0.55+save*0.95, 0.30, 2.0);
+      let reach=(gkReachBase(gk) + diveV*tAvail) * clamp(0.55+save*0.95, 0.30, 2.0);
+      /* 근거리(10m 안) — 반응은 이미 reactT가 깎지만, 몸을 완전히 펼치는 것 자체가 안 된다.
+         1대1 선방률 61%(실측)의 주범 — 기본 도달까지 줄인다. */
+      if(!isPen && g.distM<14) reach *= 0.58 + (g.distM/14)*0.30;   /* 7m→0.73 · 11m→0.82 · 14m→0.88 — 유효 1대1 선방 82% 실측 보정 */
       /* 착탄점까지의 실제 거리 — 좌우와 높이를 함께 본다 (§28·§31·§32) */
       /* 서 있는 위치 — Positioning 이 낮으면 각을 조금 잘못 잡고 서 있다 */
       const gy=(gk?gk.y:0.5) + gkPosError(gk, this.ball);
@@ -34564,7 +34649,13 @@ class MatchSim{
       const pt=onLine(gk ? (gk.x-shooter.x)/span : 1);
       ex=pt.x; ey=pt.y; saveY=pt.y;                    // 키퍼는 이 지점으로 몸을 날린다
       if(gk && gk._diveTo) saveY=gk._diveTo.y;         // 실제로 손이 닿은 높이·방향
-    } else if(outcome!=="BLOCK"){ ex=g.gx; ey=aimY; }
+    } else if(outcome==="MISS"){
+      /* 빗나간 슛이 골라인 위에서 뚝 멈추면 골처럼 보인다(제보) — 광고판(3.8m 뒤)까지 날아간다 */
+      ex=g.gx + (g.gx===1?1:-1)*0.035; ey=aimY;
+    } else if(outcome!=="BLOCK"){
+      /* 골 — 그물 안 1.3m 지점이 종착점. 그물을 뚫고 나가지 않고, 라인 위에서 멈추지도 않는다 */
+      ex=g.gx + (g.gx===1?1:-1)*GOAL_NET_DEPTH*0.60; ey=aimY;
+    }
 
     // ── 공을 실제로 날린다. 결과는 도착한 뒤에 적용된다.
     b.state="SHOT"; b.ownerId=null; b.toId=null;
@@ -34739,7 +34830,9 @@ class MatchSim{
         if(this.emitEvents && !varSkip && Math.random()<VAR_CHECK_P){
           this.lastEvent={kind:"VAR", side, t:this.t};
           this.markHighlight("goal", side, HL_W.goal);
-          b.inNet=true; b.vx*=0.55; b.vy*=0.55; b.vz*=0.35; b.ownerId=null;
+          b.inNet=true; b.vx*=0.55; b.vy*=0.55; b.vz*=0.35;
+    { const dirIn=b.x>0.5?1:-1; if(Math.abs(b.vx)<0.085) b.vx=dirIn*0.085; } b.ownerId=null;
+    { const dirIn=b.x>0.5?1:-1; if(Math.abs(b.vx)<0.085) b.vx=dirIn*0.085; }
           /* 취소 사유는 지금 이 장면에서 실제로 있었던 일로 정한다 — 나중에 동전 던지기로
              뽑으면 화면으로 본 장면과 중계 문구가 어긋난다.
                · 마지막 패스로 연결된 골 → 오프사이드 (빌드업에서 라인을 넘었을 수 있다)
@@ -34763,6 +34856,8 @@ class MatchSim{
         this.goalCommentary(side, sh);
         this.markHighlight("goal", side, HL_W.goal);
         b.inNet=true;                                  // 그물 저항 → 급격히 감속
+        { const dirIn=b.x>0.5?1:-1;                    // 최소 진입 속도 — 라인 위에서 멈춘 골은 골처럼 안 보인다(제보)
+          if(Math.abs(b.vx)<0.085) b.vx=dirIn*0.085; }
         b.vx*=0.55; b.vy*=0.55; b.vz*=0.35;
         b.celebrate={t:0, side, oKey, scorerId:sh.shooterId};
         { const _sid=(b.celebrate&&b.celebrate.scorerId)||null, _prev=this.goalTag;
@@ -34790,6 +34885,7 @@ class MatchSim{
                                  {p:scorer?this.nm(scorer):"공격수"});
     this.markHighlight("goal", side, HL_W.goal);
     b.inNet=true; b.vx*=0.55; b.vy*=0.55; b.vz*=0.35;
+    { const dirIn=b.x>0.5?1:-1; if(Math.abs(b.vx)<0.085) b.vx=dirIn*0.085; }
     b.celebrate={t:0, side, oKey, scorerId:sh.shooterId};
     b.ownerId=null; b.state="LOOSE"; b.shot=null;
   }
@@ -34880,8 +34976,9 @@ class MatchSim{
         a.y=clamp01(a.y+(my/ml)*step);
       }
     }
-    // 골망에 걸린 공은 잠시 흔들리다 멈춘다
-    if(b.inNet){ stepBallPhysics(b); b.x=clamp01(b.x); b.y=clamp01(b.y);
+    // 골망에 걸린 공은 잠시 흔들리다 멈춘다 — 그물 안(골라인 뒤)에 그대로 머문다.
+    // ⚠ 예전 clamp01이 득점된 공을 골라인 위로 되돌려 「골인지 아닌지 모호한」 그림을 만들었다(제보)
+    if(b.inNet){ stepBallPhysics(b);
       if(Math.hypot(b.vx,b.vy)<BALL_STOPV && b.z<=0) b.inNet=false; }
   }
   /* 공에 속도를 줘서 굴러가게 한다. 방향(rad, iso 기준)과 세기(iso/초)를 받는다.
