@@ -729,7 +729,21 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
 .fmTr:hover .fmName{background:#111a24;}
 .fmTr.picked .fmName{background:#132a19;}
 .fmRoleSel{max-width:150px;}
-@media (max-width:760px){ .fmRoleSel{max-width:104px; font-size:11.5px;} .fmTable .fmName{min-width:96px; font-size:12px;} }
+/* 📱 모바일 — 「좌우로 왔다 갔다 하며 교체한다」는 제보.
+   역할·임무 드롭다운이 폭을 다 먹어 컨디션이 화면 밖으로 밀렸다.
+   ① 드롭다운은 역할 코드가 읽히는 최소 폭으로 ② 후순위 열(경고·반응·카드·골·평점)은 접는다
+   ③ 셀 여백을 줄여, 이름부터 컨디션까지 한 화면에 들어오게 한다. */
+@media (max-width:760px){
+  .fmRoleSel{max-width:58px; font-size:10.5px; padding:2px 3px;}
+  .fmRoleSel.duty{max-width:44px;}
+  .fmTable .fmName{min-width:78px; font-size:11.5px;}
+  table.fmTable td, table.fmTable th{padding:8px 3px !important; font-size:12px;}
+  .fmTable .fmOpt{display:none;}
+  .fmSlot{font-size:10.5px; padding:4px 3px !important;}
+  .fmCond{font-size:12.5px; font-weight:800;}
+  .fmSubLbl{font-size:0;}                 /* 「교체 대기」 글자는 접고 칸만 남긴다 */
+  .fmSubLbl::after{content:"대기"; font-size:10.5px; color:#8b949e;}
+}
 .fmSlot{background:#1b2530;border-radius:5px;text-align:center;font-weight:800;color:#fff;font-size:11.5px;padding:5px 6px !important;}
 .fmSlot.sub{background:#141b22;color:#a9b4c0;}
 .fmRoleSel{background:#132029;color:#7ee2a8;border:1px solid #24404f;border-radius:5px;padding:3px 5px;font-size:11px;max-width:132px;}
@@ -19243,15 +19257,15 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
       ${cls==="out"?`oncontextmenu="showPlayerInfoPopup(event,${p.id})"`
         :`onclick="swapSel(${p.id})" oncontextmenu="showPlayerInfoPopup(event,${p.id})"
           draggable="true" ondragstart="dragP(event,${p.id})" ondragover="overP(event)" ondragleave="leaveP(event)" ondrop="dropP(event,${p.id})"`}>
-    <td class="fmSlot sub">${lbl}</td><td colspan="2" class="small">${note}</td>
-    <td class="fmStars">${prefStars(p).replace(/ title="[^"]*"/,"")}</td>
+    <td class="fmSlot sub">${lbl}</td><td colspan="2" class="small fmSubLbl">${note}</td>
+    <td class="fmStars fmOpt">${prefStars(p).replace(/ title="[^"]*"/,"")}</td>
     <td class="fmName">
       <span class="sqNo">${p.no||"-"}</span><b class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${p.id})">${nmF(p)}</b></td>
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
     <td class="fmCond">${mor(p.cond)}</td>
-    <td>${p.ban>0?'<span style="color:#f85149">✕</span>':p.inj>0?'<span style="color:#f85149">🚑</span>':'<span style="color:#3fb950">✓</span>'}</td>
-    <td><span class="fmReact ${moodTag(p).c}">${moodTag(p).t}</span></td>
-    <td class="fmRt">${p.apps?(p.seasonRating||0).toFixed(2):"-"}</td></tr>`;
+    <td class="fmOpt">${p.ban>0?'<span style="color:#f85149">✕</span>':p.inj>0?'<span style="color:#f85149">🚑</span>':'<span style="color:#3fb950">✓</span>'}</td>
+    <td class="fmOpt"><span class="fmReact ${moodTag(p).c}">${moodTag(p).t}</span></td>
+    <td class="fmRt fmOpt">${p.apps?(p.seasonRating||0).toFixed(2):"-"}</td></tr>`;
   const emptyBenchRows = (t.tactic&&t.tactic.benchManual)   // 어떤 정렬에서도 빈 자리는 빈 자리로 보인다
     ? Array.from({length:Math.max(0,9-mb.length)},(_,k)=>`<tr class="fmTr sub"><td class="fmSlot sub">S${mb.length+k+1}</td>
         <td colspan="9" class="small" style="color:var(--sub)">빈 자리 — 그 외 명단에서 ⬆ 벤치로 채울 수 있습니다</td></tr>`).join("")
@@ -19282,7 +19296,7 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
         onclick="autoPickXI();selSwap=null;refreshTactics()">🔄 자동 선발</button>
     </div>
     ${FMTAB==="kick"?kickerPanel(t, xi):`<div class="tblScroll"><table class="fmTable">
-      <tr><th>선발</th><th>역할</th><th>임무</th><th>전술적 능력</th><th>선수</th><th>포지션</th><th>컨디션</th><th>경고</th><th>반응</th><th>평점</th></tr>
+      <tr><th>선발</th><th>역할</th><th>임무</th><th class="fmOpt">전술적 능력</th><th>선수</th><th>포지션</th><th>컨디션</th><th class="fmOpt">경고</th><th class="fmOpt">반응</th><th class="fmOpt">평점</th></tr>
       ${rows}
       <tr class="fmDiv"><td colspan="10"><span class="fmSecLbl clickable" title="눌러서 접기/펼치기" onclick="G.opt=G.opt||{};G.opt.foldBench=${G.opt&&G.opt.foldBench?"false":"true"};saveGame();refreshTactics()">${G.opt&&G.opt.foldBench?"▸":"▾"} 🪑 교체 명단 (${mb.length}/9)${t.tactic&&t.tactic.benchManual?` <span class="small" style="color:var(--gold)">직접 편성</span>`:""}</span>${G.opt&&G.opt.foldBench?"":benchSortBtns()}${
         (G.opt&&G.opt.foldBench)||matchBench(t).some(p=>p.pos==="GK") ? ""
@@ -19972,23 +19986,23 @@ function fmLiveTable(t, pitchAndGap, bench, slotOf, sd){
         ${opts.map(r=>`<option value="${r.k}" ${r.k===rd.r?"selected":""}>${r.k} · ${r.n}</option>`).join("")}</select></td>
       <td onclick="event.stopPropagation()"><select class="fmRoleSel duty" onchange="fmSetDuty(${p.id},this.value)">
         ${(R?R.duty:["S"]).map(d=>`<option value="${d}" ${d===rd.d?"selected":""}>${DUTY_N[d]||d}</option>`).join("")}</select></td>
-      <td class="fmStars">${roleStarsFor(t,p,sl).replace(/ title="[^"]*"/,"")}</td>
+      <td class="fmStars fmOpt">${roleStarsFor(t,p,sl).replace(/ title="[^"]*"/,"")}</td>
       <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
       <td class="fmCond" style="color:${fitCol};font-weight:700">${fit}</td>
-      <td>${card}</td>
-      <td class="fmG">${x.goals||0}</td>
-      <td class="fmRt">${rt}</td></tr>`;
+      <td class="fmOpt">${card}</td>
+      <td class="fmG fmOpt">${x.goals||0}</td>
+      <td class="fmRt fmOpt">${rt}</td></tr>`;
   };
   const benchRows=benchViewSort(bench).map(([p,i])=>`<tr class="fmTr sub rowPick ${selSwap===p.id?'picked':''}"
       onclick="swapSel(${p.id})" oncontextmenu="showPlayerInfoPopup(event,${p.id})"
       draggable="true" ondragstart="dragP(event,${p.id})" ondragover="overP(event)" ondragleave="leaveP(event)" ondrop="dropP(event,${p.id})">
     <td class="fmName">
       <span class="sqNo">${p.no||"-"}</span><b>${nmF(p)}</b></td>
-    <td class="fmSlot sub">S${i+1}</td><td colspan="2" class="small">교체 대기</td>
-    <td class="fmStars">${prefStars(p).replace(/ title="[^"]*"/,"")}</td>
+    <td class="fmSlot sub">S${i+1}</td><td colspan="2" class="small fmSubLbl">교체 대기</td>
+    <td class="fmStars fmOpt">${prefStars(p).replace(/ title="[^"]*"/,"")}</td>
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
-    <td class="fmCond">${mor(p.cond)}</td><td><span style="color:#3fb950">✓</span></td>
-    <td class="fmG">-</td><td class="fmRt">-</td></tr>`).join("");
+    <td class="fmCond">${mor(p.cond)}</td><td class="fmOpt"><span style="color:#3fb950">✓</span></td>
+    <td class="fmG fmOpt">-</td><td class="fmRt fmOpt">-</td></tr>`).join("");
   return `<div class="fmTableWrap">
     <div class="fmTabs">
       <span class="fmTab on">👁 출전 선수</span>
@@ -19999,12 +20013,12 @@ function fmLiveTable(t, pitchAndGap, bench, slotOf, sd){
       <button class="mini" style="padding:4px 10px;font-size:11.5px" onclick="cancelLiveTactics()">✖ 취소</button>
     </div>
     <div class="tblScroll"><table class="fmTable">
-      <tr><th>선수</th><th>위치</th><th>역할</th><th>임무</th><th>전술적 능력</th><th>포지션</th><th>체력</th><th>카드</th><th>골</th><th>평점</th></tr>
+      <tr><th>선수</th><th>위치</th><th>역할</th><th>임무</th><th class="fmOpt">전술적 능력</th><th>포지션</th><th>체력</th><th class="fmOpt">카드</th><th class="fmOpt">골</th><th class="fmOpt">평점</th></tr>
       ${order.map(row).join("")}
       ${benchRows?`<tr class="fmDiv"><td colspan="10"><span class="fmSecLbl">🪑 교체 대기</span></td></tr>
       <tr class="fmTr sub" style="background:#0d1117">
         ${sqTh("bench","name","선수")}${sqTh("bench","idx","S#")}<td colspan="2"></td>
-        ${sqTh("bench","star","능력")}${sqTh("bench","pos","포지션")}${sqTh("bench","cond","컨디션")}<td></td><td></td>${sqTh("bench","rt","평점")}</tr>${benchRows}`:""}
+        ${sqTh("bench","star","능력")}${sqTh("bench","pos","포지션")}${sqTh("bench","cond","컨디션")}<td class="fmOpt"></td><td class="fmOpt"></td>${sqTh("bench","rt","평점")}</tr>${benchRows}`:""}
     </table></div>
   </div>`;
 }
