@@ -6171,7 +6171,7 @@ function eaclClub(id){
   return t;
 }
 /* =====================================================
-   🌏 EACL 대회 엔진 — 조추첨 · 리그 스테이지 · 토너먼트
+   🌏 EACL 대회 엔진 — 대진 추첨 · 리그 스테이지 · 토너먼트
    12팀(한국3 · 일본4 · 중국2 · 태국2 · 말레이1)이 한 덩어리 리그를 치른다.
    각 팀은 포트별로 홈 1 · 원정 1씩 총 8경기를 뛰고, 상위 8팀이 단판 토너먼트로 넘어간다.
    (실제 ACLE도 8강부터는 중립지 단판이다)
@@ -6194,13 +6194,14 @@ function eaclPower(id){
   try{ return teamOVR(t); }catch(e){}
   return 66;
 }
-/* ── 조추첨 ────────────────────────────────────────────────
+/* ── 대진 추첨 (스위스 방식) ─────────────────────────────────
+   조를 나누지 않는다. 12팀이 하나의 순위표에 들어가고, 추첨은 「누구와 붙느냐」만 정한다.
    ① 전력순으로 포트 1~4 (3팀씩)  ② 각 팀은 포트마다 홈 1 · 원정 1
    ③ 같은 나라끼리는 만나지 않는다  ④ 같은 팀과 두 번 만나지 않는다
    제약이 빡빡해 그리디로는 막히므로 무작위 순서 백트래킹으로 푼다. */
 function eaclMakePots(ids){
   /* 전력이 높은 팀부터 위 포트를 채우되, 한 포트에 같은 나라가 두 팀 들어가지 않게 한다.
-     ⚠ 이 규칙은 미관이 아니라 조추첨의 성립 조건이다 — 예컨대 일본 4팀이 한 포트에 몰리면
+     ⚠ 이 규칙은 미관이 아니라 대진 추첨의 성립 조건이다 — 예컨대 일본 4팀이 한 포트에 몰리면
        "같은 나라끼리 안 만난다 + 포트마다 홈1·원정1"을 동시에 만족하는 대진이 아예 없다. */
   const sorted=[...ids].sort((a,b)=>eaclPower(b)-eaclPower(a));
   const pots=[[],[],[],[]];
@@ -6308,7 +6309,7 @@ function eaclSetup(){
     G.eaclClubs=keep;
   }catch(e){}
   const me=G.userTeamId;
-  addNews(`🌏 <b>${eaclName()} 조추첨</b> — 12개 클럽의 리그 스테이지 대진이 확정됐습니다.`, "info", "club");
+  addNews(`🌏 <b>${eaclName()} 대진 추첨</b> — 12개 클럽이 각 8경기를 치를 상대가 확정됐습니다. <span class="small">조 없이 한 순위표에서 겨루고 상위 8팀이 8강에 오릅니다.</span>`, "info", "club");
   /* 대진 난이도 — 우리 상대 8팀의 평균 전력을 우리와 견준다 */
   if(ids.indexOf(me)>=0 && !G.jobless){
     try{
@@ -6320,7 +6321,7 @@ function eaclSetup(){
   if(ids.indexOf(me)>=0){
     const mine=G.eacl.fix.filter(m=>m.h===me||m.a===me).sort((x,y)=>x.d-y.d)
       .map(m=>{ const home=m.h===me, o=eaclTeam(home?m.a:m.h); return `${o.short}(${home?"홈":"원정"})`; });
-    addNews(`🌏 <b>${G.teams[me].short} ${eaclShort()} 조추첨 결과</b> — ${mine.join(" · ")}`, "good", "club");
+    addNews(`🌏 <b>${G.teams[me].short} ${eaclShort()} 대진 추첨 결과</b> — ${mine.join(" · ")}`, "good", "club");
   }
 }
 function setupACL(){ try{ eaclSetup(); }catch(e){ G.eacl=null; G.aclFix=[]; } }
@@ -6584,21 +6585,21 @@ function eaclPlayKO(stage){
    ⚠ 조사는 반드시 마커(이/가, 은/는, 을/를)를 쓸 것.
 ═══════════════════════════════════════════════════════════════ */
 const ESOC={
- /* ── 조추첨 ─────────────────────────────────────────── */
- pool:["대진 나왔다. 이제 진짜 실감 난다 아시아 무대","조추첨 보는데 왜 내가 긴장하냐 ㅋㅋ",
-   "{o} 만나네... 자료 찾아보러 간다","솔직히 이 조 나쁘지 않다. 해볼 만해",
+ /* ── 대진 추첨 ─────────────────────────────────────── */
+ pool:["대진 나왔다. 이제 진짜 실감 난다 아시아 무대","추첨 보는데 왜 내가 긴장하냐 ㅋㅋ",
+   "{o} 만나네... 자료 찾아보러 간다","솔직히 상대 8팀 나쁘지 않다. 해볼 만해",
    "원정 일정부터 확인함. 비행기 값 얼마냐 이게","대진표 캡처해서 배경화면 했다",
    "우리가 아시아 대회를 나간다는 게 아직도 안 믿긴다","티켓 예매일 언제인지부터 알려줘라 구단아",
-   "8경기 다 직관하고 싶은데 통장이 안 된다","조추첨 생중계 보면서 손에 땀 남 진심",
+   "8경기 다 직관하고 싶은데 통장이 안 된다","추첨 생중계 보면서 손에 땀 남 진심",
    "우리 팀 유니폼 등에 {cs} 패치 붙는다 그거 하나로 설렌다",
    "리그도 벅찬데 8경기 더... 스쿼드 감당 되나 걱정부터 든다"],
- drawHard:["아니 이건 좀... 대진 운 진짜 없다","조추첨 보고 한숨 나옴. 하필 저 팀들",
-   "죽음의 조 걸렸네 ㅋㅋㅋ 어차피 붙을 거 일찍 붙자","이 대진에서 8강 가면 그건 기적이다",
+ drawHard:["아니 이건 좀... 대진 운 진짜 없다","추첨 보고 한숨 나옴. 하필 저 팀들",
+   "상대 8팀이 죄다 강팀이네 ㅋㅋㅋ 어차피 붙을 거 일찍 붙자","이 대진에서 8강 가면 그건 기적이다",
    "일단 한 경기라도 이기는 걸 목표로 하자","{o} 전력 찾아봤는데 눈앞이 깜깜하다",
    "어렵긴 한데 어차피 아시아 올라온 팀 중에 쉬운 팀이 어딨냐"],
  drawEasy:["이 정도면 대진 잘 뽑았다","해볼 만하다 진짜로. 8강은 가야 한다 이건",
-   "이 조에서 못 올라가면 변명 못 함","대진 보고 처음으로 기대라는 걸 해봤다",
-   "무조건 조 1위 가자 욕심 좀 내자"],
+   "이 대진에서 못 올라가면 변명 못 함","대진 보고 처음으로 기대라는 걸 해봤다",
+   "8강은 기본이고 상위 시드까지 노려보자"],
 
  /* ── 승리 ─────────────────────────────────────────── */
  win:["아시아에서 이기는 맛이 이런 거구나","{o} 잡았다!! 오늘 잠 못 잔다",
@@ -6708,7 +6709,7 @@ const ESOC={
    "이런 거 다 이겨내고 이겨야 진짜 강팀인 거지","원정 응원 가신 분들 안전하게 다녀오세요"]
 };
 const EFMK={
- draw:[["{cs} 조추첨 나왔네 K리그 팀들 대진 어떰",0],["{t} 대진 저거 할 만한데?",1],
+ draw:[["{cs} 대진 추첨 나왔네 K리그 팀들 상대 어떰",0],["{t} 대진 저거 할 만한데?",1],
    ["아시아 대회는 원정이 반이다 진짜",0],["K리그 3팀 다 8강 가는 거 볼 수 있을까",1],
    ["일본 팀들이랑 붙는 거 벌써 재밌겠다",1],["솔직히 J리그 상위권이 제일 무섭지",0],
    ["동남아 팀 요즘 무시하면 큰코다침",0],["중국 팀 용병 명단 봤는데 ㄷㄷ 돈 많이 썼네",0]],
@@ -6837,7 +6838,7 @@ function eaclSocialResult(M, opp, my, op, stage){
     if(Math.random()<0.30) socialFill(ESOC.fatigue, 1+R(2), 0, v);
   }catch(e){}
 }
-/* 조추첨 · 단계 통과 · 우승처럼 「한 번뿐인 순간」의 반응 */
+/* 대진 추첨 · 단계 통과 · 우승처럼 「한 번뿐인 순간」의 반응 */
 function eaclSocialEvent(kind, extra){
   const t=userTeam(); if(!t) return;
   const v=Object.assign({t:t.short, c:eaclName(), cs:eaclShort()}, extra||{});
@@ -20493,7 +20494,7 @@ function attRankCard(){
     구단명을 누르면 스쿼드를 볼 수 있습니다.</p></div>`;
 }
 /* ---------- 일정 ---------- */
-/* ── 🌏 EACL 카드 — 조추첨 · 리그 스테이지 순위 · 내 일정 · 토너먼트 ── */
+/* ── 🌏 EACL 카드 — 대진 추첨 · 리그 스테이지 순위 · 내 일정 · 토너먼트 ── */
 /* 🏴 국기 — 유니코드 국기 이모지(🇰🇷)는 윈도우에서 렌더링되지 않고 "KR" 두 글자로 나온다.
    FMK 공유용이라 대다수가 윈도우다. 그래서 이모지 대신 인라인 SVG로 직접 그린다. */
 const EACL_FLAG_SVG={
@@ -20569,7 +20570,7 @@ function eaclSchedCard(){
           <td>${res}</td></tr>`;
       }).join("")}
     </table></div>
-    <p class="small" style="opacity:.65;margin-top:6px">순위표·조추첨·토너먼트 대진은 <b>🏆 순위표 → 🌏 ${eaclShort()}</b> 탭에서 볼 수 있습니다.</p>
+    <p class="small" style="opacity:.65;margin-top:6px">순위표·대진 추첨·토너먼트는 <b>🏆 순위표 → 🌏 ${eaclShort()}</b> 탭에서 볼 수 있습니다.</p>
   </div>`;
 }
 function eaclCard(){
@@ -20577,7 +20578,7 @@ function eaclCard(){
   const E=G.eacl, me=G.userTeamId, joined=E.teams.indexOf(me)>=0;
   const title=eaclName()+" · 동아시아 클럽 대항전";
 
-  /* ① 조추첨 — 포트 구성 */
+  /* ① 대진 추첨 — 포트 구성 */
   const pots=E.pots.map((p,i)=>`<tr><td style="white-space:nowrap"><b>포트 ${i+1}</b></td>
     <td>${p.map(id=>eaclNm(id)).join(" &nbsp; ")}</td></tr>`).join("");
 
@@ -20660,11 +20661,11 @@ function eaclCard(){
       return `<div class="msg info" style="margin-bottom:8px">🌏 <b>${userTeam().short}</b>의 아시아 이력 — ${bits.join(" · ")}</div>`;
     })()}
     <div class="small" style="opacity:.7;margin-bottom:6px">현재 단계: <b>${eaclStageLabel()}</b> · 12개 클럽 · 각 팀 8경기 후 상위 8팀 단판 토너먼트${joined?"":" · <b>우리 팀은 미참가</b>"}</div>
-    <div class="tblScroll"><table><tr><th colspan=2 style="text-align:left">🎱 조추첨 포트</th></tr>${pots}</table></div>
+    <div class="tblScroll"><table><tr><th colspan=2 style="text-align:left">🎱 추첨 포트 <span class="small" style="font-weight:400;opacity:.7">— 각 포트에서 홈 1 · 원정 1씩 뽑아 8경기</span></th></tr>${pots}</table></div>
     ${mine}
     <div class="tblScroll" style="margin-top:8px"><table>
       <tr><th>#</th><th style="text-align:left">클럽</th><th>승</th><th>무</th><th>패</th><th>득실</th><th>승점</th></tr>${rows}</table></div>
-    <div class="small" style="opacity:.6;margin-top:4px">🔵 1~8위 토너먼트 진출</div>
+    <div class="small" style="opacity:.6;margin-top:4px">🔵 1~8위 토너먼트 진출 — 조 없이 12팀 단일 순위표 (승점 → 골득실 → 다득점)</div>
     ${ko}
     ${(function(){
       const top=eaclTopScorers(5);
