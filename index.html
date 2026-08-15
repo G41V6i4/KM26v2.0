@@ -36338,9 +36338,20 @@ class MatchSim{
            앞으로 따라온다. 완벽히 붙진 않는다 — 틱당 6%씩, 자연스러운 정리 속도다. */
         /* 👀 시선 전환 중(패스 전 몸 돌리기)에는 공을 더 빠르게 시선 앞으로 데려온다 —
            발끝으로 공을 굴리며 도는 그림. 평상시엔 틱당 6%, 회전 중엔 22%. */
-        const gather = carrier._kickFace ? 0.78 : 0.94;
+        /* ⚠ 제보 — 「드리블할 때 공이 선수에게 질질 끌려간다. 공이 앞에 있어야 하는데」.
+           예전에는 받은 순간의 상대 위치를 거의 그대로 들고 다니면서(옆 정리 틱당 6%),
+           목표 전진 거리도 0.6m로 고정이라 옆·뒤에서 받은 공이 계속 몸에 붙어 다녔다.
+           ─ 지금 속도에 맞는 「발 앞 리드 거리」를 목표로 잡고, 옆으로 벌어진 공은 빠르게 정리한다. */
+        const gather = carrier._kickFace ? 0.69 : 0.79;
         keep.lat*=gather;
-        if(keep.fwd<DRIB_LEAD*0.35) keep.fwd+=(DRIB_LEAD*0.35-keep.fwd)*(carrier._kickFace?0.28:0.10);
+        {
+          const _spD=clamp(Math.hypot((carrier.vx||0)*PITCH_AR, carrier.vy||0)/(SPD.SPRINT*SIM_DT), 0, 1.15);
+          const _wantFwd=clamp((0.40+_spD*0.95)*(1.28-(carrier.dribSkill||0.6)*0.42)/67,
+                               DRIB_LEAD*0.30, DRIB_LEAD*0.90);
+          /* 공이 몸 뒤로 넘어가 있으면(음수) 가장 급하다 — 발끝으로 끌어 앞으로 돌려놓는다 */
+          const _gain = keep.fwd<0 ? 0.48 : (carrier._kickFace?0.35:0.32);
+          if(keep.fwd<_wantFwd) keep.fwd += (_wantFwd-keep.fwd)*_gain;
+        }
         const w=localToWorld(keep, carrier);
         /* ⚠ 제보 — "선수도 없는데 공이 거울에 반사되듯 튕겨 다른 방향으로 간다".
            몸이 홱 돌면 로컬 오프셋이 그대로 회전해, 4~5m 떨어져 있던 공이 한 틱에
@@ -36415,11 +36426,18 @@ class MatchSim{
           한 틱에 1m 가까이 「뒤로」 끌려가 궤적이 그 자리에서 꺾여 보였다(2경기 123회 측정).
        ─ 이제 「발밑에 둬야 할 거리」를 넘은 만큼만, 사람이 발을 뻗는 속도 한도 안에서 당긴다. */
     if(_spN<0.30 && !b._knock){
-      const _gx=(carrier.x-b.x)*PITCH_AR, _gy=carrier.y-b.y;
-      const _gap=Math.hypot(_gx,_gy)*ISO_TO_M;              // 지금 떨어진 거리(m)
-      const _keep=0.9+_spN*2.2;                             // 멈춰 있으면 발밑(0.9m), 걸으면 조금 앞
-      if(_gap>_keep){
-        const step=Math.min(_gap-_keep, 0.45);              // 한 틱에 최대 45cm — 발로 끌어오는 속도
+      /* 목표는 「선수 몸」이 아니라 「시선 앞 한 발」이다 — 공을 몸으로 끌어당기면
+         정지 상태에서 공이 발 뒤나 옆에 붙어 있는 그림이 된다(제보). */
+      let _tx=carrier.x, _ty=carrier.y;
+      if(carrier.face!==undefined){
+        const _ahead=(0.75+_spN*1.2)/ISO_TO_M;              // 0.75m ~ 1.1m 앞
+        _tx=carrier.x+Math.cos(carrier.face)*_ahead/PITCH_AR;
+        _ty=carrier.y+Math.sin(carrier.face)*_ahead;
+      }
+      const _gx=(_tx-b.x)*PITCH_AR, _gy=_ty-b.y;
+      const _gap=Math.hypot(_gx,_gy)*ISO_TO_M;              // 목표 지점까지 떨어진 거리(m)
+      if(_gap>0.30){
+        const step=Math.min(_gap-0.30, 0.45);               // 한 틱에 최대 45cm — 발로 옮기는 속도
         const k2=(step/ISO_TO_M)/Math.max(1e-6, Math.hypot(_gx,_gy));
         b.x=clamp01(b.x+_gx*k2/PITCH_AR); b.y=clamp01(b.y+_gy*k2);
       }
