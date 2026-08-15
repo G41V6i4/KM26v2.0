@@ -4310,6 +4310,12 @@ function tacticAtkBonus(me, opp, L, Lo){
 function condFactor(t){ const T=TAC(t); return 1+(T.press-1)*0.35+(T.tempo-1)*0.25; }
 function styleName(t){
   const T=TAC(t);
+  /* ⚠ 제보 — 「선수비 후역습」으로 맞춰 놨는데 위쪽 표기는 「롱볼 역습」이었다.
+     이 프리셋은 다이렉트 패스(3)도 함께 쓰기 때문에 롱볼 조건에 먼저 걸렸다.
+     ─ 라인과 멘탈리티가 함께 낮으면 그건 롱볼이 아니라 「내려서서 역습」이다. 먼저 판정한다. */
+  if(ctrLv(T)>=3 && LO(T.line) && LO(T.mentality)) return "선수비 후역습";
+  /* 짧은 패스 + 강한 압박 + 높은 라인 = 티키타카 (게겐과 갈라 준다) */
+  if(LO(T.pass) && HI(T.press) && HI(T.line)) return "티키타카";
   if(HI(T.press)&&HI(T.line)) return "게겐프레싱";
   if(LO(T.pass)&&T.tempo<=1&&T.width<=1) return "점유율 축구";
   if(HI(T.pass)&&ctrLv(T)>=3) return "롱볼 역습";
@@ -28810,6 +28816,7 @@ const CTRL_Z = 1.0/ISO_TO_M;        // 이보다 높이 뜬 공은 발로 잡을
 const POSSESS_R = 0.023;            // 이 반경 안 + 낮은 높이면 공을 소유한다 (약 1.5m)
 const GOAL_POST = 0.0022;           // 골포스트 반경 + 공 반경 (약 0.15m)
 const CROSSBAR_Z = 2.44/ISO_TO_M;   // 크로스바 높이
+const KICK_REACH_M = 2.2;           // 발이 닿는 거리 — 이보다 멀면 아직 찰 수 없다 (제보: 원거리 마법 패스)
 const VOLLEY_Z = 0.35/ISO_TO_M;     // 이 높이 이상으로 떠 있는 공은 발리로 때린다
 const HEAD_Z0 = 1.5/ISO_TO_M, HEAD_Z1 = 2.6/ISO_TO_M;   // 머리 높이
 const GK_OFFLINE = 4.0/ISO_TO_M;    // 키퍼가 이만큼 나와 있으면 로빙슛이 보인다
@@ -33883,6 +33890,24 @@ class MatchSim{
   decide(carrier){
     const key=carrier.side, oKey=this.opp(key);
     const mates=this.side(key), opps=this.side(oKey);
+    /* 🦶 발이 닿아야 찬다 (제보 — "공이 멀리 있는데 패스가 나가는 마법 같은 장면").
+       드리블로 공을 앞에 두고 뛰는 동안에는 아직 킥할 수 없다. 따라잡은 다음 찬다.
+       ─ 세트피스·페널티는 이미 공 앞에 서 있는 상황이라 이 게이트를 지나간다.
+       ─ 못 찰 때는 아무 것도 하지 않고 다음 틱을 기다린다. rollBall 이 공을 발밑으로 당겨 온다. */
+    {
+      const b0=this.ball;
+      if(!b0.setPiece && !b0.isPenalty && !b0.spPlan){
+        const kd=Math.hypot((b0.x-carrier.x)*PITCH_AR, b0.y-carrier.y)*ISO_TO_M;
+        if(kd>KICK_REACH_M){
+          /* 오래 못 따라잡으면 공을 놓친 것이다 — 흐른 공으로 돌린다(치달 로직이 따로 처리) */
+          if(!b0._knock && kd>KICK_REACH_M*2.6){
+            b0.state="LOOSE"; b0.ownerId=null; b0._rollOwner=null; b0._loc=null;
+            b0.looseT=0; b0.looseBy=carrier.side;
+          }
+          return;
+        }
+      }
+    }
     // ── 페널티킥 — 다른 선택지가 없다. 키커는 무조건 골문을 향해 찬다.
     if(this.ball.isPenalty){
       this.ball.isPenalty=false;
@@ -34831,16 +34856,28 @@ class MatchSim{
     if(!(opt&&opt.noTouch) && !b.setPiece && !b.shot && !b.celebrate && !b.foulScene
        && a.slot!=="GK" && (b.state==="PASS"||b.state==="LOOSE")
        && !(b._otAt!=null && this.t-b._otAt<1.0)){
+      /* 🦶 원터치도 발이 닿는 거리에서만 — 멀리 있는 공을 그대로 때리는 마법은 없다 */
+      const _otD=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y)*ISO_TO_M;
       let ot=null;
-      try{ ot=oneTouchEval(a, b, this.side(this.opp(a.side)), null); }catch(e){ ot=null; }
+      if(_otD<=KICK_REACH_M*1.15){
+        try{ ot=oneTouchEval(a, b, this.side(this.opp(a.side)), null); }catch(e){ ot=null; }
+      }
       if(ot && ot.ok){
         b._otAt=this.t;
         b.ownerId=a.id; this.possSide=a.side; this.lastTouch=a.side;
         /* 들어오던 공의 속도·높이를 그대로 쓴다 — 정지시키지 않는다 */
         const gkO=this.side(this.opp(a.side)).find(q=>q.slot==="GK")||null;
         const type=chooseShotType(a, ot.g, b, gkO, {oneTouch:true});
-        /* 발을 대는 순간의 위치 — 공이 오던 방향으로 아주 조금 앞에서 맞힌다 */
-        b.x=clamp01(b.x+(b.vx||0)*0.35/PITCH_AR); b.y=clamp01(b.y+(b.vy||0)*0.35);
+        /* 발을 대는 순간의 위치 — 공이 오던 방향으로 아주 조금 앞에서 맞힌다.
+           ⚠ 빠른 패스에서는 이 보정만으로 공이 2m 넘게 앞서 나가 「멀리서 때리는」 그림이 됐다.
+              접점 이동은 반 걸음(최대 0.5m)까지만. */
+        {
+          const _sx=(b.vx||0)*0.35, _sy=(b.vy||0)*0.35;
+          const _sm=Math.hypot(_sx*PITCH_AR,_sy)*ISO_TO_M;
+          const _lim2=0.5;
+          const _k3=_sm>_lim2 ? (_lim2/_sm) : 1;
+          b.x=clamp01(b.x+_sx*_k3); b.y=clamp01(b.y+_sy*_k3);
+        }
         this.evl("ONE_TOUCH", a, {d:Math.round(ot.g.distM), s:Math.round(ot.score*100)/100, t:type});
         if(this.emitEvents){
           const far=!ot.inBox;
