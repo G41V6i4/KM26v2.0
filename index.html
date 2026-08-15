@@ -7686,7 +7686,11 @@ function startNewSeason(){
     }
     // 은퇴 (37세+)
     const retired=t.players.filter(p=>!p.army && G.season-p.by>=37&&Math.random()<0.7);
-    for(const rp of retired){ t.players.splice(t.players.indexOf(rp),1); if(t.isUser) addNews(`👋 ${rp.name} 은퇴`); }
+    for(const rp of retired){
+      t.players.splice(t.players.indexOf(rp),1);
+      if(t.isUser) retireFarewell(rp, t);        // 👋 마지막 인사 — 조용히 사라지지 않는다
+      else if(rp.ovr>=76) addNews(`👋 ${rp.name}(${t.short}), ${G.season-rp.by}세로 현역 은퇴`, null, "club");
+    }
     // AI 스쿼드 정리 → FA 시장 방출
     /* ⚠ 제보 — 김천(상무) 소속 복무 중인 선수가 FA 시장에 나와 영입이 됐다.
        aiReleaseCheck 에는 군 가드가 있었는데 이 오프시즌 정리 루프에는 빠져 있었다.
@@ -8265,7 +8269,13 @@ function endLoan(p, holder){
   if(!own.players.includes(p)){ own.players.push(p); joinClub(own, p, false); }   // 복귀 — 재계약 잠금 없음
   if(own.isUser && club){ try{ loanSocial(p, club, "back"); }catch(e){}
     addNews(`🔁 <b>${p.name}</b> 임대 복귀 — ${club.short}에서 ${played}경기 (평점 ${p.apps?(p.seasonRating||0).toFixed(2):"-"})`, played>=15?"good":undefined); }
-  if(played>=15){ p.ovr=clamp(p.ovr+1,40,96); p.ovrF=p.ovr; }
+  if(played>=15){
+    p.ovr=clamp(p.ovr+1,40,96); p.ovrF=p.ovr;
+    /* ⚠ 제보 — 임대 복귀 선수가 「종합 178 / 잠재 174」로 뜬다.
+       실전 경험 보너스로 종합만 올리고 잠재는 그대로 둬서 역전이 생겼다.
+       한계를 넘어섰다면 그 한계도 함께 올라간 것으로 본다. */
+    if((p.pot||0) < p.ovr) p.pot=p.ovr;
+  }
   p.loan=null;
 }
 /* 임대 복귀 — 시즌 전환 때 부른다 */
@@ -9777,6 +9787,15 @@ function uidIntegrity(){
   return res;
 }
 function migrateSave(){
+  /* 📈 잠재력 정합성 — 종합이 잠재를 넘어선 채 저장된 세이브를 바로잡는다
+     (임대 복귀 보너스 등으로 종합만 오른 경우) */
+  try{ if(G&&G.teams){
+    const fixPot=(arr)=>{ if(!Array.isArray(arr)) return;
+      for(const p of arr) if(p && (p.pot||0) < (p.ovr||0)) p.pot=p.ovr; };
+    for(const id in G.teams) fixPot(G.teams[id].players);
+    fixPot(G.freeAgents); fixPot(G.overseas); fixPot(G.youthPool);
+    if(G.scout) fixPot(G.scout.list);
+  } }catch(e){}
   /* 🚑 부상 회복 예정일 백필 — 날짜 기반으로 바뀌기 전 세이브 (경기를 치러야만 회복되던 시절) */
   try{ if(G&&G.teams) for(const id in G.teams) for(const p of (G.teams[id].players||[]))
     if(p.inj>0 && p.injUntil==null) p.injUntil=(G.day||0)+p.inj*7; }catch(e){}
@@ -14896,6 +14915,55 @@ function armyDaysLeft(p){
   const out=new Date(p.army.out+"T00:00:00");
   const now=dateOfDay(G.day||0);
   return Math.ceil((out-now)/86400000);
+}
+/* 👋 은퇴 인사 — 오래 뛴 선수가 조용히 사라지면 안 된다(제보: "노장이 갑자기 없어져가지고").
+   입대 배웅과 같은 방식으로, 한 명씩 마지막 인사를 나눈다. */
+let _retireQ=[];
+function retireFarewell(p, t){
+  _retireQ.push({p, t});
+  if(_retireQ.length===1) _retireNext();
+}
+function _retireNext(){
+  const it=_retireQ[0]; if(!it) return;
+  const p=it.p, t=it.t||userTeam();
+  const done=(fn)=>{ try{ fn(); }catch(e){} _retireQ.shift(); saveGame(); setTimeout(_retireNext, 60); };
+  const nm=p.name, age=G.season-p.by, yrs=Math.max(1, Math.round((p.career||0)/34));
+  const legend=(p.apps||0)>=25 || (p.ovr||0)>=74;
+  const say=pick(legend
+    ? [`"감독님, 이제 그만 뛰려고 합니다. 몸이 먼저 알더군요."`,
+       `"마지막 한 시즌만 더… 하고 싶었는데, 여기까지가 제 축구인 것 같습니다."`,
+       `"라커룸 냄새가 제일 그리울 겁니다. 진심으로 감사했습니다."`]
+    : [`"저는 여기까지입니다. 감독님 밑에서 뛴 시간, 잊지 않겠습니다."`,
+       `"더 보여드리지 못해 죄송합니다. 이제 그만 내려놓으려 합니다."`]);
+  showConfirm(`👋 <b>${nm}, 은퇴를 알리러 왔습니다</b>\n\n${say}\n\n<span class="small">${POS_KO[p.pos]||p.pos} · ${age}세 · 통산 ${p.career||0}경기${(p.apps||0)?` · 올 시즌 ${p.apps}경기 ${p.goals||0}골`:""}</span>\n\n어떻게 보내시겠습니까?`,
+    ()=>done(()=>{      // 🤝 예우
+      addMood(fixJosa(`👋 ${nm}이/가 은퇴합니다. 선수단 전원이 도열해 박수로 배웅했습니다.`));
+      try{ t.morale=clamp(t.morale+1.5,40,99); }catch(e){}
+      addNews(fixJosa(`👋 <b>${nm}</b>, ${age}세로 현역 은퇴 — ${t.short}이/가 도열 박수로 배웅했습니다 (통산 ${p.career||0}경기)`),"good","club");
+      const V={p:nm, t:t.short};
+      try{
+        socialFill(legend?SOC.retireBig:SOC.retire, legend?(3+R(2)):2, 1, V);
+        fmkFill(legend?FMK.retireBig:FMK.retire, legend?(2+R(2)):1, V);
+        if(legend) rivalFill(RIV.retireBig, 1+R(2), 1, V);   // 남의 팬도 레전드에겐 박수를 보낸다
+      }catch(e){}
+      if(legend) try{ adjustTrust("fans",+2,`${nm} 은퇴 예우`); }catch(e){}
+    }),
+    {okLabel:"🤝 「고생 많았습니다. 도열해서 배웅합시다」",
+     cancelLabel:"🙂 「수고했어요」 (짧게 인사한다)",
+     onCancel:()=>done(()=>{
+      addMood(fixJosa(`👋 ${nm}이/가 조용히 팀을 떠났습니다.`));
+      addNews(fixJosa(`👋 ${nm}, ${age}세로 현역 은퇴 (통산 ${p.career||0}경기)`), null, "club");
+      const V={p:nm, t:t.short};
+      try{
+        /* 오래 뛴 선수를 짧게 보내면 팬들이 서운해한다 */
+        if(legend){
+          socialFill(SOC.retireCold, 2+R(2), -1, V);
+          fmkFill(FMK.retireBig, 1+R(2), V);
+          rivalFill(RIV.retireBig, 1+R(1), 1, V);
+          try{ adjustTrust("fans",-2,`${nm} 은퇴 홀대`); }catch(e){}
+        } else socialFill(SOC.retire, 1+R(2), 0, V);
+      }catch(e){}
+     })});
 }
 /* 🎖️ 입대 배웅 — 내 선수가 김천 상무로 떠날 때, 훈련소 가기 전 마지막 인사.
    여러 명이 같은 날 뽑혀도 한 명씩 차례로 인사한다. */
@@ -24103,6 +24171,39 @@ RIV.sold=[
  ["{t} 핵심 빠지네. 다음 시즌 순위 내려가겠다",-1],
  ["솔직히 {p} 폼 떨어진 지 좀 됐음. {t} 잘 판 거임",1],
  ["{t} 팬들 이거 받아들일 수 있나? 우리라면 뒤집어졌음",-1]];
+/* ── 👋 은퇴 ── */
+SOC.retireBig=[
+ ["{p} 은퇴라니... 내 유년기가 같이 끝나는 기분이다",1],
+ ["{p} 유니폼 아직 못 버리겠다. 진짜 고생했다",1],
+ ["오늘 하루는 그냥 {p} 하이라이트만 볼란다",1],
+ ["{p} 없는 {t} 라인업이 상상이 안 되네",0],
+ ["은퇴식 안 해주면 진짜 화낼 거다 구단아",0],
+ ["{p} 데뷔전 직관했던 사람인데 벌써 이렇게 됐네",1],
+ ["마지막까지 팀에 남아준 것만으로 고맙다",1]];
+SOC.retire=[
+ ["{p} 은퇴하네. 조용히 잘 뛰어준 선수였는데",0],
+ ["{p} 수고했다. 제2의 인생 응원한다",1],
+ ["요즘 안 보이더니 그만두는구나",0],
+ ["{p} 은퇴 기사 보고 알았다. 잘 가라",0]];
+SOC.retireCold=[
+ ["{p} 은퇴하는데 구단은 아무것도 안 하네?",-1],
+ ["10년 넘게 뛴 선수한테 이게 대우냐",-1],
+ ["다른 팀은 은퇴식 해주던데 우리는 뭐 하냐",-1],
+ ["보내는 방식이 그 구단의 격이다",-1]];
+FMK.retireBig=[
+ ["{p} 은퇴 ㅠㅠ 진심으로 한 시대가 끝났다",1],
+ ["{p} 전성기 영상 보는데 눈물남 ㅋㅋㅋ",1],
+ ["{t} 팬 아닌데도 이건 좀 아쉽다",1],
+ ["레전드 은퇴 소식은 언제 봐도 먹먹함",1]];
+FMK.retire=[
+ ["{p} 은퇴했네. K리그 오래 뛴 선수인데",0],
+ ["{p} 이번에 그만둔다더라",0],
+ ["요즘 은퇴 러시다 진짜",0]];
+RIV.retireBig=[
+ ["{p} 은퇴한다네. 우리 상대로 참 얄밉게 잘했는데",1],
+ ["{t} 선수지만 이건 박수 쳐줘야 한다",1],
+ ["{p} 없는 {t} 다음 시즌 좀 편하겠네",0],
+ ["적으로 만나서 짜증났지만 좋은 선수였다",1]];
 RIV.byeStar=[
  ["{p} {t} 떠난다는 기사 떴다. 이 정도 선수를 놓치네",-1],
  ["{t} 프런트 또 헐값에 팔았다는 소문. 사실이면 답 없다",-1],
@@ -41214,11 +41315,30 @@ function runDelegatedMatch(M, tag){
   const t=userTeam();
   simMatchFull(M);
   while(!M.done) stepMinute(M);
-  applyMatchResult(M);
-  try{ socialOnResult(M); }catch(e){}
   const isHome=M.home.isUser;
   const mine=isHome?M.hg:M.ag, his=isHome?M.ag:M.hg;
   const opp=isHome?M.away:M.home;
+  /* ⚠ 제보 — 대행 경기 뒤 일정이 넘어가지 않고 같은 상대와 계속 붙는다.
+     결과만 반영(applyMatchResult)하고 라운드 마무리(completeRound)를 하지 않아
+     라운드 번호가 그대로 남았다. 감독이 직접 치른 경기와 똑같은 마무리를 거친다. */
+  try{
+    if(G.pendingFriendly){
+      const f=G.pendingFriendly; G.pendingFriendly=null;
+      f.done=true; f.hg=M.hg; f.ag=M.ag;
+      preFriendlyPlayed();
+      applyMatchResult(M);
+      checkPreseasonEnd();
+    } else if(G.pendingPO){
+      const {m,hid,aid}=G.pendingPO; G.pendingPO=null;
+      applyMatchResult(M);
+      poResolve(m, hid, aid, M.hg, M.ag);
+    } else {
+      completeRound(M);          // 정규 라운드 — 여기서 일정이 다음 라운드로 넘어간다
+    }
+  }catch(e){ try{ console.warn("대행 경기 결과 반영 실패:", e); }catch(_){} }
+  try{ socialOnResult(M); }catch(e){}
+  try{ restoreTactic(); }catch(e){}      // 경기 중 만진 전술 원복
+  try{ pruneUserLineup(); }catch(e){}    // 다치거나 퇴장당한 선수 정리
   /* 직접 지휘하지 않은 만큼 얻는 게 적다 — 조직력이 덜 붙는다 */
   try{ addFam(t, -FAM_MATCH*0.35); }catch(e){}
   const w=(typeof mgrInjLeft==="function")?mgrInjLeft():0;
