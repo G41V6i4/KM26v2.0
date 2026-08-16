@@ -822,6 +822,12 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
 .bankProd b{color:#fff;font-size:13px;}
 .bankRate{color:var(--gold);font-size:13px;font-weight:700;margin:2px 0;}
 .bankRate b{color:var(--gold);font-size:16px;}
+.tutorRow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;margin-bottom:6px;padding:9px 11px;flex-wrap:wrap;}
+.tutorN{flex:1;min-width:120px;font-size:13.5px;}
+.tutorN b{color:#fff;}
+.tutorV{flex:0 0 auto;text-align:right;line-height:1.55;color:#8b949e;}
+.tutorV b{color:#c9d1d9;}
+@media(max-width:560px){ .tutorV{text-align:left;flex:1 1 100%;margin-top:3px;} }
 .propRow{border:1px solid #21262d;border-radius:9px;padding:9px 11px;margin-bottom:7px;background:#0d1117;}
 .propHead{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
 .propN{flex:1;min-width:0;display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:13.5px;}
@@ -5180,9 +5186,9 @@ function procMinute(M, me, opp, atk, key){
     /* ⚠ 제보 — 나이 보정이 2D 엔진에만 있었다. 두 엔진의 기조를 맞춘다. */
     { const _a=G.season-x.p.by; injRisk *= 0.75+clamp((_a-24)/16,0,1)*0.7; }
     if(Math.random()<injRisk){
+      freezeLiveSlots(me);             // ⚠ 아직 11명일 때 굳혀야 남은 선수들이 옆으로 밀리지 않는다
       x.p.inj=1+R(4);
       x.injGap=true;                   // 부상으로 비운 자리 — 채우기 전까지 교체 후보로 계속 남는다
-      freezeLiveSlots(me);             // 부상 이탈도 마찬가지 — 빈 자리만 남기고 나머지는 그대로 둔다
       ev(M,me,F_(COMM.inj,{p:x.p.name})+` (약 ${x.p.inj}주 결장)`,"bad",false,{kind:"injury",atkSide:key,playerId:x.p.id});
       x.off=M.min; M.xiDirty=true;
       if(me.team.isUser){ M.needsSubPause=true; M.pauseEntryId=x.p.id; M.pauseReason=`🚑 <b>${x.p.name}</b> 선수가 부상으로 그라운드를 떠났습니다. 교체 여부를 결정하세요.`; }
@@ -5291,9 +5297,14 @@ function freezeLiveSlots(sd){
   if(!t || !t.isUser || !t.tactic) return;
   const xi=onPitch(sd).map(x=>x.p);
   if(xi.length<3) return;
-  let slotOf; try{ slotOf=computeRenderSlots(t, xi); }catch(e){ return; }
   if(!t.tactic.slot) t.tactic.slot={};
+  /* ⚠ 인원이 빠진 상태(10명 이하)에서 계산하면 「남은 인원용 기본 배치」로 다시 짜여
+     중앙 선수가 옆으로 밀린 결과를 그대로 굳혀 버린다. 이미 자리가 정해진 선수는 손대지 않고,
+     아직 자리가 없는 선수만 채운다. */
+  const partial = xi.length<11;
+  let slotOf; try{ slotOf=computeRenderSlots(t, xi); }catch(e){ return; }
   for(const q of xi){
+    if(partial && t.tactic.slot[q.id]) continue;
     const sl=slotOf[q.id];
     if(sl && sl!=="GK" && SLOT_BAND[sl]) t.tactic.slot[q.id]=sl;
   }
@@ -16324,10 +16335,15 @@ function bankLoanRate(bk){
   return Math.round(clamp(r, 2.2, 19)*100)/100;
 }
 /* 신용대출 한도 — 연봉 배수 × 은행 성향 × 신용 */
+/* 대출 심사에 쓰는 「증빙 가능한 소득」 — 무직이면 재직 증명이 안 된다 */
+function bankIncome(){
+  try{ if(G.jobless) return 0.5; }catch(e){}
+  try{ return mgrSalary()||3; }catch(e){ return 3; }
+}
 function bankLoanMax(bk){
   try{ if(typeof stkBadCredit==="function" && stkBadCredit()) return 0; }catch(e){}
   const BK=bankDef(bk);
-  let sal=3; try{ sal=mgrSalary()||3; }catch(e){}
+  let sal=bankIncome();
   const s=bankScore();
   const k=clamp((s-450)/350, 0.15, 1.25);
   const cap=Math.round(sal*BK.ltd*k*100)/100;
@@ -16389,6 +16405,10 @@ function bankClose(id){
 function bankBorrow(bk, amt, months){
   const M=me(), B=bank();
   const BK=bankDef(bk);
+  /* 🕊️ 무직 — 재직 증명이 안 되면 한도가 거의 나오지 않는다 */
+  try{ if(G.jobless && (parseFloat(amt)||0) > bankLoanMax(bk)){
+    flash(`${BK.n}: "지금은 재직 증명이 어려우십니다." — 무직 상태의 한도는 ${bankLoanMax(bk).toFixed(2)}억입니다.`,"warn"); return;
+  } }catch(e){}
   /* 💀 파산 이력 — 제1금융권은 회복 기간 동안 아예 심사를 받지 않는다 */
   try{ if(typeof stkBadCredit==="function" && stkBadCredit()){
     flash(`파산 이력으로 신용대출 심사가 거절됩니다 — ${stkBadCreditLeft()}시즌 뒤에 다시 신청할 수 있습니다.`,"warn"); return;
@@ -16498,8 +16518,10 @@ function bankMonthTick(){
   }
   /* 🩹 자연 회복 — 연체 없이 한 달을 넘기면 신용이 조금씩 돌아온다.
      회복 상한은 「지금 상태에서 도달할 수 있는 곳」까지다 — 파산 이력이 남아 있으면 낮게 걸린다. */
+  /* 🕊️ 무직 — 소득이 없는 달이 이어지면 신용도 조금씩 내려간다 */
+  try{ if(G.jobless) B.score=clamp((B.score||700)-4, 300, 1000); }catch(e){}
   const late=(B.loan||[]).some(x=>x.late>0);
-  if(!late){
+  if(!late && !G.jobless){
     let cap=720;
     try{ if(typeof stkBadCredit==="function" && stkBadCredit()) cap=560; }catch(e){}
     try{ if((M.bankrupt||0)>0) cap=Math.min(cap, 700-((M.bankrupt||0)-1)*40); }catch(e){}
@@ -16565,6 +16587,8 @@ function bankView(){
       <div><span>계좌</span><b>${B.acc.length}개 · 대출 ${B.loan.length}건</b></div>
       <div><span>주거래</span><b>${bankDef(B.main||"kb").ic} ${bankDef(B.main||"kb").n}</b></div>
     </div>
+    ${G.jobless?`<div class="msg warn" style="margin-top:8px">🕊️ <b>무직 상태</b>입니다 — 재직 증명이 되지 않아 신용대출 한도가 거의 나오지 않고,
+      소득이 없는 달마다 신용점수가 조금씩 내려갑니다. 예·적금 가입과 해지는 그대로 됩니다.</div>`:""}
     ${B.loan.some(x=>x.late>0)?`<div class="msg warn" style="margin-top:8px">⚠️ 연체 중인 대출이 있습니다 — 신용점수가 계속 깎이고 연체이자가 붙습니다.</div>`:""}
     ${B.spec?`<div class="msg good" style="margin-top:8px">⭐ <b>${bankDef(B.spec.bk).n}</b> 특판 예금 진행 중 —
       연 <b>${bankRate(B.spec.bk,"spec")}%</b> · ${Math.max(0,B.spec.until-(G.day||0))}일 남음</div>`:""}
@@ -16749,13 +16773,15 @@ function tickMoney(){
   if(!M.lastPay){ M.lastPay=key; return; }        // 첫 실행은 기준점만 잡는다
   M.lastPay=key;
   const pay=Math.round(mgrSalary()/12*100)/100;
+  /* ⚠ 실제로 통장에 들어온 돈을 따로 센다 — 무직인데 「받지도 않은 월급」에 세금을 내고 있었다. */
+  let gotPay=0;
   if(G.jobless) meLog("🕊️ 무직 — 이번 달 월급 없음 (집세·관리비는 그대로 나간다)");
   else {
     /* 💀 파산 압류 — 채권자에게 넘어가는 몫 */
     let cut=0;
     try{ if(M.wageGarnish && stkBadCredit()) cut=Math.round(pay*0.30*100)/100; }catch(e){}
-    if(cut>0){ mePay(pay-cut, `감독 월급 (파산 압류 -${cut.toFixed(2)}억)`); }
-    else { if(M.wageGarnish) M.wageGarnish=0; mePay(pay, "감독 월급"); }
+    if(cut>0){ gotPay=Math.round((pay-cut)*100)/100; mePay(gotPay, `감독 월급 (파산 압류 -${cut.toFixed(2)}억)`); }
+    else { if(M.wageGarnish) M.wageGarnish=0; gotPay=pay; mePay(pay, "감독 월급"); }
   }
   if(M.debt>0){
     const cut=Math.round(Math.min(M.debt, pay*0.5)*100)/100;
@@ -16775,7 +16801,7 @@ function tickMoney(){
   try{ if(d.getMonth()===0) propTaxTick(); }catch(e){}
   /* 🏦 은행 — 이자·적금 자동이체·대출 원리금 */
   try{ bankMonthTick(); }catch(e){}
-  const tax=Math.round((pay+rent)*0.14*100)/100;
+  const tax=Math.round((gotPay+rent)*0.14*100)/100;
   if(tax>0) mePay(-tax, "소득세");
   if(M.cash<0) addMood(`💸 통장이 비었습니다. (${M.cash.toFixed(2)}억) — 집을 줄이거나 부동산을 파세요.`);
 }
@@ -17874,7 +17900,8 @@ const STK_DEBT_RATE=0.0011;    // 하루 0.11% ≈ 연 49%
 const STK_DEBT_MAX =18;        // 감독 연봉의 몇 배까지 — 연봉 5억이면 90억쯤. 판은 커지되 비현실적이진 않게
 function stkDebt(){ return Math.max(0, me().stkDebt||0); }
 function stkDebtMax(){
-  let sal=8; try{ sal=mgrSalary()||8; }catch(e){}
+  let sal=8;
+  try{ sal=(typeof bankIncome==="function") ? Math.max(1.5, bankIncome()) : (mgrSalary()||8); }catch(e){}
   /* 사채업자도 사람은 본다 — 은행에서 이미 밀린 사람에겐 덜 빌려준다(막지는 않는다) */
   let k=1;
   try{ const s=bankScore(); k=clamp(0.35+(s-300)/700*0.9, 0.35, 1.25); }catch(e){}
@@ -19257,6 +19284,8 @@ function mylifeView(){
     ${parts.length?`<div class="nwBar">${parts.map(x=>`<div style="width:${Math.max(1,x[1]/Math.max(1,asset)*100)}%;background:${x[2]}"></div>`).join("")}</div>
     <div class="nwLeg">${parts.map(x=>`<span><i style="background:${x[2]}"></i>${x[0]} ${stkMoney(x[1])}</span>`).join("")}</div>`:""}
     ${debts.length?`<div class="small" style="margin-top:7px;color:#ff9d5c">💳 ${debts.map(x=>`${x[0]} ${stkMoney(x[1])}`).join(" · ")}</div>`:""}
+    ${G.jobless?`<div class="msg warn" style="margin-top:8px">🕊️ <b>무직</b> — 월급이 들어오지 않습니다.
+      집세·관리비·대출 원리금은 그대로 나가니, 자리를 찾을 때까지 버틸 현금을 확인하세요.</div>`:""}
     ${nw<0?`<div class="msg warn" style="margin-top:8px">⚠️ 빚이 자산을 넘어섰습니다. 사채가 있다면 넉 달 안에 정리하지 못하면 <b>파산</b>합니다.</div>`:""}
   </div>
   <div class="row">
@@ -22428,11 +22457,14 @@ function talkCard(p){
 const TUTOR_GAIN=0.30;      // 리더십+팀워크 20/20 짜리 튜터가 주는 최대 성장 배수 가산
 const TUTOR_MAX_AGE=22;     // 배울 나이
 const TUTOR_MIN_AGE=29;     // 가르칠 나이
-function tutorCands(p){
+/* ⚠ 제보 — 「리더십·팀워크가 비슷한 선수인데 목록에 안 뜬다」.
+   추천 네 명만 보여 주고 나머지는 아예 감췄다. 누구를 붙일지는 감독이 정할 일이다.
+   ─ 자격을 갖춘 베테랑은 전부 보여 주고, 추천 순으로 줄만 세운다. */
+function tutorCands(p, all){
   const t=userTeam(); const age=q=>G.season-q.by;
-  return t.players.filter(q=>q.id!==p.id && age(q)>=TUTOR_MIN_AGE && !q.sulk && q.ovr>=p.ovr-2)
-    .sort((a,b)=>((b.attr?attr20(b.attr.ldr)+attr20(b.attr.tea):0)-(a.attr?attr20(a.attr.ldr)+attr20(a.attr.tea):0)))
-    .slice(0,4);
+  const L=t.players.filter(q=>q.id!==p.id && age(q)>=TUTOR_MIN_AGE && !q.sulk && q.ovr>=p.ovr-2)
+    .sort((a,b)=>((b.attr?attr20(b.attr.ldr)+attr20(b.attr.tea):0)-(a.attr?attr20(a.attr.ldr)+attr20(a.attr.tea):0)));
+  return all ? L : L.slice(0,4);
 }
 function tutorBlock(p){
   const age=G.season-p.by;
@@ -22446,14 +22478,32 @@ function tutorBlock(p){
         ${left>0?`변경까지 ${left}일`:"멘토 바꾸기"}</button></div>`;
   }
   if(age>TUTOR_MAX_AGE) return "";
-  const cs=tutorCands(p);
-  if(!cs.length) return `<p class="small" style="margin-top:8px">🎓 멘토로 붙일 만한 베테랑(${TUTOR_MIN_AGE}세 이상)이 없습니다.</p>`;
-  return `<h3 style="margin-top:12px">🎓 멘토 지정 <span class="small">(${TUTOR_MAX_AGE}세 이하 전용)</span></h3>
-    ${cs.map(q=>`<button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px"
-      onclick="askTutor(${p.id},${q.id})">🎓 <b>${q.name}</b>에게 부탁한다 <span class="small">(${G.season-q.by}세 ${q.pos} ·
-      리더십 ${attr20(q.attr.ldr)} · 팀워크 ${attr20(q.attr.tea)} · 수락 가능성 ${(()=>{const c=tutorChance(q,p);return c>=0.7?"높음":c>=0.45?"보통":"낮음";})()})</span></button>`).join("")}
+  const all=tutorCands(p, true);
+  if(!all.length) return `<p class="small" style="margin-top:8px">🎓 멘토로 붙일 만한 베테랑(${TUTOR_MIN_AGE}세 이상)이 없습니다.</p>`;
+  const cs=TUTOR_ALL ? all : all.slice(0,4);
+  const row=(q,i)=>{
+    const c=tutorChance(q,p);
+    const eff=Math.round(clamp(TUTOR_GAIN*(attr20(q.attr.ldr)+attr20(q.attr.tea))/20, 0.05, 0.35)*100);
+    const cc=c>=0.7?["높음","var(--green)"]:c>=0.45?["보통","var(--gold)"]:["낮음","var(--red)"];
+    return `<button class="mini tutorRow" onclick="askTutor(${p.id},${q.id})">
+      <span class="tutorN">${i<3&&!TUTOR_ALL?"⭐":"🎓"} <b>${q.name}</b>
+        <span class="small">${G.season-q.by}세 · <span class="pos-${q.pos}">${q.pos}</span>${q.pos===p.pos?' <span class="stkTag">같은 자리</span>':""}</span></span>
+      <span class="tutorV small">리더십 <b>${attr20(q.attr.ldr)}</b> · 팀워크 <b>${attr20(q.attr.tea)}</b>
+        · 성장 <b style="color:var(--gold)">+${eff}%</b><br>
+        수락 가능성 <b style="color:${cc[1]}">${cc[0]}</b> <span style="opacity:.7">(${Math.round(c*100)}%)</span></span>
+    </button>`;
+  };
+  return `<h3 style="margin-top:12px">🎓 멘토 지정 <span class="small">(${TUTOR_MAX_AGE}세 이하 전용) — 후보 ${all.length}명</span></h3>
+    <p class="small" style="color:var(--sub);margin-bottom:6px">
+      ${TUTOR_MIN_AGE}세 이상이고 태업 중이 아니며, 이 선수보다 크게 뒤처지지 않는 선수는 <b>모두</b> 부탁할 수 있습니다.
+      ⭐는 리더십·팀워크가 높아 코치진이 먼저 추천하는 선수입니다.</p>
+    ${cs.map(row).join("")}
+    ${all.length>4?`<button class="mini" style="width:100%;margin-bottom:8px" onclick="tutorToggleAll()">
+      ${TUTOR_ALL?`▲ 추천 4명만 보기`:`▼ 나머지 ${all.length-4}명 모두 보기`}</button>`:""}
     <p class="small">멘토가 붙으면 능력치 성장이 빨라지고, 그 자리 <b>포지션 능숙도도 1.5배</b>로 붙습니다.<br>한 번 붙이면 약 한 달(${TUTOR_COOL}일) 뒤부터 바꿀 수 있습니다.</p>`;
 }
+let TUTOR_ALL=false;
+function tutorToggleAll(){ TUTOR_ALL=!TUTOR_ALL; show(VIEW); }
 /* ── 멘토 요청 대화 ──────────────────────────────────────────────
    FM처럼 감독이 베테랑에게 직접 부탁하고, 베테랑이 받아들이거나 거절한다.
    거절 사유는 성격·호감도·사기·자리 경쟁에서 나온다 — 자기 자리를 노리는 어린 선수를
@@ -39521,6 +39571,12 @@ class MatchSim{
       const a=this.byId(it.id); if(!a) continue;
       const x=this.entryOf(a); if(!x) continue;
       this.syncClock();
+      /* ⚠ 제보 — 「부상으로 한 명 빠지면 중앙에 있던 선수 카드가 왼쪽으로 간다」.
+         computeRenderSlots 는 저장된 자리가 없는 선수를 「남은 인원 수에 맞는 기본 배치」로
+         다시 앉힌다. 미드 3명이 2명이 되면 [중앙,우] → [좌,우] 패턴으로 바뀌어,
+         중앙에 서 있던 선수가 왼쪽 칸으로 밀린다.
+         ─ 그라운드에서 빼기 전(아직 11명일 때) 지금 자리를 전부 굳혀 둔다. */
+      try{ freezeLiveSlots(x._sd || (a.side==="h"?this.M.h:this.M.a)); }catch(e){}
       x.off=this.M.min;
       x.injGap=true;                   // 부상으로 비운 자리 — 채우기 전까지 교체 후보로 남긴다
       const wks=1+R(4)+(it.hard?R(3):0);                   // 결장 주수
@@ -39567,6 +39623,8 @@ class MatchSim{
   }
   buildSquads(){
     for(const [key, sd] of [["h",this.M.h],["a",this.M.a]]){
+      /* 킥오프 시점의 자리를 먼저 굳힌다 — 경기 중 누가 빠져도 남은 선수가 옆으로 밀리지 않는다 */
+      try{ freezeLiveSlots(sd); }catch(e){}
       const xi=onPitch(sd).map(x=>x.p);
       const slotOf=computeRenderSlots(sd.team, xi);
       for(const x of onPitch(sd)){
@@ -44058,6 +44116,18 @@ class MatchSim{
     this.injuryCheck(); this.processHurt(); this.tickCore(); this.recordFrame();
     this.drainStamina();
     this.subCheck();
+    this.syncGuard();
+  }
+  /* 🛟 그라운드 인원과 도트 수가 어긋나면 그 자리에서 맞춘다.
+     ⚠ 제보 — 「부상 교체를 했는데 들어온 선수가 엉뚱한 데 있다」.
+        교체 동기화(resyncSquads)가 subCheck 안에 있었는데, 그 함수는 `m<45` 에서 곧바로
+        돌아 나간다. 즉 전반에 일어난 교체는 후반이 될 때까지 그라운드에 반영되지 않았다.
+        부상 교체는 전반에도 얼마든지 일어난다. */
+  syncGuard(){
+    try{
+      const need=onPitch(this.M.h).length+onPitch(this.M.a).length;
+      if(this.agents.length!==need) this.resyncSquads();
+    }catch(e){}
   }
   /* 상대 벤치도 경기를 본다 — 분이 바뀔 때마다 한 번씩 교체를 검토한다.
      이게 없던 시절 2D 엔진에서는 AI가 90분 내내 한 명도 바꾸지 않았다. */
@@ -44065,11 +44135,13 @@ class MatchSim{
     const m=Math.floor(this.clock/60);
     if(this._subMin===m) return;
     this._subMin=m;
+    /* 교체가 있었으면 시각과 상관없이 즉시 반영한다 (전반 부상 교체 포함) */
+    const q=(this.M.subQueue||[]).length;
+    if(q!==this._subSynced){ this._subSynced=q; this.resyncSquads(); }
     if(m<45) return;
     this.syncClock();
     aiSubs(this.M, m);
-    // 교체된 선수는 그라운드에서 내보내고, 들어온 선수를 새로 세운다
-    if(this.M.subQueue && this.M.subQueue.length) this.resyncSquads();
+    if((this.M.subQueue||[]).length!==this._subSynced){ this._subSynced=(this.M.subQueue||[]).length; this.resyncSquads(); }
   }
   /* ── 체력 소모 ────────────────────────────────────────────────
      예전에는 분 단위 엔진(stepMinute)에서만 체력을 깎았다. 그래서 감독이 직접 보는 경기,
