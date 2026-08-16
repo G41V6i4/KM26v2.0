@@ -5097,6 +5097,7 @@ function procMinute(M, me, opp, atk, key){
   for(const x of xs){
     let injRisk=0.0001; // 체력 85 이상(팔팔한 상태) 기준 분당 개인 부상 확률
     if(x.fit<85){ const fatigue=85-x.fit; injRisk *= 1+Math.pow(fatigue/20,1.6); } // 완만하다가 저질 체력에서 급격히 상승
+    if(x.fit<72){ injRisk *= 1+Math.pow((72-x.fit)/20, 1.7); }                     // 72 밑은 교체를 고민할 구간 — 위험이 가파르다
     injRisk *= 1+(T.tackle-1)*0.15; // 거친 몸싸움을 시키면 본인 부상 위험도 소폭 증가
     /* ⚠ 제보 — 나이 보정이 2D 엔진에만 있었다. 두 엔진의 기조를 맞춘다. */
     { const _a=G.season-x.p.by; injRisk *= 0.75+clamp((_a-24)/16,0,1)*0.7; }
@@ -9933,6 +9934,9 @@ function startNewSeason(){
       gem&&yp.pot>=85?"good":undefined);
   }
   }
+  /* 🩺 오프시즌 두 달 — 감독의 몸도 그동안 낫는다.
+     시즌 중에만 하루씩 깎으면, 시즌 막바지에 다친 감독이 새 시즌 개막일에도 그대로 병실에 있다. */
+  try{ if(G.mgrInj) tickMgrInj(60); }catch(e){}
   for(const id in G.teams) assignAITactics(G.teams[id]); // AI 전술 리셋
   // FA 시장 정리: 노장 은퇴·무적 장기화
   /* ⚠ 재계약 판정이 깐깐해지면서 시장에 남는 인원이 크게 늘었다(실측 23명 → 163명).
@@ -12478,6 +12482,15 @@ function migrateLoadedG(){
   step("옵션", ()=>{ if(!G.press) G.press={rel:50, skip:0}; if(!G.opt) G.opt={engine:"sim"};
     for(const id in G.teams){ const T=G.teams[id].tactic; if(T && T.longShot===undefined) T.longShot=2; } });
   step("등번호", ()=>{ for(const id in G.teams) assignNumbers(G.teams[id]); });
+  step("감독 부상", ()=>{
+    const I=G.mgrInj; if(!I) return;
+    /* 시즌 경계에서 부풀어 오른 회복 기간을 바로잡는다(제보 「전치 55주」) */
+    if(I.left==null) I.left=Math.max(0,(I.until||0)-(G.day||0));
+    I.weeks=clamp(Math.round(I.weeks||1), 1, 12);
+    I.left=Math.min(I.left, I.weeks*7);
+    delete I.until; delete I.from;
+    if(I.left<=0){ G.mgrInj=null; try{ if(G.staff) G.staff.delegatePre=false; }catch(e){} }
+  });
   step("역할 기억", ()=>{
     for(const id in G.teams){
       const T=G.teams[id].tactic; if(!T) continue;
@@ -19617,6 +19630,8 @@ function fmTopBar(t, xi, formName){
         ${[0,1,2,3,4].map(i=>`<option value="${i}" ${ment===i?"selected":""}>${["매우 수비적","수비적","균형","공격적","매우 공격적"][i]}</option>`).join("")}
       </select>
       <button class="fmDetailBtn ${tacDetailOpen?"on":""}" onclick="toggleTacDetail()">⚙️ 세부 전술 ${tacDetailOpen?"▲":"▼"}</button>
+      ${(typeof inLiveTactics!=="undefined" && inLiveTactics)
+        ? `<button class="fmDetailBtn ${liveAdvOpen?"on":""}" onclick="toggleLiveAdvice()">📋 수석코치의 조언 ${liveAdvOpen?"▲":"▼"}</button>` : ""}
     </div>
     <div class="fmBarR">
       <div class="fmMeter"><span>친숙도</span>${gauge(fam,100,"g")}</div>
@@ -20065,17 +20080,39 @@ function tacticDetailCard(t, xi){
   const tempoFits=ramp(worFit);
   const pressFits=ramp(staFit);
   const lsFits=[1,1,1,lngFit,lngFit];
-  // 다음 상대 정찰
+  /* ── 다음 상대 정찰 ──────────────────────────────────────
+     ⚠ 제보 — 「다음 경기가 EACL 인데 다다음 경기인 리그 상대를 분석해 준다」.
+        리그 fixture 만 보고 있어서, 대회 경기가 코앞이어도 그 상대는 아예 잡히지 않았다.
+        ─ 리그와 EACL 중 실제로 「먼저 치르는」 경기를 골라 분석한다. */
   let scout="";
   if(G.phase==="league"){
+    let opp=null, tag="", home=null, when=1e9;
     const fix=t.div===1?G.k1Fix:G.k2Fix, r=t.div===1?G.r1:G.r2;
     if(r<fix.length){ for(const [hid,aid] of fix[r]){ if(hid===t.id||aid===t.id){
-      const opp=G.teams[hid===t.id?aid:hid]; const OT=TAC(opp);
+      opp=G.teams[hid===t.id?aid:hid];
+      tag=compShort(t.div===1?"k1":"k2")+" "+(r+1)+"R";
+      home=(hid===t.id);
+      when=matchDayOf(r);
+    }}}
+    /* 🏆 대회 경기가 리그보다 먼저면 그쪽을 본다.
+       ⚠ 이미 치른(지나간) 날짜는 뒤로 밀어 비교한다 — 그러지 않으면 지난 라운드의
+          경기일이 「가장 이른 경기」로 잡혀 대회 경기를 영영 못 본다. */
+    const _today=G.day||0;
+    const _rank=(d)=>(d>=_today ? d : d+100000);
+    try{
+      const ex=eaclNextForUser();
+      if(ex && ex.opp && (!opp || _rank(ex.day)<_rank(when))){ opp=ex.opp; tag=ex.label; home=ex.home; when=ex.day; }
+    }catch(e){}
+    if(opp){
+      const OT=TAC(opp);
       /* ⚠ OT.* 는 0~2 실수다(0.5 단위). 배열 인덱스로 그대로 쓰면 0.5·1.5에서 undefined 가 찍힌다. */
       const lv3=(v,a)=>a[v>=1.5?2:v<=0.5?0:1];
-      scout=`🔎 다음 상대 <b>${opp.short}</b>: <b style="color:var(--gold)">${styleName(opp)}</b> — 라인 ${lv3(OT.line,["낮음","보통","높음"])} · 압박 ${lv3(OT.press,["약함","보통","강함"])} · ${lv3(OT.pass,["짧은 패스","혼합","다이렉트"])}${ctrLv(OT)>=3?" · 역습형":ctrLv(OT)>=2?" · 역습 병행":""}
+      const nm=opp.short||opp.name;
+      const dLeft=Math.max(0, when-(G.day||0));
+      scout=`🔎 다음 상대 <b>${nm}</b> <span class="small" style="opacity:.85">${tag} · ${home?"홈":"원정"}${dLeft>0?` · D-${dLeft}`:" · 오늘"}</span><br>
+      <b style="color:var(--gold)">${styleName(opp)}</b> — 라인 ${lv3(OT.line,["낮음","보통","높음"])} · 압박 ${lv3(OT.press,["약함","보통","강함"])} · ${lv3(OT.pass,["짧은 패스","혼합","다이렉트"])}${ctrLv(OT)>=3?" · 역습형":ctrLv(OT)>=2?" · 역습 병행":""}
       <span class="small">${HI(OT.line)?"→ 다이렉트/역습으로 뒷공간을 노려보세요!":LO(OT.line)?"→ 내려앉는 팀입니다. 짧은 패스+넓은 폭으로 두드리세요.":""}${HI(OT.press)?" 상대 압박이 강합니다. 미드필더가 약하면 다이렉트 패스가 안전합니다.":""}</span>`;
-    }}}
+    }
   }
   // 판단에 실제로 쓰이는 값만 위에 모아 굵게 보여준다 — 선수 능력치와 같은 1~20 눈금.
   const sv=(label,val,unit)=>`<span style="margin-right:16px">${label}: <b style="color:#fff;font-weight:800;font-size:1.05em">${val}</b>${unit||""}</span>`;
@@ -20644,6 +20681,10 @@ function fmLiveTable(t, pitchAndGap, bench, slotOf, sd){
     </table></div>
   </div>`;
 }
+/* 📋 경기 중 전술 수정 화면에서도 수석코치의 조언을 펼쳐 놓고 손볼 수 있게 한다(제보).
+   경기 화면과 같은 패널(lvPanel)을 그대로 쓴다 — 두 화면이 동시에 뜨지는 않는다. */
+let liveAdvOpen=false;
+function toggleLiveAdvice(){ liveAdvOpen=!liveAdvOpen; renderLiveTactics(); }
 function renderLiveTactics(){
   const M=liveM; if(!M){ inLiveTactics=false; return; }
   const t=userTeam();
@@ -20701,6 +20742,9 @@ function renderLiveTactics(){
   ${gap?`<div class="msg warn">🚑 <b>${gap.p.name}</b>의 공백이 아직 채워지지 않았습니다 — 아래 🚑 표시된 칸을 벤치 선수와 교체하면 11명을 채울 수 있습니다.</div>`:""}
   ${selSwap!==null?`<div class="msg good">🔁 <b>${selName(selSwap)}</b> 선택됨 — 교체할 선수를 클릭하세요. (같은 선수 다시 클릭 시 취소)</div>`:""}
   ${fmTopBar(t, xi, liveFormName)}
+  ${liveAdvOpen?`<div class="fmDetailPane"><div class="card" style="margin:0"><h3>📋 수석코치의 조언
+    <span class="small">— ${M.min}분 · ${M.home.short} ${M.hg}-${M.ag} ${M.away.short}</span></h3>
+    <div id="lvPanel"></div></div></div>`:""}
   ${tacDetailOpen?`<div class="fmDetailPane">${tacticDetailCard(t, xi)}</div>`:""}
   <div class="fmBody">
     <div class="fmPitchPane">
@@ -20712,6 +20756,8 @@ function renderLiveTactics(){
     </div>
     ${fmLiveTable(t, pitchAndGap, bench, slotOf, sd)}
   </div>`;
+  /* 조언은 화면을 그린 뒤에 채운다 — 경기 화면과 같은 함수를 쓴다 */
+  if(liveAdvOpen){ try{ renderCoachAdvice(); }catch(e){} }
 }
 function confirmLiveSwap(a,b){
   const M=liveM; if(!M){ return; }
@@ -31472,13 +31518,33 @@ const SPD={ SPRINT:0.0747, RUN:0.0613, DRIBBLE:0.0479, JOG:0.0383, GK:0.0287 };
    서로 다른 장면에서 강해야 하기 때문이다. */
 const SPD_A=0.533, SPD_B=0.780, SPD_LO=0.76, SPD_HI=1.22;
 const ACC_A=0.300, ACC_B=1.170, ACC_LO=0.62, ACC_HI=1.52;
+/* ═══════════════════════════════════════════════════════════════
+   🔋 체력이 경기력을 깎는다 (제보)
+   ⚠ 여러 판단 로직이 d.stam / shooter.stam 을 읽고 있었는데, 정작 그 값을
+      아무도 채우지 않아 90분 내내 1(팔팔함)로 계산됐다. 즉 체력은 숫자만
+      떨어질 뿐 경기력에 아무 영향이 없었고, 그래서 교체를 쓸 이유도 없었다.
+   ─ 체력 76 이상은 영향 없음 · 그 아래로 급격히 · 40 에서 바닥.
+     실측상 60분 평균 체력이 72 이므로, 후반 중반부터 눈에 띄게 무거워진다. */
+const STAM_FULL=0.76, STAM_DEAD=0.40;
+function stamOf(a){ return (a && a.stam!=null) ? a.stam : 1; }
+/* 0(탈진) ~ 1(팔팔). 제곱을 씌워 「멀쩡하다가 훅 가는」 곡선을 만든다. */
+function stamRate(a){
+  const s=stamOf(a);
+  if(s>=STAM_FULL) return 1;
+  const r=clamp((s-STAM_DEAD)/(STAM_FULL-STAM_DEAD), 0, 1);
+  return r*r*0.55 + r*0.45;
+}
+/* 항목별 감쇠 폭 — lo 는 완전히 지쳤을 때의 배수 */
+function stamK(a, lo){ return lo + (1-lo)*stamRate(a); }
 function paceMul(a){
   const v=(a && a.topSpeed!=null) ? a.topSpeed : ((a && a.paceSkill) || 0.6);
-  return clamp(SPD_A+v*SPD_B, SPD_LO, SPD_HI);
+  /* 다리가 무거우면 최고 속도가 먼저 떨어진다 — 뒷공간 경쟁에서 바로 드러난다 */
+  return clamp((SPD_A+v*SPD_B)*stamK(a,0.86), SPD_LO*0.86, SPD_HI);
 }
 function accMul(a){
   const v=(a && a.accelSkill!=null) ? a.accelSkill : ((a && a.paceSkill) || 0.6);
-  return clamp(ACC_A+v*ACC_B, ACC_LO, ACC_HI);
+  /* 첫 몇 걸음이 안 나가는 게 지친 선수의 가장 뚜렷한 증상이다 */
+  return clamp((ACC_A+v*ACC_B)*stamK(a,0.80), ACC_LO*0.80, ACC_HI);
 }
 const ACCEL_TAU=0.18;      // 목표 속도에 붙는 시간상수(초) — 작을수록 민첩하게 방향을 바꾼다
 const SEPARATION=0.030;    // 이 거리보다 가까우면 서로 밀어내 바둑알이 겹치지 않게 한다
@@ -32621,7 +32687,10 @@ const LINE_SYNC=0.55;        // 센터백끼리 깊이를 맞추는 정도 (1이
 /* 센터백 존 마킹 — 라인을 지키면서 자기 구역에 들어온 공격수를 잡는다 */
 /* 부상 — 틱마다 뽑는 기본 확률. 자연 발생 0.2 + 태클 0.25 ≈ 경기당 0.45명(양 팀 합계).
    실제로도 경기당 강제 교체는 한 경기 걸러 한 번꼴이다. 더 올리면 스쿼드가 남아나지 않는다. */
-const INJ_TICK_P=0.000022;
+/* ⚠ 실측 — 이 값으로는 자연 부상 게이트가 경기당 0.3회밖에 열리지 않아, 실제 부상은
+   경기당 0.00건이었다(6경기). 부상이 없으면 스쿼드 뎁스도 교체 카드도 의미가 없다.
+   실제 축구의 부상 교체 빈도(양팀 합 0.5~0.9건)에 맞춘다. */
+const INJ_TICK_P=0.00035;
 const INJ_TACKLE_P=0.010;   // 거친 태클을 당했을 때 다칠 확률
 const INJ_DOWN_SECS=6.0;    // 쓰러져 있다가 실려 나가기까지
 const CB_ZONE_X=34;          // 우리 골문에서 이 거리(m) 안으로 들어온 상대만 담당한다
@@ -33391,7 +33460,9 @@ function passExecSkill(a, diff){
   const g=(k)=>clamp(attr20(A[k]!=null?A[k]:60)/20, 0.15, 1);
   const pas=g("pas"), tec=g("tec"), cmp=g("cmp");
   const w=clamp(diff/1.3, 0, 1);
-  return clamp(pas*(0.74-w*0.24) + tec*(0.14+w*0.16) + cmp*(0.12+w*0.08), 0.1, 1);
+  const base=pas*(0.74-w*0.24) + tec*(0.14+w*0.16) + cmp*(0.12+w*0.08);
+  /* 지치면 발끝이 무뎌진다 — 어려운 패스일수록 더 크게 흔들린다 */
+  return clamp(base*stamK(a, 0.78-w*0.10), 0.1, 1);
 }
 /* 패스 결과 등급 — 오차 크기로 나눈다 */
 function passGrade(latM, lonR){
@@ -35531,7 +35602,8 @@ class MatchSim{
                        shotClose:0, shotNormal:0, shotLong:0,
                        goal:0, goalDeflected:0, block:0, save:0, deflect:0, crossBlocked:0,
                        shotPunched:0, shotTipped:0, superSave:0, woodwork:0,
-                       takeOn:0, takeOnWon:0, clearance:0, shortPass:0, longPassT:0, yellow:0, red:0, verbal:0, jostle:0}; }
+                       takeOn:0, takeOnWon:0, clearance:0, shortPass:0, longPassT:0, yellow:0, red:0, verbal:0, jostle:0,
+                       z1:0, z2:0, z3:0}; }   // 소유 중 볼이 있던 구역 — z3=상대 진영(수석코치 분석용)
   /* ── 기록 브리지 ────────────────────────────────────────────────
      MatchSim은 원래 "구경거리"였다. 실제 경기로 쓰려면 시즌 시스템이 읽는 M 객체
      (M.hg/ag, M.st, M.events, 선수별 골·도움·카드)에 결과를 그대로 적어 넣어야 한다.
@@ -36007,11 +36079,19 @@ class MatchSim{
     if(Math.random() > INJ_TICK_P*meTune("inj")) return;
     const pool=this.agents.filter(a=>a.slot!=="GK" && !a._injured);
     if(!pool.length) return;
+    /* ⚠ 예전에는 「경기 전 컨디션(p.cond)」만 봤다. 그 값은 90분 내내 변하지 않으므로
+       「후반에 다리가 풀려 다친다」는 그림이 아예 나오지 않았다(실측 경기당 부상 0.00건).
+       ─ 지금 남은 체력(fit)을 주 위험으로 삼고, 컨디션은 출발선을 정하는 데만 쓴다. */
     const a=pool[Math.floor(Math.random()*pool.length)];
+    const x=this.entryOf(a);
+    const fit=(x && x.fit!=null) ? x.fit : 90;
     const cond=(a.p&&a.p.cond!=null)?a.p.cond:90;
     const age=(a.p&&a.p.by)? (G.season-a.p.by) : 26;
-    // 체력이 바닥일수록·노장일수록 위험
-    const risk=(1.35-cond/100)*(0.75+clamp((age-24)/16,0,1)*0.7);
+    let risk=(1.25-fit/100)*(0.75+clamp((age-24)/16,0,1)*0.7);
+    /* 체력 72 밑으로 내려가면 위험이 가파르게 오른다 — 여기서부터가 교체를 고민할 구간이다 */
+    if(fit<72) risk *= 1+Math.pow((72-fit)/20, 1.7);
+    risk *= clamp(1.30-(cond/100)*0.38, 0.86, 1.30);          // 출발 컨디션이 나쁘면 더 위험
+    try{ risk *= 1+(TAC(a.team).tackle-1)*0.15; }catch(e){}   // 거칠게 시키면 본인도 다친다
     if(Math.random()<risk) this.hurt(a, false);
   }
   buildSquads(){
@@ -39640,8 +39720,8 @@ class MatchSim{
     const _pg=()=>(Math.random()+Math.random()+Math.random()-1.5)/0.5;
     const varK = 1 + _pg()*0.05*(1.2-_SCq);
     /* 체력 (§13) — 정상 범위(55%+)에선 영향 없음, 방전 시에만 힘이 빠진다 */
-    const _stam=(shooter.stam!=null?shooter.stam:1);
-    const fatK = _stam>0.55 ? 1 : (0.90+_stam*0.18);
+    /* 지친 다리에서 나온 슛은 힘도 방향도 흔들린다 (예전 계수는 체력 55 밑에서만, 그것도 아주 약하게 걸렸다) */
+    const fatK = stamK(shooter, 0.80);
     power *= varK*fatK;
     this._shotPow={base:POW[type]||0.95, pw:pwK, q:_SCq, varK, fatK, final:power,
                    ms:SHOT_SPEED*power*ISO_TO_M};
@@ -40551,6 +40631,15 @@ class MatchSim{
         x.fit=Math.max(25, x.fit - drop);
       }
     }
+    this.syncStamina();
+  }
+  /* 🔋 그라운드 위 선수의 남은 체력을 에이전트에 실어 나른다 —
+     속도·정확도·판단·부상 위험이 전부 이 값을 읽는다. */
+  syncStamina(){
+    for(const a of this.agents){
+      const x=this.entryOf(a);
+      a.stam = (x && x.fit!=null) ? clamp(x.fit/100, 0.20, 1) : 1;
+    }
   }
   /* 전반이 끝나면 진영을 바꾸고 후반 킥오프. 공이 살아 있는 도중에 자르면 어색하므로
      플레이가 끊긴 순간을 기다리되, 30초 넘게 안 끊기면 그냥 끊는다. */
@@ -40625,6 +40714,9 @@ class MatchSim{
     this.stats.ticks++;
     const zx = this.possSide==="h" ? b.x : 1-b.x;   // 소유팀 기준 공격 방향으로 정규화
     if(zx<1/3) this.stats.thirds.def++; else if(zx<2/3) this.stats.thirds.mid++; else this.stats.thirds.att++;
+    /* 팀별로도 남긴다 — 「우리가 공을 잡고 어디까지 올라갔는가」는 합산값으로는 알 수 없다 */
+    const _zs=this.stats[this.possSide];
+    if(zx<1/3) _zs.z1++; else if(zx<2/3) _zs.z2++; else _zs.z3++;
     this.t+=SIM_DT;
   }
   /* 전광판에 찍히는 경기 시간 — 시뮬레이션 시간과 분리돼 있다 */
@@ -42824,8 +42916,13 @@ function awayTauntOutcome(o, c){
 }
 /* 🤕 감독 부상 — 난투극에 휘말리면 전치 O주. 그동안 수석코치가 팀을 맡는다. */
 function mgrInjure(weeks, why){
-  const w=Math.max(1, Math.round(weeks));
-  G.mgrInj={until:(G.day||0)+w*7, weeks:w, why:why||"", from:(G.day||0)};
+  const w=clamp(Math.round(weeks||1), 1, 12);   // 전치는 최대 12주 — 그 이상은 감독직 자체가 위태롭다
+  /* ⚠ 제보 — 「감독 부상 회복기간이 55주로 잡히고 병실에만 있게 된다」.
+     예전에는 회복일을 「오늘(G.day) + 주수×7」이라는 절대 날짜로 박아 뒀다.
+     G.day 는 시즌이 바뀔 때마다 0 으로 되돌아가는 값이다. 그래서 시즌 막바지(day 300 부근)에
+     다치면, 새 시즌이 열리는 순간 남은 기간이 (300+21)/7 ≈ 46주로 튀어 올랐다.
+     ─ 남은 일수를 들고 하루씩 줄인다. 달력이 새로 깔려도 흔들리지 않는다. */
+  G.mgrInj={left:w*7, weeks:w, why:why||"", s:G.season};
   const t=userTeam();
   addNews(`🚑 [속보] ${t?t.short:""} 감독, ${why||"충돌"}로 <b>전치 ${w}주</b> — 회복까지 수석코치가 팀을 지휘합니다`,"warn","club");
   notify(`🚑 <b>전치 ${w}주</b> 진단을 받았습니다. 회복할 때까지 <b>수석코치가 대신 팀을 지휘</b>합니다.`,"warn");
@@ -42833,11 +42930,20 @@ function mgrInjure(weeks, why){
   try{ if(G.staff) G.staff.delegatePre=true; }catch(e){}
   adjustTrust("owner",-8,"감독 부상 — 난투극");
 }
-function mgrInjLeft(){ return (G.mgrInj && G.mgrInj.until>(G.day||0)) ? Math.ceil((G.mgrInj.until-(G.day||0))/7) : 0; }
+/* 남은 회복 기간(주). 옛 세이브(until 방식)도 안전하게 읽는다 — 다만 전치 기간을 넘지 않게 자른다. */
+function mgrInjLeft(){
+  const I=G.mgrInj; if(!I) return 0;
+  let d = (I.left!=null) ? I.left : Math.max(0, (I.until||0)-(G.day||0));
+  d = Math.min(d, (I.weeks||1)*7);          // 달력이 바뀌며 부풀어 오른 값 방어
+  return d>0 ? Math.ceil(d/7) : 0;
+}
 function mgrInjured(){ return mgrInjLeft()>0; }
-function tickMgrInj(){
-  if(!G.mgrInj) return;
-  if(G.mgrInj.until<=(G.day||0)){
+function tickMgrInj(days){
+  const I=G.mgrInj; if(!I) return;
+  /* 옛 형식(until) 승격 — 부풀어 있을 수 있으므로 전치 기간으로 자른다 */
+  if(I.left==null) I.left=Math.min(Math.max(0,(I.until||0)-(G.day||0)), (I.weeks||1)*7);
+  I.left=Math.max(0, I.left-Math.max(1, days||1));
+  if(I.left<=0){
     const w=G.mgrInj.weeks; G.mgrInj=null;
     try{ if(G.staff) G.staff.delegatePre=false; }catch(e){}
     const t=userTeam();
@@ -44315,8 +44421,43 @@ function coachStats(M, isHome){
     tackle: S? mine.tackle : 0,
     foul: S? mine.foul : 0,
     offside: S? mine.offside : 0,
-    thirds: S? S.thirds : null
+    thirds: S? S.thirds : null,
+    /* ── 아래는 「왜 안 되는가」를 짚기 위한 세부 지표 ── */
+    shotOnPct: S && mine.shot>=4 ? Math.round(mine.shotOn/mine.shot*100) : null,
+    shotBlockPct: S && mine.shot>=5 ? Math.round(mine.shotBlocked/mine.shot*100) : null,
+    shotLongPct: S && mine.shot>=5 ? Math.round(mine.shotLong/mine.shot*100) : null,
+    shotClose: S? mine.shotClose : 0,
+    save: S? opp.save : 0,                       // 상대 골키퍼가 막아 낸 수
+    woodwork: S? mine.woodwork : 0,
+    /* 우리가 공을 잡고 있던 구역 비율 — 상대 진영에 못 들어가면 z3 가 바닥이다 */
+    z3: S && (mine.z1+mine.z2+mine.z3)>200 ? Math.round(mine.z3/(mine.z1+mine.z2+mine.z3)*100) : null,
+    oZ3: S && (opp.z1+opp.z2+opp.z3)>200 ? Math.round(opp.z3/(opp.z1+opp.z2+opp.z3)*100) : null,
+    backPct: S && mine.pass>40 ? Math.round(mine.back/mine.pass*100) : null,
+    fwdPct: S && mine.pass>40 ? Math.round(mine.fwd/mine.pass*100) : null,
+    lost: S? mine.lost : 0,
+    oIntercept: S? opp.intercept : 0,
+    corner: S? mine.corner : 0,
+    longPassT: S? mine.longPassT : 0,
+    pass: S? mine.pass : 0,
+    goal: S? mine.goal : 0,
+    /* 상대의 위험도 — 우리 수비가 실제로 막고 있는지 */
+    oShotOn: S? opp.shotOn : 0,
+    oShotClose: S? opp.shotClose : 0,
+    oTakeOnWon: S? opp.takeOnWon : 0
   };
+}
+/* 📈 흐름 — 「최근 15분」과 전체를 견준다. 총합만 보면 초반에 벌어 둔 우위로
+   지금 밀리고 있다는 사실이 가려진다. 코치가 가장 먼저 말해야 할 것은 「지금」이다. */
+function coachMomentum(M, c){
+  if(!c.S) return null;
+  const now={min:M.min, shot:c.shot, oShot:c.oShot, poss:c.poss, z3:c.z3||0};
+  const prev=M._coachSnap;
+  /* 15분마다 스냅샷을 새로 뜬다 */
+  if(!prev || M.min-prev.min>=15){ M._coachSnap=now; }
+  if(!prev || M.min-prev.min<6) return null;
+  const dS=now.shot-prev.shot, dO=now.oShot-prev.oShot, span=now.min-prev.min;
+  if(span<6) return null;
+  return {span, dS, dO, dPoss:now.poss-prev.poss, dZ3:now.z3-prev.z3};
 }
 function renderCoachAdvice(){
   const M=liveM; const el=document.getElementById("lvPanel"); if(!el||!M) return;
@@ -44337,9 +44478,33 @@ function renderCoachAdvice(){
   if(sd.red>0) add(0, `🟥 <b>수적 열세</b>입니다. 공격 자원 하나를 내리고 중원을 한 명 더 채우는 게 안전합니다.`);
   const tired=[...pitch].sort((a,b)=>a.fit-b.fit);
   const dead=tired.filter(x=>x.fit<58);
-  if(dead.length) add(1, `😔 <b>${dead.slice(0,2).map(x=>x.p.name).join(", ")}</b> 다리가 완전히 풀렸습니다(체력 ${Math.round(dead[0].fit)}).
-    ${subsLeft>0?`교체 카드가 ${subsLeft}장 남았습니다. 지금 쓰시죠.`:"카드가 없습니다. 활동량을 줄이는 쪽으로 지시하셔야 합니다."}`);
-  else if(tired[0] && tired[0].fit<66) add(3, `🫤 <b>${tired[0].p.name}</b> 체력이 ${Math.round(tired[0].fit)}까지 떨어졌습니다. 다음 10분 안에 정리하는 게 좋겠습니다.`);
+  /* 🔁 「누구를 빼라」에서 끝내지 않는다 — 그 자리를 맡을 수 있는 벤치 자원을 이름으로 짚어 준다.
+     같은 자리 능숙도가 가장 높고, 그중 실력이 나은 선수를 고른다. */
+  const _slotOf=(()=>{ try{ return computeRenderSlots(user, onPitch(sd).map(q=>q.p)); }catch(e){ return {}; } })();
+  const benchFor=(x)=>{
+    try{
+      const sl=_slotOf[x.p.id] || x.slot || (sd.slotOf&&sd.slotOf[x.p.id]) || prefSlotOf(x.p);
+      const cands=(sd.bench||[]).filter(q=>q && !q.inj && q.pos!=="GK");
+      if(!cands.length) return null;
+      const best=cands.map(q=>({q, f:getPosFam(q, sl), lv:playerLevel(q)}))
+                      .sort((a,b)=>(b.f-a.f)||(b.lv-a.lv))[0];
+      /* 능숙도가 어중간해도 알려는 준다 — 대안이 낯선 자리라는 사실도 감독이 알아야 할 정보다 */
+      return (best && best.f>=30) ? best : null;
+    }catch(e){ return null; }
+  };
+  if(dead.length){
+    const b0=benchFor(dead[0]);
+    add(1, `😔 <b>${dead.slice(0,2).map(x=>x.p.name).join(", ")}</b> 다리가 완전히 풀렸습니다(체력 ${Math.round(dead[0].fit)}).
+      ${subsLeft>0
+        ? `교체 카드가 ${subsLeft}장 남았습니다. 지금 쓰시죠.${b0
+            ? ` — <b>${b0.q.name}</b>${b0.f>=70?"이(가) 같은 자리를 봅니다":b0.f>=45?"이(가) 그 자리를 소화합니다":"밖에 없는데 그 자리가 낯섭니다"}(능숙도 ${b0.f}).`
+            : " 다만 벤치에 그 자리를 볼 사람이 없습니다 — 자리를 옮겨서라도 메워야 합니다."}`
+        : "카드가 없습니다. 활동량을 줄이는 쪽으로 지시하셔야 합니다."}`);
+  }
+  else if(tired[0] && tired[0].fit<66){
+    const b1=benchFor(tired[0]);
+    add(3, `🫤 <b>${tired[0].p.name}</b> 체력이 ${Math.round(tired[0].fit)}까지 떨어졌습니다. 다음 10분 안에 정리하는 게 좋겠습니다.${b1?` <b>${b1.q.name}</b>을(를) 준비시키시죠.`:""}`);
+  }
   const cardRisk=pitch.find(x=>x.y>0 && (x.fit<74 || T.tackle>=1.5));
   if(cardRisk) add(2, `🟨 <b>${cardRisk.p.name}</b>, 경고를 안고 뛰고 있습니다.${T.tackle>=1.5?" 태클 강도가 높아 두 번째 카드가 나올 수 있습니다 — 강도를 한 칸 내리시죠.":" 무리한 태클만 피하면 됩니다."}`);
 
@@ -44361,6 +44526,62 @@ function renderCoachAdvice(){
       add(8, `🚩 오프사이드 <b>${c.offside}번</b>. 침투 타이밍이 반 박자 빠릅니다. 라인브레이커 성향을 줄이거나 한 템포 늦춰야 합니다.`);
     if(c.foul>=10)
       add(8, `⚠️ 파울이 <b>${c.foul}개</b>입니다. 심판이 이미 우리 쪽을 보고 있습니다. 태클 강도를 내리는 게 좋겠습니다.`);
+
+    /* ── 🔬 「슛은 나오는데 왜 안 들어가는가」를 나눠서 본다 ── */
+    if(c.shotLongPct!=null && c.shotLongPct>=55 && c.shotClose<=1)
+      add(4, `🎯 슈팅 ${c.shot}개 중 <b>${c.shotLongPct}%</b>가 먼 거리에서 나왔고, 박스 근처 슛은 ${c.shotClose}개뿐입니다.
+        박스 안으로 들어가질 못하고 있습니다 — 중거리 지시를 줄이고 침투를 늘려야 합니다.`);
+    else if(c.shotBlockPct!=null && c.shotBlockPct>=40)
+      add(5, `🧱 슛의 <b>${c.shotBlockPct}%</b>가 몸에 맞고 있습니다. 정면에서만 때리고 있다는 뜻입니다 — 폭을 넓혀 각을 만들어야 합니다.`);
+    else if(c.shotOnPct!=null && c.shotOnPct<30 && c.shot>=6)
+      add(5, `😵 슈팅 ${c.shot}개 중 골문 안으로 간 건 <b>${c.shotOnPct}%</b>뿐입니다. 조급하게 때리고 있습니다 — 한 번 더 내주는 선택이 필요합니다.`);
+    else if(c.save>=4 && c.goal===0)
+      add(4, `🧤 상대 골키퍼가 벌써 <b>${c.save}개</b>를 막아 냈습니다. 만들어 내는 건 되고 있습니다 — 형태를 바꾸기보다 계속 두드리는 게 맞습니다.`);
+    if(c.woodwork>=2)
+      add(6, `🥅 골대를 <b>${c.woodwork}번</b> 맞혔습니다. 운이 따라 주지 않을 뿐, 방향은 맞습니다.`);
+
+    /* ── 🗺️ 우리가 어디까지 올라가고 있는가 ── */
+    if(c.z3!=null && c.z3<24 && diff<=0)
+      add(4, `🗺️ 공을 잡고도 상대 진영에 머문 시간이 <b>${c.z3}%</b>뿐입니다. 전진 자체가 안 되고 있습니다 —
+        라인을 올리고 전방 압박으로 시작 지점을 앞으로 당겨야 합니다.`);
+    else if(c.oZ3!=null && c.oZ3>=42 && diff>=0)
+      add(5, `🚨 상대가 소유 시간의 <b>${c.oZ3}%</b>를 우리 진영에서 보내고 있습니다. 계속 이러면 한 방 나옵니다 — 중원을 두껍게 가져가시죠.`);
+
+    /* ── 🔁 패스의 방향 ── */
+    if(c.backPct!=null && c.backPct>=32 && c.poss>=52)
+      add(6, `↩️ 패스의 <b>${c.backPct}%</b>가 뒤로 향합니다. 안전하게만 돌리고 있습니다 —
+        성향을 한 칸 올리거나 전방으로 뛰는 역할(침투)을 하나 더 두시죠.`);
+    else if(c.fwdPct!=null && c.fwdPct>=46 && c.passOk!=null && c.passOk<74)
+      add(6, `⚡ 전진 패스 비중이 <b>${c.fwdPct}%</b>인데 성공률이 ${c.passOk}%입니다. 급하게 앞으로만 넣다 끊깁니다 — 한 박자 늦추는 게 낫습니다.`);
+
+    /* ── 🎪 세트피스 ── */
+    if(c.corner>=6 && c.goal===0)
+      add(7, `⛳ 코너킥을 <b>${c.corner}개</b>나 얻고도 소득이 없습니다. 키커나 박스 안 배치를 손볼 때입니다.`);
+
+    /* ── 🕵️ 상대 전술을 읽고 처방한다 ── */
+    const OT=TAC(opp);
+    if(min>=25){
+      if(OT.line>=1.5 && c.longPassT<=2 && diff<=0)
+        add(5, `🕵️ 상대 라인이 높습니다(${styleName(opp)}). 그런데 우리는 배후로 넘기는 공이 거의 없습니다 —
+          롱패스 성향을 올리고 빠른 선수를 뒷공간으로 뛰게 하면 그림이 나옵니다.`);
+      else if(OT.line<=0.5 && c.cross<=3 && c.poss>=55)
+        add(5, `🕵️ 상대가 완전히 내려앉았습니다. 좁은 중앙만 두드려서는 안 열립니다 — 폭을 넓히고 측면에서 올려야 합니다.`);
+      if(OT.press>=1.5 && c.lost>=c.pass*0.22 && c.pass>50)
+        add(4, `🕵️ 상대 압박이 강한데 후방에서 계속 빼앗기고 있습니다(로스트 ${c.lost}회).
+          짧은 빌드업을 고집하기보다 한 번씩 길게 넘겨 압박을 벗겨야 합니다.`);
+    }
+  }
+
+  /* ── 📈 지금의 흐름 (총합이 가리는 것) ─────────────── */
+  const mo=coachMomentum(M, c);
+  if(mo && min>=25){
+    if(mo.dO-mo.dS>=3)
+      add(2, `📈 최근 <b>${mo.span}분</b> 동안 슈팅을 ${mo.dS}:${mo.dO}로 내줬습니다. 흐름이 완전히 넘어갔습니다 —
+        지금 손을 쓰지 않으면 실점합니다.`);
+    else if(mo.dS-mo.dO>=3)
+      add(6, `📈 최근 ${mo.span}분은 우리 시간입니다(슈팅 ${mo.dS}:${mo.dO}). 이 리듬을 끊지 마시죠 — 교체는 흐름을 식힙니다.`);
+    else if(mo.dPoss<=-12)
+      add(5, `📉 최근 ${mo.span}분 사이 점유가 <b>${Math.abs(mo.dPoss)}%p</b> 빠졌습니다. 중원이 밀리기 시작했습니다.`);
   }
 
   /* ── 상대를 읽는다 ────────────────────────────────── */
@@ -44386,10 +44607,15 @@ function renderCoachAdvice(){
   }
 
   L.sort((a,b)=>a.pri-b.pri);
-  const lines=L.slice(0,5).map(x=>x.html);
-  const head = min<1 ? "킥오프를 기다리는 중입니다."
-    : `${min}분 · 점유 ${c.poss}% · 슈팅 ${c.shot}:${c.oShot}${c.passOk!=null?` · 패스 ${c.passOk}%`:""} · 교체 카드 ${subsLeft}장`;
-  el.innerHTML=`<div class="small" style="margin-bottom:6px">${head}</div>
+  const lines=L.slice(0,6).map(x=>x.html);
+  /* 머리줄 — 지금 상황을 한눈에. 지표는 「판단에 쓰이는 것」만 올린다. */
+  const bits=[`${min}분`, `점유 ${c.poss}%`, `슈팅 ${c.shot}:${c.oShot}`];
+  if(c.shotOnPct!=null) bits.push(`유효 ${c.shotOn}(${c.shotOnPct}%)`);
+  if(c.passOk!=null)    bits.push(`패스 ${c.passOk}%`);
+  if(c.z3!=null)        bits.push(`상대 진영 체류 ${c.z3}%`);
+  bits.push(`교체 ${subsLeft}장`);
+  const head = min<1 ? "킥오프를 기다리는 중입니다." : bits.join(" · ");
+  el.innerHTML=`<div class="small" style="margin-bottom:6px;line-height:1.7">${head}</div>
   ${lines.map(l=>`<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #21262d">${l}</div>`).join("")}
   <p class="small" style="margin-top:6px">💡 교체·성향 변경은 상단의 <b>"📋 전술"</b> 버튼에서.</p>`;
 }
