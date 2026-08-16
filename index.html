@@ -11064,14 +11064,54 @@ function genOffers(){
       }
     }
   }
-  if(G.freeAgents&&G.freeAgents.length&&Math.random()<0.25){ // AI 구단의 FA 영입
-    const fa=pick(G.freeAgents);
-    const club=pick(Object.values(G.teams).filter(t2=>!t2.isUser && !isArmyTeam(t2) && t2.players.length<34));
-    if(!club) return;
-    G.freeAgents.splice(G.freeAgents.indexOf(fa),1);
-    fa.wage=wageExpect(fa.ovr,fa.frn); fa.ct=1+R(2); fa.morale=75;
-    club.players.push(fa); joinClub(club, fa);
-    addNews(`🆓 FA ${fa.name}, ${club.short} 입단 (이적료 없음)`);
+  /* ═══════════════════════════════════════════════════════════
+     🆓 AI 구단의 FA 영입
+     ⚠ 제보 — 「방출한 좋은 선수가 팀을 못 찾고 계속 FA 로 남아 있다」.
+        예전에는 목록에서 완전 무작위로 한 명을 뽑았다. 시장에 80명이 쌓여 있으면
+        리그 최상급 자원이 뽑힐 확률도 1/80 이라, 잘하는 선수일수록 오히려 오래 방치됐다.
+        게다가 데려가는 구단도 무작위여서, 그 자리가 이미 넘치는 팀이 또 데려가곤 했다.
+        (구단을 못 찾으면 return 으로 함수를 통째로 빠져나가 뒤의 제안 생성까지 건너뛰는 버그도 있었다)
+     ─ 좋은 선수가 먼저 팔리고, 그 선수를 실제로 필요로 하는 구단이 데려간다.
+     ═══════════════════════════════════════════════════════════ */
+  if(G.freeAgents && G.freeAgents.length){
+    /* 시장에 사람이 쌓여 있을수록 거래도 활발하다 */
+    const tries=1+Math.floor(Math.min(3, G.freeAgents.length/25));
+    for(let n=0; n<tries; n++){
+      if(Math.random()>=0.34) continue;
+      if(!G.freeAgents.length) break;
+      /* 능력 가중 추첨 — 표본을 여럿 뽑아 그중 가장 나은 선수가 자리를 찾는다.
+         나이가 많으면 그만큼 손이 덜 간다. */
+      let fa=null, bs=-1e9;
+      const sample=Math.min(G.freeAgents.length, 14);
+      for(let i=0;i<sample;i++){
+        const c=pick(G.freeAgents); if(!c || c.army) continue;
+        const sc=(c.ovr||60) + Math.random()*9 - Math.max(0,(G.season-(c.by||2000))-30)*1.4;
+        if(sc>bs){ bs=sc; fa=c; }
+      }
+      if(!fa) continue;
+      /* 그 선수를 쓸 만한 구단 — 수준이 맞고, 그 자리가 아직 비어 있고, 쿼터도 남아야 한다 */
+      const want=Object.values(G.teams).filter(t2=>{
+        if(t2.isUser || isArmyTeam(t2) || (t2.players||[]).length>=32) return false;
+        if(fa.ovr < teamOVR(t2)-4) return false;                       // 수준이 한참 아래면 관심이 없다
+        if(frnQ(fa) && t2.players.filter(q=>frnQ(q)).length >= (t2.div===1?6:5)) return false;   // 외국인 쿼터
+        /* ⚠ 정원을 9명으로 잡았더니 수비수(구단 평균 12.8명)는 사실상 아무 데도 못 갔다.
+           대분류별 실제 보유 인원에 맞춘다. */
+        const same=t2.players.filter(q=>q.pos===fa.pos).length;
+        const room={GK:4, DF:13, MF:12, FW:10}[fa.pos] || 12;
+        return same < room;                                            // 그 자리가 이미 넘치면 안 뽑는다
+      });
+      if(!want.length) continue;
+      /* 잘하는 선수는 강한 팀이 데려가고, 그저 그런 선수는 자리가 빈 팀으로 간다 */
+      want.sort((a,b)=>teamOVR(b)-teamOVR(a));
+      const club = fa.ovr>=70 ? want[Math.floor(Math.random()*Math.min(5, want.length))] : pick(want);
+      G.freeAgents.splice(G.freeAgents.indexOf(fa),1);
+      fa.wage=Math.round(Math.max(fa.wage||0, wageExpect(fa.ovr,fa.frn,club.div))*10)/10;
+      fa.ct=1+R(2); fa.morale=75; fa._faWhy=null;
+      club.players.push(fa); joinClub(club, fa);
+      /* 리그가 알아볼 만한 선수의 입단은 뉴스가 된다 */
+      if(fa.ovr>=70) addNews(`🆓 FA <b>${fa.name}</b>(${fa.pos}), ${club.short} 입단 — 이적료 없음`, null, "club");
+      else addNews(`🆓 FA ${fa.name}, ${club.short} 입단 (이적료 없음)`);
+    }
   }
   if(Math.random()<0.18){ // 준주전급에도 협상 요청이 온다
     const mids=ut.players.filter(p=>p.ovr>=68&&p.ovr<75&&!G.transferBids.some(b=>b.pid===p.id)&&!G.offers.some(o=>o.pid===p.id));
