@@ -599,6 +599,10 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text; user-se
 .pkNote{max-width:760px; margin:22px auto 30px; padding:12px 14px; font-size:11px; line-height:1.75;
   color:#6b7480; text-align:center; border-top:1px solid #21262d;}
 .pkNote b{color:#8b949e;}
+/* ©️ 저작권 고지 — 면책 문구 아래에 한 칸 띄워 붙인다 */
+.pkCopy{max-width:760px; margin:0 auto 34px; padding:10px 14px 0; font-size:11px; line-height:1.75;
+  color:#7d8590; text-align:center; letter-spacing:.1px;}
+.pkCopy b{color:#c9d1d9;}
 /* ⚖️ 선수 비교 — FM처럼 좌우 대칭 */
 .cmpRow{display:flex; align-items:center; gap:8px; padding:4px 2px; border-bottom:1px solid #1a2027; font-size:12.5px;}
 .cmpVa{flex:1; text-align:right; color:var(--sub);}
@@ -4954,7 +4958,8 @@ function stepMinute(M){
     for(const x of onPitch(sd)){
       // 타고난 체력(nat)이 좋은 선수는 같은 90분을 뛰어도 덜 지친다
       const nf = x.p.attr ? clamp(1.22 - (attr20(x.p.attr.nat)-10)*0.028, 0.78, 1.22) : 1;
-      x.fit=Math.max(20, x.fit-(0.34*cf+Math.random()*0.14)*nf*ageWearK(x.p));   // 노장은 후반에 더 빨리 지친다
+      const gkf = (x.p.pos==="GK" || x.slot==="GK") ? GK_STAM_K : 1;   // 🧤 골키퍼는 훨씬 덜 지친다
+      x.fit=Math.max(20, x.fit-(0.34*cf+Math.random()*0.14)*nf*ageWearK(x.p)*gkf);   // 노장은 후반에 더 빨리 지친다
     } }
   if(M.xiDirty || M.min%7===0){ liveRates(M); M.xiDirty=false; }
   // 팀별로 "지난 분에 예고했던 결과 공개 → 이번 분 새 시도"를 한 묶음으로 처리한다 —
@@ -5521,7 +5526,9 @@ function applyMatchResult(M){
       // 경기 피로. 달력이 생기면서 회복이 하루 단위로 들어오므로 종전보다 살짝 낮췄다 —
       //   기본 루틴으로 매 경기 풀타임을 뛰면 시즌 중반에 80대 초반까지 내려간다.
       const natK = p.attr ? clamp(1.20 - (attr20(p.attr.nat)-10)*0.026, 0.80, 1.20) : 1;
-      p.cond=clamp(p.cond-Math.round((mins/93)*(8+R(6))*cf*natK),55,100);
+      /* 🧤 골키퍼는 한 경기를 뛰어도 몸에 남는 피로가 훨씬 적다 — 주중·주말 연전을 버틴다 */
+      const gkK = (p.pos==="GK") ? GK_STAM_K : 1;
+      p.cond=clamp(p.cond-Math.round((mins/93)*(8+R(6))*cf*natK*gkK),55,100);
       let base=6.0+x.goals*1.0+x.assists*0.5-x.y*0.3-(x.red?1.2:0)+(gf-ga)*0.2+(Math.random()*1.2-0.3);
       x.rating=clamp(base,3,10);        // 이 경기의 평점 — 리포트·MOM 선정에 쓰인다
       if(frMatch){ p.fRTot=(p.fRTot||0)+clamp(base,3,10); p.fRating=Math.round(p.fRTot/p.fApps*100)/100; }
@@ -15393,7 +15400,9 @@ function renderTeamPick(){
   <p class="small">※ 능력치는 실제 기록·활약을 바탕으로 한 추정치입니다.</p>
   <p class="pkNote">이 게임에 등장하는 모든 인물·구단·사건은 <b>가상</b>이며, 실존 인물 및 단체와 아무런 관련이 없습니다.<br>
     선수·감독·심판의 이름과 능력치는 게임 진행을 위한 창작물이고, 게임 안에서 벌어지는 모든 언행은 실제 인물의 발언이나 성향과 무관합니다.<br>
-    본 게임은 비영리 팬 제작물이며 K리그 및 각 구단과 제휴 관계가 없습니다.</p>`;
+    본 게임은 비영리 팬 제작물이며 K리그 및 각 구단과 제휴 관계가 없습니다.</p>
+  <p class="pkCopy">본 게임의 소스 코드, 그래픽 등 모든 에셋의 저작권은 제작자 <b>‘청백적시메오네’</b>에게 있습니다.<br>
+    무단 복제, 수정 및 배포를 금합니다.</p>`;
 }
 function startGame(id){ pickSel=null; newGame(id); enterGame(); }
 function resumeGame(){ if(loadGame()) enterGame(); }
@@ -31942,6 +31951,7 @@ const AERIAL_MIN=0.34;     // 이 거리 이상 패스는 공중으로 뜬다
 /* 1분당 기본 체력 소모. 시뮬에서 실제로 측정한 분당 이동량(중앙값 약 1.30 정규화 단위 ≒ 90m,
    90분 8.1km)을 기준으로 잡았다. 평범한 주전이 풀타임을 뛰면 100 → 65 안팎으로 떨어진다. */
 const STAM_PER_MIN=0.28;
+const GK_STAM_K=0.45;      // 🧤 골키퍼의 체력 소모 — 필드 플레이어의 45%
 const STAM_REF_RUN=1.30;   // "평균적인 1분 이동량" 기준값
 const SP_ARRIVE=0.006;     // 세트피스 배치 자리 도착 판정 반경(약 0.4m) — 이 안에 들면 발을 멈춘다
 const AERIAL_RANGE=0.055;  // 공중볼 경합 반경
@@ -40494,7 +40504,10 @@ class MatchSim{
         if(a) a._work=0;
         // 타고난 체력(nat)·지구력(sta)이 좋으면 덜 지친다
         const natK = x.p.attr ? clamp(1.24 - (attr20(x.p.attr.nat)-10)*0.026 - (attr20(x.p.attr.sta)-10)*0.014, 0.72, 1.26) : 1;
-        const drop = (STAM_PER_MIN*cf + Math.random()*0.14) * work * natK * ageWearK(x.p) * mins;
+        /* 🧤 골키퍼는 90분 내내 뛰어다니지 않는다 — 같은 시간을 소화해도 훨씬 덜 지친다.
+           이동량(work)에 하한(0.55)이 걸려 있어 실제 활동량 차이가 다 반영되지 못했다. */
+        const gkK = (x.p.pos==="GK" || x.slot==="GK") ? GK_STAM_K : 1;
+        const drop = (STAM_PER_MIN*cf + Math.random()*0.14) * work * natK * ageWearK(x.p) * gkK * mins;
         x.fit=Math.max(25, x.fit - drop);
       }
     }
