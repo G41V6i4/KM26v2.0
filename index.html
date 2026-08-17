@@ -1324,6 +1324,7 @@ tr.yIn {background:linear-gradient(90deg,rgba(47,129,247,.10),rgba(47,129,247,0)
     <button class="navbtn" data-v="mylife">💼 내 자산</button>
     <button class="navbtn" data-v="youth">🌱 유스</button>
     <button class="navbtn" data-v="settings">⚙️ 설정</button>
+    <button class="navbtn" data-v="__exit" style="color:#ff9d5c">🚪 나가기</button>
     </div>
     <button class="bigbtn" id="advBtn">진행 ▶</button>
     <div id="dateBox"></div>
@@ -2815,7 +2816,9 @@ addPref("busan", [["라마스","CM"],["페신","ST"]]);
 addPref("jeonnam", [["발디비아","CAM"],["플라나","ST"]]);
 addPref("seoule", [["에울레르","CAM"],["유정완","RW"]]);
 addPref("seongnam", [["김민재","ST"],["유주안","RB"],["이정빈","LW"],["프레이타스","CM"],["박상혁","CAM"],["홍창범","CAM"],["이지훈","RB"],["박병규","LW"],["정승용","LB"],["박수빈","CM"],["양태양","LWB"],["료지","RB"],["황석기","LB"],["이종호","ST"]]);
-addPref("cheongju", [["김선민","LB"],["피터","ST"]]);
+/* ⚠ 제보 — 「청주 구선민(김선민)이 왼쪽 풀백으로 되어 있다」.
+   등록은 DF 지만 실제로는 중앙 미드필더 · 수비형 미드필더다. */
+addPref("cheongju", [["김선민","CM"],["피터","ST"]]);
 addPref("asan", [["두아르테","ST"]]);
 // 세부 슬롯을 밴드(DF/MF/FW)로 정규화 — LCB/RCB→CB, LCM/RCM→CM, LS/RS→ST 로 묶어서 판정한다
 function canonSlot(slot){
@@ -3001,6 +3004,14 @@ const PLAYER_TWEAK={
     fam:{DC:100, DM:84, MC:74, SW:70},
     min:{jum:74, hea:73, str:74, mar:70, tck:70, pos:71, det:72, bra:72, tea:70,
          pas:66, fir:63, cmp:64, dec:65, cnt:65, sta:70, wor:70} },
+  /* 구선민(청주 #5) — 등록은 수비수지만 실제 자리는 중앙 미드필더. 수비형 미드필더까지 소화한다(제보).
+     1991년생 35세 · 167cm 의 작고 부지런한 중원 — 3성급. 발은 이미 느리고, 대신 위치 선정과
+     활동량·태클로 버티는 유형이다. */
+  "cheongju:김선민":{ pos:"MF", pref:"CM", ovr:64, pot:64, potMax:64, famOnly:true,
+    fam:{MC:100, DM:92, AMC:70, ML:66, MR:62},
+    set:{pac:52, acc:53, agi:66, bal:70, jum:44, hea:46, str:52, sta:74, nat:70},
+    min:{wor:78, tea:76, det:76, cnt:72, pos:73, dec:72, ant:70, cmp:70,
+         pas:70, vis:68, fir:68, tec:68, tck:72, mar:66, lon:62} },
   /* ── 서울 이랜드 FC — 실측 포지션 능숙도 ── */
   "seoule:최랑":{ pref:"LM", famOnly:true, fam:{ML:100, WBL:50, MC:50, AML:50, DL:45, LW:45, AMC:45} },
   "seoule:김주환":{ pref:"RWB", famOnly:true, fam:{WBR:100, WBL:100, DR:85, DL:85, MR:50, ML:50} },
@@ -6168,6 +6179,104 @@ function youthPickSlot(t){
   if(S.pos==="FW" && ((have["LW"]||0)+(have["RW"]||0))<2) prefs=["LW","RW","ST"];
   return {pos:S.pos, pref:pick(prefs)};
 }
+/* 세부 자리 → 큰 자리 */
+const AI_PREF_POS={GK:"GK", CB:"DF", LB:"DF", RB:"DF", LWB:"DF", RWB:"DF",
+  DM:"MF", CM:"MF", CAM:"MF", LM:"MF", RM:"MF", LW:"FW", RW:"FW", ST:"FW"};
+/* ═══════════════════════════════════════════════════════════════════════════
+   🧮 AI 구단의 오프시즌 인원 — 유스 배출 + 자리별 보강
+   ⚠ 제보 ① 「해가 갈수록 왼쪽·오른쪽 풀백이 검색에 9명, 8명밖에 안 나온다. 다른 팀 유스에서도
+             풀백·골키퍼가 배출되게 해 달라.」
+      ② 「처음엔 선수가 1000명이 넘었는데 10년이 지나니 850명. 100년이 지나도 1000명은 넘어야 한다.」
+   원인은 둘 다 여기였다. AI 보강이
+     · 자리를 pick(["DF","MF","FW"]) 로만 정하고 세부 자리(prefPos)를 비워 둬서 능력치 추론이
+       전부 센터백·중앙 미드필더로 몰렸고 (10시즌 실측 LB 41→11 · RB 40→10 · GK 116→75)
+     · 스쿼드 하한이 24명뿐이라 실제 로스터(29~50명)가 해마다 깎여 리그 총원이 1022→792(−22%)로
+       내려앉았다.
+   그래서 ① 유저와 똑같이 youthPickSlot 으로 자리를 뽑고 ② 자리별 하한을 못 박고
+   ③ 스쿼드 하한을 실축 등록 규모(K1 31 · K2 28)로 올린다.
+   ⚠ 난이도 — 인원을 늘리면 저점이 낮은 선수가 쏟아져 AI가 헛돈을 쓸 수 있다. 그래서 보충 선수는
+      싸고(연봉 = 능력치 기준), 구단 예산에 비례해서만 조금 나아진다. 유스 졸업생은 연봉 0.3억 고정.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function aiSquadFloor(t){
+  if(isArmyTeam(t)) return 24;            // 상무는 입대로만 채운다 — 억지로 늘리지 않는다
+  return t.div===1 ? 32 : 29;             // 실축 K리그 등록 인원(30명 내외)에 맞춘다
+}
+/* 🌱 AI 구단 유스 졸업 — 다른 구단 아카데미에서도 풀백·골키퍼가 올라온다 */
+function aiYouthIntake(t){
+  if(isArmyTeam(t)) return 0;             // 국군체육부대에는 아카데미가 없다
+  const yl=clamp(t.youthLv||1,1,5), tl=trainLv(t);
+  const n=1+R(2)+[0,0,0,1,1,2][yl];       // 1~5명 — 유스 등급이 높은 명문이 더 많이 낸다
+  for(let i=0;i<n;i++){
+    const sl=youthPickSlot(t);
+    const hgY=Math.random()<(0.05+yl*0.015);
+    const yp=mkPlayer(hgY?genFrnName():genName(), sl.pos, G.season-17-R(2),
+                      50+R(9)+(yl-1)+Math.round((tl-1)*0.5), hgY?1:0);
+    if(hgY) yp.hg=1;
+    try{ yp.prefPos=sl.pref; yp.posFam=initPosFam(yp); syncPosBand(yp); applySpecialization(yp); retuneTraits(yp); }catch(e){}
+    /* 저점은 낮게, 천장은 유저 아카데미보다 조금 낮게 — AI가 특급을 매년 뽑아 오면 난이도가 무너진다 */
+    const gem=Math.random() < (0.006+(yl-1)*0.016+(tl-1)*0.007);
+    const pot0=clamp(yp.ovr+3+R(11)+(yl-1)*2.2, 64, Math.round(72+(yl-1)*2.4));
+    yp.pot=gem ? clamp(pot0+4+R(7), 84, 92) : pot0;
+    yp.wage=0.3; yp.ct=2+R(3);
+    t.players.push(yp);
+    if(gem && yp.pot>=88)
+      try{ addNews(`🌱 <b>${t.short}</b> 유스에서 ${POS_KO[yp.pos]||yp.pos} <b>${yp.name}</b>(${G.season-yp.by}세)가 1군에 올라왔습니다 — 코치진 평가 "특급".`, null, "league"); }catch(e){}
+  }
+  return n;
+}
+/* 🧱 자리별 하한을 채우고, 그다음 스쿼드 인원을 채운다 */
+function aiSquadFill(t){
+  const cnt=(list)=>{ let n=0; for(const p of t.players){ const s=p.prefPos||p.pos; if(list.indexOf(s)>=0) n++; } return n; };
+  const rich=clamp((t.budget||0)/60, 0, 1);
+  const mk=(pref)=>{
+    const pos=AI_PREF_POS[pref]||"MF";
+    const f=Math.random() < ((t.div===1?0.16:0.10)+rich*0.06);
+    const np=mkPlayer(f?genFrnName():genName(), pos, G.season-19-R(9),
+                      56+R(12)+Math.round(rich*4)+(f?2:0), f);
+    try{ np.prefPos=pref; np.posFam=initPosFam(np); syncPosBand(np); applySpecialization(np); retuneTraits(np); }catch(e){}
+    if(f && (G.season-np.by)<=21 && Math.random()<0.4) np.hg=1;   // 국내에서 자란 어린 외국 선수 — 홈그로운
+    np.ct=1+R(3);
+    t.players.push(np);
+    return np;
+  };
+  let g=0;
+  while(cnt(["GK"])<3            && g++<60) mk("GK");
+  while(cnt(["LB","LWB"])<2      && g++<60) mk(Math.random()<0.78?"LB":"LWB");
+  while(cnt(["RB","RWB"])<2      && g++<60) mk(Math.random()<0.78?"RB":"RWB");
+  while(cnt(["CB"])<4            && g++<60) mk("CB");
+  while(cnt(["DM","CM","CAM"])<5 && g++<60) mk(pick(["DM","CM","CM","CAM"]));
+  while(cnt(["LW","RW","LM","RM"])<4 && g++<60) mk(pick(["LW","RW","LM","RM"]));
+  while(cnt(["ST"])<3            && g++<60) mk("ST");
+  const floor=aiSquadFloor(t);
+  let g2=0;
+  while(t.players.length<floor && g2++<60){ const sl=youthPickSlot(t); mk(sl.pref); }
+}
+/* ═══ 🧮 리그 총원 평형 ═══════════════════════════════════════════════════
+   ⚠ 제보 — 「100년이 지나도 선수 검색에 나오는 선수가 1000명은 넘는 수준이어야 한다.」
+   은퇴·계약 만료로 빠지는 인원을 구단 유스 배출만으로는 다 메울 수 없다. 모자란 만큼은
+   하부 리그·해외에서 새 자원이 들어온 것으로 본다 — 매년 시즌 전환의 맨 마지막에,
+   모자란 인원만큼만, 한 번에 45명까지만 시장(FA)에 풀어 준다.
+   ⚠ 난이도 — 이 선수들은 능력치가 낮게 깔리고 값·연봉도 능력치 그대로 매겨진다.
+      AI가 이 자원에 큰돈을 쓸 이유가 없어야 하고, 자리는 고르게 뿌려 특정 자리 기근을 막는다. */
+const POOL_TARGET=1010;
+const POOL_PREFS=["GK","GK","CB","CB","LB","LB","RB","RB","LWB","RWB",
+  "DM","DM","CM","CM","CAM","LM","RM","LW","LW","RW","RW","ST","ST"];
+function poolTopUp(){
+  let n=0; for(const id in G.teams) n+=(G.teams[id].players||[]).length;
+  G.freeAgents=G.freeAgents||[];
+  let need=POOL_TARGET-(n+G.freeAgents.length);
+  if(need<=0) return 0;
+  need=Math.min(need, 45);
+  for(let i=0;i<need;i++){
+    const pref=pick(POOL_PREFS), pos=AI_PREF_POS[pref]||"MF";
+    const f=Math.random()<0.12;
+    const p=mkPlayer(f?genFrnName():genName(), pos, G.season-19-R(11), 52+R(12)+(f?2:0), f);
+    try{ p.prefPos=pref; p.posFam=initPosFam(p); syncPosBand(p); applySpecialization(p); retuneTraits(p); }catch(e){}
+    p.ct=1; p.wage=wageExpect(p.ovr, p.frn, 2);
+    G.freeAgents.push(p);
+  }
+  return need;
+}
 function resetSeasonStats(p){
   p.apps=0;p.goals=0;p.assists=0;p.rTot=0;p.seasonRating=0;
   p.fApps=0;p.fGoals=0;p.fAssists=0;p.fRTot=0;p.fRating=0;
@@ -8627,10 +8736,97 @@ function stadOf(t){
   if(!t) return {n:"홈구장", cap:15000, avg:3000};
   if(!t.stad){
     const s=STADIUM[t.id];
-    t.stad = s ? {n:s.n, cap:s.cap, avg:s.avg}
-               : {n:`${t.short} 홈구장`, cap:Math.max(5000,(t.fans||10)*450), avg:Math.max(900,(t.fans||10)*100)};
+    /* ⚠ 자료값이 없는 구단(하부에서 올라온 신생 팀)이 900명짜리 기준을 들고 1부를 뛰었다.
+       리그 최하위권 수준(1부 2,600 · 2부 1,200)은 되도록 깔아 준다. */
+    t.stad = s ? {n:s.n, cap:s.cap, avg:s.avg, _base0:s.avg}
+               : {n:`${t.short} 홈구장`, cap:Math.max(8000,(t.fans||10)*450),
+                  avg:Math.max(t.div===1?2600:1200, (t.fans||10)*100)};
+    if(!s) t.stad._base0=t.stad.avg;
   }
   return t.stad;
+}
+/* ═══ 🎟️ 기준 관중은 해마다 움직인다 ══════════════════════════════
+   ⚠ 제보 — 「10년이 지나니 유저 팀 빼고 홈·원정 관중이 계속 줄어드는 것 같다」.
+      확인해 보니 실제로는 그 반대였다 — 구단별 「기준 관중(stad.avg)」은 자료값 그대로
+      한 번 정해지면 영영 움직이지 않았다. 흥행 지수(hype)만 0.72~1.34 사이를 오갔을 뿐이라,
+      · 만년 하위권 구단은 매 시즌 하한(0.72)에 붙어 늘 30% 적게 들어오고
+      · 반대로 잘하는 구단도, 승격한 구단도 관중이 「늘지」 않았다
+      · 하부에서 올라온 구단은 자료값이 없어 900명짜리 기준을 그대로 들고 1부를 뛰었다
+      그래서 시즌이 쌓일수록 리그 전체 관중이 내려앉는 것처럼 보인다.
+   ─ 시즌이 끝날 때 실제 관중과 성적을 보고 기준 관중을 조금씩 옮긴다.
+     성적이 좋으면 어느 구단이든 늘고, 나쁘면 줄지만 — 전통 인기 구단은 바닥이 있다. */
+/* 🎫 전통 인기 구단 — 2부로 내려가도, 성적이 나빠도 이 관중 아래로는 빠지지 않는다.
+   (수원 삼성이 2부에서도 만 명을 채우는 그 현상) */
+const ATT_FLOOR={
+  seoul:11000, jeonbuk:7800, suwon:8200, ulsan:6800, daejeon:6600, daegu:6200,
+  incheon:5600, pohang:5000, gangwon:3600, anyang:3600, jeju:3000, gwangju:2600,
+  jeonnam:2800, busan:2600, suwonfc:2600, seongnam:2000, seoule:2000, bucheon:1800,
+  cheongju:1700, gimpo:1400, gyeongnam:1400
+};
+/* 기준 관중의 하한·상한 — 자료값과 전통 인기도를 함께 본다 */
+/* ⚠ 예전에는 STADIUM 자료값을 먼저 봤다. 그래서 구장을 개선해 _base0 를 올려도
+      하한·상한이 자료값에 묶여 아무 변화가 없었다(감독 기부의 실익이 0). _base0 를 먼저 본다 —
+      stadOf 가 처음부터 자료값으로 채워 두므로 게임 시작 시점의 값은 똑같다. */
+function attBase0(t){
+  const sd=stadOf(t);
+  if(sd && sd._base0>0) return sd._base0;
+  try{ const s=STADIUM[t.id]; if(s && s.avg) return s.avg; }catch(e){}
+  return (sd && (sd.avg||1000)) || 1000;
+}
+function attFloorOf(t){
+  const trad=ATT_FLOOR[t.id]||0;
+  const b0=attBase0(t);
+  /* 전통 구단은 지정한 하한, 그 밖의 구단도 자료값의 70% 아래로는 빠지지 않는다 —
+     성적이 나빠도 그 동네 골수 팬은 남는다. */
+  return Math.max(650, trad, Math.round(b0*0.70));
+}
+function attCeilOf(t){
+  const sd=stadOf(t);
+  /* 아무리 잘해도 자료값의 1.6배·수용 인원의 92%를 넘지 않는다 */
+  return Math.min(Math.round((sd.cap||30000)*0.92), Math.round(attBase0(t)*1.6));
+}
+/* 시즌 종료 시 — 성적을 보고 기준 관중을 옮긴다 (전 구단 공통).
+   ⚠ 「지난 시즌 실제 관중」쪽으로 수렴시키는 방식은 쓰지 않는다 — 개막 특수(1.52배)·더비(1.24배)가
+      섞인 실측 평균은 기준값보다 늘 높게 나와서, 되먹임으로 관중이 무한히 불어난다(실측 10시즌 +120%).
+      성적만 보고 조금씩 옮기는 쪽이 예측 가능하고 리그 총량도 안정적이다. */
+function attSeasonAdjust(){
+  for(const id in G.teams){
+    const t=G.teams[id];
+    if(!t || (t.div!==1 && t.div!==2)) continue;
+    const sd=stadOf(t);
+    if(sd._base0==null) sd._base0=attBase0(t);      // 원래 자료값을 기억해 둔다
+    let k=1;
+    /* ① 성적 — 1위 +5.5% · 중위권 변화 없음 · 최하위 −6%. 어느 구단에나 같다. */
+    try{
+      const tbl=tableOf(t.div), pos=tbl.findIndex(x=>x.id===t.id)+1, N=tbl.length||12;
+      if(pos>0){
+        const r=(pos-1)/Math.max(1,N-1);            // 0=1위 · 1=최하위
+        k *= 1.055 - r*0.115;
+        if(t.div===1 && pos===1) k*=1.04;            // 리그 우승
+        if(t.div===2 && pos<=2)  k*=1.05;            // 승격
+      }
+    }catch(e){}
+    /* ② 아시아 무대 */
+    try{ if(G.eacl && Array.isArray(G.eacl.teams) && G.eacl.teams.indexOf(t.id)>=0) k*=1.02; }catch(e){}
+    /* ③ 승강 — 부가 바뀐 그 다음 시즌에 한 번 크게 움직인다 */
+    if(t._attDiv!=null && t._attDiv!==t.div) k *= (t.div===1 ? 1.10 : 0.90);
+    t._attDiv=t.div;
+    /* 늘 때는 빠르고, 빠질 때는 느리다 — 팬은 하루아침에 사라지지 않는다 */
+    let target=sd.avg*k;
+    const up=Math.round(sd.avg*0.07)+30, dn=Math.round(sd.avg*0.045)+20;
+    target = clamp(Math.round(target), sd.avg-dn, sd.avg+up);
+    const lo=attFloorOf(t), hi=attCeilOf(t);
+    const before=sd.avg;
+    sd.avg = clamp(Math.round(target), lo, Math.max(lo, hi));
+    if(t.isUser && Math.abs(sd.avg-before)>=Math.max(60, before*0.015)){
+      const up2=sd.avg>before;
+      let why = up2 ? "지난 시즌 성적에 팬이 늘었습니다" : "지난 시즌 성적에 팬이 빠졌습니다";
+      if(sd.avg<=lo && (ATT_FLOOR[t.id]||0)>0) why="전통의 지지층이 버텨 주고 있습니다";
+      else if(sd.avg>=hi) why="구장 규모가 한계입니다 — 더 늘리려면 증축이 필요합니다";
+      try{ addNews(`${up2?"🎟️":"🪑"} 기준 관중이 <b>${before.toLocaleString()}명 → ${sd.avg.toLocaleString()}명</b>으로 조정되었습니다 — ${why}.`,
+        up2?"good":"warn", "club"); }catch(e){}
+    }
+  }
 }
 /* 흥행 지수 — 성적·순위에 따라 기준 관중이 서서히 오르내린다(0.70~1.45) */
 function hypeOf(t){ if(t.hype==null) t.hype=1; return t.hype; }
@@ -8646,7 +8842,10 @@ function updateHype(t, gf, ga, isHome){
   }
   // 평균으로 서서히 되돌아간다 — 안 그러면 강팀은 시즌 중반에 상한선에 붙어 버린다
   const h0=hypeOf(t);
-  t.hype=clamp(Math.round((h0 + v - (h0-1)*0.085)*1000)/1000, 0.72, 1.34);
+  /* ⚠ 하한 0.72 는 「성적이 계속 나쁜 구단은 영원히 30% 적게 들어온다」는 뜻이었다.
+     실제로는 그 지점에서 골수 팬만 남아 더 빠지지 않는다 — 하한을 올리고,
+     장기 감소는 기준 관중(stad.avg) 쪽에서 천천히 처리한다. */
+  t.hype=clamp(Math.round((h0 + v - (h0-1)*0.085)*1000)/1000, 0.82, 1.34);
 }
 /* 경기 밖에서 흥행이 움직이는 경우 — 큰 영입, 핵심 선수 매각 같은 사건.
    ⚠ 예전에는 hype 를 오직 경기 결과로만 움직였다. 그래서 리그 최고 선수를 데려와도
@@ -8655,7 +8854,7 @@ function updateHype(t, gf, ga, isHome){
 function bumpHype(t, v, why){
   if(!t || !v) return;
   const before=hypeOf(t);
-  t.hype=clamp(Math.round((before+v)*1000)/1000, 0.72, 1.45);
+  t.hype=clamp(Math.round((before+v)*1000)/1000, 0.82, 1.45);
   const d=t.hype-before;
   if(t.isUser && Math.abs(d)>=0.02){
     const sd=stadOf(t);
@@ -8744,6 +8943,12 @@ function awayAttFor(home, away, att){
   /* 원정 동원력 — 그 구단의 평소 관중 규모가 기준 */
   let base = clamp(((sa.avg||1000)/Math.max(1200, (sh.avg||1000))) * 0.085, 0.02, 0.17);
   base *= clamp(hypeOf(away), 0.7, 1.4);                       // 요즘 잘 나가면 원정도 따라온다
+  /* 🚌 원정 동원력 — 원정까지 따라가는 서포터가 두꺼운 구단이 따로 있다(제보).
+     2부에 있어도 원정석은 채운다. */
+  { const tr=ATT_FLOOR[away.id]||0;
+    if(tr>=6000)      base*=1.35;
+    else if(tr>=3000) base*=1.20;
+    else if(tr>=1700) base*=1.10; }
   const db=derbyOf(home.id, away.id);
   if(db) base *= (db.tier>=2 ? 2.1 : 1.7);                     // 더비는 원정석이 꽉 찬다
   else if(REGION[home.id] && REGION[home.id]===REGION[away.id]) base *= 1.6;   // 같은 도시
@@ -10436,6 +10641,10 @@ function tryPreExpirySale(from, p){
   }catch(e){ return false; }
 }
 function startNewSeason(){
+  /* 🏗️ 겨울 증설 공사 완공 — 수용 인원이 늘어난 뒤에 기준 관중을 다시 잡아야 한다 */
+  try{ donSeasonTick(); }catch(e){}
+  /* 🎟️ 기준 관중 갱신 — 지난 시즌 실제 관중과 성적을 본다. 순위표·회계가 지워지기 전에 먼저. */
+  try{ attSeasonAdjust(); }catch(e){}
   try{ uidIntegrity(); }catch(e){}   // 🆔 유스 승격·영입으로 늘어난 선수까지 번호 정합성 유지
   /* 🎖️ 새 시즌 주장단은 프리시즌에 정한다 — 진행 게이트(capNeeded)가 막고, 여기서 미리 알려 준다 */
   try{ if(!G.jobless) notify("🎖️ 새 시즌 주장단을 <b>시즌 시작 전에</b> 정해야 합니다 — 스태프 화면에서 주장·부주장을 지정하세요.","warn"); }catch(e){}
@@ -10535,7 +10744,8 @@ function startNewSeason(){
       G.freeAgents=G.freeAgents||[];
       while(G.freeAgents.length<25){
         const pool=t.players.filter(p=>!p.army);
-        if(pool.length<=27) break;
+        /* ⚠ 이 상한이 스쿼드 하한보다 낮으면 같은 오프시즌에 방출과 보강이 서로 싸운다 */
+        if(pool.length<=aiSquadFloor(t)+2) break;
         const low=[...pool].sort((a,b)=>a.ovr-b.ovr)[0];
         if(!low) break;
         t.players.splice(t.players.indexOf(low),1);
@@ -10543,13 +10753,10 @@ function startNewSeason(){
         G.freeAgents.push(low);
       }
     }
-    // AI 스쿼드 보강
+    // 🌱 AI 구단 유스 배출 → 🧱 자리별 스쿼드 보강 (풀백·골키퍼 기근과 리그 총원 감소를 함께 막는다)
     if(!t.isUser){
-      while(t.players.filter(p=>p.pos==="GK").length<2){ const f=Math.random()<0.1; t.players.push(mkPlayer(f?genFrnName():genName(),"GK",G.season-20-R(8),60+R(10),f)); }
-      while(t.players.length<24){ const pos=pick(["DF","MF","FW"]); const f=Math.random()<0.15;
-        const np=mkPlayer(f?genFrnName():genName(),pos,G.season-19-R(10),58+R(14)+(f?3:0),f);
-        if(f && (G.season-np.by)<=21 && Math.random()<0.4) np.hg=1;   // 국내 유스에서 자란 어린 외국 선수 — 홈그로운
-        t.players.push(np); }
+      try{ aiYouthIntake(t); }catch(e){}
+      try{ aiSquadFill(t); }catch(e){}
     }
     t.budget=Math.round((t.budget + (t.div===1?11:4) + t.fans*0.16)*10)/10; // 스폰서/시즌 이적 자금
     setupFinance2(t);                                                        // 연봉 상한 재산정
@@ -10617,6 +10824,7 @@ function startNewSeason(){
     const go = 0.25 + clamp((68-p.ovr)*0.035, 0, 0.35) + clamp((_a-30)*0.04, 0, 0.20);
     return Math.random() >= go;                                // 은퇴 / 해외 진출 / 하부 리그행
   });
+  try{ poolTopUp(); }catch(e){}   // 🧮 리그 총원 평형 — 마지막에 모자란 만큼만 채운다
   buildSeason(true); setupACL();
   try{ carryUserTacticToNewSeason(); }catch(e){}   // 🧷 12월 31일의 선발·배치·역할·벤치를 그대로 이어받는다
   try{ sponSeason(); }catch(e){}   // 🤝 새 시즌 스폰서 정산 — 지난 시즌 성적이 여기서 값으로 돌아온다
@@ -13148,7 +13356,7 @@ function saveFailNotice(){
   if(IDB_OK===true){
     if(Date.now()-SAVE_WARN_AT > 300000){
       SAVE_WARN_AT=Date.now();
-      try{ notify(`💽 브라우저 기본 저장소가 가득 찼지만 <b>큰 저장소(IndexedDB)에 저장되고 있습니다.</b>
+      try{ flash(`💽 브라우저 기본 저장소가 가득 찼지만 큰 저장소(IndexedDB)에 저장되고 있습니다.
         <span class="small">진행 상황은 안전합니다. 그래도 ⚙️ 설정 → 💾 세이브파일 저장으로 한 번 백업해 두시면 확실합니다.</span>`,"info"); }catch(e){}
     }
     return true;
@@ -13284,7 +13492,7 @@ function importSave(input){
           try{ G=JSON.parse(b2); migrateLoadedG(); PID=nextPid(); enterGame(); }catch(_){} } }).catch(()=>{}); }catch(e){}
         notify("이 파일을 읽지 못해 원래 세이브로 되돌렸습니다. 파일이 손상되지 않았는지 확인해 주세요.","warn");
       }
-      else { notify("저장소에 쓸 수 없어 이번 세션에서만 불러옵니다. 진행 상황은 다시 파일로 내보내 주세요.","warn");
+      else { flash("저장소에 쓸 수 없어 이번 세션에서만 불러옵니다. 진행 상황은 다시 파일로 내보내 주세요.","warn");
              G=obj; try{ migrateLoadedG(); PID=nextPid(); }catch(e){ try{ migrateSave(); }catch(_){} }
              enterGame(); }
     }catch(e){
@@ -13360,7 +13568,9 @@ function idbSyncCheck(){
       const mine=(G && G._svAt) || 0, theirs=o._svAt||0;
       if(!G || !G.teams){                       // 브라우저 기본 저장소가 비었다 — IDB 로 살린다
         G=o; migrateLoadedG(); PID=nextPid();
-        try{ notify("💽 <b>큰 저장소에서 진행 상황을 되살렸습니다.</b> <span class=\"small\">브라우저 기본 저장소가 비어 있었습니다.</span>","good"); }catch(e){}
+        /* ⚠ 제보 — 이 안내가 「구단 소식」에 남는다. 저장소 이야기는 구단에서 벌어진 일이 아니다.
+           배너로만 알리고 뉴스에는 쓰지 않는다(notify → flash). */
+        try{ flash("💽 큰 저장소에서 진행 상황을 되살렸습니다.","good"); }catch(e){}
         try{ enterGame(); }catch(e){}
         return;
       }
@@ -13641,15 +13851,58 @@ function migrateLoadedG(){
       if(!p.attr || typeof p.attr.tec!=="number") p.attr=syncLegacyAttrs(genAttrsFM(p.pos, p.ovr||65));
       if(p.pos==="GK" && !p.gkA){ p.gkA=genGkAttrsFM(p.ovr||65, p.h||188); syncLegacyGk(p); }
     } });
+  /* 🆔 선수 번호 중복 정리 — 어느 경로로 불러왔든 반드시 마지막에 밟는다.
+     여기가 빠지면 스카우트 보고서·유스·FA 가 EACL 클럽 선수와 같은 번호를 들고 다닌다. */
+  step("선수 번호 중복", ()=>{ PID=nextPid();
+    const r=pidIntegrity();
+    if(r.fixed){ try{ console.log("선수 번호 중복 "+r.fixed+"건 정리"); }catch(e){} } });
 }
-function nextPid(){
-  let mx=0;
-  const scan=arr=>{ if(!Array.isArray(arr)) return; for(const p of arr) if(p && p.id>mx) mx=p.id; };
-  for(const id in (G.teams||{})) scan(G.teams[id].players);
+/* ⚠ 제보 — 「스카우트 보고서의 에메르송을 눌렀는데 다나카 다쓰야가 열린다. 전원이 이런 식이다.」
+   원인은 선수 번호(id) 중복이었다. nextPid 가 EACL 클럽 선수를 훑지 않아서, 세이브를 불러올 때
+   PID 가 EACL 선수 번호(리그 최대 번호보다 크다)보다 낮게 되감겼다. 그 뒤에 만들어진
+   스카우트 보고서·유스·FA 가 EACL 선수와 같은 번호를 받고, findAnyPlayer 는 팀·EACL 을 먼저 훑으니
+   보고서의 브라질 선수를 눌러도 일본 클럽 선수가 열렸다. 번호를 매기는 곳을 하나도 빼지 않는다. */
+function pidScanAll(fn){
+  const scan=arr=>{ if(!Array.isArray(arr)) return; for(const p of arr) if(p) fn(p); };
+  for(const id in (G.teams||{})) scan(G.teams[id] && G.teams[id].players);
   scan(G.freeAgents); scan(G.overseas);
   if(G.scout) scan(G.scout.list);
   scan(G.youthPool);
+  try{ for(const k in (G.eaclClubs||{})){ const c=G.eaclClubs[k]; scan(c && c.t && c.t.players); } }catch(e){}
+}
+function nextPid(){
+  let mx=0;
+  pidScanAll(p=>{ if(p.id>mx) mx=p.id; });
   return mx+1;
+}
+/* 이미 번호가 겹친 채 저장된 세이브를 바로잡는다.
+   번호를 지키는 우선순위는 ① 리그 구단 선수 ② EACL 클럽 선수 ③ FA·해외 ④ 유스풀 ⑤ 스카우트 보고서.
+   전술·선발 명단·협상이 참조하는 리그 선수 번호는 절대 건드리지 않는다. */
+function pidIntegrity(){
+  if(!G || !G.teams) return {fixed:0};
+  const seen=new Set(), dups=[];
+  const pass=(arr, movable)=>{ if(!Array.isArray(arr)) return;
+    for(const p of arr){ if(!p || p.id==null) continue;
+      if(!seen.has(p.id)) seen.add(p.id);
+      else if(movable) dups.push(p);
+      else seen.add(p.id);      // 옮길 수 없는 쪽은 그대로 둔다
+    } };
+  for(const id in G.teams) pass(G.teams[id].players, false);
+  try{ for(const k in (G.eaclClubs||{})){ const c=G.eaclClubs[k]; pass(c && c.t && c.t.players, true); } }catch(e){}
+  pass(G.freeAgents, true); pass(G.overseas, true);
+  pass(G.youthPool, true); pass(G.scout && G.scout.list, true);
+  if(!dups.length) return {fixed:0};
+  let mx=0; for(const v of seen) if(v>mx) mx=v;
+  let next=mx+1;
+  const remap={};
+  for(const p of dups){ remap[p.id]=remap[p.id]||[]; remap[p.id].push(p); const old=p.id; p.id=next++; 
+    /* 관심 목록·협상 테이블이 이 번호를 들고 있으면 함께 옮긴다 */
+    try{ if(Array.isArray(G.shortlist)) for(const s of G.shortlist) if(s && s.pid===old && s._pidFix!==1){ s.pid=p.id; s._pidFix=1; break; } }catch(e){}
+    try{ if(G.nego && G.nego.pid===old && G.nego.os) G.nego.pid=p.id; }catch(e){}
+  }
+  try{ if(Array.isArray(G.shortlist)) for(const s of G.shortlist) if(s) delete s._pidFix; }catch(e){}
+  PID=Math.max(PID||0, next);
+  return {fixed:dups.length};
 }
 /* =====================================================
    UI
@@ -13924,7 +14177,7 @@ function persistRefresh(then){
 /* 영구 보존을 요청한다. fromUI 면 결과를 알려 준다(자동 요청은 조용히). */
 function persistAsk(fromUI){
   if(!persistSupported()){
-    if(fromUI) try{ notify("이 브라우저는 영구 보존 요청을 지원하지 않습니다. <span class=\"small\">💾 세이브파일 저장으로 백업해 주세요.</span>","warn"); }catch(e){}
+    if(fromUI) try{ flash("이 브라우저는 영구 보존 요청을 지원하지 않습니다. 💾 세이브파일 저장으로 백업해 주세요.","warn"); }catch(e){}
     PERSIST_ST="na"; if(fromUI && VIEW==="settings") show("settings");
     return;
   }
@@ -14314,7 +14567,8 @@ function syncGoalPanel(s){
   const key=cel.side+"|"+cel.scorerId+"|"+phase;
   if(goalPanelShownFor===key) return;
   goalPanelShownFor=key;
-  const sc=s.byId ? s.byId(cel.scorerId) : null;
+  /* 👻 득점 직후 교체·퇴장으로 그라운드를 떠났어도 이름은 남아야 한다(제보 — 이름이 안 떴다) */
+  const sc=(s.byIdAny ? s.byIdAny(cel.scorerId) : null) || (s.byId ? s.byId(cel.scorerId) : null);
   const nm=sc&&sc.p?sc.p.name:"득점";
   const min=Math.max(1, Math.floor((cel.clock||s.clock)/60));
   /* 도움 — K리그 규정으로 판정된 마지막 패스 주인. 자책골·도움 없음이면 표기 없음 */
@@ -14342,6 +14596,11 @@ function drawHighlightFrame(cv, hl){
     if(byId[gg.id]) continue;
     if(!f.a.some(r=>r.id===gg.id)) continue;      // 이 프레임에 있던 선수만
     byId[gg.id]=gg; ghosts.push(gg); s.agents.push(gg);
+  }
+  /* 볼 소유자가 이미 그라운드를 떠난 선수라도(PK 키커가 교체·퇴장된 경우) 그 프레임에는 있어야 한다 */
+  if(f.oi && !byId[f.oi] && Array.isArray(s.gone)){
+    const ow=s.gone.find(x=>x.id===f.oi);
+    if(ow){ byId[ow.id]=ow; ghosts.push(ow); s.agents.push(ow); }
   }
   const save=[];
   for(let i=0;i<f.a.length;i++){
@@ -17034,6 +17293,26 @@ function introBar(cur){
     ${INTRO_STEPS.map((x,i)=>`<span class="introStep ${i===cur?"on":i<cur?"done":""}">${i<cur?"✓":x[0]} ${x[1]}</span>`).join('<span class="introArr">›</span>')}
     <div class="introNote">부임 절차를 마치면 모든 메뉴가 열립니다.</div>
   </div>`;
+}
+/* 🚪 나가기 — 진행 상황을 저장하고 팀 선택 화면으로 돌아간다.
+   ⚠ 창을 닫는 게 아니다. 세이브는 그대로 남고, 팀 선택 화면의 「이어하기」로 다시 들어온다. */
+function exitToTitle(){
+  if(liveM){ flash("경기 중에는 나갈 수 없습니다 — 경기를 마친 뒤에 시도하세요.","warn"); return; }
+  const doExit=()=>{
+    try{ saveGame(); }catch(e){}
+    try{ if(PROG && PROG.stop) PROG.stop(); }catch(e){}
+    try{ document.body.classList.remove("matchFS"); }catch(e){}
+    try{ const m=$("#gcModal"); if(m){ m.className="hidden"; m.innerHTML=""; } }catch(e){}
+    try{ $("#app").classList.add("hidden"); $("#teamPick").classList.remove("hidden"); }catch(e){}
+    pickSel=null;
+    try{ renderTeamPick(); }catch(e){}
+    try{ window.scrollTo(0,0); }catch(e){}
+  };
+  showConfirm(`<b>🚪 팀 선택 화면으로 나갑니다</b>\n\n`+
+    `진행 상황은 <b>지금 저장</b>되고, 세이브는 그대로 남습니다.\n`+
+    `팀 선택 화면의 <b>이어하기</b>로 언제든 돌아올 수 있습니다.\n\n`+
+    `<span class="small">다른 구단으로 새 게임을 시작하면 지금 세이브는 덮어씌워집니다 — 남겨 두려면 먼저 ⚙️ 설정에서 세이브 파일을 내보내세요.</span>`,
+    doExit, {okLabel:"저장하고 나간다", cancelLabel:"계속한다"});
 }
 function enterGame(){
   $("#teamPick").classList.add("hidden");
@@ -20626,10 +20905,82 @@ function stkNewsCard(solo){
   </div>`;
 }
 
-let meTab="home", meGiftSel="", HML_AMT="";
+let meTab="home", meGiftSel="", HML_AMT="", DON_AMT="", DON_ANON=0;
+function donSetAmt(v){ DON_AMT=String(v||"").replace(/[^0-9.]/g,""); }
+function donToggleAnon(){ DON_ANON=DON_ANON?0:1; show("mylife"); }
 function hmlSet(v){ HML_AMT=String(v||"").replace(/[^0-9.]/g,""); }
 function meSelGift(k){ meGiftSel=(meGiftSel===k)?"":k; show("mylife"); }
 function meSetTab(k){ meTab=k; show("mylife"); }
+/* 💝 기부 화면 — 무직이면 잠긴다 */
+function donCard(){
+  const why=donBlockWhy();
+  if(why) return `<div class="card"><h3>💝 구단 기부</h3>
+    <div class="msg warn" style="margin-top:6px">🕊️ ${why}</div>
+    <p class="small" style="margin-top:9px;color:var(--sub)">구단을 맡으면 사비를 넣어 <b>관중석을 늘리거나</b> 진행 중인 <b>구장 사업의 공사비</b>를 댈 수 있습니다.
+      돈을 낸 감독은 구단주도, 팬도 다르게 봅니다.</p></div>`;
+  const t=userTeam(), M=me(), d=donOf(t), sd=stadOf(t);
+  const S=stadProj(), building = S && S.phase!=="done";
+  const cost=donSeatCost(t), need=Math.max(0, Math.round((cost-d.fund)*10)/10);
+  const prog=clamp(d.fund/Math.max(0.1,cost),0,1);
+  const a=Math.round((parseFloat(DON_AMT)||0)*100)/100;
+  const g=a>0?donGain(a, d.sAmt||0, d):null;
+  const maxSeat=((d.seats||0)+(d.pend||0))>=DON_SEAT_MAX;
+  return `<div class="card">
+    <h3>💝 구단 기부 <span class="small">— 감독 사비를 ${t.short} 시설에 넣습니다</span></h3>
+    <div class="stkSum">
+      <div><span>보유 현금</span><b class="money">${M.cash.toFixed(2)}억</b></div>
+      <div><span>누적 기부</span><b>${(d.total||0).toFixed(2)}억</b></div>
+      <div><span>올 시즌</span><b>${(d.sAmt||0).toFixed(2)}억</b></div>
+      <div><span>늘린 좌석</span><b>${(d.seats||0).toLocaleString()}석</b></div>
+    </div>
+    ${(d.sOwn||0)>=DON_CAP_OWN&&(d.sFans||0)>=DON_CAP_FANS?`<div class="msg warn" style="margin-top:9px">
+      🧾 올 시즌 기부로 얻을 수 있는 신뢰를 모두 채웠습니다 — 더 내도 <b>돈은 기금에 쌓이지만 신뢰는 오르지 않습니다</b>.
+      <span class="small">기부로 성적을 대신할 수는 없습니다.</span></div>`:""}
+    ${building?`<div class="msg" style="margin-top:9px;background:#1f6feb22;border-color:#1f6feb66">
+      🏗️ <b>${stadPlan(S.k).n}</b> 사업이 진행 중입니다 — 기부금은 <b>공사비</b>로 먼저 들어갑니다.
+      <span class="small">(${S.paid}/${S.cost}억)</span></div>`
+    :maxSeat?`<div class="msg warn" style="margin-top:9px">🏟️ 이 구장에서 감독 기부로 개선할 수 있는 한도(${DON_SEAT_MAX.toLocaleString()}석)를 다 채웠습니다.
+      더 키우려면 <b>구장 신축 사업</b>이 필요합니다.</div>`
+    :`<div style="margin-top:10px">
+      <div class="small" style="display:flex;justify-content:space-between;color:var(--sub)">
+        <span>🪑 구장 개선 기금 <span style="color:var(--sub)">— 좌석 ${DON_STEP.toLocaleString()}석 · 시야 · 편의시설 · 원정석</span></span>
+        <span><b style="color:var(--gold)">${d.fund.toFixed(1)}억</b> / ${cost}억</span></div>
+      <div style="height:9px;background:var(--bg3);border-radius:5px;overflow:hidden;margin-top:5px">
+        <div style="height:100%;width:${(prog*100).toFixed(1)}%;background:linear-gradient(90deg,#e3b341,#f0c674)"></div></div>
+      <p class="small" style="margin-top:6px;color:var(--sub)">${need>0?`<b>${need}억</b>이 더 모이면 그 겨울에 공사에 들어갑니다.`:`다음 기부에 곧바로 착공합니다.`}
+        수용 인원 <b>${(sd.cap||0).toLocaleString()}명</b> · 기준 관중 <b>${(sd.avg||0).toLocaleString()}명</b>
+        · 관중 상한 <b>${attCeilOf(t).toLocaleString()}명</b> → <b style="color:var(--gold)">${Math.min(Math.round((sd.cap+DON_STEP)*0.92), Math.round((( sd._base0||sd.avg)+DON_STEP*0.40)*1.6)).toLocaleString()}명</b></p>
+    </div>`}
+    ${d.pend>0?`<div class="msg" style="margin-top:9px;background:#3fb95022;border-color:#3fb95066">
+      🏗️ <b>${d.pend.toLocaleString()}석</b> 규모 구장 개선 공사 중 — 다음 시즌 개막에 맞춰 개방됩니다.</div>`:""}
+    <div class="stkOrder" style="margin-top:12px">
+      <input type="text" inputmode="decimal" placeholder="기부 금액(억)" value="${DON_AMT}" oninput="donSetAmt(this.value)"
+        style="flex:1;min-width:110px;padding:9px 10px;font-size:16px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg);text-align:right">
+      <button class="mini" onclick="DON_AMT=String(Math.round(((parseFloat(DON_AMT)||0)+1)*100)/100);show('mylife')">+1</button>
+      <button class="mini" onclick="DON_AMT=String(Math.round(((parseFloat(DON_AMT)||0)+10)*100)/100);show('mylife')">+10</button>
+      ${(!building&&!maxSeat&&need>0&&need<=M.cash)?`<button class="mini" style="border-color:var(--gold);color:var(--gold)" onclick="DON_AMT='${need}';show('mylife')">착공까지 ${need}억</button>`:""}
+      <button class="mini" onclick="DON_AMT=me().cash.toFixed(2);show('mylife')">전액</button>
+    </div>
+    <div style="display:flex;gap:7px;margin-top:9px;align-items:center;flex-wrap:wrap">
+      <button class="mini ${DON_ANON?"":"sel"}" onclick="if(DON_ANON)donToggleAnon()">📣 공개</button>
+      <button class="mini ${DON_ANON?"sel":""}" onclick="if(!DON_ANON)donToggleAnon()">🤫 익명</button>
+      <span class="small" style="color:var(--sub)">${DON_ANON
+        ?"구단주만 압니다. 언젠가 알려지면 그때 팬 신뢰가 크게 오릅니다."
+        :"구단주·팬 신뢰가 함께 오르고 기자회견에서 질문이 나옵니다."}</span>
+    </div>
+    ${g?`<div class="small" style="margin-top:9px;padding:8px 10px;background:var(--bg3);border-radius:8px;line-height:1.7">
+      예상 반응 — 구단주 신뢰 <b style="color:#3fb950">+${DON_ANON?(g.own*1.15).toFixed(1):g.own.toFixed(1)}</b>
+      ${DON_ANON?`<span style="color:var(--sub)">· 팬·언론은 아직 모릅니다</span>`
+        :`· 팬 신뢰 <b style="color:#3fb950">+${g.fans.toFixed(1)}</b> · 흥행 <b style="color:#3fb950">+${g.hype.toFixed(3)}</b> · 언론 호감 <b style="color:#3fb950">+${g.press}</b>`}
+      ${(d.sAmt||0)>0?`<br><span style="color:#ff9d5c">⚠ 올 시즌 이미 ${(d.sAmt||0).toFixed(2)}억을 냈습니다 — 반복 기부는 반응이 줄어듭니다.
+        (시즌 한도 구단주 ${(d.sOwn||0).toFixed(1)}/${DON_CAP_OWN} · 팬 ${(d.sFans||0).toFixed(1)}/${DON_CAP_FANS})</span>`:""}
+    </div>`:""}
+    <button class="mini" style="width:100%;margin-top:10px;padding:11px;font-size:15px;border-color:var(--gold);color:var(--gold)"
+      onclick="donOpen()">💝 ${a>0?a.toFixed(2)+"억 ":""}기부하기</button>
+    <p class="small" style="margin-top:9px;color:var(--sub)">기부금은 돌려받을 수 없고 <b>이적 예산으로도 쓰이지 않습니다</b> — 전액 시설에 들어갑니다.
+      개선된 구장은 다음 시즌부터 관중과 <b>입장 수입</b>으로 되돌아옵니다.</p>
+  </div>`;
+}
 function mylifeView(){
   const M=me(), t=userTeam();
   const h=homeOf(), sal=mgrSalary(), pres=mgrPrestige();
@@ -20812,6 +21163,8 @@ function mylifeView(){
     body=bankView();
   } else if(meTab==="stock"){
     body=stkView();
+  } else if(meTab==="don"){
+    body=donCard();
   } else {
     body=`<div class="card"><h3>📒 가계부</h3>
       ${M.log.length?M.log.map(x=>`<div style="padding:4px 0;border-bottom:1px solid #21262d;font-size:13px">
@@ -20858,7 +21211,7 @@ function mylifeView(){
     <div class="card"><h3>👔 감독 위신</h3><div style="font-size:26px;color:var(--gold)">${pres}</div>
       <p class="small" style="margin-top:6px">선수 영입 설득력과 재계약 성공률에 반영됩니다.<br>집 ${h.pres>=0?"+":""}${h.pres} · 부동산 ${Math.min(15,M.props.length*3).toFixed(0)} · 현금 ${clamp(M.cash*0.05,0,10).toFixed(1)}</p></div>
   </div>
-  <div style="margin:10px 0">${tab("home","🏠 거주")} ${tab("prop","🏢 부동산")} ${tab("stock","📈 주식")} ${tab("shop","🛍️ 쇼핑 · 선물")} ${tab("bank","🏦 은행")} ${tab("log","📒 가계부")}</div>
+  <div style="margin:10px 0">${tab("home","🏠 거주")} ${tab("prop","🏢 부동산")} ${tab("stock","📈 주식")} ${tab("shop","🛍️ 쇼핑 · 선물")} ${tab("bank","🏦 은행")} ${tab("don","💝 기부")} ${tab("log","📒 가계부")}</div>
   ${body}`;
 }
 /* ---------- 공통 렌더 ---------- */
@@ -21399,6 +21752,24 @@ const SOC={
    "이 사람은 그냥 우리 팀 사람이다","감독 이름 딴 게이트 하나 만들어 줘라",
    "{m}억이면 집 한 채인데...","다음 경기 걸개 준비한다. 감사합니다 진심으로",
    "이제 감독 욕하는 글 보면 내가 참을 수가 없음"],
+
+ /* 💝 감독이 구단에 사비를 기부했을 때 — 공개 기부 */
+ donateClub:["감독님이 사비 {m}억 넣었다는데 이게 실화냐","월급 받아서 다시 구단에 넣는 사람이 어딨어",
+   "우리는 감독 복은 있다 진짜","{m}억... 나는 못 한다 인정","이 감독은 계약 끝나도 우리 사람이다",
+   "프런트가 부끄러워야 하는 거 아니냐","연봉이 얼마인지는 알고 하시는 거죠 감독님",
+   "기부 소식 보고 시즌권 하나 더 끊었다","이런 감독한테 성적 얘기 못 하겠다 솔직히",
+   "감독님 제발 본인 노후도 챙기세요"],
+ /* 🪑 기부금으로 늘린 좌석이 개방됐을 때 */
+ donateSeat:["{m}석 늘었다 이제 표 구하기 좀 낫겠지","감독 돈으로 늘어난 좌석이라니 ㄷㄷ",
+   "새로 생긴 구역 앉아 봤는데 시야 좋다","이거 감독님 이름 붙여야 하는 거 아님?",
+   "관중석 늘리는 게 이렇게 반가운 일인 줄","{m}석이면 원정팬 자리도 좀 나오겠네",
+   "매진 그만 보고 싶었는데 드디어","우리 구단 역사에 이건 남는다"],
+ /* 🤫 익명이었던 기부가 밝혀졌을 때 */
+ donateAnon:["그 익명 후원자가 감독이었다고???","말도 안 하고 {m}억을 냈다는 게 더 미친 거임",
+   "이름 안 밝히려고 한 게 제일 감독답다","나 지금 눈물 남 진심으로",
+   "감독님 왜 말 안 하셨어요","이거 알려지고 나서 팬들 분위기가 완전히 바뀜",
+   "다음 홈경기 걸개는 이거로 정해졌다","{m}억을 조용히... 이 사람 진짜다",
+   "그동안 감독 욕한 사람들 다 나와라"],
 
  /* 우리가 아닌 다른 K리그 구단이 해외에서 이름 있는 선수를 데려왔을 때 — 우리 팬의 심경 */
  osRivalSign:[
@@ -22016,6 +22387,11 @@ const FMK={
    ["겨울 이적시장에 여기로 오고 싶어하는 선수 늘 듯",1],["유지비 얘기 나오는데 일단 부럽다",0],
    ["{t} 원정 예약했다 진심으로",1]],
 
+ donateClub:[["{t} 감독 사비 {m}억 기부했대 ㄷㄷ",1],["감독이 구단에 돈 넣는 거 처음 봄",1],
+   ["연봉 다시 돌려주는 셈인데 이게 맞나",0],["우리 감독은 판공비 쓰다가 걸렸는데 ㅋㅋ",-1],
+   ["{t} 팬들 부럽다 저런 감독 어디서 데려옴",1],["구단이 돈이 없어서 감독이 내는 거면 문제 아님?",-1],
+   ["{m}억이면 선수 하나 값인데",0],["이거 미담 맞는데 구단 프런트는 반성해라",0],
+   ["K리그에 이런 사람 몇 없다",1],["세금 처리 어떻게 되는 거임 이거",0]],
  osRivalSign:[["{c}이/가 {p} 데려갔다 ㄷㄷ 이적료 {m}억",1],["K리그 요즘 돈 좀 쓰네",0],
    ["{o}에서 {c}이라니 ㅋㅋ 인생 모르는 거임",0],["{p} 보러 경기장 가야겠다 진짜",1],
    ["{c} 이번 시즌 각 나오는데?",0],["우리 팀은 언제 이런 거 하냐",-1],
@@ -29338,6 +29714,186 @@ function stadSkim(t, toBudget){
   if(cut<=0) return 0;
   return stadAdd(cut, "구단 수입 적립") ? cut : 0;
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   💝 구단 기부 — 감독이 자기 돈을 구단에 넣는다
+   전용구장 신축(G.stad)은 이사회 승인이 필요한 큰 사업이고, 그 문턱에 닿지 못하는
+   구단이 대부분이다. 그래서 승인이 필요 없는 길을 하나 더 둔다 — 관중석 증설.
+     · 신축 사업이 진행 중이면 기부금은 그 공사비로 먼저 들어간다
+     · 아니면 「좌석 증축 기금」에 쌓이고, 한 단위(800석)치가 모이면 그 겨울에 공사한다
+     · 완공되면 수용 인원·기준 관중·기준 관중 상한이 함께 올라간다
+   반대급부는 신뢰다. 공개하면 팬과 언론이 알고, 익명이면 구단주만 안다 —
+   다만 익명도 언젠가는 알려진다. 그때 팬 신뢰가 가장 크게 오른다.
+   ⚠ 무직일 때는 낼 곳이 없다. 화면 자체가 잠긴다.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const DON_SEAT=0.021;     // 좌석 1석 증설 비용(억) — 약 210만원/석
+const DON_STEP=800;       // 증축 한 단위
+const DON_SEAT_MAX=12000; // 감독 기부로 늘릴 수 있는 좌석 총량
+function donOf(t){
+  t=t||userTeam(); if(!t) return null;
+  if(!t.don) t.don={fund:0, seats:0, pend:0, total:0, sY:G.season, sAmt:0, anon:0, sOwn:0, sFans:0};
+  const d=t.don;
+  if(typeof d.fund!=="number") d.fund=0;
+  if(typeof d.sOwn!=="number") d.sOwn=0;
+  if(typeof d.sFans!=="number") d.sFans=0;
+  if(d.sY!==G.season){ d.sY=G.season; d.sAmt=0; d.sOwn=0; d.sFans=0; }
+  return d;
+}
+/* 다음 한 단위(800석)를 놓는 데 드는 돈 — 놓을수록 비싸진다 */
+function donSeatCost(t){
+  t=t||userTeam(); const d=donOf(t); if(!d) return 9999;
+  const done=(d.seats||0)+(d.pend||0);
+  return Math.round(DON_STEP*DON_SEAT*(1+(done/DON_STEP)*0.22)*10)/10;
+}
+function donBlockWhy(){
+  if(G.jobless || !userTeam()) return "지금은 맡고 있는 구단이 없습니다 — 부임한 뒤에 기부할 수 있습니다.";
+  if(!G.introDone) return "부임 절차를 먼저 마쳐 주세요.";
+  return null;
+}
+function donRef(){ try{ return Math.max(1.5, mgrSalary()); }catch(e){ return 3; } }
+/* 기부 한 건이 주는 신뢰 — 연봉 대비 규모로 보고, 같은 시즌에 여러 번 내면 효과가 준다.
+   ⚠ 여기가 세면 「돈으로 신뢰를 사는」 게임이 된다. 주식·부동산으로 수천억을 만든 감독이
+      기부만으로 구단주·팬 신뢰를 100까지 올려 버리면 성적이 아무 의미가 없다.
+      그래서 ① 한 건당 폭을 좁게 두고 ② 시즌 총량에 뚜껑을 씌운다. 기부는 보탬이지 대체가 아니다. */
+const DON_CAP_OWN=9, DON_CAP_FANS=12;      // 한 시즌에 기부로 얻을 수 있는 신뢰 총량
+function donGain(a, prev, d){
+  const ref=donRef(), r=a/ref, damp=1/(1+(prev/ref)*1.15);
+  let own =clamp(r*3.4*damp, 0.2, 5.0);
+  let fans=clamp(r*4.2*damp, 0.3, 7.0);
+  if(d){       // 시즌 총량이 남은 만큼만
+    own =Math.min(own,  Math.max(0, DON_CAP_OWN -(d.sOwn ||0)));
+    fans=Math.min(fans, Math.max(0, DON_CAP_FANS-(d.sFans||0)));
+  }
+  return {
+    own:   Math.round(own*10)/10,
+    fans:  Math.round(fans*10)/10,
+    hype:  Math.round(clamp(r*0.035*damp, 0.004, 0.055)*1000)/1000,
+    press: Math.round(clamp(r*2.4*damp, 0, 4))
+  };
+}
+/* 기금이 한 단위를 넘겼으면 착공을 걸어 둔다 (완공은 시즌 전환) */
+function donTryBuild(t){
+  const d=donOf(t); if(!d) return 0;
+  let n=0;
+  while(d.fund >= donSeatCost(t) && ((d.seats||0)+(d.pend||0)) < DON_SEAT_MAX && n<8){
+    d.fund=Math.round((d.fund-donSeatCost(t))*10)/10;
+    d.pend=(d.pend||0)+DON_STEP; n++;
+  }
+  if(n){
+    try{ addNews(`🏗️ <b>${t.name}</b>, <b>${(n*DON_STEP).toLocaleString()}석</b> 규모 구장 개선 공사에 들어갑니다 — 다음 시즌 개막에 맞춰 개방됩니다.`, "good", "club"); }catch(e){}
+    try{ adjustTrust("fans", clamp(n*1.5, 1, 6), "관중석 증설 착공"); }catch(e){}
+  }
+  return n;
+}
+/* 실제 집행 */
+function donCommit(a, anon){
+  const t=userTeam(), M=me(), d=donOf(t);
+  if(!t || !d) return;
+  a=Math.round(Math.min(a, M.cash)*100)/100;
+  if(!(a>0)){ flash("보유 현금이 부족합니다.","warn"); return; }
+  const prev=d.sAmt||0;
+  mePay(-a, anon ? "구단 기부 (익명)" : "구단 기부");
+  d.total=Math.round(((d.total||0)+a)*100)/100;
+  d.sAmt =Math.round((prev+a)*100)/100;
+  /* 신축 사업이 있으면 공사비가 먼저, 남으면 좌석 기금으로 */
+  let into=0;
+  const S=stadProj();
+  if(S && S.phase!=="done"){ try{ into=stadAdd(a, anon?"감독 익명 기부":"감독 사비 기부")||0; }catch(e){ into=0; } }
+  const rest=Math.round((a-into)*100)/100;
+  if(rest>0) d.fund=Math.round((d.fund+rest)*10)/10;
+  const g=donGain(a, prev, d);
+  if(anon){
+    d.anon=Math.round(((d.anon||0)+a)*100)/100;
+    const ow=Math.round(g.own*1.15*10)/10;
+    adjustTrust("owner", ow, "감독 익명 기부");            // 장부를 보는 사람은 안다
+    d.sOwn=Math.round(((d.sOwn||0)+ow)*10)/10;
+    meLog(`🤫 익명 기부 ${a.toFixed(2)}억 — ${t.short}`);
+    flash(`🤫 이름을 남기지 않고 ${a.toFixed(2)}억을 냈습니다.`,"good");
+  } else {
+    adjustTrust("owner", g.own, "감독 사비 기부");
+    adjustTrust("fans",  g.fans, "감독 사비 기부");
+    d.sOwn =Math.round(((d.sOwn ||0)+g.own )*10)/10;
+    d.sFans=Math.round(((d.sFans||0)+g.fans)*10)/10;
+    try{ bumpHype(t, g.hype, "감독의 사비 기부"); }catch(e){}
+    try{ if(G.press) G.press.rel=clamp((G.press.rel||50)+g.press, 0, 100); }catch(e){}
+    try{ addNews(`💝 <b>${t.name} 감독, 구단에 사비 ${a.toFixed(2)}억 기부</b> — ${(S&&S.phase!=="done")?"구장 사업 공사비":"구장 개선 기금"}에 쓰입니다.`, "good", "club"); }catch(e){}
+    try{ socialFill(SOC.donateClub, 3+R(3), 1, {t:t.short, m:a.toFixed(2)}); }catch(e){}
+    try{ fmkFill(FMK.donateClub, 2+R(2), {t:t.short, m:a.toFixed(2)}); }catch(e){}
+    G.donAsk={amt:a, anon:0, s:G.season, d:G.day||0, asked:0};
+    flash(`💝 ${a.toFixed(2)}억을 기부했습니다. 팬들이 알아봅니다.`,"good");
+  }
+  donTryBuild(t);
+  try{ if(S && S.phase==="raise") stadTryStart(); }catch(e){}
+  DON_AMT="";
+  try{ saveGame(); }catch(e){}
+  show("mylife");
+}
+/* 확인 팝업 — 개인 재정이 위험해지면 경고를 함께 띄운다 */
+function donOpen(){
+  const why=donBlockWhy(); if(why){ flash(why,"warn"); return; }
+  const t=userTeam(), M=me();
+  let a=Math.round((parseFloat(DON_AMT)||0)*100)/100;
+  if(!(a>0)){ flash("기부할 금액을 입력하세요.","warn"); return; }
+  if(a<0.1){ flash("최소 0.1억부터 기부할 수 있습니다.","warn"); return; }
+  if(a>M.cash){ flash(`보유 현금이 부족합니다 (${M.cash.toFixed(2)}억).`,"warn"); return; }
+  const left=Math.round((M.cash-a)*100)/100;
+  const keep=Math.round(Math.max(1, donRef()/12*2)*100)/100;    // 두 달 치 생활비
+  let sadae=0; try{ sadae=(typeof stkDebt==="function")?stkDebt()/1e8:0; }catch(e){}
+  const warn=[];
+  if(left<keep) warn.push(`남는 현금이 <b>${left.toFixed(2)}억</b>뿐입니다 — 집세·관리비·대출 원리금은 그대로 나갑니다 (두 달 치 ${keep.toFixed(2)}억 권장)`);
+  if(sadae>0)   warn.push(`사채 <b>${sadae.toFixed(1)}억</b>이 남아 있습니다. 넉 달 안에 정리하지 못하면 <b>파산</b>합니다`);
+  if(a>=donRef()*2) warn.push(`연봉 <b>${donRef().toFixed(1)}억</b>의 ${(a/donRef()).toFixed(1)}배입니다. 되돌릴 수 없습니다`);
+  const S=stadProj();
+  const dest = (S && S.phase!=="done") ? `${stadPlan(S.k).n} 공사비` : "구장 개선 기금";
+  const d=donOf(t), cost=donSeatCost(t);
+  const after=(S&&S.phase!=="done") ? "" : `\n· 기금 <b>${d.fund.toFixed(1)}억 → ${(d.fund+a).toFixed(1)}억</b> <span class="small">(다음 ${DON_STEP.toLocaleString()}석까지 ${cost}억)</span>`;
+  showConfirm(`<b style="font-size:17px">💝 ${t.name}에 ${a.toFixed(2)}억을 기부합니다</b>\n\n`+
+    `· 보유 현금 <b class="money">${M.cash.toFixed(2)}억</b> → <b>${left.toFixed(2)}억</b>\n`+
+    `· 쓰이는 곳 <b>${dest}</b>${after}\n`+
+    `· 공개 여부 <b>${DON_ANON?"🤫 익명":"📣 공개"}</b>\n\n`+
+    (DON_ANON
+      ? `<span class="small">이름을 남기지 않습니다. 구단주는 장부를 보고 알지만 팬과 언론은 모릅니다 — 언젠가 알려지면 그때 팬들이 가장 크게 움직입니다.</span>`
+      : `<span class="small">구단주 신뢰와 서포터 신뢰가 함께 오르고, 다음 기자회견에서 질문이 나옵니다.</span>`)+
+    (warn.length?`\n\n<span style="color:#ff9d5c">⚠ ${warn.join("<br>⚠ ")}</span>`:""),
+    ()=>{ donCommit(a, DON_ANON); },
+    {okLabel:"기부한다", cancelLabel:"취소"});
+}
+/* 시즌 전환 — 겨울 공사를 끝내고, 익명 기부가 알려질 수도 있다 */
+function donSeasonTick(){
+  for(const id in G.teams){
+    const t=G.teams[id], d=t&&t.don;
+    if(!d || !(d.pend>0)) continue;
+    const sd=stadOf(t);
+    sd.cap = Math.round((sd.cap||10000) + d.pend);
+    if(sd._base0==null) sd._base0=sd.avg;
+    /* ⚠ K리그 구장은 대부분 좌석이 남는다 — 좌석 수만 늘리면 아무 실익이 없다.
+       그래서 이 사업은 「구장 개선」으로 다룬다. 시야·편의시설·원정석이 함께 좋아지고,
+       그만큼 이 구장이 담을 수 있는 관중의 천장(_base0 → attCeilOf)이 올라간다. */
+    sd._base0 = Math.round(sd._base0 + d.pend*0.40);
+    sd.avg    = Math.round(sd.avg*1.02 + d.pend*0.06);
+    d.seats=(d.seats||0)+d.pend;
+    if(t.isUser){
+      try{ addNews(`🎉 <b>${sd.n}</b> 구장 개선 공사 완료 — 좌석 <b>${d.pend.toLocaleString()}석</b> 증설, 수용 인원 <b>${sd.cap.toLocaleString()}명</b>. 시야와 편의시설도 손봤습니다. (감독 기부 누적 ${(d.total||0).toFixed(1)}억)`, "good", "club"); }catch(e){}
+      try{ socialFill(SOC.donateSeat, 3+R(3), 1, {t:t.short, m:d.pend.toLocaleString()}); }catch(e){}
+      try{ adjustTrust("fans", clamp(d.pend/400, 1, 7), "관중석 증설 완공"); }catch(e){}
+    }
+    d.pend=0;
+  }
+  /* 🤫 익명이 밝혀지는 순간 — 금액이 클수록 빨리 알려진다 */
+  const ut=userTeam(), ud=ut&&ut.don;
+  if(ut && ud && ud.anon>0){
+    const p=clamp((ud.anon/donRef())*0.22, 0.06, 0.55);
+    if(Math.random()<p){
+      const a=Math.round(ud.anon*100)/100; ud.anon=0;
+      try{ addNews(`💝 <b>익명 후원자는 감독이었습니다</b> — ${ut.name} 감독이 그동안 사비 <b>${a.toFixed(1)}억</b>을 이름 없이 내놓은 사실이 확인됐습니다.`, "good", "club"); }catch(e){}
+      try{ adjustTrust("fans", clamp((a/donRef())*7, 2.5, 11), "익명 기부가 알려짐"); }catch(e){}
+      try{ if(G.press) G.press.rel=clamp((G.press.rel||50)+6, 0, 100); }catch(e){}
+      try{ bumpHype(ut, clamp((a/donRef())*0.06, 0.01, 0.09), "감독의 익명 기부가 알려졌습니다"); }catch(e){}
+      try{ socialFill(SOC.donateAnon, 3+R(3), 1, {t:ut.short, m:a.toFixed(1)}); }catch(e){}
+      try{ fmkFill(FMK.donateClub, 2+R(2), {t:ut.short, m:a.toFixed(1)}); }catch(e){}
+      G.donAsk={amt:a, anon:1, s:G.season, d:G.day||0, asked:0};
+    }
+  }
+}
 /* 시즌이 끝날 때 — 지자체·모기업 지원금이 들어오고, 공정을 확인한다 */
 function stadSeasonEnd(){
   const S=G.stad, t=userTeam(); if(!S || !t || S.phase==="done") return;
@@ -30535,6 +31091,12 @@ function buildCtx(stage, M){
     ctx.badCredit = (typeof stkBadCredit==="function") && stkBadCredit();
     ctx.stkDebt = (typeof stkDebt==="function") ? stkDebt()/1e8 : 0;
   }catch(e){ ctx.stkAsk=null; }
+  /* 💝 구단 기부 — 사비를 냈으면 기자들이 반드시 물어본다 */
+  try{
+    const D=G.donAsk;
+    ctx.donAsk  = (D && !D.asked && (G.season-D.s)<=1) ? D.amt : null;
+    ctx.donAnon = (D && D.anon) ? 1 : 0;
+  }catch(e){ ctx.donAsk=null; ctx.donAnon=0; }
   // 지금 시장에서 도는 우리 구단 관련 루머 중 가장 신빙성 높은 한 건 — 기자가 이걸 물어본다
   ctx.rumor = (typeof rumorList==="function")
     ? rumorList().filter(r=>(r.fromId===me.id||r.toId===me.id) && !r.asked)
@@ -30660,6 +31222,27 @@ function qPool(stage,c){
       O("사실입니다. 제 판단 착오였고, 빠르게 갚겠습니다.",3,1,"인정하시는군요. 오히려 깔끔합니다."),
       O("어디서 나온 이야기인지 모르겠습니다. 확인해 드릴 게 없습니다.",1,-2,"...부인은 아니시네요."),
       O("그 질문에 답할 의무가 있습니까?",0,-3,"공인이시니까요, 감독님.")]);
+  }
+  /* ══ 💝 사비 기부 — 미담이든 논란이든 기자들은 그냥 넘어가지 않는다 ══ */
+  if(c.donAsk && !c.stkAsk){
+    if(c.donAnon){
+      QP(1,true,`감독님, 그동안 이름을 밝히지 않고 구단에 사비 ${Number(c.donAsk).toFixed(1)}억을 내오신 게 확인됐습니다. 왜 숨기셨습니까?`,[
+        O("알리려고 한 일이 아니었습니다. 그래서 말하지 않았습니다.",3,3,"...그 대답이 오늘 헤드라인입니다, 감독님."),
+        O("돈 낸 걸 자랑하는 감독이 되고 싶지 않았습니다.",3,2,"그 마음이 팬들에게 전해졌을 겁니다."),
+        O("구단 사정을 아는 사람이 저뿐은 아닐 겁니다. 저는 제 몫을 한 것뿐입니다.",2,2,"프런트가 들으면 뼈아플 말씀이네요."),
+        O("어떻게 알려졌는지가 더 궁금하군요. 다음 질문 하시죠.",1,-1,"...알겠습니다. 예민한 부분이었나 보네요.")]);
+    } else {
+      QP(1,true,`사비 ${Number(c.donAsk).toFixed(2)}억을 구단에 기부하셨습니다. 감독이 구단에 돈을 낸다는 게 흔한 일은 아닌데요.`,[
+        O("이 구단에서 받은 게 더 많습니다. 일부를 돌려놓은 것뿐입니다.",3,3,"팬들이 이 말을 오래 기억할 것 같습니다."),
+        O("관중석이 모자라 못 들어오는 팬들을 봤습니다. 그게 계속 마음에 걸렸습니다.",3,3,"현장을 보고 계셨군요."),
+        O("프런트가 못 하는 일이 있으면 누군가는 해야 합니다.",2,0,"...구단 입장에서는 아픈 말씀이겠네요."),
+        O("개인적인 결정입니다. 크게 다루지 않아 주셨으면 합니다.",2,1,"그렇게 말씀하실 줄 알았습니다.")]);
+      QF(1,true,`이런 기부가 이어지면 「구단이 감독 돈에 기대는 것」이라는 지적도 나올 수 있습니다.`,[
+        O("맞는 지적입니다. 제 기부가 필요 없는 구단이 되는 게 목표입니다.",3,3,"정확한 답변이네요."),
+        O("한 번은 한 번입니다. 구조를 바꾸는 건 프런트의 일이죠.",2,1,"선을 그으셨네요."),
+        O("그런 걱정까지 하기에는 지금 우리 구단이 넉넉하지 않습니다.",2,0,"...현실적인 이야기군요."),
+        O("낸 사람에게 물어볼 질문은 아닌 것 같습니다.",1,-2,"...예민하게 받아들이셨네요.")]);
+    }
   }
   if(c.badCredit && !c.stkAsk){
     QF(2,true,`파산 이후 처음 맞는 시즌입니다. 개인적으로 많이 달라지셨습니까?`,[
@@ -31493,6 +32076,7 @@ function markRumorAsked(ctx){
   if(ctx && ctx.rumor) ctx.rumor.asked=true;
   /* 💀 개인 재정 질문은 한 번 나가면 소진된다 — 회견마다 같은 걸 묻지 않게 */
   try{ if(ctx && ctx.stkAsk && G.stkAsk) G.stkAsk.asked=1; }catch(e){}
+  try{ if(ctx && ctx.donAsk && G.donAsk) G.donAsk.asked=1; }catch(e){}
 }
 function startInterview(stage, M, cont){
   if(!G.press) G.press={rel:50, skip:0};
@@ -41349,6 +41933,28 @@ class MatchSim{
     if(this.evlog.length>EVLOG_MAX) this.evlog.shift();
   }
   nm(a){ return a && a.p ? a.p.name : "선수"; }
+  /* ═══ 👻 그라운드를 떠난 선수 보관 ═════════════════════════════════
+     ⚠ 제보 — 「PK 상황에서 아무도 없는데 투명 선수가 차고, GOAL 팝업에 이름이 안 떴다」.
+        퇴장·교체 아웃·부상 이탈로 agents 에서 빠진 선수는 하이라이트를 되감을 때
+        byId() 로 찾을 수 없어 화면에 그려지지 않았고(=투명), 득점자 이름 조회도 실패했다.
+        하이라이트 버퍼는 그 선수가 있던 프레임을 그대로 갖고 있으므로, 그리기·이름 조회용
+        사본만 남겨 두면 장면이 온전해진다. 경기 로직에는 절대 참여하지 않는다. */
+  retireAgents(pred, why){
+    const gone=this.agents.filter(pred);
+    if(gone.length){
+      if(!Array.isArray(this.gone)) this.gone=[];
+      for(const a of gone){ a._leftAt=this.t; a._leftWhy=why||""; this.gone.push(a); }
+      if(this.gone.length>16) this.gone.splice(0, this.gone.length-16);
+    }
+    this.agents=this.agents.filter(a=>!pred(a));
+    return gone;
+  }
+  /* 이름·기록 조회용 — 그라운드를 떠난 선수까지 찾는다 (경기 판단에는 쓰지 않는다) */
+  byIdAny(id){
+    const a=this.agents.find(x=>x.id===id);
+    if(a) return a;
+    return Array.isArray(this.gone) ? this.gone.find(x=>x.id===id) : null;
+  }
   /* 오프사이드로 취소된 골.
      공은 이미 그물에 들어갔고 선수들은 환호하고 있다 — 그 뒤에 깃발이 올라간다.
      점수·득점 기록은 애초에 올리지 않는다(되돌리는 것보다 안전하다). */
@@ -41501,9 +42107,7 @@ class MatchSim{
                     t:this.t, min:Math.floor(this.clock/60)};
       this.sentOff.push({id:f.id, side:f.side, t:this.t, min:Math.floor(this.clock/60),
                          name:nm, pos:(f.p&&f.p.pos)||"", slot:f.slot||"", team:_tm3, second:!!second});
-      (this.gone=this.gone||[]).push(f);
-      if(this.gone.length>6) this.gone.shift();
-      this.agents=this.agents.filter(a=>a.id!==f.id);
+      this.retireAgents(a=>a.id===f.id, "red");
       const fx=this.entryOf(f);
       if(fx){ fx.red=true; fx.off=Math.floor(this.clock/60); }
       const sd = f.side==="h" ? this.M.h : this.M.a;
@@ -41597,8 +42201,8 @@ class MatchSim{
         a._spSpot=null; a._inWall=false; a._spHold=0; a._spot=null; a._smx=undefined; a._smy=undefined;
       }
     }
-    // 교체 아웃·퇴장으로 그라운드를 떠난 선수는 뺀다
-    this.agents=this.agents.filter(a=>alive.has(a.id));
+    // 교체 아웃·퇴장으로 그라운드를 떠난 선수는 뺀다 (하이라이트용 사본은 남긴다)
+    this.retireAgents(a=>!alive.has(a.id), "sub");
     const b=this.ball;
     if(b.ownerId!=null && !alive.has(b.ownerId)) b.ownerId=null;   // 공 가진 선수가 나갔다면 놓고 간다
     if(b.toId!=null && !alive.has(b.toId)) b.toId=null;
@@ -41777,7 +42381,7 @@ class MatchSim{
         b.ownerId=null;
         this.launchLoose(b.x, b.y, Math.random()*Math.PI*2, 4+Math.random()*6, this.opp(a.side), false);
       }
-      this.agents=this.agents.filter(z=>z.id!==a.id);
+      this.retireAgents(z=>z.id===a.id, "inj");
       const nm=a.p?a.p.name:"선수";
       this.say(a.side, `🚑 ${nm} 선수, 더 이상 뛸 수 없습니다. (약 ${wks}주 결장 예상)`, "warn");
       this.stats[a.side].injury=(this.stats[a.side].injury||0)+1;
@@ -42252,13 +42856,18 @@ class MatchSim{
     const pool=mates.length?mates:all;
     if(!pool.length){ this.possSide=key; b.ownerId=null; b.state="SETTLED";
       b.x=0.5; b.y=0.5; b.z=0; b.vx=0; b.vy=0; b.vz=0; b.hold=1.6*TEMPO;
-      b.setPiece=null; b.shot=null; b.celebrate=null; b.foulScene=null; this.pendingOff=null; return; }
+      b.setPiece=null; b.shot=null; b.celebrate=null; b.foulScene=null;
+      b.isPenalty=false; b.spPlan=null; b.fkDirect=false; b.fkIndirect=false; b.isThrow=false;
+      this.pendingOff=null; return; }
     const mid=pool.reduce((best,a)=> Math.abs(a.y-0.5)<Math.abs(best.y-0.5)?a:best, pool[0]);
     mid.x = 0.5 - mid.dir*0.010; mid.y = 0.5;      // 센터스팟 앞에 선다
     this.possSide=key;
     b.ownerId=mid.id; b.state="SETTLED";
     b.x=0.5; b.y=0.5; b.hold=1.6*TEMPO;
     b.setPiece=null; b.shot=null; b.celebrate=null; b.foulScene=null;
+    /* ⚠ 남은 세트피스 플래그를 반드시 지운다 — isPenalty 가 살아 있으면
+       센터스팟에서 공을 잡은 선수가 「페널티킥」을 차 버린다(제보의 원인). */
+    b.isPenalty=false; b.spPlan=null; b.fkDirect=false; b.fkIndirect=false; b.isThrow=false;
     this.pendingOff=null;   // 킥오프로 상황이 끊겼다 — 깃발도 무효
     for(const q of this.agents) q._spSpot=null;
     b.z=0; b.vx=0; b.vy=0; b.vz=0; b.inNet=false;
@@ -44679,9 +45288,7 @@ class MatchSim{
                          team:_tm2, second:((f.yellows||0)>=2)});
       /* 🎬 하이라이트에서 「퇴장당한 그 선수」가 보여야 한다 — 그리기용으로 남겨 둔다.
          ⚠ 예전에는 agents 에서 곧바로 지워서, 퇴장 장면을 되감아도 정작 그 선수가 화면에 없었다. */
-      (this.gone=this.gone||[]).push(f);
-      if(this.gone.length>6) this.gone.shift();
-      this.agents=this.agents.filter(a=>a.id!==f.id);          // 배열에서 제거 — 퇴장
+      this.retireAgents(a=>a.id===f.id, "red");               // 배열에서 제거 — 퇴장 (그리기용 사본은 남는다)
       /* 🚫 7명 미만 — 몰수패. 시뮬을 그 자리에서 끝낸다 */
       if(this.side(f.side).length<7 && this.emitEvents){
         const sd = f.side==="h" ? this.M.h : this.M.a;
@@ -45047,8 +45654,29 @@ class MatchSim{
      공은 그동안 스팟에 가만히 놓여 있고, 키커만 움직인다. */
   advanceSetPiece(){
     const b=this.ball, sp=b.setPiece;
-    const kicker=this.byId(sp.kickerId);
-    if(!kicker){ b.setPiece=null; b.hold=0; return; }
+    let kicker=this.byId(sp.kickerId);
+    /* ⚠ 제보 — 세리머니 도중 키커가 교체·퇴장으로 빠지면 「아무도 없는데 공이 차이는」 장면이 됐다.
+       세트피스를 통째로 취소하지 않고, 남아 있는 선수 중에서 키커를 다시 세운다. */
+    if(!kicker){
+      const side=(b.ownerId!=null && this.byIdAny(b.ownerId)) ? this.byIdAny(b.ownerId).side : this.possSide;
+      const mine=this.side(side).filter(a=>a.slot!=="GK");
+      if(mine.length){
+        const kind = sp.kind==="penalty" ? "pk" : sp.kind==="corner" ? "ck" : "fk";
+        let nk=null;
+        try{ nk=this.designatedKicker(side, kind); }catch(e){}
+        if(!nk){
+          /* PK 는 페널티 능력, 나머지는 공에 가까운 선수 */
+          if(sp.kind==="penalty"){ let bs=-1; for(const a of mine){ const v=(a.penSkill||0.5); if(v>bs){ bs=v; nk=a; } } }
+          else { let bd=1e9; for(const a of mine){ const d=Math.hypot((a.x-sp.spot.x)*PITCH_AR, a.y-sp.spot.y); if(d<bd){ bd=d; nk=a; } } }
+        }
+        if(nk){
+          kicker=nk; sp.kickerId=nk.id; b.ownerId=nk.id;
+          sp.phase="PLACE"; sp.t=0; sp.from={x:nk.x, y:nk.y};
+          if(this.emitEvents) this.say(side, fixJosa(`🔁 키커가 그라운드를 떠나 <b>${this.nm(nk)}</b>이/가 대신 준비합니다.`), "txt");
+        }
+      }
+      if(!kicker){ b.setPiece=null; b.hold=0; b.isPenalty=false; return; }
+    }
     const ph=SETPIECE_PHASES[sp.kind]||SETPIECE_PHASES.freeKick;
     sp.t+=SIM_DT;
     // 공 뒤쪽(자기 골문 쪽) 지점 — 여기서 물러났다가 달려온다
@@ -46470,9 +47098,14 @@ class MatchSim{
     if(b.state==="SHOT"){ this.advanceShot(); this.stats[this.possSide].poss++; this.stats.ticks++; this.t+=SIM_DT; return; }
     if(b.state==="LOOSE"){ this.advanceLoose(); this.stats[this.possSide].poss++; this.stats.ticks++; this.t+=SIM_DT; return; }
     if(b.state==="SETTLED"){
+      /* ⚠ 제보의 진짜 원인 — 「PK 때 아무도 없는데 투명 선수가 찬다」.
+         예전에는 공 주인이 없으면(키커가 교체·퇴장으로 빠지면) 곧바로 kickoff() 로 리셋했다.
+         그러면 세트피스가 통째로 사라지고, 그런데 b.isPenalty 플래그는 남아서
+         센터스팟에서 공을 잡은 선수가 그 자리에서 「페널티킥」을 차 버렸다.
+         세트피스가 걸려 있으면 먼저 세리머니를 진행시킨다 — 거기서 키커를 다시 세운다. */
+      if(b.setPiece){ this.advanceSetPiece(); this.stats[this.possSide].poss++; this.stats.ticks++; this.t+=SIM_DT; return; }
       const carrier=this.byId(b.ownerId);
       if(!carrier){ this.kickoff(this.possSide); return; }
-      if(b.setPiece){ this.advanceSetPiece(); this.stats[this.possSide].poss++; this.stats.ticks++; this.t+=SIM_DT; return; }
       this.rollBall(carrier);
       if(!this.tryTackle(carrier)){
         b.hold-=SIM_DT;
@@ -50727,6 +51360,7 @@ function matchTabIdleView(){
 document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>{
   document.body.classList.remove("matchFS");   // 안전망 — 경기 밖 화면으로 이동하면 풀스크린 해제
   if(liveM) return; // 실제 라이브 경기 중에는 다른 탭으로 이동 불가
+  if(b.dataset.v==="__exit"){ exitToTitle(); return; }
   if(b.dataset.v==="match"){ enterMatchTab(); return; }
   show(b.dataset.v);
 });
