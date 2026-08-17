@@ -857,6 +857,11 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
 .trGrp{font-size:9.5px;font-weight:800;color:#8b949e;border:1px solid #30363d;border-radius:4px;
   padding:0 4px;margin-left:5px;white-space:nowrap;vertical-align:middle;}
 .trGrp.on{color:var(--gold);border-color:#8b6914;background:#1a1509;}
+/* 🧭 자리 능숙도 검색 */
+.famRow{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:3px 0;}
+.famHit{display:inline-flex;align-items:center;gap:3px;margin-right:6px;}
+.famHitK{font-size:10.5px;opacity:.8;}
+.famHit b{font-family:monospace;font-size:12px;}
 /* 🎯 집들이 초대 명단 */
 .ptWrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px;max-height:270px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .ptPick{display:flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #21262d;border-radius:7px;
@@ -2423,6 +2428,18 @@ const TRAITS=[
  req:(a)=>a.tec>=75&&a.fla>=70, w:1, fx:{curl:1}},
 {k:"gkFeet", n:"발로 공을 다룸", e:"Plays Ball With Feet", c:"개인기",
  req:(a,p)=>p.pos==="GK"&&a.pas>=55, w:4, fx:{gkSweeper:1}},
+// ── 🛡️ 중원 규율 (제보 — 수비형·중앙 미드필더의 전술적 습관)
+/* 「자리를 지키는 미드필더」가 게임 안에 없었다. 중원은 죄다 공을 따라 움직이거나
+   전진할 뿐이어서, 4-2-3-1 의 두 피벗과 3-5-2 의 수미가 서로 구분되지 않았다.
+   FM 의 Stays/Marks/Covers 계열을 셋 만들고 엔진의 움직임에 직접 연결한다. */
+{k:"holdsPos", n:"현재 위치를 고수", e:"Holds Position", c:"공격시 위치 선정",
+ req:(a,p)=>p.pos==="MF"&&a.pos>=60&&a.dec>=60&&a.tea>=58, w:4,
+ fx:{roam:-0.9, stayPos:1, forward:-0.30, press:-0.20}},
+{k:"marksMid", n:"중원에서 상대를 단단히 마크", e:"Marks Opponents Tightly", c:"수비",
+ req:(a,p)=>p.pos==="MF"&&a.mar>=60&&a.ant>=58&&a.wor>=60, w:4, fx:{tightMark:0.85, press:0.15}},
+{k:"backFill", n:"역습 시 수비진 숫자를 맞춘다", e:"Drops Into Defensive Line", c:"수비",
+ req:(a,p)=>p.pos==="MF"&&a.pos>=62&&a.dec>=60&&(a.mar>=56||a.tck>=56)&&a.hea>=52, w:4,
+ fx:{backFill:1, forward:-0.15}},
 // ── 🧤 골키핑 — 골키퍼만 갖는 특성
 /* 골키퍼는 특성 후보가 「발로 공을 다룸」 하나뿐이라 사실상 전원이 무특성이었다.
    실제 키퍼의 색깔이 갈리는 지점들 — 나오는가 / 잡는가 펀칭인가 / 킥이 긴가 /
@@ -2466,6 +2483,8 @@ const TRAIT_GRP={
   playsOutTrouble:["MF","DF","FW"], shortSimple:["MF","DF"],
   // 🛡️ 수비수
   staysBack:["DF"], marksTight:["DF","MF"], bringsOut:["DF"], divesIn:["DF","MF"],
+  /* 🛡️ 중원 규율 — 대표 자리는 미드필더 */
+  holdsPos:["MF"], marksMid:["MF"], backFill:["MF"],
   noDiveIn:["DF","MF"], noThroughBalls:["DF","MF"], noLongShots:["DF","MF","FW"],
   runsRarely:["DF","MF","FW"], windsUp:["DF","MF","FW"],
   longThrowCounter:["DF","MF"], flatThrow:["DF","MF"],
@@ -2492,6 +2511,9 @@ const TRAIT_CONFLICT=[
   ["looksForPass","shootsDistance"], ["looksForPass","boxPlayer"], ["looksForPass","firstTime"],
   /* 🧤 골키핑 — 서로 반대되는 습관 */
   ["gkSweep","gkStayLine"], ["gkPunches","gkSafeHands"],
+  /* 🛡️ 자리를 지키는 습관과 「앞으로 나가는」 습관은 함께 붙지 않는다 */
+  ["holdsPos","getsForward"], ["holdsPos","getsIntoArea"], ["holdsPos","arrivesLate"],
+  ["holdsPos","runsCentre"], ["backFill","getsForward"], ["backFill","getsIntoArea"],
   ["boxPlayer","movesChannels"], ["boxPlayer","comesDeep"], ["hugsLine","cutsInside"],
   ["runsLeft","runsRight"], ["shortSimple","longPasses"],
   ["looksForPass","shootsDistance"], ["comesDeep","getsIntoArea"], ["placesShots","shootsPower"]
@@ -12959,6 +12981,63 @@ function storageOK(){
   catch(e){ return false; }
 }
 /* 저장이 안 들어갈 때 버릴 수 있는 것들 — 기록·로그류만 자른다. 선수/구단 데이터는 건드리지 않는다. */
+/* ═══ 💽 IndexedDB — 큰 저장소 ══════════════════════════════════════
+   ⚠ 제보 — 「기기에 용량이 넉넉한데 저장이 안 된다」.
+      원인은 기기 용량이 아니라 브라우저의 localStorage 상한(도메인당 약 5MB)이다.
+      게다가 브라우저는 문자열을 UTF-16 으로 세는 경우가 많아, 1.4M 글자 세이브가
+      실제로는 약 2.8MB 를 차지하고, 불러오기 백업(_bak)까지 있으면 5.6MB — 그대로 한도 초과다.
+   ─ IndexedDB 는 디스크 용량 기준이라 수백 MB까지 쓸 수 있다. 이쪽을 주 저장소로 올리고
+     localStorage 는 「즉시 읽히는 사본」으로 남긴다(창을 닫는 순간처럼 동기 쓰기가 필요한 곳).
+   ─ 불러올 때 둘 중 더 최신인 쪽을 쓴다. */
+const IDB_NAME="klm2026db", IDB_STORE="save";
+let IDB=null, IDB_FAIL=false;
+let IDB_LAST=0, IDB_SIZE=0;
+function idbOpen(){
+  if(IDB) return Promise.resolve(IDB);
+  if(IDB_FAIL) return Promise.reject(new Error("no idb"));
+  return new Promise((res,rej)=>{
+    try{
+      if(typeof indexedDB==="undefined" || !indexedDB.open){ IDB_FAIL=true; return rej(new Error("no idb")); }
+      const rq=indexedDB.open(IDB_NAME, 1);
+      rq.onupgradeneeded=()=>{ try{ rq.result.createObjectStore(IDB_STORE); }catch(e){} };
+      rq.onsuccess=()=>{ IDB=rq.result; res(IDB); };
+      rq.onerror=()=>{ IDB_FAIL=true; rej(rq.error||new Error("idb open")); };
+      rq.onblocked=()=>{ IDB_FAIL=true; rej(new Error("idb blocked")); };
+    }catch(e){ IDB_FAIL=true; rej(e); }
+  });
+}
+function idbPut(key, val){
+  return idbOpen().then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction(IDB_STORE,"readwrite");
+    tx.objectStore(IDB_STORE).put(val, key);
+    tx.oncomplete=()=>res(true);
+    tx.onerror=()=>rej(tx.error||new Error("idb put"));
+    tx.onabort=()=>rej(tx.error||new Error("idb abort"));
+  }));
+}
+function idbGet(key){
+  return idbOpen().then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction(IDB_STORE,"readonly");
+    const rq=tx.objectStore(IDB_STORE).get(key);
+    rq.onsuccess=()=>res(rq.result);
+    rq.onerror=()=>rej(rq.error||new Error("idb get"));
+  }));
+}
+function idbDel(key){
+  return idbOpen().then(db=>new Promise((res)=>{
+    try{ const tx=db.transaction(IDB_STORE,"readwrite");
+      tx.objectStore(IDB_STORE).delete(key); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false);
+    }catch(e){ res(false); }
+  }));
+}
+/* 세이브 문자열을 IDB 에 넣는다 — 실패해도 게임은 계속 굴러간다 */
+function idbSave(s){
+  try{
+    idbPut(SAVE_KEY, s).then(()=>{ IDB_LAST=Date.now(); IDB_SIZE=s.length; IDB_OK=true; })
+      .catch(()=>{ IDB_OK=false; });
+  }catch(e){ IDB_OK=false; }
+}
+let IDB_OK=null;   // null=아직 모름 · true=쓰기 성공 · false=실패
 function trimSaveData(){
   try{
     if(Array.isArray(G.news))   G.news=G.news.slice(0,20);
@@ -12967,36 +13046,105 @@ function trimSaveData(){
     if(Array.isArray(G.feed))   G.feed=G.feed.slice(0,20);
     if(G.trust && Array.isArray(G.trust.log)) G.trust.log=G.trust.log.slice(0,8);
     if(G.staff && Array.isArray(G.staff.log)) G.staff.log=G.staff.log.slice(0,10);
+    /* 🥗 시즌을 거듭하면 여기가 제일 빨리 불어난다 — 게임 진행에 쓰이지 않는 「기록」들 */
+    if(Array.isArray(G.tfLog))     G.tfLog=G.tfLog.slice(0,60);
+    if(Array.isArray(G.rumors))    G.rumors=G.rumors.slice(0,30);
+    if(Array.isArray(G.shortlist)) G.shortlist=G.shortlist.slice(0,60);
+    if(Array.isArray(G.retired))   G.retired=G.retired.slice(-120);
+    if(Array.isArray(G.pgMade))    G.pgMade=G.pgMade.slice(-40);
+    if(G.stock){
+      if(Array.isArray(G.stock.news)) G.stock.news=G.stock.news.slice(0,30);
+      if(Array.isArray(G.stock.log))  G.stock.log=G.stock.log.slice(0,30);
+      /* 종목별 시세 기록 — 차트는 60일분만 쓴다 */
+      if(Array.isArray(G.stock.list)) for(const s of G.stock.list){
+        if(Array.isArray(s.h))  s.h=s.h.slice(-70);
+        if(Array.isArray(s.hh)) s.hh=s.hh.slice(-70);
+      }
+    }
+    if(G.me){
+      if(Array.isArray(G.me.log))  G.me.log=G.me.log.slice(0,40);
+      if(Array.isArray(G.me.hist)) G.me.hist=G.me.hist.slice(-60);
+      if(G.me.bank && Array.isArray(G.me.bank.hist)) G.me.bank.hist=G.me.bank.hist.slice(-40);
+    }
     for(const id in G.teams){ const t=G.teams[id];
       if(t.fin){ if(Array.isArray(t.fin.log)) t.fin.log=t.fin.log.slice(0,8);
-                 if(Array.isArray(t.fin.att)) t.fin.att=t.fin.att.slice(-20); } }
+                 if(Array.isArray(t.fin.att)) t.fin.att=t.fin.att.slice(-20); }
+      if(Array.isArray(t.retired)) t.retired=t.retired.slice(-24);
+      /* 선수 개인 기록 — 성장 스냅샷은 최근 것만 남긴다 */
+      for(const p of (t.players||[])){
+        if(Array.isArray(p.snap) && p.snap.length>14) p.snap=p.snap.slice(-14);
+        if(Array.isArray(p.hist) && p.hist.length>16) p.hist=p.hist.slice(-16);
+      }
+    }
   }catch(e){}
 }
+/* ⚠ 제보 — 「아챔 전승하고 1위로 시즌 끝까지 갔는데 저장이 안 돼 이적시장부터 다시 시작」.
+   배너 한 줄로는 부족하다. 한 시즌을 날리는 사고다 — 무시할 수 없게 막아 세운다. */
 function saveFailNotice(){
   SAVE_FAIL++;
+  /* 💽 IDB 가 살아 있으면 진행 상황은 안전하다 — 조용히 알리고 넘어간다 */
+  if(IDB_OK===true){
+    if(Date.now()-SAVE_WARN_AT > 300000){
+      SAVE_WARN_AT=Date.now();
+      try{ notify(`💽 브라우저 기본 저장소가 가득 찼지만 <b>큰 저장소(IndexedDB)에 저장되고 있습니다.</b>
+        <span class="small">진행 상황은 안전합니다. 그래도 ⚙️ 설정 → 💾 세이브파일 저장으로 한 번 백업해 두시면 확실합니다.</span>`,"info"); }catch(e){}
+    }
+    return true;
+  }
   const now=Date.now();
-  if(now-SAVE_WARN_AT < 60000) return false;      // 1분에 한 번만 알린다
+  if(now-SAVE_WARN_AT < 45000) return false;
   SAVE_WARN_AT=now;
   const why = storageOK()
-    ? "저장 공간이 가득 찼습니다."
+    ? "브라우저가 이 사이트에 내주는 저장 공간(약 5MB)이 가득 찼습니다. <b>기기 여유 용량과는 별개의 한도</b>입니다."
     : "브라우저가 이 사이트의 저장을 막고 있습니다. <b>사생활 보호(시크릿) 모드</b>이거나 사이트 데이터가 차단된 상태입니다.";
-  try{ notify(`⚠️ <b>저장에 실패했습니다.</b> ${why}<br><span class="small">일반 모드로 다시 열거나, ⚙️ 설정 → <b>세이브파일 저장</b>으로 진행 상황을 파일로 보관하세요.</span>`,"warn"); }catch(e){}
+  /* 두 번째 실패부터는 팝업으로 붙잡는다 — 그냥 지나가면 시즌이 날아간다 */
+  if(SAVE_FAIL>=2){
+    try{
+      showConfirm(`<b style="color:var(--red);font-size:17px">⚠️ 저장이 되지 않습니다</b>
+
+${why}
+
+<b>지금 진행 상황은 브라우저에 남아 있지 않습니다.</b> 창을 닫거나 페이지가 새로 고쳐지면 사라집니다.
+
+아래 <b>💾 파일로 내보내기</b>를 눌러 지금 상태를 파일로 받아 두세요. 다음에 그 파일을 불러오면 이어서 하실 수 있습니다.
+
+<span class="small">해결 방법 — ① 파일로 내보내 두기 ② 브라우저 설정에서 이 사이트의 저장 데이터를 정리하고 파일을 다시 불러오기
+③ 홈 화면에 추가해서 앱처럼 쓰면 저장 공간이 넉넉해집니다</span>`,
+        ()=>{ try{ exportSave(); }catch(e){} },
+        {okLabel:"💾 파일로 내보내기", cancelLabel:"나중에", danger:true});
+    }catch(e){}
+  } else {
+    try{ notify(`⚠️ <b>저장에 실패했습니다.</b> ${why}<br><span class="small">⚙️ 설정 → <b>💾 세이브파일 저장</b>으로 지금 진행 상황을 파일로 보관하세요.</span>`,"warn"); }catch(e){}
+  }
   return false;
 }
+/* 이 크기를 넘어가면 저장 전에 알아서 기록을 줄인다 — localStorage 한도(약 5MB)에 닿기 전에.
+   ⚠ 브라우저는 문자열을 UTF-16(글자당 2바이트)으로 세는 경우가 많다 — 글자 수 × 2 ≈ 실제 바이트. */
+const SAVE_SOFT_MAX=1500000;   // 약 1.5M 글자(≈3MB) — 이 위로는 자동 다이어트
 function saveGame(){
   stripCaches();
+  G._svAt=Date.now();                        // 어느 저장소가 더 최신인지 비교용
   let s;
   try{ s=JSON.stringify(G); }catch(e){ return saveFailNotice(); }
+  /* 🥗 선제 다이어트 — 한도에 부딪혀 실패한 뒤에 줄이는 건 늦다. 미리 줄여 둔다. */
+  if(s.length>SAVE_SOFT_MAX){
+    try{ trimSaveData(); s=JSON.stringify(G); }catch(e){}
+  }
+  /* 💽 큰 저장소부터 — 여기가 주 저장소다. 비동기라 결과를 기다리지 않는다. */
+  idbSave(s);
   try{ localStorage.setItem(SAVE_KEY, s); SAVE_FAIL=0; SAVE_LAST=Date.now(); SAVE_SIZE=s.length;
     try{ persistAutoOnce(); }catch(e){}      // 🔒 첫 저장 때 한 번 영구 보존을 요청해 둔다
     return true; }
   catch(e){
     // 용량이 문제라면 기록을 잘라내고 한 번 더 — 여기서 되면 감독은 눈치채지 못한다
     try{
+      /* 불러오기 백업이 자리를 절반이나 먹고 있다 — 공간이 급하면 이것부터 버린다 */
+      try{ localStorage.removeItem(SAVE_KEY+"_bak"); }catch(_){}
       trimSaveData();
       const s2=JSON.stringify(G);
       localStorage.setItem(SAVE_KEY, s2);
       SAVE_FAIL=0; SAVE_LAST=Date.now(); SAVE_SIZE=s2.length;
+      idbSave(s2);
       return true;
     }catch(e2){ return saveFailNotice(); }
   }
@@ -13055,7 +13203,10 @@ function importSave(input){
       /* 저장소에 먼저 써 넣고 정식 경로(loadGame)로 읽는다 — 구버전 세이브 마이그레이션이
          전부 loadGame 안에 있어서, G 에 직접 꽂으면 그 과정을 통째로 건너뛴다. */
       /* 덮어쓰기 전에 지금 세이브를 백업해 둔다 — 파일이 이상해도 원래 진행은 잃지 않는다 */
-      try{ const cur=localStorage.getItem(SAVE_KEY); if(cur) localStorage.setItem(SAVE_KEY+"_bak", cur); }catch(e){}
+      /* 💽 덮어쓰기 전 백업은 큰 저장소에 둔다 — localStorage 에 두면 자리를 두 배로 먹어
+         그것만으로 한도를 넘긴다(제보의 직접 원인 중 하나). */
+      try{ const cur=localStorage.getItem(SAVE_KEY); if(cur){ idbPut(SAVE_KEY+"_bak", cur).catch(()=>{});
+        try{ localStorage.removeItem(SAVE_KEY+"_bak"); }catch(_){} } }catch(e){}
       let viaStorage=true;
       try{ localStorage.setItem(SAVE_KEY, txt); }catch(e){ viaStorage=false; }
       if(viaStorage && loadGame()){
@@ -13066,7 +13217,9 @@ function importSave(input){
       }
       else if(viaStorage){
         /* 저장은 됐는데 읽기에 실패 — 방금 백업해 둔 원래 세이브로 되돌린다 */
-        try{ const bak=localStorage.getItem(SAVE_KEY+"_bak"); if(bak){ localStorage.setItem(SAVE_KEY, bak); loadGame(); } }catch(e){}
+        try{ const bak=localStorage.getItem(SAVE_KEY+"_bak"); if(bak){ localStorage.setItem(SAVE_KEY, bak); loadGame(); }
+        else idbGet(SAVE_KEY+"_bak").then(b2=>{ if(b2){ try{ localStorage.setItem(SAVE_KEY, b2); }catch(_){}
+          try{ G=JSON.parse(b2); migrateLoadedG(); PID=nextPid(); enterGame(); }catch(_){} } }).catch(()=>{}); }catch(e){}
         notify("이 파일을 읽지 못해 원래 세이브로 되돌렸습니다. 파일이 손상되지 않았는지 확인해 주세요.","warn");
       }
       else { notify("저장소에 쓸 수 없어 이번 세션에서만 불러옵니다. 진행 상황은 다시 파일로 내보내 주세요.","warn");
@@ -13132,6 +13285,35 @@ function migratePosFam(p){
   if(f.LW===undefined) f.LW = p.prefPos==="LW" ? 100 : Math.round((f.AML||0)*0.85);
   if(f.RW===undefined) f.RW = p.prefPos==="RW" ? 100 : Math.round((f.AMR||0)*0.85);
   for(const k of FAM_POS) if(typeof f[k]!=="number") f[k]=0;
+}
+/* 💽 부팅 뒤 IDB 확인 — localStorage 가 비었거나 IDB 가 더 최신이면 그쪽으로 갈아탄다.
+   (모바일에서 스크롤 중 탭이 죽어 새로 고쳐지면, 마지막 동기 저장이 실패했을 수 있다) */
+function idbSyncCheck(){
+  try{
+    idbGet(SAVE_KEY).then(raw=>{
+      if(!raw || typeof raw!=="string") return;
+      IDB_SIZE=raw.length;
+      let o=null; try{ o=JSON.parse(raw); }catch(e){ return; }
+      if(!o || !o.teams) return;
+      const mine=(G && G._svAt) || 0, theirs=o._svAt||0;
+      if(!G || !G.teams){                       // 브라우저 기본 저장소가 비었다 — IDB 로 살린다
+        G=o; migrateLoadedG(); PID=nextPid();
+        try{ notify("💽 <b>큰 저장소에서 진행 상황을 되살렸습니다.</b> <span class=\"small\">브라우저 기본 저장소가 비어 있었습니다.</span>","good"); }catch(e){}
+        try{ enterGame(); }catch(e){}
+        return;
+      }
+      if(theirs > mine + 1000){                 // IDB 쪽이 확실히 더 최신이다
+        try{ showConfirm(`<b>💽 더 최신 진행 상황이 있습니다</b>
+
+큰 저장소(IndexedDB)에 <b>${new Date(theirs).toLocaleString("ko-KR")}</b> 시점 세이브가 있습니다.
+지금 불러온 것은 ${mine?new Date(mine).toLocaleString("ko-KR"):"시점 불명"} 입니다.
+
+최신 쪽으로 이어서 하시겠습니까?`,
+          ()=>{ G=o; migrateLoadedG(); PID=nextPid(); try{ saveGame(); }catch(e){} try{ enterGame(); }catch(e){} },
+          {okLabel:"최신으로 이어하기", cancelLabel:"지금 것으로 계속"}); }catch(e){}
+      }
+    }).catch(()=>{});
+  }catch(e){}
 }
 function loadGame(){
   let s=null;
@@ -14211,6 +14393,27 @@ function drawSimWatch(cv, simOverride){
   }
 }
 
+/* 💽 저장소 두 곳의 상태 — 어디에 얼마나 들어가 있는지 */
+function storeRowHtml(){
+  const kb=(n)=> n? ((n*2)>=1048576 ? ((n*2)/1048576).toFixed(2)+"MB" : Math.round(n*2/1024)+"KB") : "—";
+  let lsN=0; try{ const raw=localStorage.getItem(SAVE_KEY); lsN=raw?raw.length:0; }catch(e){}
+  const pct=clamp(Math.round(lsN*2/5242880*100), 0, 100);     // 약 5MB 한도 기준
+  const idb = IDB_FAIL ? `<span style="color:var(--gold)">지원 안 함</span>`
+            : IDB_OK===true ? `<span style="color:var(--green)">정상</span>${IDB_SIZE?` · ${kb(IDB_SIZE)}`:""}`
+            : IDB_OK===false ? `<span style="color:var(--red)">실패</span>`
+            : `<span style="opacity:.7">대기</span>`;
+  return `<div style="margin-top:9px;border-top:1px solid #21262d;padding-top:9px">
+    <div class="small" style="line-height:1.7">
+      💽 <b>큰 저장소(IndexedDB)</b> — ${idb} <span style="opacity:.75">· 기기 용량 기준, 수백 MB까지 씁니다</span><br>
+      📦 <b>기본 저장소(localStorage)</b> — ${kb(lsN)} / 약 5MB
+      <span style="color:${pct>=85?"var(--red)":pct>=65?"var(--gold)":"var(--sub)"}">(${pct}%)</span></div>
+    <div class="partyBar" style="margin-top:5px"><div style="width:${pct}%;${pct>=85?"background:linear-gradient(90deg,#8b1a1a,#f85149)":pct>=65?"":""}"></div></div>
+    <p class="small" style="margin-top:6px;color:var(--sub);line-height:1.6">
+      브라우저 기본 저장소는 <b>사이트당 약 5MB</b>로 고정입니다 — 기기 여유 용량과는 별개라, 여기가 차면 저장이 실패합니다.
+      그래서 진행 상황은 <b>큰 저장소에 먼저</b> 쓰고, 기본 저장소에는 사본만 둡니다.
+      시즌이 쌓여 한도에 가까워지면 <b>오래된 기록(뉴스·소셜·이적 기록·시세)부터 자동으로 정리</b>합니다.</p>
+  </div>`;
+}
 /* 🔒 저장소 영구 보존 — 상태와 요청 버튼 */
 function persistRowHtml(){
   const st=PERSIST_ST;
@@ -14258,6 +14461,7 @@ function saveInfoHtml(){
       <label class="mini" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">📂 세이브파일 불러오기
         <input type="file" accept="application/json,.json" style="display:none" onchange="importSave(this)"></label>
     </div>
+    ${storeRowHtml()}
     ${persistRowHtml()}
     <p class="small" style="margin-top:8px;color:var(--sub)">
       📱 <b>아이폰 사파리</b>는 사이트를 <b>7일</b> 동안 열지 않으면 저장 데이터를 스스로 지웁니다(브라우저 정책 — 영구 보존으로도 못 막습니다).
@@ -23267,7 +23471,9 @@ const TRAIT_POS_ONLY={
   gkFeet:["GK"],
   /* 「득점보다 패스」는 슛을 고르는 자리에서만 의미가 있다 — 골키퍼·수비수에게는 붙지 않는다 */
   looksForPass:["MF","FW"],
-  staysBack:["DF"], marksTight:["DF"], bringsOut:["DF"],
+  /* 🛡️ 중원 규율 — 미드필더 전용 두 개, 「위치 고수」는 수비수도 가질 수 있다 */
+  marksMid:["MF"], backFill:["MF"], holdsPos:["MF"],
+  staysBack:["DF"], marksTight:["DF","MF"], bringsOut:["DF"],
   boxPlayer:["FW"], backToGoal:["FW"], breaksOffside:["FW"], movesChannels:["FW"],
   arrivesLate:["MF"], comesDeep:["MF","FW"], dictatesTempo:["DF","MF"],
   overhead:["FW"], firstTime:["MF","FW"], lobKeeper:["MF","FW"], roundKeeper:["MF","FW"]
@@ -23393,7 +23599,8 @@ function traitFxText(T){
     place:"정확한 슛", longShot:"중거리 슛", power:"강한 슛", firstTimeShot:"원터치 슛", longFK:"먼 FK",
     cardRisk:"카드 위험", slide:"슬라이딩", tightMark:"밀착 마크", curl:"감아차기", escape:"압박 탈출",
     carryOut:"드리블 전개", repeatBeat:"반복 돌파", toFeet:"발밑 요구", gkSweeper:"스위퍼 키퍼",
-    gkOut:"골문 이탈 성향", gkFist:"펀칭 성향", gkLong:"골킥 거리", gkPen:"페널티 선방", gkCmd:"수비 지휘"};
+    gkOut:"골문 이탈 성향", gkFist:"펀칭 성향", gkLong:"골킥 거리", gkPen:"페널티 선방", gkCmd:"수비 지휘",
+    stayPos:"자리 고수", backFill:"뒷선 보강", tightMark:"밀착 마크"};
   const ks=Object.keys(T.fx||{});
   if(!ks.length) return "—";
   return ks.map(k=>(M[k]||k)+((T.fx[k]<0)?" ↓":"")).join(" · ");
@@ -26445,7 +26652,10 @@ function calendarCard(){
     PC에서는 마우스를 올려 <b>휴/가/보/강</b> 버튼을 바로 눌러도 됩니다. • 표시는 개별 지정한 날입니다.</p></div>`;
 }
 /* ---------- 이적시장 ---------- */
-let tfFilter={pos:"", div:0, q:"", mine:true, afford:false, sub:"", page:1};   // sub=세부 포지션, page=1부터
+let tfFilter={pos:"", div:0, q:"", mine:true, afford:false, sub:"", page:1,
+  /* 🧭 자리 능숙도 검색 (제보) — 「수비형 MF 와 수비수를 함께 체크해서 둘 다 되는 선수를,
+     100/100 이 아니라 80 정도로도 소화하는 선수까지」 찾을 수 있게 한다. */
+  fam:[], famMin:80, famAll:true};
 /* 큰 포지션 아래에 붙는 세부 자리 — 대표 포지션(prefSlotOf) 기준으로 거른다 */
 const PS_SUB={
   GK:[["GK","골키퍼",["GK"]]],
@@ -26453,6 +26663,54 @@ const PS_SUB={
   MF:[["DM","수비형 MF",["LDM","DM","RDM"]],["CM","중앙 MF",["LCM","CM","RCM"]],["WM","측면 MF",["LM","RM"]],["AM","공격형 MF",["LAM","CAM","RAM"]]],
   FW:[["ST","스트라이커",["LS","ST","RS"]],["WG","윙어",["LW","RW"]]]
 };
+/* ═══ 🧭 자리 능숙도 검색 ══════════════════════════════════════════
+   FAM_POS(17자리) 를 직접 고르고, 「몇 이상」인지와 「모두/하나라도」를 정한다. */
+const FAM_QUICK=[
+  ["CB+DM",  ["DC","DM"],       "센터백 + 수미"],
+  ["DM+CM",  ["DM","MC"],       "수미 + 중미"],
+  ["CB+FB",  ["DC","DL","DR"],  "센터백 + 풀백"],
+  ["FB+WG",  ["DL","DR","LW","RW"], "풀백 + 윙어"],
+  ["MC+AMC", ["MC","AMC"],      "중미 + 공미"],
+  ["WG+ST",  ["LW","RW","ST"],  "윙어 + 스트라이커"],
+  ["AMC+ST", ["AMC","ST"],      "공미 + 스트라이커"]
+];
+const FAM_MIN_STEPS=[50,60,70,80,90,100];
+function famVal(p, k){
+  if(!p) return 0;
+  if(!p.posFam){ try{ p.posFam=initPosFam(p); }catch(e){ return 0; } }
+  return clamp(Math.round(p.posFam[k]||0), 0, 100);
+}
+function famQActive(){ return Array.isArray(tfFilter.fam) ? tfFilter.fam.filter(k=>FAM_POS.indexOf(k)>=0) : []; }
+function famQPass(p){
+  const ks=famQActive(); if(!ks.length) return true;
+  const need=clamp(tfFilter.famMin|0, 0, 100);
+  if(tfFilter.famAll) return ks.every(k=>famVal(p,k)>=need);
+  return ks.some(k=>famVal(p,k)>=need);
+}
+/* 조건에 걸린 자리들 중 가장 낮은 값 — 「둘 다 얼마나 되는가」의 실질 지표 (정렬·표시용) */
+function famQWorst(p){
+  const ks=famQActive(); if(!ks.length) return 0;
+  let m=101; for(const k of ks) m=Math.min(m, famVal(p,k));
+  return m===101?0:m;
+}
+function famQToggle(k){
+  if(!Array.isArray(tfFilter.fam)) tfFilter.fam=[];
+  const i=tfFilter.fam.indexOf(k);
+  if(i>=0) tfFilter.fam.splice(i,1); else tfFilter.fam.push(k);
+  tfFilter.page=1; psRefresh();
+}
+function famQPreset(key){
+  const hit=FAM_QUICK.find(x=>x[0]===key); if(!hit) return;
+  const same = famQActive().length===hit[1].length && hit[1].every(k=>famQActive().indexOf(k)>=0);
+  tfFilter.fam = same ? [] : hit[1].slice();
+  tfFilter.famAll = true;
+  tfFilter.page=1; psRefresh();
+}
+function famQMin(v){ tfFilter.famMin=clamp(parseInt(v,10)||0, 0, 100); tfFilter.page=1; psRefresh(); }
+function famQMode(all){ tfFilter.famAll=!!all; tfFilter.page=1; psRefresh(); }
+function famQClear(){ tfFilter.fam=[]; tfFilter.famMin=80; tfFilter.famAll=true; tfFilter.page=1; psRefresh(); }
+let FAMQ_OPEN=false;
+function famQToggleBox(){ FAMQ_OPEN=!FAMQ_OPEN; psRefresh(); }
 function psSubSlots(pos, key){
   const rows=PS_SUB[pos]||[]; const hit=rows.find(r=>r[0]===key);
   return hit ? hit[2] : null;
@@ -27167,6 +27425,7 @@ function psFiltered(){
   if(tfFilter.mine) list=list.filter(e=>!e.ot || e.ot.id!==t.id);
   if(tfFilter.afford) list=list.filter(e=>e.fa || marketValue(e.p)<=t.budget);
   if(attrQActive().length) list=list.filter(e=>attrQPass(e.p));
+  if(famQActive().length) list=list.filter(e=>famQPass(e.p));      // 🧭 자리 능숙도 조건
   if(q){
     list=list.map(e=>({...e, sc:psScore(e,q)})).filter(e=>e.sc>0)
              .sort((a,b)=>b.sc-a.sc || b.p.ovr-a.p.ovr);
@@ -27176,6 +27435,10 @@ function psFiltered(){
   /* 검색어가 없을 때만 감독이 고른 정렬을 적용한다 — 검색 중에는 "얼마나 맞는가"가 먼저다 */
   if(!q) list=cardApply("ps", list,
     {ovr:e=>sortLv(e.p), age:e=>G.season-e.p.by, mv:e=>marketValue(e.p), name:e=>e.p.name});
+  /* 🧭 자리 능숙도 조건을 걸었으면 「둘 다 잘하는 순서」로 — 조건에 걸린 자리 중
+     가장 낮은 값이 높은 선수가 진짜 멀티 자원이다. (감독이 다른 정렬을 고르면 그쪽을 따른다) */
+  if(!q && famQActive().length && tfFilter.famAll && cardSort("ps").k==="ovr")
+    list=list.slice().sort((a,b)=>famQWorst(b.p)-famQWorst(a.p) || sortLv(b.p)-sortLv(a.p));
   return list;
 }
 /* 검색어와 겹치는 부분에 색을 입힌다 — 왜 이 선수가 걸렸는지 바로 보이게 */
@@ -27209,7 +27472,7 @@ function psRow(e, wi, t, q){
     <div class="psMain">
       <div class="psName clickable" onclick="openPlayerMenu(event,${p.id})"><span class="${p.frn?"frnN":""}">${psMark(p.name,q)}</span>${p.frn?' <span class="small">🌐</span>':""}${pTags(p)}</div>
       <div class="psSub"><span class="pos-${p.pos}">${p.pos}</span> · ${age}세 · ${ot?ot.short+(ot.div===2?" (K2)":""):"🆓 FA"}${p.frn?' · <span class="frnN">외국인</span>':""}</div>
-      ${psPosBadge(p)}
+      ${psPosBadge(p)}${psFamBadge(p)}
     </div>
     <div class="psVal">${val}</div>
     <div class="psAct">${mine?"":slStarBtn(p.id,"ps")}${act}</div>
@@ -27295,11 +27558,71 @@ function attrQBox(){
       <button class="psChip sm" onclick="attrQClear()">↺ 지우기</button>
     </div></div>`;
 }
+/* 🧭 자리 능숙도 조건 상자 — 자리를 여러 개 체크하고 「몇 이상」인지 정한다 */
+function famQBox(){
+  const ks=famQActive();
+  const on=ks.length;
+  const need=clamp(tfFilter.famMin|0,0,100);
+  const head=`<button class="psChip ${on?"on":""}" onclick="famQToggleBox()">🧭 자리 능숙도${on?` <span class="psSubN">${on}</span>`:""} ${FAMQ_OPEN?"▲":"▼"}</button>`;
+  if(!FAMQ_OPEN){
+    const sum = on
+      ? `<span class="small" style="margin-left:8px;color:var(--gold)">${ks.map(k=>FAM_LABEL[k]||k).join(tfFilter.famAll?" + ":" 또는 ")} ${need} 이상${tfFilter.famAll?" (모두)":""}</span>`
+      : `<span class="small" style="margin-left:8px;opacity:.7">여러 자리를 함께 체크해 「둘 다 되는 선수」를 찾습니다</span>`;
+    return `<div class="aqWrap">${head}${sum}</div>`;
+  }
+  /* 지금 걸린 나머지 조건까지 반영한 실제 결과 수 — 눌러 보면 숫자가 맞아야 한다 */
+  const keep=tfFilter.fam; tfFilter.fam=[];
+  let base=[]; try{ base=psFiltered(); }finally{ tfFilter.fam=keep; }
+  const cnt={};
+  for(const k of FAM_POS){ let n=0; for(const e of base) if(famVal(e.p,k)>=need) n++; cnt[k]=n; }
+  const chip=(k)=>{
+    const sel=ks.indexOf(k)>=0;
+    return `<button class="psChip sm ${sel?"on":""}" onclick="famQToggle('${k}')"
+      title="${FAM_LABEL[k]||k} 능숙도 ${need} 이상">${FAM_LABEL[k]||k}<span class="psSubN">${cnt[k]||0}</span></button>`;
+  };
+  const band=(ttl, arr)=>`<div class="famRow"><span class="psSubK">${ttl}</span>${arr.map(chip).join("")}</div>`;
+  const presetOn=(hit)=> ks.length===hit[1].length && hit[1].every(k=>ks.indexOf(k)>=0);
+  return `<div class="aqWrap">${head}
+    <div class="aqBody">
+      <div class="famRow"><span class="psSubK">빠른 조합</span>
+        ${FAM_QUICK.map(h=>`<button class="psChip sm ${presetOn(h)?"on":""}" onclick="famQPreset('${h[0]}')" title="${h[2]}">${h[2]}</button>`).join("")}
+      </div>
+      ${band("골키퍼",["GK"])}
+      ${band("수비",["SW","DC","DL","DR","WBL","WBR"])}
+      ${band("중원",["DM","MC","ML","MR","AMC","AML","AMR"])}
+      ${band("공격",["LW","RW","ST"])}
+      <div class="famRow"><span class="psSubK">기준</span>
+        ${FAM_MIN_STEPS.map(v=>`<button class="psChip sm ${need===v?"on":""}" onclick="famQMin(${v})">${v} 이상</button>`).join("")}
+      </div>
+      <div class="famRow"><span class="psSubK">방식</span>
+        <button class="psChip sm ${tfFilter.famAll?"on":""}" onclick="famQMode(true)" title="체크한 자리를 전부 소화하는 선수만">모두 충족</button>
+        <button class="psChip sm ${tfFilter.famAll?"":"on"}" onclick="famQMode(false)" title="체크한 자리 중 하나라도 소화하면">하나라도</button>
+        <button class="psChip sm" onclick="famQClear()">↺ 지우기</button>
+      </div>
+      <p class="small" style="margin-top:5px;font-size:11px;opacity:.85;line-height:1.6">
+        예) <b>중앙 수비</b> + <b>수비형 미드필더</b> 를 체크하고 기준을 <b>80 이상</b> · <b>모두 충족</b> 으로 두면
+        「센터백도 되고 수미도 되는」 선수만 나옵니다. 100/100 이 아니어도 됩니다.<br>
+        조건을 걸면 목록이 <b>둘 다 잘하는 순서</b>(둘 중 낮은 값이 높은 순)로 정렬되고, 각 선수의 해당 자리 능숙도가 함께 표시됩니다.</p>
+    </div></div>`;
+}
 /* ── 대표 포지션 배지 ────────────────────────────────────────────
    검색 목록의 별점은 "이 선수가 자기 자리에서 리그 전체와 비교해 어느 정도인가"를 보여준다.
    ⚠ 예전에는 우리 포메이션의 빈 자리를 기준으로 매겼는데, 포지션으로 검색해 놓고 보면
      센터백이 "우리 LAM" 처럼 엉뚱한 자리로 환산돼 오히려 헷갈렸다.
      그래서 우리 사정은 빼고, 선수 본인의 대표 포지션과 그 자리 별점만 적는다. */
+/* 🧭 조건에 걸린 자리들의 능숙도 — 왜 이 선수가 나왔는지 한 줄로 */
+function psFamBadge(p){
+  const ks=famQActive(); if(!ks.length || !p) return "";
+  const need=clamp(tfFilter.famMin|0,0,100);
+  const cell=(k)=>{ const v=famVal(p,k); const c=famColor(v)||"var(--sub)";
+    return `<span class="famHit"><span class="famHitK">${FAM_LABEL[k]||k}</span>
+      <b style="color:${c}">${v}</b></span>`; };
+  const worst=famQWorst(p);
+  return `<div class="psFit" style="border-color:#8b6914">
+    <span class="psFitK" style="color:var(--gold)">🧭 ${tfFilter.famAll?"둘 다":"소화"}</span>
+    ${ks.map(cell).join("")}
+    <span style="opacity:.7">${tfFilter.famAll?`· 최저 ${worst}`:""} (기준 ${need})</span></div>`;
+}
 function psPosBadge(p){
   if(!p) return "";
   const sl=prefSlotOf(p);
@@ -27357,6 +27680,8 @@ function psRefresh(){
   const sub=document.getElementById("psSubRow");
   if(sub) sub.innerHTML=psSubChips();
   /* 조건 칩의 개수·요약도 함께 갱신한다 — 이게 없으면 조건을 바꿔도 "⚙️ 세부 능력치 조건 [2]" 가 그대로였다 */
+  const fq=document.getElementById("fqHost");
+  if(fq) fq.innerHTML=famQBox();
   const aq=document.getElementById("aqHost");
   if(aq) aq.innerHTML=attrQBox();
   const c=document.getElementById("psClrBtn");
@@ -27454,6 +27779,7 @@ function psSearchBox(){
       <button id="psChip_afford" class="psChip ${tfFilter.afford?"on":""}" onclick="psToggle('afford')">💰 예산 내</button>
     </div>
     <div id="psSubRow">${psSubChips()}</div>
+    <div id="fqHost">${famQBox()}</div>
     <div id="aqHost">${attrQBox()}</div>
   </div>`;
 }
@@ -39391,8 +39717,12 @@ function movementProfile(a){
     box:    clamp(B.box    + rf*0.26, 0, 1),
     /* ⚠ 예전엔 a.roamFx 를 읽었지만 그 값은 어디서도 대입되지 않았다 — 역할의 roam
        (레지스타 0.85 · 로밍 플메 1.0 · 리베로 0.6 · 메짤라 0.5)이 통째로 무효였던 원인 */
-    hold:   clamp(B.hold   - clamp(FX(a,"roam"),0,1.2)*0.30, 0, 1),
-    roam:   clamp(at("fla",55)*0.45 + at("otb",60)*0.35 + clamp(FX(a,"roam"),0,1.2)*0.40, 0, 1)
+    /* ⚠ 예전엔 roam 을 0 아래로 자르지 않아 「음수 roam」(자제 성향)이 통째로 무효였다.
+       🛡️ 「현재 위치를 고수」 특성이 여기서 실제로 로밍을 눌러야 한다(제보). */
+    hold:   clamp(B.hold   - clamp(FX(a,"roam"),-1.2,1.2)*0.30 + Math.max(0,-FX(a,"roam"))*0.22, 0, 1),
+    roam:   clamp(at("fla",55)*0.45 + at("otb",60)*0.35 + clamp(FX(a,"roam"),-1.2,1.2)*0.40, 0, 1),
+    /* 🛡️ 자리 고수 강도 — 규율(되당김) 계산이 이 값을 읽는다 */
+    stay:   clamp(FX(a,"stayPos"), 0, 1.2)
   };
 }
 /* 🧭 의도 후보 — 모든 의도는 누구에게나 열려 있다. 성향과 상황이 점수를 정할 뿐이다 (§38).
@@ -40060,6 +40390,35 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball){
         continue;
       }
     }
+    /* 🛡️ 역습 시 뒷선 숫자 맞추기 (제보) — 「상대 역습 때 센터백처럼 수비진에 합류하라」.
+       우리 최후방 인원이 상대 공격 인원보다 모자라면, 이 성향의 미드필더가 그 줄에 들어간다.
+       숫자가 맞아 있으면 평소 역할대로 둔다 — 필요할 때만 내려가는 게 요령이다. */
+    if(FX(a,"backFill")>0 && !a.defRole){
+      const myLine=oppLineX(mine, dir);                     // 우리 최후방 x
+      let defN=0, atkN=0;
+      for(const m of mine){
+        if(m.slot==="GK" || m===a) continue;
+        if(dir>0 ? m.x<myLine+0.075 : m.x>myLine-0.075) defN++;
+      }
+      for(const o of opps){
+        if(o.slot==="GK") continue;
+        const oAdv = dir>0 ? o.x : 1-o.x;
+        if(oAdv < 0.52) atkN++;                              // 우리 진영 절반 안으로 들어온 상대
+      }
+      const bOwn = dir>0 ? (ball.x) : (1-ball.x);            // 볼이 우리 골문에서 얼마나 떨어져 있나
+      const need = (atkN > defN) || (dngr>0.45);             // 수적으로 밀리거나 이미 위험하다
+      if(need && bOwn<0.62){
+        /* 어느 쪽이 비었나 — 뒷선 중앙에서 볼 쪽으로 반 칸 붙여 선다 */
+        const an=_anch(a);
+        const fx2 = dir>0 ? Math.min(an.x, myLine+0.035) : Math.max(an.x, myLine-0.035);
+        const fy2 = clamp01(0.5 + (ball.y-0.5)*0.42 + (an.y-0.5)*0.30);
+        a.defRole=DEF_ROLE.DROP; a._mark=null;
+        a._fillAt={x:clamp01(fx2), y:fy2};
+        a._backFill=1;
+        continue;
+      }
+      a._backFill=0;
+    }
     let r;
     /* 수비 행동에 개인 역할을 반영한다.
        예전에는 순수하게 슬롯과 시간(ph)으로만 갈려서, 수비형 윙이든 인사이드 포워드든
@@ -40129,6 +40488,9 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball){
         }
         if(s>markS) markS=s;
       }
+      /* 🛡️ 「상대를 단단히 마크」 성향 — 사람을 잡는 선택 자체를 더 자주 고른다(제보).
+         지역만 지키는 미드필더와 사람을 물고 늘어지는 미드필더가 여기서 갈린다. */
+      markS *= 1 + clamp(FX(a,"tightMark"), 0, 1.2)*0.55;
       /* ③ 라인 — 지금 뒷선을 지키는 인원이 모자란가 */
       let lineN=0;
       for(const m of mine) if(m.defRole===DEF_ROLE.LINE) lineN++;
@@ -40386,7 +40748,10 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
     }
     case DEF_ROLE.DROP: {   // 동료가 비운 자리로 내려앉는다 — 자기 자리와 그 자리의 사이
       const f=a._fillAt||anchor;
-      return {x:clamp01(anchor.x*0.30+f.x*0.70), y:clamp01(anchor.y*0.30+f.y*0.70)};
+      /* 🛡️ 역습 대비로 뒷선에 합류하는 경우는 「그 줄에 들어가 서는 것」이 목적이다 —
+         중간에서 어정쩡하게 멈추면 숫자가 맞지 않는다. 목표 지점까지 확실히 내려간다. */
+      const w = a._backFill ? 0.92 : 0.70;
+      return {x:clamp01(anchor.x*(1-w)+f.x*w), y:clamp01(anchor.y*(1-w)+f.y*w)};
     }
     case DEF_ROLE.RECOVER:  // 자기 수비 위치로 전력 복귀
       return {x:a._recover?a._recover.x:anchor.x, y:a._recover?a._recover.y:anchor.y};
@@ -42276,14 +42641,17 @@ class MatchSim{
              (실측: 컷인 목표는 중앙 0.12 였는데 최종 목표가 0.41 로 되끌려 나갔다) */
           const breakShape = a.offRole===OFF_ROLE.INSIDE || a.offRole===OFF_ROLE.OVERLAP
                           || a.offRole===OFF_ROLE.RUN;
-          const soft = a._zoneMark ? DISCIPLINE_SOFT*CB_MARK_LEASH
+          /* 🛡️ 「현재 위치를 고수」 — 이 선수는 애초에 자리를 뜨지 않는다.
+             허용 반경을 좁히고 되당김을 강하게 걸어, 공이 어디로 가든 자기 구역에 남는다(제보). */
+          const _stay=clamp(FX(a,"stayPos"), 0, 1.2);
+          const soft = (a._zoneMark ? DISCIPLINE_SOFT*CB_MARK_LEASH
                      : breakShape ? DISCIPLINE_SOFT*3.2
-                     : DISCIPLINE_SOFT;
+                     : DISCIPLINE_SOFT) * (1 - _stay*0.42);
           if(ad>soft){
             // 팀워크가 낮으면 전술 자리를 덜 지키고 제멋대로 움직인다
             // 역할이 자유로울수록(레지스타·트레콰르티스타 등) 자리를 덜 지킨다
             const rm=clamp(1-((a.role&&a.role.roam)||0)*0.55, 0.25, 1.4);
-            const tw=(0.60+(a.teamwork||0.6)*0.66)*rm;
+            const tw=(0.60+(a.teamwork||0.6)*0.66)*rm*(1+_stay*0.55);
             const k=clamp((ad-soft)/0.16, 0, DISCIPLINE_MAX*tw*(phase==="DEF"?DEF_DISC:1));         // 최대 78% 되당김
             tx=tx-ax*k/PITCH_AR; ty=ty-ay*k;
           }
@@ -50751,6 +51119,9 @@ try{ fsInit(); }catch(e){}   // 전체화면 버튼 상태 동기화 + 자동 �
 try{ liveVisibilityInit(); }catch(e){}  // 경기 중 탭 이탈 대응
 try{ exitGuardInit(); }catch(e){}       // 🚪 창 닫기 — 자동 저장 + (선택) 확인창
 try{ persistRefresh(); }catch(e){}      // 🔒 저장소 영구 보존 상태 조회
+/* 💽 큰 저장소(IndexedDB) 확인 — 기본 저장소가 비었거나 더 최신 세이브가 있으면 되살린다.
+   부팅 흐름을 막지 않도록 잠깐 뒤에 비동기로 확인한다. */
+try{ setTimeout(()=>{ try{ idbSyncCheck(); }catch(e){} }, 900); }catch(e){}
 try{ navInit(); }catch(e){}             // 🖱️ 트랙패드 뒤로가기 제스처 (맥북 두 손가락 스와이프)
 /* 저장이 아예 막힌 환경(시크릿 모드 등)이면 처음부터 알려 준다 — 몇 시즌 진행한 뒤에
    알게 되는 것이 최악이다. */
