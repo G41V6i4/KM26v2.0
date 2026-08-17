@@ -2319,8 +2319,20 @@ const TRAITS=[
  req:(a)=>a.dec>=75&&a.vis>=75&&a.pas>=72, w:2, fx:{hold:0.5, killer:0.2}},
 {k:"switchFlank", n:"공을 반대편 측면으로 보내는 것을 선호", e:"Likes To Switch Ball To Other Flank", c:"패스",
  req:(a)=>a.pas>=72&&a.vis>=72, w:2, fx:{switchPlay:1}},
+/* ⚠ 제보 — 「미드필더·윙어·공격수에게 이 특성이 있으면 전술에 맞는 움직임이 나올 것 같다」.
+   실측: 리그 1022명 중 보유 16명인데 그중 11명이 골키퍼·수비수였다. 정작 슛을 고르는
+   자리에는 미드필더 3명뿐, 공격수는 0명. 요구조건(판단 14.8+ & 결정력 10.4-)이 공격 자원을
+   통째로 걸러 냈고 가중치도 최저(w=1)였다.
+   ─ 「마무리보다 만드는 쪽이 나은 선수」로 조건을 다시 세우고, 자리도 미드필더·공격수로 좁힌다. */
 {k:"looksForPass", n:"득점보다는 패스하는 것을 선호", e:"Looks For Pass Rather Than Attempting To Score", c:"패스",
- req:(a)=>a.dec>=74&&a.fin<=52, w:1, fx:{shoot:-0.35}},
+ req:(a,p)=>{
+   if(p.pos!=="MF" && p.pos!=="FW") return false;
+   if(a.dec<66 || a.vis<64 || a.pas<62) return false;
+   /* 미드필더는 「마무리보다 패스가 나은」 정도면 되고, 공격수는 연결에 능한 유형이어야 한다
+      — 폴스 나인·타깃맨처럼 등지고 받아 흘려 주는 선수들 */
+   return p.pos==="MF" ? (a.pas-a.fin)>=8
+                       : ((a.pas-a.fin)>=0 && a.vis>=68 && a.tea>=66);
+ }, w:3, fx:{shoot:-0.55}},
 {k:"noThroughBalls", n:"스루 패스하지 않는 것을 선호", e:"Plays No Through Balls", c:"패스",
  req:(a)=>a.vis<=48&&a.pas<=52, w:1, fx:{killer:-0.6}},
 {k:"shortSimple", n:"짧고 간단한 패스 선호", e:"Plays Short Simple Passes", c:"패스",
@@ -2395,6 +2407,8 @@ const TRAIT_BY_KEY={}; for(const t of TRAITS) TRAIT_BY_KEY[t.k]=t;
 const TRAIT_CONFLICT=[
   ["runsOften","runsRarely"], ["shootsDistance","noLongShots"], ["killerBalls","noThroughBalls"],
   ["divesIn","noDiveIn"], ["getsForward","staysBack"], ["getsIntoArea","staysBack"],
+  /* 「득점보다 패스」와 「직접 해결하는」 성향은 같이 붙을 수 없다 */
+  ["looksForPass","shootsDistance"], ["looksForPass","boxPlayer"], ["looksForPass","firstTime"],
   ["boxPlayer","movesChannels"], ["boxPlayer","comesDeep"], ["hugsLine","cutsInside"],
   ["runsLeft","runsRight"], ["shortSimple","longPasses"],
   ["looksForPass","shootsDistance"], ["comesDeep","getsIntoArea"], ["placesShots","shootsPower"]
@@ -12557,6 +12571,10 @@ function migrateSave(){
 
   /* 에디터로 바꾼 감독 이름 복원 — COACHES 는 코드 상수라 세이브에서 다시 입힌다 */
   try{ if(G.coachNames) for(const id in G.coachNames) if(COACHES[id]) COACHES[id].n=G.coachNames[id]; }catch(e){}
+  /* 에디터로 바꾼 감독 능력치도 되살린다 */
+  try{ if(G.coachAttrs) for(const id in G.coachAttrs){ const c=COACHES[id]; if(!c) continue;
+    for(const k in G.coachAttrs[id]){ const v=G.coachAttrs[id][k];
+      if(typeof v==="number" && ["tac","flex","att","def","man","dev","judg","ovr"].indexOf(k)>=0) c[k]=clamp(Math.round(v),1,20); } } }catch(e){}
   /* 김찬영(부천 GK) 리그 명단 제외 — 기존 세이브에도 반영 (UID 332520) */
   try{
     const bc=G.teams.bucheon;
@@ -13004,6 +13022,10 @@ function migrateLoadedG(){
         for(const g of (R.grp||[])) if(!m[g]) m[g]={r:rd.r, d:rd.d};
       }
     }
+  });
+  step("전술 프리셋 인선 정리", ()=>{
+    /* 인선(선발·벤치)은 전술 슬롯이 갖지 않는다 — 옛 세이브의 프리셋에 남아 있으면 걷어낸다 */
+    for(const id in G.teams){ try{ scrubPresetSquads(G.teams[id]); }catch(e){} }
   });
   step("관심 목록", ()=>{
     if(!Array.isArray(G.shortlist)) G.shortlist=[];
@@ -13646,7 +13668,15 @@ function drawHighlightFrame(cv, hl){
   const s=liveSim; if(!s) return;
   const f=hl.frames[hl.i], nf=hl.frames[Math.min(hl.i+1, hl.frames.length-1)];
   const k=clamp01(hl.acc/SIM_DT);                  // 프레임 사이를 이어 그려 부드럽게
+  /* 🎬 퇴장 선수는 s.agents 에서 빠져 있다 — 그리기용 유령을 잠깐 되살린다.
+     ⚠ 이게 없으면 퇴장 장면을 되감아도 정작 그 선수만 화면에서 사라져 있었다(제보). */
   const byId={}; for(const a of s.agents) byId[a.id]=a;
+  const ghosts=[];
+  if(Array.isArray(s.gone)) for(const gg of s.gone){
+    if(byId[gg.id]) continue;
+    if(!f.a.some(r=>r.id===gg.id)) continue;      // 이 프레임에 있던 선수만
+    byId[gg.id]=gg; ghosts.push(gg); s.agents.push(gg);
+  }
   const save=[];
   for(let i=0;i<f.a.length;i++){
     const rec=f.a[i], nx=(nf.a[i]&&nf.a[i].id===rec.id)?nf.a[i]:rec;
@@ -13670,6 +13700,8 @@ function drawHighlightFrame(cv, hl){
     rf.x=rx; rf.y=ry; rf._rx=rx; rf._ry=ry;
   }
   drawSimWatch(cv, s);
+  /* 🟥🟨 카드 연출 — 주심이 들어 올린 카드와 「누구인지」를 그 자리에 그린다 */
+  if(f.cd && cv.getContext) drawCardFx(cv, s, f.cd, byId);
   // 리플레이 배지 — 지금 보고 있는 게 다시보기라는 걸 분명히 한다
   if(hl.isReplay && cv.getContext){
     const c2=cv.getContext("2d");
@@ -13682,9 +13714,53 @@ function drawHighlightFrame(cv, hl){
   }
   // 원래 좌표로 되돌린다 — 재생이 끝나면 경기가 그 자리에서 이어져야 한다
   s._hlOwner=undefined;
+  if(ghosts.length) s.agents=s.agents.filter(a=>ghosts.indexOf(a)<0);   // 유령은 다시 걷어낸다
   for(const [ag,x,y,fc,rx,ry] of save){ ag.x=x; ag.y=y; ag.face=fc; ag._rx=rx; ag._ry=ry; }
   b.x=bs[0]; b.y=bs[1]; b.z=bs[2]; b._rx=bs[3]; b._ry=bs[4];
   if(rs){ s.ref.x=rs[0]; s.ref.y=rs[1]; s.ref._rx=rs[2]; s.ref._ry=rs[3]; }
+}
+/* ═══ 🟥 카드 연출 ══════════════════════════════════════════════════
+   주심이 카드를 들어 올린다 — 카드가 살짝 솟았다가 멈추고, 그 아래에
+   「팀 · 자리 · 이름」이 붙는다. 퇴장은 붉게, 경고는 노랗게. */
+function drawCardFx(cv, s, cd, byId){
+  const ctx=cv.getContext("2d"); if(!ctx) return;
+  const K=cvK(cv);
+  const red=(cd.k==="R");
+  const T=cd.t||0;
+  const rise=clamp(T/0.45, 0, 1);                       // 들어 올리는 동작
+  const fade=clamp((CARD_FX_SEC-T)/0.8, 0, 1);          // 끝에서 서서히 사라진다
+  const a=byId[cd.id];
+  /* 카드는 반칙한 선수 머리 위에 — 선수를 못 찾으면 주심 위에 */
+  const tgt = a || s.ref || {x:0.5,y:0.5};
+  const px=(tgt.x!=null?tgt.x:0.5), py=(tgt.y!=null?tgt.y:0.5);
+  const X=px*cv.width, Y=py*cv.height;
+  ctx.save();
+  ctx.globalAlpha=fade;
+  /* 카드 — 세로로 긴 직사각형, 살짝 기울여 든 모양 */
+  const cw=13*K, ch=19*K;
+  const cx=X+16*K, cy=Y-26*K - rise*8*K;
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.16);
+  ctx.fillStyle = red ? "#e5484d" : "#f0c000";
+  ctx.strokeStyle="rgba(0,0,0,0.55)"; ctx.lineWidth=1.4*K;
+  roundRectPath(ctx, -cw/2, -ch/2, cw, ch, 2.5*K);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  /* 이름표 — 팀 · 자리 · 이름 (제보: 어느 팀 어느 포지션의 누구인지 알아야 상황이 읽힌다) */
+  const label=`${red?"🟥":"🟨"} ${cd.tm||""} ${cd.ps?cd.ps+" ":""}${cd.nm||""}`;
+  ctx.save();
+  ctx.globalAlpha=fade;
+  ctx.font=`bold ${Math.round(12*K)}px system-ui,sans-serif`;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const w=ctx.measureText(label).width+14*K, h=20*K;
+  let bx=clamp(X, w/2+4, cv.width-w/2-4), by=Y-46*K-rise*8*K;
+  if(by<h) by=Y+40*K;
+  ctx.fillStyle="rgba(8,12,17,0.86)";
+  roundRectPath(ctx, bx-w/2, by-h/2, w, h, 5*K); ctx.fill();
+  ctx.strokeStyle= red ? "#e5484d" : "#f0c000"; ctx.lineWidth=1.6*K; ctx.stroke();
+  ctx.fillStyle="#e6edf3";
+  ctx.fillText(label, bx, by);
+  ctx.restore();
 }
 /* 연속 매치엔진 화면 그리기.
    관전 화면(simWatch)과 실제 경기(liveSim)가 같은 그림을 쓰므로, 어떤 시뮬을 그릴지 인자로 받는다. */
@@ -14138,6 +14214,18 @@ function edSetCoachName(tid, v){
   if(nn){ c.n=nn; (G.coachNames=G.coachNames||{})[tid]=nn; edLog(null,null,"mgr","coachName",nn); }
   saveGame(); show("editor");
 }
+function edCoachOpen(tid){ ED.coach = (ED.coach===tid) ? null : tid; show("editor"); }
+/* 감독 능력치 — 세이브에 남겨 두고, 불러올 때 다시 입힌다(COACHES 는 코드 상수) */
+function edSetCoachAttr(tid, key, v){
+  const c=COACHES[tid]; if(!c) return;
+  if(["tac","flex","att","def","man","dev","judg","ovr"].indexOf(key)<0) return;
+  const n=edNum(v,1,20,0); if(n==null){ show("editor"); return; }
+  c[key]=n;
+  const st=(G.coachAttrs=G.coachAttrs||{});
+  (st[tid]=st[tid]||{})[key]=n;
+  edLog(null,null,"mgr","coachAttr:"+tid+":"+key,n);
+  saveGame(); show("editor");
+}
 function edSetCoachRel(tid, v){
   const n2=edNum(v,0,100,0);
   if(n2!=null){ (G.coachRel=G.coachRel||{})[tid]=n2; edLog(null,null,"mgr","coachRel",n2); }
@@ -14396,7 +14484,9 @@ function edExportNames(){
       players:T.players.map(p=>({u:p.uid, k:p.name, n:p.name})) };
   }
   const coaches={};
-  try{ for(const id in COACHES) coaches[id]={u:uidCoachOf(id), k:COACHES[id].n, n:COACHES[id].n}; }catch(e){}
+  try{ for(const id in COACHES){ const c=COACHES[id];
+    coaches[id]={u:uidCoachOf(id), k:c.n, n:c.n,
+      a:{tac:c.tac, flex:c.flex, att:c.att, def:c.def, man:c.man, dev:c.dev, judg:c.judg, ovr:c.ovr}}; } }catch(e){}
   const comps={};
   try{ for(const k of compKeys()){ const c=compInfo(k); comps[k]={u:c.uid, n:c.rawN, s:c.rawS}; } }catch(e){}
   const refs=[];
@@ -14470,6 +14560,14 @@ function edApplyNames(obj){
       if(!o || !o.n || !c) continue;
       const nn=String(o.n).trim().slice(0,12);
       if(nn && nn!==c.n){ rn.push([c.n, nn]); c.n=nn; (G.coachNames=G.coachNames||{})[key]=nn; cOk++; }
+      /* 능력치도 함께 온다 — 없는 파일(옛 버전)이면 그냥 건너뛴다 */
+      if(o.a && typeof o.a==="object"){
+        const st=(G.coachAttrs=G.coachAttrs||{}); st[key]=st[key]||{};
+        for(const k of ["tac","flex","att","def","man","dev","judg","ovr"]){
+          const v=o.a[k];
+          if(typeof v==="number" && isFinite(v)){ const n2=clamp(Math.round(v),1,20); c[k]=n2; st[key][k]=n2; }
+        }
+      }
     }
   }catch(e){}
   /* 🏆 대회명 */
@@ -15277,19 +15375,44 @@ function editorView(){
       ${rows}
       <button class="mini" style="margin-top:8px" onclick="edCompReset()">↺ 기본 대회명으로 되돌리기</button>`;
   } else if(ED.tab==="coaches"){
-    const rows=Object.keys(COACHES).map(id=>{
-      const t2=G.teams[id]; if(!t2 || t2.isUser) return "";
+    /* ⚠ 제보 — 「새 게임에서 내가 그 팀을 맡아 부임하지 않은 감독은 명단에 없어 이름을 못 고친다」.
+       내가 맡은 구단의 원래 감독은 COACHES 에 그대로 남아 있고, 내가 경질당하면 그 사람이
+       다시 지휘봉을 잡는다 — 즉 「미부임 감독」도 엄연히 게임 안의 인물이다.
+       숨기지 않고 [미부임] 표시와 함께 보여 주고, 능력치까지 손볼 수 있게 한다. */
+    const _cRow=(id)=>{
+      const t2=G.teams[id]; if(!t2) return "";
       const c=COACHES[id];
-      return `<div class="edAttr" style="display:flex;gap:7px;align-items:center;margin-bottom:5px">
-        <span class="small" style="width:44px;font-family:monospace;opacity:.75">${uidCoachOf(id)}</span>
-        <span class="small" style="width:70px">${t2.div===2?"[K2] ":""}${t2.short}</span>
-        <input type="text" value="${c.n}" style="width:120px" onchange="edSetCoachName('${id}',this.value)">
-        <span class="small">관계</span>
-        <input type="text" inputmode="decimal" value="${Math.round(coachRel(id))}" style="width:52px;text-align:center" onchange="edSetCoachRel('${id}',this.value)">
-        <span class="small" style="color:${coachRelLabel(coachRel(id))[1]}">${coachRelLabel(coachRel(id))[0]}</span>
-        <span class="small" style="margin-left:auto">종합 ${c.ovr}/20</span></div>`;
-    }).join("");
-    body=`<div class="edSec">리그 감독 <span class="small">— 이름과 나와의 관계(0~100)를 수정합니다. 관계는 발언·설전으로도 움직입니다</span></div>${rows}`;
+      const idle=!!t2.isUser;                       // 내가 그 구단을 맡고 있다 = 이 감독은 지금 무적
+      const open=ED.coach===id;
+      const ab=(k,lb)=>`<div class="edAttr"><span class="small">${lb}</span>
+        <input type="text" inputmode="numeric" value="${c[k]}" style="width:46px;text-align:center"
+          onchange="edSetCoachAttr('${id}','${k}',this.value)"></div>`;
+      return `<div style="margin-bottom:5px">
+        <div class="edAttr" style="display:flex;gap:7px;align-items:center">
+          <span class="small" style="width:44px;font-family:monospace;opacity:.75">${uidCoachOf(id)}</span>
+          <span class="small" style="width:78px">${t2.div===2?"[K2] ":""}${t2.short}${idle?' <span style="color:var(--gold)">·미부임</span>':""}</span>
+          <input type="text" value="${c.n}" style="width:118px" onchange="edSetCoachName('${id}',this.value)">
+          <span class="small">관계</span>
+          <input type="text" inputmode="decimal" value="${Math.round(coachRel(id))}" style="width:50px;text-align:center"
+            ${idle?'disabled title="내가 맡은 구단 — 관계 수치를 쓰지 않습니다"':`onchange="edSetCoachRel('${id}',this.value)"`}>
+          <span class="small" style="color:${idle?"var(--sub)":coachRelLabel(coachRel(id))[1]}">${idle?"—":coachRelLabel(coachRel(id))[0]}</span>
+          <button class="mini ${open?"sel":""}" style="margin-left:auto;padding:2px 9px" onclick="edCoachOpen('${id}')">종합 ${c.ovr} ${open?"▲":"▾"}</button>
+        </div>
+        ${open?`<div class="edGrid" style="margin:4px 0 8px 44px">
+          ${ab("tac","전술")}${ab("flex","유연성")}${ab("att","공격")}${ab("def","수비")}
+          ${ab("man","선수 관리")}${ab("dev","육성")}${ab("judg","경기 판단")}${ab("ovr","종합")}
+        </div>
+        <div class="small" style="margin:0 0 8px 44px;opacity:.8">1~20. 전술·경기 판단은 경기 중 대응 속도와 상대 읽기,
+          공격/수비 차이는 선호 포메이션과 성향, 육성은 소속 선수의 성장 속도에 들어갑니다.</div>`:""}
+      </div>`;
+    };
+    const mine=Object.keys(COACHES).filter(id=>G.teams[id] && G.teams[id].isUser);
+    const rest=Object.keys(COACHES).filter(id=>G.teams[id] && !G.teams[id].isUser);
+    const rows=mine.concat(rest).map(_cRow).join("");
+    body=`<div class="edSec">리그 감독 <span class="small">— 이름 · 나와의 관계(0~100) · 능력치를 수정합니다</span></div>
+    ${mine.length?`<div class="msg info" style="margin-bottom:8px"><b style="color:var(--gold)">·미부임</b> 은 내가 맡고 있어 지금은 지휘봉을 놓은 감독입니다.
+      내가 경질당하면 그 구단으로 돌아오므로, 이름과 능력치를 여기서 미리 손볼 수 있습니다.</div>`:""}
+    ${rows}`;
   } else if(ED.tab==="ref"){
     const NAMES=refNames();
     body = `
@@ -22538,6 +22661,8 @@ const TRAIT_CAT_POS={
 /* 자리 전용 — 이 포지션에서만 배울 수 있다 */
 const TRAIT_POS_ONLY={
   gkFeet:["GK"],
+  /* 「득점보다 패스」는 슛을 고르는 자리에서만 의미가 있다 — 골키퍼·수비수에게는 붙지 않는다 */
+  looksForPass:["MF","FW"],
   staysBack:["DF"], marksTight:["DF"], bringsOut:["DF"],
   boxPlayer:["FW"], backToGoal:["FW"], breaksOffside:["FW"], movesChannels:["FW"],
   arrivesLate:["MF"], comesDeep:["MF","FW"], dictatesTempo:["DF","MF"],
@@ -23436,11 +23561,15 @@ function tacPresets(t){
   if(t.tactic.presetCur==null) t.tactic.presetCur=0;
   return t.tactic.presets;
 }
+/* 인선(선발·벤치)은 전술 슬롯의 소유물이 아니다 — 전술 1·2·3이 같은 명단을 쓴다.
+   ⚠ 제보 — 「전술마다 선발·교체 명단이 달라진다. 포메이션 바꾸는 사람은 잘 없으니
+      명단은 그대로 유지해 달라」. 스냅샷에 아예 담지 않아 되돌아갈 여지를 없앤다. */
+const PRESET_SKIP=["presets","presetCur","benchSel","benchExcl","benchManual"];
 /* 지금 전술판 상태를 통째로 복사한다 (프리셋 자체는 제외해 재귀를 막는다) */
 function snapTactic(t){
   const o={};
   for(const k in t.tactic){
-    if(k==="presets"||k==="presetCur") continue;
+    if(PRESET_SKIP.indexOf(k)>=0) continue;
     const v=t.tactic[k];
     o[k]=(v && typeof v==="object") ? JSON.parse(JSON.stringify(v)) : v;
   }
@@ -23450,27 +23579,111 @@ function storeCurPreset(t){
   const ps=tacPresets(t);
   ps[clamp(t.tactic.presetCur,0,PRESET_N-1)]=snapTactic(t);
 }
+/* 옛 세이브 정리 — 이미 저장된 프리셋 안에 남아 있는 인선 데이터를 걷어낸다.
+   그대로 두면 그 슬롯으로 전환할 때 옛 명단이 되살아난다. */
+function scrubPresetSquads(t){
+  try{
+    const ps=(t&&t.tactic&&t.tactic.presets)||null;
+    if(!Array.isArray(ps)) return;
+    for(const p of ps){
+      if(!p || !p.tac) continue;
+      delete p.tac.benchSel; delete p.tac.benchExcl; delete p.tac.benchManual;
+    }
+  }catch(e){}
+}
+/* ═══ 🧷 전술을 갈아도 인선은 그대로 ══════════════════════════════════
+   ⚠ 제보 — 「로테이션을 돌리려고 선발과 교체 슬롯 선수를 바꾸고 전술 1 → 2 로 바꾸면
+      방금 올린 선수가 후보(그 외 명단)로 튕겨 나간다」.
+   원인: 선발 명단(G.userXI)은 전술 슬롯과 무관한 전역 값인데, 배치(slot·zone)와
+   벤치 편성(benchSel)은 프리셋 스냅샷에 들어 있었다. 전술을 바꾸면 배치·벤치만
+   옛 스냅샷으로 되돌아가, 방금 올린 선수는 자리도 벤치 자리도 없는 상태가 됐다.
+   ─ 전술 슬롯은 「모양과 지시」다. 누가 뛰는지는 전술을 따라가지 않는다.
+     지금 선발을 새 포메이션의 자리에 다시 앉힌다. 그 전술에 저장돼 있던 배치는
+     같은 선수에 한해 그대로 존중한다. */
+function remapXIToFormation(t){
+  if(!t || !t.tactic) return;
+  let xi=[]; try{ xi=bestXI(t)||[]; }catch(e){ return; }
+  if(!xi.length) return;
+  const fname=t.tactic.formation||"4-3-3";
+  const shape=FORMATION_SHAPE[fname]||FORMATION_SHAPE["4-3-3"];
+  const bandOf={}; for(const [b,s] of shape) bandOf[s]=b;
+  const slots=shape.map(x=>x[1]);
+  const oldSlot=t.tactic.slot||{};
+  const map={}, usedS=new Set();
+  /* ① 골키퍼는 자리 목록에 없다(포메이션 표기는 필드 10명 기준) — 배치에서 제외한다 */
+  const field=xi.filter(p=>p.pos!=="GK");
+  /* ② 이 전술에 저장돼 있던 자리가 여전히 유효하면 그대로 */
+  for(const p of field){
+    const s=oldSlot[p.id];
+    if(s && slots.includes(s) && !usedS.has(s)){ map[p.id]=s; usedS.add(s); }
+  }
+  /* ③ 남은 선수를 남은 자리에 적합도 순으로 */
+  const rest=field.filter(p=>!map[p.id]);
+  const cand=[];
+  for(const p of rest) for(const s of slots){
+    if(usedS.has(s)) continue;
+    let v=0; try{ v=slotPickScore(p,s); }catch(e){ v=0; }
+    cand.push({p, s, v});
+  }
+  cand.sort((a,b)=>b.v-a.v);
+  const doneP=new Set();
+  for(const c of cand){
+    if(doneP.has(c.p.id) || usedS.has(c.s)) continue;
+    map[c.p.id]=c.s; doneP.add(c.p.id); usedS.add(c.s);
+  }
+  /* ④ 그래도 자리가 없으면 남은 아무 자리 (11명이 안 되는 상황 방어) */
+  for(const p of rest){
+    if(map[p.id]) continue;
+    const s=slots.find(x=>!usedS.has(x));
+    if(s){ map[p.id]=s; usedS.add(s); }
+  }
+  const ns={}, nz={};
+  for(const p of field){
+    const s=map[p.id]; if(!s) continue;
+    ns[p.id]=s;
+    const b=bandOf[s]; if(b) nz[p.id]=b;
+  }
+  t.tactic.slot=ns; t.tactic.zone=nz;
+}
 function usePreset(i){
   const t=userTeam();
   i=clamp(i|0, 0, PRESET_N-1);
   const ps=tacPresets(t);
+  scrubPresetSquads(t);                    // 옛 세이브에 남은 인선 데이터 정리
   if(t.tactic.presetCur===i){ refreshTactics(); return; }
   storeCurPreset(t);                       // 지금까지 만진 건 원래 슬롯에 남긴다
+  /* 🧷 누가 뛰는지는 전술을 따라가지 않는다 — 방금 돌린 로테이션을 그대로 들고 간다 */
+  const keepXI = Array.isArray(G.userXI) ? G.userXI.slice() : null;
+  const keepBench = {
+    sel: Array.isArray(t.tactic.benchSel)  ? t.tactic.benchSel.slice()  : [],
+    exc: Array.isArray(t.tactic.benchExcl) ? t.tactic.benchExcl.slice() : [],
+    man: !!t.tactic.benchManual
+  };
   const nx=ps[i];
   if(nx){
     const keep={presets:ps, presetCur:i};
-    // 저장해 둔 전술을 그대로 되살린다
-    for(const k in t.tactic){ if(k!=="presets"&&k!=="presetCur") delete t.tactic[k]; }
-    for(const k in nx.tac) t.tactic[k]=nx.tac[k];
+    // 저장해 둔 전술을 그대로 되살린다 (인선 관련 키는 애초에 담기지 않는다)
+    for(const k in t.tactic){ if(PRESET_SKIP.indexOf(k)<0) delete t.tactic[k]; }
+    for(const k in nx.tac){ if(PRESET_SKIP.indexOf(k)>=0) continue; t.tactic[k]=nx.tac[k]; }
     t.tactic.presets=keep.presets; t.tactic.presetCur=i;
     /* 🎯 전담 키커는 전술을 갈아도 그대로 — 팀에 하나뿐인 지정이다 */
     try{ t.tactic.kickers=kickersOf(t); }catch(e){}
+    /* 🧷 인선 복원 — 선발·벤치 편성은 프리셋 스냅샷을 쓰지 않는다 */
+    if(keepXI) G.userXI=keepXI;
+    t.tactic.benchSel=keepBench.sel;
+    t.tactic.benchExcl=keepBench.exc;
+    t.tactic.benchManual=keepBench.man;
+    try{ remapXIToFormation(t); }catch(e){}   // 지금 선발을 새 포메이션 자리에 앉힌다
     t.fam=nx.fam;                          // 그 전술로 쌓아 둔 조직력이 돌아온다
     t._sig=nx.sig;
     notify(`📋 전술 ${i+1}번으로 전환했습니다. (친숙도 ${Math.round(t.fam)})`,"info");
   } else {
     // 빈 슬롯 — 지금 전술을 복사해 새 판을 연다. 손발은 처음부터 맞춰야 한다.
     t.tactic.presetCur=i;
+    if(keepXI) G.userXI=keepXI;
+    t.tactic.benchSel=keepBench.sel;
+    t.tactic.benchExcl=keepBench.exc;
+    t.tactic.benchManual=keepBench.man;
     ps[i]=snapTactic(t);
     /* 프리시즌은 새 전술을 준비하라고 있는 기간이다 — 시즌 중보다 덜 깎는다 (제보 반영) */
     const pre=(G.phase==="pre");
@@ -23584,7 +23797,7 @@ function fmTopBar(t, xi, formName){
   };
   return `<div class="fmBar">
     <div class="fmBarL">
-      <span class="fmSelLbl" title="전술 슬롯 — 포메이션·역할·세부 지시를 통째로 저장해 두고 상대에 따라 바꿔 씁니다.&#10;저장된 슬롯끼리 전환할 때는 조직력이 그대로 따라오므로 페널티가 없습니다.&#10;훈련일에는 지금 안 쓰는 슬롯의 조직력도 함께 오릅니다(35%).&#10;클릭=전환 · 더블클릭=이름 붙이기 · 우클릭=비우기">📋 전술 ⓘ</span>
+      <span class="fmSelLbl" title="전술 슬롯 — 포메이션·배치·역할·세부 지시를 통째로 저장해 두고 상대에 따라 바꿔 씁니다.&#10;⚽ 선발·교체 명단은 전술 1·2·3이 함께 씁니다 — 전술을 바꿔도 인선은 그대로입니다.&#10;저장된 슬롯끼리 전환할 때는 조직력이 그대로 따라오므로 페널티가 없습니다.&#10;훈련일에는 지금 안 쓰는 슬롯의 조직력도 함께 오릅니다(35%).&#10;클릭=전환 · 더블클릭=이름 붙이기 · 우클릭=비우기">📋 전술 ⓘ</span>
       ${[0,1,2].map(i=>{ const pf=presetFam(t,i);
         return `<span class="fmStep ${t.tactic.presetCur===i?"on":""}${tacPresets(t)[i]?" has":""}"
         onclick="usePreset(${i})" ondblclick="event.preventDefault();renamePreset(${i})"
@@ -24040,10 +24253,17 @@ function confirmBenchSwap(a,b){
     const poolIds=new Set(benchPool(t).map(p=>p.id));
     let sel=((t.tactic.benchSel&&t.tactic.benchSel.length)?t.tactic.benchSel:matchBench(t).map(p=>p.id))
       .filter(id=>poolIds.has(id));
-    sel=sel.filter(id=>id!==outId);
-    if(!sel.includes(inId)) sel.push(inId);
-    // 9명을 넘으면 방금 넣은 선수가 아니라 앞쪽에서 밀어낸다
-    if(sel.length>9) sel=sel.filter(id=>id!==inId).slice(0, 8).concat(inId);
+    /* ⚠ 제보 — 「교체 4번 칸 선수와 후보를 바꾸면 새 선수가 4번이 아니라 맨 밑 9번 칸으로 간다」.
+       빠지는 선수를 지우고(뒤가 한 칸씩 앞으로 밀린다) 새 선수를 배열 끝에 붙였기 때문이다.
+       교체 순번은 감독이 정한 순서다 — 그 자리에 그대로 앉힌다. */
+    sel=sel.filter(id=>id!==inId);              // 혹시 이미 들어 있으면 중복 방지
+    const _at=sel.indexOf(outId);
+    if(_at>=0) sel[_at]=inId;                   // 🪑 그 칸을 그대로 물려받는다 (S4 → S4)
+    else {
+      sel.push(inId);                           // 예외 — 지정 명단에 없던 선수였다
+      if(sel.length>9) sel=sel.filter(id=>id!==inId).slice(0, 8).concat(inId);
+    }
+    sel=[...new Set(sel)];
     t.tactic.benchSel=sel;
     /* ⚠ 제보 — 교체↔후보 스왑으로 키퍼를 뺐는데 자동 보충이 키퍼를 도로 데려왔다.
        ⬆/⬇ 버튼과 똑같이, 스왑도 감독이 벤치를 직접 짠 것이다 — 이후 자동 보충 없음. */
@@ -36421,6 +36641,7 @@ function oneTouchEval(a, b, opps, gk){
   /* 상황 가산 — 스펙이 지목한 장면들 */
   if(b.isCross && b.crossType===CROSS_TYPE.CUTBACK) s += 0.30;   // 컷백 — 원터치의 교과서
   else if(b.isCross && z<VOLLEY_Z*0.8) s += 0.22;                // 낮은 크로스
+  s += FX(a,"shoot")*0.45;                                // 🎯 슈팅 선택 성향 — 「패스 선호」는 원터치도 덜 때린다
   if(b._through && inBox) s += 0.12;                      // 박스 안으로 찔러 준 직선 패스
   if(b.state==="LOOSE") s += 0.10;                        // 흐른 공 — 잡을 여유가 없다
   if(aerial) s -= 0.10;                                   // 공중볼은 기본적으로 어렵다
@@ -37318,8 +37539,15 @@ function evaluateShot(a, opps, ctx){
   // 사람 눈에도 "막혔다"고 보이지 않는다. 이걸 통로 완전 비움으로만 좁게 보면 찬스를 흘린다.
   // 통로에 사람이 "있냐 없냐"가 아니라 "발을 뻗어 막을 만큼 붙었냐"로 본다.
   // 4m 앞의 수비수 하나 때문에 아예 안 쏘는 건 축구가 아니다.
-  if(nb>0.055 && g.distM<24 && nearOpp>0.042)
-                                             score = Math.max(score, 0.70 + clamp((24-g.distM)/24,0,1)*0.80);
+  if(nb>0.055 && g.distM<24 && nearOpp>0.042){
+    let _floor = 0.70 + clamp((24-g.distM)/24,0,1)*0.80;
+    /* 🎯 「득점보다는 패스」 — 예전에는 이 하한선이 특성을 통째로 덮어써서, 패스를 선호하는
+       선수도 박스 안이면 무조건 때렸다(특성이 화면에만 있고 움직임에는 닿지 않았다).
+       골문 앞 확실한 기회(7m 안)는 그대로 때리되, 박스 밖 어정쩡한 각에서는 동료를 먼저 본다. */
+    const _lfp=Math.max(0, -FX(a,"shoot"));
+    if(_lfp>0) _floor -= _lfp*clamp((g.distM-7)/12, 0, 1)*1.30;
+    score = Math.max(score, _floor);
+  }
   // 슛 통로가 통째로 비어 있다는 건 그 자체로 큰 기회다.
   // 이걸 작게 보면 "앞이 비었는데도 옆으로 빼주는" 장면이 계속 나온다.
   else if(blk.list.length===0)               score += 0.45;
@@ -37375,6 +37603,7 @@ const CORNER_SHORT_P=0.12;  // 코너를 짧게 빼서 다시 만드는 비율 (
    경기는 뒤에서 빠르게 굴러간다. 결정적 장면이 나오면 그 앞 빌드업부터 되감아
    실시간으로 보여주고, 끝나면 다시 빨리 감는다. 그래서 "녹화 버퍼"가 필요하다. */
 const HL_BUF_MAX=260;       // 링버퍼 길이 (0.2초 × 260 ≈ 52초 분량)
+const CARD_FX_SEC=4.2;      // 🟥 카드를 들어 올린 뒤 화면에 남는 시간(초)
 const HL_CAP_MAX=90;        // 해설 자막 링버퍼 길이
 const HL_LEAD=11.0;         // 리드인 기본값 (종류별 값이 없을 때의 폴백)
 /* FM식 가변 길이 — 시시한 장면은 짧게 치고 빠지고, 골·선방은 빌드업부터 길게 본다.
@@ -40001,9 +40230,17 @@ class MatchSim{
                       dis:!!cel.disallowed, own:!!cel.own, vc:!!cel.varCheck} : null;
     // ⚠ 심판도 함께 기록해야 한다. 예전에는 빠져 있어서, 하이라이트가 재생되는 동안
     //    화면의 심판만 실시간 위치(=멈춰 있는 값)에 그대로 남아 "심판이 안 움직인다"로 보였다.
+    /* 🟥 카드 연출 — 주심이 카드를 들어 올린 순간을 프레임에 새긴다.
+       하이라이트를 되감아 볼 때 「누가 무슨 카드를 받았는지」가 화면에 그려져야 한다(제보). */
+    let cd=null;
+    const cfx=this._cardFx;
+    if(cfx && this.t-cfx.t < CARD_FX_SEC){
+      cd={id:cfx.id, k:cfx.k, s:cfx.side, nm:cfx.nm, ps:cfx.ps, tm:cfx.tm,
+          t:+(this.t-cfx.t).toFixed(2), min:cfx.min};
+    }
     this.buf.push({t:this.t, clock:this.clock, bx:b.x, by:b.y, bz:b.z, st:this.matchState, a,
                    oi:b.ownerId||0,                                   // 이 순간의 볼 소유자 — 재생 때 흰 링이 이걸 따른다
-                   rx:rf?rf.x:0.5, ry:rf?rf.y:0.4, cg});
+                   rx:rf?rf.x:0.5, ry:rf?rf.y:0.4, cg, cd});
     if(this.buf.length>HL_BUF_MAX) this.buf.shift();
   }
   /* 결정적 장면 표시 — 이 순간을 중심으로 앞뒤를 잘라 하이라이트로 만든다 */
@@ -40049,7 +40286,13 @@ class MatchSim{
       if(f.p){ f.p.ban=Math.max(f.p.ban||0, banMatches(second)); f.p.banNew=1; }
       st.red++;
       this.markHighlight("red", f.side, HL_W.red);
-      this.sentOff.push({id:f.id, side:f.side, t:this.t, name:nm});
+      let _tm3=""; try{ _tm3=this.rec(f.side).team.short||""; }catch(e){}
+      this._cardFx={id:f.id, k:"R", side:f.side, nm:nm, ps:(f.slot||""), tm:_tm3,
+                    t:this.t, min:Math.floor(this.clock/60)};
+      this.sentOff.push({id:f.id, side:f.side, t:this.t, min:Math.floor(this.clock/60),
+                         name:nm, pos:(f.p&&f.p.pos)||"", slot:f.slot||"", team:_tm3, second:!!second});
+      (this.gone=this.gone||[]).push(f);
+      if(this.gone.length>6) this.gone.shift();
       this.agents=this.agents.filter(a=>a.id!==f.id);
       const fx=this.entryOf(f);
       if(fx){ fx.red=true; fx.off=Math.floor(this.clock/60); }
@@ -43203,12 +43446,26 @@ class MatchSim{
       if(f.yellows>=2) card=CARD.RED;              // 경고 누적 퇴장
     }
     if(card===CARD.RED && f.slot==="GK") card=CARD.YELLOW;   // 키퍼 퇴장은 다루지 않는다
+    /* 🟥🟨 카드 연출 — 주심이 손을 드는 순간을 잡아 둔다 (하이라이트가 이걸 그린다) */
+    if(card===CARD.RED || card===CARD.YELLOW){
+      let _tm=""; try{ _tm=this.rec(f.side).team.short||""; }catch(e){}
+      this._cardFx={id:f.id, k:(card===CARD.RED?"R":"Y"), side:f.side,
+                    nm:(f.p?f.p.name:"선수"), ps:(f.slot||prefSlotOf(f.p||{})||f.p&&f.p.pos||""),
+                    tm:_tm, t:this.t, min:Math.floor(this.clock/60)};
+    }
     if(card===CARD.RED){
       // 징계 — 실제 경기에서만 (관전용 시뮬은 선수 기록을 건드리지 않는다)
       if(this.emitEvents && f.p){ f.p.ban=Math.max(f.p.ban||0, banMatches((f.yellows||0)>=2)); f.p.banNew=1; }
       st.red++;
       this.markHighlight("red", f.side, HL_W.red);
-      this.sentOff.push({id:f.id, side:f.side, t:this.t, name:f.p?f.p.name:""});
+      let _tm2=""; try{ _tm2=this.rec(f.side).team.short||""; }catch(e){}
+      this.sentOff.push({id:f.id, side:f.side, t:this.t, min:Math.floor(this.clock/60),
+                         name:f.p?f.p.name:"", pos:(f.p&&f.p.pos)||"", slot:f.slot||"",
+                         team:_tm2, second:((f.yellows||0)>=2)});
+      /* 🎬 하이라이트에서 「퇴장당한 그 선수」가 보여야 한다 — 그리기용으로 남겨 둔다.
+         ⚠ 예전에는 agents 에서 곧바로 지워서, 퇴장 장면을 되감아도 정작 그 선수가 화면에 없었다. */
+      (this.gone=this.gone||[]).push(f);
+      if(this.gone.length>6) this.gone.shift();
       this.agents=this.agents.filter(a=>a.id!==f.id);          // 배열에서 제거 — 퇴장
       /* 🚫 7명 미만 — 몰수패. 시뮬을 그 자리에서 끝낸다 */
       if(this.side(f.side).length<7 && this.emitEvents){
@@ -48047,10 +48304,66 @@ function liveLayout(M, tag){
       <div class="small" style="text-align:left; margin-top:6px; color:var(--sub)">2D 매치엔진 2.0 by 청백적시메오네</div>
     </div>
     <div class="lvSide">
+      <div class="card hidden" id="lvOffCard" style="border-color:#e5484d">
+        <h3 style="color:#e5484d">🟥 퇴장</h3><div id="lvOff"></div></div>
       <div class="card"><h3>📊 경기 통계</h3><div id="lvStats"></div></div>
       <div class="card"><h3>📋 수석코치의 조언</h3><div id="lvPanel"></div></div>
     </div>
   </div>`;
+}
+/* ═══ 🟥 퇴장 명단 ══════════════════════════════════════════════════
+   ⚠ 제보 — 「퇴장이 나오면 어느 팀의 어느 포지션 누구인지 한 켠에 적혀야 상황이 읽힌다」.
+   화면이 도달한 시점까지의 퇴장만 보여 준다(스포 방지). */
+function liveSentOffHtml(){
+  const M=liveM; if(!M) return "";
+  let list=[];
+  try{
+    if(liveSim && Array.isArray(liveSim.sentOff) && liveSim.sentOff.length){
+      let cut=liveSim.t;
+      if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) cut=liveHL.frames[liveHL.i].t;
+      list=liveSim.sentOff.filter(x=>x.t<=cut+1e-6).map(x=>({
+        side:x.side, min:x.min!=null?x.min:Math.round((x.t||0)/60),
+        name:x.name||"", ps:x.slot||x.pos||"", second:!!x.second}));
+    }
+  }catch(e){}
+  /* 분 단위 엔진(옛 경로) — 출전 기록에서 읽는다 */
+  if(!list.length){
+    try{
+      for(const key of ["h","a"]){
+        const sd=M[key]; if(!sd||!Array.isArray(sd.list)) continue;
+        for(const x of sd.list) if(x && x.red)
+          list.push({side:key, min:x.off!=null?x.off:M.min, name:(x.p&&x.p.name)||"",
+                     ps:(x.slot||(x.p&&x.p.pos)||""), second:false});
+      }
+    }catch(e){}
+  }
+  if(!list.length) return "";
+  list.sort((a,b)=>(a.min||0)-(b.min||0));
+  const row=(x)=>{
+    const t=(x.side==="h")?M.home:M.away;
+    const left=(()=>{ try{ return liveSim ? liveSim.agents.filter(a=>a.side===x.side).length : null; }catch(e){ return null; } })();
+    return `<div style="display:flex;gap:7px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <span style="font-size:15px">🟥</span>
+      <b style="color:var(--gold);font-family:monospace;width:32px">${x.min}'</b>
+      <span class="t" style="background:${t.col};color:${inkOn(t.col)};padding:2px 7px;border-radius:5px;font-size:11.5px;font-weight:800">${t.short||t.name}</span>
+      ${x.ps?`<span class="small" style="opacity:.85;font-family:monospace">${x.ps}</span>`:""}
+      <b>${x.name}</b>
+      ${x.second?'<span class="small" style="opacity:.7">경고 누적</span>':""}
+    </div>`;
+  };
+  const cnt={h:list.filter(x=>x.side==="h").length, a:list.filter(x=>x.side==="a").length};
+  const numLeft=(key)=>{ try{ return liveSim ? liveSim.agents.filter(a=>a.side===key).length : (11-cnt[key]); }catch(e){ return 11-cnt[key]; } };
+  return list.map(row).join("")
+    + `<div class="small" style="margin-top:7px;opacity:.85">그라운드 인원 —
+        <b>${M.home.short}</b> ${numLeft("h")}명 · <b>${M.away.short}</b> ${numLeft("a")}명</div>`;
+}
+function syncSentOffPanel(){
+  const box=document.getElementById("lvOff"), card=document.getElementById("lvOffCard");
+  if(!box||!card) return;
+  const h=liveSentOffHtml();
+  if(!h){ card.classList.add("hidden"); box.innerHTML=""; return; }
+  card.classList.remove("hidden");
+  if(box.innerHTML!==h) box.innerHTML=h;
 }
 function toggleSpdPanel(){
   const p=document.getElementById("lvSpdPanel");
@@ -48418,6 +48731,8 @@ function advanceHighlight(dtSec){
   // 재생헤드가 지난 해설만 공개한다 — 화면보다 글이 앞서 결과를 알려 버리지 않게
   const ph=hl.frames[hl.i].t;
   revealEventsUpTo(ph);
+  /* 🟥 퇴장 명단도 재생헤드를 따라간다 — 장면이 카드에 도달한 순간 옆 칸에 뜬다 */
+  try{ syncSentOffPanel(); }catch(e){}
   // 하단 해설 자막 — 지금 화면에서 벌어지는 동작을 그대로 읽어 준다
   while(hl.ci<hl.caps.length && hl.caps[hl.ci].t<=ph){ showComm(hl.caps[hl.ci]); hl.ci++; }
   if(hl.i>=hl.frames.length-1){ endHighlight(); }
@@ -48712,6 +49027,8 @@ function syncLive(goalFlash, instant){
     while(liveShown<M.events.length){ revealQueue.push(M.events[liveShown++]); }
     pumpReveal(instant);
   }
+  // 🟥 퇴장 명단 — 화면이 도달한 시점까지
+  try{ syncSentOffPanel(); }catch(e){}
   // 수석코치의 조언 — 매 분 경기 상황(체력·카드·스코어·시간대·슈팅 수)에 맞춰 새로 갱신한다
   renderCoachAdvice();
 }
