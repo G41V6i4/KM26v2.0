@@ -12987,7 +12987,9 @@ function saveGame(){
   stripCaches();
   let s;
   try{ s=JSON.stringify(G); }catch(e){ return saveFailNotice(); }
-  try{ localStorage.setItem(SAVE_KEY, s); SAVE_FAIL=0; SAVE_LAST=Date.now(); SAVE_SIZE=s.length; return true; }
+  try{ localStorage.setItem(SAVE_KEY, s); SAVE_FAIL=0; SAVE_LAST=Date.now(); SAVE_SIZE=s.length;
+    try{ persistAutoOnce(); }catch(e){}      // 🔒 첫 저장 때 한 번 영구 보존을 요청해 둔다
+    return true; }
   catch(e){
     // 용량이 문제라면 기록을 잘라내고 한 번 더 — 여기서 되면 감독은 눈치채지 못한다
     try{
@@ -13560,6 +13562,109 @@ function toggleWake(){
   else { wakeRelease(); notify("화면 유지를 껐습니다. 기기 설정에 따라 경기 중 화면이 꺼질 수 있습니다.","info"); }
   if(VIEW==="settings") show("settings");
 }
+/* ═══ 🔒 저장소 영구 보존 (Storage Persistence) ═════════════════════
+   브라우저는 디스크가 빠듯해지면 「오래 안 쓴 사이트」의 저장소를 스스로 정리한다.
+   영구 보존을 받아 두면 그 자동 정리 대상에서 빠진다 — 세이브가 조용히 사라지는 사고를 막는다.
+   ⚠ 이건 「자동 정리」만 막는다. 사용자가 직접 「쿠키 및 기타 사이트 데이터」를 지우면
+      그때는 어떤 방법으로도 남지 않는다. 아이폰·맥 사파리의 7일 미방문 삭제도 막지 못한다.
+      그래서 💾 세이브파일 내보내기가 여전히 유일한 확실한 백업이다.
+   ─ 크롬·엣지: 사이트 이용 정도(북마크·방문 빈도·홈 화면 추가)를 보고 조용히 승인/거절한다.
+     파이어폭스: 사용자에게 한 번 물어본다.  사파리: API 자체가 없거나 항상 true 를 돌려준다. */
+const PERSIST_ASK_KEY="klm2026_persistAsk";
+let PERSIST_ST=null;      // null=아직 모름 · true=영구 보존 · false=아님 · "na"=지원 안 함
+let PERSIST_USE=null;     // {used, quota} — 쓰고 있는 용량
+function persistSupported(){
+  try{ return !!(navigator && navigator.storage && navigator.storage.persist && navigator.storage.persisted); }
+  catch(e){ return false; }
+}
+function persistRefresh(then){
+  if(!persistSupported()){ PERSIST_ST="na"; if(then) then(); return; }
+  try{
+    navigator.storage.persisted().then(v=>{ PERSIST_ST=!!v; if(then) then(); })
+      .catch(()=>{ PERSIST_ST=null; if(then) then(); });
+  }catch(e){ PERSIST_ST=null; if(then) then(); }
+  try{
+    if(navigator.storage.estimate) navigator.storage.estimate().then(e=>{
+      PERSIST_USE={used:e.usage||0, quota:e.quota||0};
+      if(VIEW==="settings") { try{ show("settings"); }catch(_){} }
+    }).catch(()=>{});
+  }catch(e){}
+}
+/* 영구 보존을 요청한다. fromUI 면 결과를 알려 준다(자동 요청은 조용히). */
+function persistAsk(fromUI){
+  if(!persistSupported()){
+    if(fromUI) try{ notify("이 브라우저는 영구 보존 요청을 지원하지 않습니다. <span class=\"small\">💾 세이브파일 저장으로 백업해 주세요.</span>","warn"); }catch(e){}
+    PERSIST_ST="na"; if(fromUI && VIEW==="settings") show("settings");
+    return;
+  }
+  try{ localStorage.setItem(PERSIST_ASK_KEY,"1"); }catch(e){}
+  try{
+    navigator.storage.persist().then(ok=>{
+      PERSIST_ST=!!ok;
+      if(fromUI){
+        try{ notify(ok
+          ? "🔒 <b>영구 보존이 켜졌습니다.</b> <span class=\"small\">브라우저가 공간을 정리할 때 이 게임의 세이브는 건드리지 않습니다.</span>"
+          : "🔓 브라우저가 영구 보존을 승인하지 않았습니다. <span class=\"small\">이 사이트를 북마크하거나 홈 화면에 추가하고 자주 방문하면 승인될 수 있습니다. 그동안은 💾 세이브파일 저장으로 백업해 주세요.</span>",
+          ok?"good":"warn"); }catch(e){}
+      }
+      persistRefresh(()=>{ if(VIEW==="settings"){ try{ show("settings"); }catch(_){} } });
+    }).catch(()=>{
+      PERSIST_ST=null;
+      if(fromUI) try{ notify("영구 보존 요청이 실패했습니다.","warn"); }catch(e){}
+    });
+  }catch(e){}
+}
+/* 게임을 실제로 시작한 뒤 한 번만 조용히 요청한다 — 브라우저마다 「이용 정도」를 보므로
+   아무것도 안 한 첫 화면에서 물어보면 거절될 확률이 높다. */
+function persistAutoOnce(){
+  if(!persistSupported()) return;
+  let done=false;
+  try{ done = localStorage.getItem(PERSIST_ASK_KEY)==="1"; }catch(e){}
+  if(done) return;
+  if(!G || !G.teams || !G.userTeamId) return;      // 팀을 고르고 실제로 진행하는 중일 때
+  persistAsk(false);
+}
+/* ═══ 🚪 창을 닫을 때 ═══════════════════════════════════════════════
+   ① 닫히는 순간 한 번 더 저장한다 — localStorage 는 동기라 이 시점에도 확실히 써진다.
+   ② 원하면 브라우저 확인창을 띄운다(실수로 닫는 것 방지).
+   ⚠ 브라우저 정책상 문구는 우리가 정할 수 없다 — 「저장하시겠습니까?」로는 띄울 수 없고,
+      크롬·사파리가 「이 사이트에서 나가시겠습니까?」류의 자기 문구를 보여 준다.
+      또 페이지를 한 번도 클릭하지 않았으면 이 확인창 자체가 무시된다. */
+const EXIT_ASK_KEY="klm2026_exitask";
+function exitAskOn(){
+  try{ const v=localStorage.getItem(EXIT_ASK_KEY); return v===null ? true : v==="1"; }
+  catch(e){ return true; }
+}
+function setExitAsk(on){
+  try{ localStorage.setItem(EXIT_ASK_KEY, on?"1":"0"); }catch(e){}
+  try{ notify(on
+    ? "🚪 창을 닫거나 새로 고칠 때 브라우저가 한 번 물어봅니다."
+    : "🚪 확인창을 껐습니다. <span class=\"small\">닫을 때 자동 저장은 그대로 동작합니다.</span>", on?"good":"info"); }catch(e){}
+  if(VIEW==="settings") show("settings");
+}
+let EXIT_SAVED_AT=0;
+function exitSaveNow(){
+  try{
+    if(!G || !G.teams) return;
+    if(Date.now()-EXIT_SAVED_AT < 400) return;     // 이벤트가 겹쳐 들어와도 한 번만
+    EXIT_SAVED_AT=Date.now();
+    saveGame();
+  }catch(e){}
+}
+function exitGuardInit(){
+  if(typeof window==="undefined" || !window.addEventListener) return;
+  /* 탭이 숨겨질 때·닫힐 때 — 모바일 사파리는 beforeunload 를 안 주므로 이쪽이 본선이다 */
+  try{ window.addEventListener("pagehide", exitSaveNow); }catch(e){}
+  try{ document.addEventListener("visibilitychange", ()=>{ if(document.hidden) exitSaveNow(); }); }catch(e){}
+  try{ window.addEventListener("beforeunload", (e)=>{
+    exitSaveNow();
+    if(!exitAskOn()) return;
+    if(!G || !G.teams || !G.userTeamId) return;     // 아직 팀도 고르지 않았다 — 붙잡을 이유가 없다
+    e.preventDefault();
+    e.returnValue="";                              // 규격 — 문구는 브라우저가 정한다
+    return "";
+  }); }catch(e){}
+}
 function liveVisibilityInit(){
   if(typeof document==="undefined" || !document.addEventListener) return;
   document.addEventListener("visibilitychange", ()=>{
@@ -14106,6 +14211,33 @@ function drawSimWatch(cv, simOverride){
   }
 }
 
+/* 🔒 저장소 영구 보존 — 상태와 요청 버튼 */
+function persistRowHtml(){
+  const st=PERSIST_ST;
+  const u=PERSIST_USE;
+  const mb=(n)=> n>=1048576 ? (n/1048576).toFixed(1)+"MB" : Math.round(n/1024)+"KB";
+  const usage = u ? `<span class="small" style="opacity:.8">· 이 사이트가 쓰는 용량 ${mb(u.used)}${u.quota?` / 한도 ${mb(u.quota)}`:""}</span>` : "";
+  let box;
+  if(st==="na"){
+    box=`<div class="small" style="color:var(--sub)">🔓 이 브라우저는 영구 보존 요청을 지원하지 않습니다 — <b>💾 세이브파일 저장</b>으로 백업해 주세요.</div>`;
+  } else if(st===true){
+    box=`<div class="small" style="color:var(--green)">🔒 <b>영구 보존 켜짐</b> — 브라우저가 저장 공간을 정리할 때 이 게임의 세이브는 건드리지 않습니다. ${usage}</div>`;
+  } else if(st===false){
+    box=`<div class="small" style="color:var(--gold)">🔓 <b>영구 보존 꺼짐</b> — 디스크가 빠듯하면 브라우저가 세이브를 정리할 수 있습니다. ${usage}</div>
+      <button class="mini" style="margin-top:6px;border-color:var(--gold);color:var(--gold)" onclick="persistAsk(true)">🔒 영구 보존 요청</button>`;
+  } else {
+    box=`<div class="small" style="color:var(--sub)">🔒 영구 보존 상태를 확인하는 중…</div>
+      <button class="mini" style="margin-top:6px" onclick="persistAsk(true)">🔒 영구 보존 요청</button>`;
+  }
+  return `<div style="margin-top:9px;border-top:1px solid #21262d;padding-top:9px">
+    ${box}
+    <p class="small" style="margin-top:6px;color:var(--sub);line-height:1.6">
+      브라우저는 공간이 부족하면 오래 안 쓴 사이트의 저장 데이터를 스스로 지웁니다. 영구 보존을 받아 두면 그 <b>자동 정리 대상에서 빠집니다.</b><br>
+      크롬·엣지는 방문 빈도·북마크·홈 화면 추가 여부를 보고 <b>묻지 않고 판단</b>하고, 파이어폭스는 한 번 물어봅니다.
+      승인이 안 되면 이 페이지를 <b>북마크</b>하거나 <b>홈 화면에 추가</b>하고 며칠 더 플레이한 뒤 다시 눌러 보세요.<br>
+      ⚠️ 사용자가 직접 사이트 데이터를 지우는 것과 사파리의 7일 규칙은 <b>영구 보존으로도 막지 못합니다.</b></p>
+  </div>`;
+}
 function saveInfoHtml(){
   const ok=storageOK();
   let size=SAVE_SIZE, when=SAVE_LAST;
@@ -14126,9 +14258,12 @@ function saveInfoHtml(){
       <label class="mini" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">📂 세이브파일 불러오기
         <input type="file" accept="application/json,.json" style="display:none" onchange="importSave(this)"></label>
     </div>
+    ${persistRowHtml()}
     <p class="small" style="margin-top:8px;color:var(--sub)">
-      📱 <b>아이폰 사파리</b>는 사이트를 한동안 열지 않으면 저장 데이터를 스스로 지웁니다.
-      오래 쉴 예정이라면 <b>세이브파일 저장</b>을 눌러 두세요. 기기를 바꿔도 그 파일로 이어서 할 수 있습니다.</p>
+      📱 <b>아이폰 사파리</b>는 사이트를 <b>7일</b> 동안 열지 않으면 저장 데이터를 스스로 지웁니다(브라우저 정책 — 영구 보존으로도 못 막습니다).
+      오래 쉴 예정이라면 <b>세이브파일 저장</b>을 눌러 두세요. 기기를 바꿔도 그 파일로 이어서 할 수 있습니다.<br>
+      🧹 브라우저 「인터넷 사용 기록 삭제」에서 <b>쿠키 및 기타 사이트 데이터</b>를 체크하면 세이브도 함께 지워집니다.
+      <span style="opacity:.8">(「캐시된 이미지 및 파일」만 지우면 세이브는 남습니다)</span></p>
   </div>`;
 }
 /* ═══════════════════════════════════════════════════════════════
@@ -15732,6 +15867,20 @@ function settingsView(){
     <h3>🔍 수신 디버그 <span class="small">— 개발/분석용</span></h3>
     <p class="small" style="margin-bottom:10px">2D 매치엔진 화면에 <b>몸 방향</b>(흰 화살표) · <b>수신 자세 목표</b>(노란 화살표) · <b>공이 오는 방향</b>(하늘 점선) · <b>선수↔공 오프셋</b>(초록 선)과 상태 텍스트를 겹쳐 그립니다.</p>
     <button class="mini ${(G.opt&&G.opt.ftDebug)?'sel':''}" onclick="G.opt=G.opt||{};G.opt.ftDebug=!G.opt.ftDebug;saveGame();show('settings')">${(G.opt&&G.opt.ftDebug)?"🔍 켜짐":"○ 꺼짐"}</button>
+  </div>
+  <div class="card">
+    <h3>🚪 창 닫기 · 새로 고침</h3>
+    <p class="small" style="margin-bottom:10px">창을 닫거나 새로 고칠 때 브라우저가 <b>한 번 물어보게</b> 합니다 — 실수로 탭을 닫는 사고를 막습니다.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="mini ${exitAskOn()?'sel':''}" onclick="setExitAsk(true)">💬 확인창 켜짐 (기본)</button>
+      <button class="mini ${exitAskOn()?'':'sel'}" onclick="setExitAsk(false)">○ 끔</button>
+    </div>
+    <p class="small" style="margin-top:9px;color:var(--sub);line-height:1.6">
+      ✅ 확인창과 별개로, <b>창이 닫히는 순간 진행 상황은 자동으로 저장됩니다.</b> 실수로 닫아도 다시 열면 그대로 이어집니다.<br>
+      ⚠️ 문구는 <b>브라우저가 정합니다</b> — 「저장하시겠습니까?」처럼 우리가 원하는 말로는 띄울 수 없고,
+      「이 사이트에서 나가시겠습니까?」 같은 브라우저 기본 문구가 뜹니다.<br>
+      ⚠️ 페이지를 한 번도 클릭하지 않은 상태에서는 브라우저가 이 확인창을 무시합니다(정책).
+      아이폰 사파리는 확인창 자체를 지원하지 않지만, <b>자동 저장은 그쪽에서도 동작합니다.</b></p>
   </div>
   <div class="card">
     <h3>🖱️ 뒤로 가기 제스처</h3>
@@ -50600,6 +50749,8 @@ function pickDayPlan(i){
 applyFontScale();
 try{ fsInit(); }catch(e){}   // 전체화면 버튼 상태 동기화 + 자동 복귀 무장
 try{ liveVisibilityInit(); }catch(e){}  // 경기 중 탭 이탈 대응
+try{ exitGuardInit(); }catch(e){}       // 🚪 창 닫기 — 자동 저장 + (선택) 확인창
+try{ persistRefresh(); }catch(e){}      // 🔒 저장소 영구 보존 상태 조회
 try{ navInit(); }catch(e){}             // 🖱️ 트랙패드 뒤로가기 제스처 (맥북 두 손가락 스와이프)
 /* 저장이 아예 막힌 환경(시크릿 모드 등)이면 처음부터 알려 준다 — 몇 시즌 진행한 뒤에
    알게 되는 것이 최악이다. */
