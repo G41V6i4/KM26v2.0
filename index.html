@@ -243,6 +243,11 @@ body.matchFS .fmPitchPane{max-width:none;}
 .statbar .bg{flex:1; height:8px; background:var(--bg3); border-radius:4px; overflow:hidden; display:flex;}
 .statbar .fh{background:var(--acc); height:100%;}
 .statbar .fa{background:var(--red); height:100%;}
+/* 통계 범례 — 막대 색이 어느 팀인지 */
+.statLg{display:flex;align-items:center;gap:8px;justify-content:space-between;margin:0 0 7px;font-size:12px;}
+.statLg span{display:flex;align-items:center;gap:5px;}
+.statLg i{width:11px;height:11px;border-radius:3px;display:inline-block;
+  border:1px solid rgba(255,255,255,.28);flex:0 0 auto;}
 .scoreBig{font-size:30px; font-weight:900; text-align:center; margin:8px 0;}
 .vsRow{display:flex; justify-content:space-between; align-items:center; font-size:16px; font-weight:700; margin-bottom:4px;}
 /* pitch */
@@ -13665,6 +13670,20 @@ function awayDiscCol(hCol, aCol){
   const A=px(hCol), B=px(aCol);
   const d=Math.hypot(A[0]-B[0], A[1]-B[1], A[2]-B[2]);
   return d<120 ? "#f2f4f7" : aCol;
+}
+/* 🎨 어두운 배경 위에 글자로 쓸 색 — 구단 색이 너무 진하면(울산 남색 등) 숫자가 안 읽힌다.
+   색조는 유지하고 밝기만 끌어올린다. */
+function uiInk(hex){
+  const m=/^#?([0-9a-f]{6})$/i.exec(String(hex||"").trim());
+  if(!m) return "#e6edf3";
+  const v=parseInt(m[1],16);
+  let r=(v>>16)&255, g=(v>>8)&255, b=v&255;
+  const lum=0.299*r+0.587*g+0.114*b;
+  if(lum>=96) return "#"+m[1];
+  const k=clamp((96-lum)/150, 0, 0.62);          // 어두울수록 흰색을 더 섞는다
+  r=Math.round(r+(255-r)*k); g=Math.round(g+(255-g)*k); b=Math.round(b+(255-b)*k);
+  const hx=(n)=>n.toString(16).padStart(2,"0");
+  return "#"+hx(r)+hx(g)+hx(b);
 }
 function isLightColor(hex){
   if(!hex || hex[0]!=="#") return false;
@@ -48675,8 +48694,10 @@ function liveSentOffHtml(){
         name:x.name||"", ps:x.slot||x.pos||"", second:!!x.second}));
     }
   }catch(e){}
-  /* 분 단위 엔진(옛 경로) — 출전 기록에서 읽는다 */
-  if(!list.length){
+  /* 분 단위 엔진(옛 경로) — 출전 기록에서 읽는다.
+     ⚠ 연속 엔진일 때는 절대 여기로 오면 안 된다. 재생헤드 필터로 목록이 비었을 때
+        이 경로를 타면 아직 화면에 안 나온 퇴장까지 통째로 새어 나간다(스포). */
+  if(!list.length && !liveSim){
     try{
       for(const key of ["h","a"]){
         const sd=M[key]; if(!sd||!Array.isArray(sd.list)) continue;
@@ -49362,8 +49383,27 @@ function syncLive(goalFlash, instant){
     // 분 단위 엔진(관전·AI 경기) — 공격 빈도 추정치로 대신한다
     poss=clamp(Math.round(50+(r.hs-r.as)*1.8+(TH.pass===0?4:TH.pass===2?-4:0)),25,75);
   }
-  const bar=(l,hv,av)=>{const tot=hv+av||1; return `<div class="statbar"><span style="width:24px;text-align:right">${hv}</span><div class="bg"><div class="fh" style="width:${hv/tot*100}%"></div><div class="fa" style="width:${av/tot*100}%"></div></div><span style="width:24px">${av}</span><span style="width:52px" class="small">${l}</span></div>`;};
-  document.getElementById("lvStats").innerHTML=
+  /* 🎨 통계 색 = 그라운드에서 입고 있는 색.
+     ⚠ 제보 — 홈은 늘 하늘색, 원정은 늘 주황색으로 고정돼 있어 대구·강원처럼
+        구단 색이 겹치는 매치업에서 어느 쪽이 어느 쪽인지 헷갈렸다.
+        피치의 선수 디스크와 「완전히 같은 계산」을 쓴다(awayDiscCol 은 두 색이
+        너무 비슷하면 원정을 흰색으로 바꾸는, 실제 어웨이 유니폼과 같은 규칙이다). */
+  const _hC=M.home.col||"#2ea8ff";
+  const _aC=awayDiscCol(_hC, M.away.col||"#f85149");
+  /* 숫자는 어두운 배경에서도 읽혀야 한다 — 색조는 그대로, 밝기만 올린 값을 쓴다 */
+  const _hT=uiInk(_hC), _aT=uiInk(_aC);
+  const bar=(l,hv,av)=>{const tot=hv+av||1; return `<div class="statbar">`
+    +`<span style="width:26px;text-align:right;color:${_hT};font-weight:800">${hv}</span>`
+    +`<div class="bg"><div class="fh" style="width:${hv/tot*100}%;background:${_hC}"></div>`
+    +`<div class="fa" style="width:${av/tot*100}%;background:${_aC}"></div></div>`
+    +`<span style="width:26px;color:${_aT};font-weight:800">${av}</span>`
+    +`<span style="width:52px" class="small">${l}</span></div>`;};
+  /* 범례 — 어느 색이 어느 팀인지 한 줄로 못박는다 */
+  const _lg=`<div class="statLg">`
+    +`<span><i style="background:${_hC}"></i><b style="color:${_hT}">${M.home.short||M.home.name}</b> <span class="small">홈</span></span>`
+    +`<span class="small" style="opacity:.6">vs</span>`
+    +`<span><i style="background:${_aC}"></i><b style="color:${_aT}">${M.away.short||M.away.name}</b> <span class="small">원정</span></span></div>`;
+  document.getElementById("lvStats").innerHTML= _lg +
     bar("점유율",poss,100-poss)+bar("슈팅",st.hS,st.aS)+bar("유효슈팅",st.hT,st.aT)+
     bar("코너킥",st.hC,st.aC)+bar("파울",st.hF,st.aF)+bar("경고",st.hY,st.aY)+bar("퇴장",st.hR,st.aR);
   // 중계 로그 — 새로 생긴 이벤트를 큐에 쌓고, 한 줄씩 텀을 두고 공개한다.
