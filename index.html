@@ -847,6 +847,23 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
 .partyN{font-weight:700;color:#fff;font-size:13px;}
 .partyAff{margin-left:auto;color:var(--sub);font-size:11.5px;}
 .partySay{font-size:12.5px;color:#c9d1d9;margin-top:4px;line-height:1.5;}
+.partyRow.snub{border-color:#8b4a1a;background:#160f0a;}
+/* 🧩 특성 자리 뱃지 */
+.trGrp{font-size:9.5px;font-weight:800;color:#8b949e;border:1px solid #30363d;border-radius:4px;
+  padding:0 4px;margin-left:5px;white-space:nowrap;vertical-align:middle;}
+.trGrp.on{color:var(--gold);border-color:#8b6914;background:#1a1509;}
+/* 🎯 집들이 초대 명단 */
+.ptWrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px;max-height:270px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.ptPick{display:flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #21262d;border-radius:7px;
+  background:#0d1117;cursor:pointer;font-size:12px;}
+.ptPick:hover{border-color:var(--acc);}
+.ptPick.auto{border-color:#30363d;background:#11161d;}
+.ptPick.on{border-color:var(--gold);background:#1a1509;}
+.ptMark{width:13px;text-align:center;font-size:11px;color:var(--sub);}
+.ptPick.on .ptMark{color:var(--gold);}
+.ptN{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ptA{margin-left:auto;font-size:11px;white-space:nowrap;}
+.ptSnub{font-size:9.5px;color:#f0883e;border:1px solid #8b4a1a;border-radius:4px;padding:0 3px;}
 .stkDet{margin-top:9px;border:1px solid #21262d;border-radius:8px;padding:8px 10px;background:#0d1117;}
 .stkDet>summary{cursor:pointer;font-size:13px;font-weight:700;color:#a9b4c0;}
 .stkOrdRow{display:flex;gap:8px;align-items:center;padding:5px 0;border-top:1px solid #1c222b;font-size:12.5px;}
@@ -2288,7 +2305,7 @@ const TRAITS=[
 {k:"runsCentre", n:"경기장 중앙으로 드리블함", e:"Runs With Ball Through The Center", c:"온 더 볼",
  req:(a,p)=>a.dri>=72&&a.bal>=70&&["ST","CM","LW","RW"].includes(p.prefPos), w:2, fx:{cutIn:1}},
 {k:"stopsPlay", n:"공을 가지면 잠시 멈추는 플레이 선호", e:"Stops Play", c:"온 더 볼",
- req:(a)=>a.str>=68&&a.bal>=68&&a.tea>=68, w:2, fx:{hold:0.9}},
+ req:(a)=>a.str>=66&&a.bal>=64&&a.tea>=62, w:2, fx:{hold:0.9}},
 {k:"crossEarly", n:"얼리 크로스", e:"Crosses Early", c:"온 더 볼",
  req:(a,p)=>a.crs>=70&&["LB","RB","LM","RM","LW","RW"].includes(p.prefPos), w:3, fx:{earlyCross:1}},
 // ── 공격시 위치 선정 (오프 더 볼)
@@ -2307,7 +2324,7 @@ const TRAITS=[
 {k:"movesChannels", n:"수비수와 풀백 사이로 침투", e:"Moves Into Channels", c:"공격시 위치 선정",
  req:(a,p)=>p.pos==="FW"&&a.otb>=68&&a.pac>=68, w:3, fx:{channels:1}},
 {k:"boxPlayer", n:"페널티 지역 선수", e:"Penalty Box Player", c:"공격시 위치 선정",
- req:(a,p)=>p.pos==="FW"&&a.fin>=72&&a.str>=65&&a.dri<=72, w:3, fx:{boxPlayer:1}},
+ req:(a,p)=>p.pos==="FW"&&a.fin>=68&&a.str>=62&&a.dri<=76, w:3, fx:{boxPlayer:1}},
 {k:"oneTwos", n:"2대1 패스 선호", e:"Plays One-Twos", c:"공격시 위치 선정",
  req:(a)=>a.pas>=68&&a.tea>=70&&a.acc>=68, w:2, fx:{oneTwo:1}},
 {k:"backToGoal", n:"골문을 등지는 것을 선호", e:"Plays With Back To Goal", c:"공격시 위치 선정",
@@ -2400,42 +2417,159 @@ const TRAITS=[
 {k:"outsideFoot", n:"아웃프론트킥 선호", e:"Uses Outside Of Foot", c:"개인기",
  req:(a)=>a.tec>=75&&a.fla>=70, w:1, fx:{curl:1}},
 {k:"gkFeet", n:"발로 공을 다룸", e:"Plays Ball With Feet", c:"개인기",
- req:(a,p)=>p.pos==="GK"&&a.pas>=55, w:3, fx:{gkSweeper:1}}
+ req:(a,p)=>p.pos==="GK"&&a.pas>=55, w:4, fx:{gkSweeper:1}},
+// ── 🧤 골키핑 — 골키퍼만 갖는 특성
+/* 골키퍼는 특성 후보가 「발로 공을 다룸」 하나뿐이라 사실상 전원이 무특성이었다.
+   실제 키퍼의 색깔이 갈리는 지점들 — 나오는가 / 잡는가 펀칭인가 / 킥이 긴가 /
+   페널티에 강한가 / 뒷선을 지휘하는가 — 을 특성으로 만든다. */
+{k:"gkSweep", n:"적극적으로 뛰어나옴", e:"Rushes Out Of Goal", c:"골키핑",
+ req:(a,p)=>p.pos==="GK"&&((a.cmd>=62)||(a.tro>=62)||(a.pas>=62&&a.cmd>=56)), w:3, fx:{gkSweeper:1, gkOut:1}},
+{k:"gkStayLine", n:"골라인을 좀처럼 벗어나지 않음", e:"Stays On Goal Line", c:"골키핑",
+ req:(a,p)=>p.pos==="GK"&&a.tro<=52&&a.cmd<=60, w:2, fx:{gkOut:-0.8}},
+{k:"gkPunches", n:"캐치보다 펀칭을 선호", e:"Punches Rather Than Catches", c:"골키핑",
+ req:(a,p)=>p.pos==="GK"&&(a.pun>=64||a.han<=58), w:3, fx:{gkFist:1}},
+{k:"gkSafeHands", n:"공을 품에 안는다", e:"Holds Onto Ball", c:"골키핑",
+ req:(a,p)=>p.pos==="GK"&&a.han>=68&&a.cnt>=62, w:3, fx:{gkFist:-0.9}},
+{k:"gkLongKick", n:"골킥을 길게 찬다", e:"Kicks Long", c:"골키핑",
+ req:(a,p)=>p.pos==="GK"&&a.kic>=66, w:3, fx:{gkLong:1}},
+{k:"gkPenKing", n:"페널티킥에 강하다", e:"Saves Penalties Well", c:"골키핑",
+ req:(a,p)=>p.pos==="GK"&&a.ref>=68&&a.ant>=64, w:2, fx:{gkPen:1}},
+{k:"gkCommands", n:"수비 라인을 소리로 지휘", e:"Commands Defence", c:"골키핑",
+ req:(a,p)=>p.pos==="GK"&&a.com>=66&&a.cmd>=60, w:3, fx:{gkCmd:1}}
 ];
 const TRAIT_BY_KEY={}; for(const t of TRAITS) TRAIT_BY_KEY[t.k]=t;
+/* ═══ 🧩 특성 자리 분류 — 공격수 · 미드필더 · 수비수 · 골키퍼 ═════════
+   FM 의 특성은 「어느 자리 선수에게 어울리는가」가 분명하다. 예전에는 능력치 조건만 보고
+   뽑아서, 수비수가 「골키퍼를 넘기는 로빙 슛 선호」를 갖고 태어나거나 골키퍼가
+   「득점보다 패스」를 갖는 일이 있었다(실측: 리그 1022명 중 골키퍼 특성 보유 11명이 그 사례).
+   배열 첫 자리가 「대표 자리」다 — 그 자리 선수에게는 뽑힐 확률이 크게 올라간다. */
+const TRAIT_GRP={
+  // 🗡️ 공격수
+  breaksOffside:["FW"], movesChannels:["FW"], boxPlayer:["FW"], backToGoal:["FW"],
+  overhead:["FW"], lobKeeper:["FW","MF"], roundKeeper:["FW","MF"], placesShots:["FW","MF"],
+  firstTime:["FW","MF"], curls:["FW","MF"], dwells:["FW","MF"], tricks:["FW","MF"],
+  beatsRepeatedly:["FW","MF"], getsIntoArea:["FW","MF"], runsCentre:["FW","MF"],
+  stopsPlay:["FW","MF"], knocksPast:["FW","MF","DF"], runsOften:["FW","MF","DF"],
+  shootsPower:["FW","MF","DF"], cutsInside:["FW","MF"], ballToFeet:["FW","MF","DF"],
+  outsideFoot:["FW","MF","DF"],
+  // ⚙️ 미드필더
+  dictatesTempo:["MF"], arrivesLate:["MF"], killerBalls:["MF","FW"], comesDeep:["MF","FW"],
+  oneTwos:["MF","FW"], switchFlank:["MF","DF"], longPasses:["MF","DF","GK"],
+  shootsDistance:["MF","FW"], fkPower:["MF","FW","DF"], longFK:["MF","DF","FW"],
+  looksForPass:["MF","FW"], getsForward:["MF","DF"], hugsLine:["MF","FW","DF"],
+  runsLeft:["MF","DF","FW"], runsRight:["MF","DF","FW"], crossEarly:["MF","DF"],
+  playsOutTrouble:["MF","DF","FW"], shortSimple:["MF","DF"],
+  // 🛡️ 수비수
+  staysBack:["DF"], marksTight:["DF","MF"], bringsOut:["DF"], divesIn:["DF","MF"],
+  noDiveIn:["DF","MF"], noThroughBalls:["DF","MF"], noLongShots:["DF","MF","FW"],
+  runsRarely:["DF","MF","FW"], windsUp:["DF","MF","FW"],
+  longThrowCounter:["DF","MF"], flatThrow:["DF","MF"],
+  // 🧤 골키퍼
+  gkFeet:["GK"], gkSweep:["GK"], gkStayLine:["GK"], gkPunches:["GK"],
+  gkSafeHands:["GK"], gkLongKick:["GK"], gkPenKing:["GK"], gkCommands:["GK"],
+  // 🎭 자리를 가리지 않는다
+  crowdGoing:["FW","MF","DF","GK"], arguesRef:["DF","MF","FW","GK"]
+};
+const TRAIT_GRP_KO={FW:"공격수", MF:"미드필더", DF:"수비수", GK:"골키퍼"};
+function traitGroups(k){ return TRAIT_GRP[k] || ["FW","MF","DF"]; }
+function traitHomeGrp(k){ return traitGroups(k)[0]; }
+/* 이 선수의 자리에서 가질 수 있는 특성인가 */
+function traitGrpOK(p, k){
+  if(!p) return false;
+  const g=traitGroups(k);
+  return g.indexOf(p.pos)>=0;
+}
 /* 서로 모순되는 특성은 같이 붙지 않는다 */
 const TRAIT_CONFLICT=[
   ["runsOften","runsRarely"], ["shootsDistance","noLongShots"], ["killerBalls","noThroughBalls"],
   ["divesIn","noDiveIn"], ["getsForward","staysBack"], ["getsIntoArea","staysBack"],
   /* 「득점보다 패스」와 「직접 해결하는」 성향은 같이 붙을 수 없다 */
   ["looksForPass","shootsDistance"], ["looksForPass","boxPlayer"], ["looksForPass","firstTime"],
+  /* 🧤 골키핑 — 서로 반대되는 습관 */
+  ["gkSweep","gkStayLine"], ["gkPunches","gkSafeHands"],
   ["boxPlayer","movesChannels"], ["boxPlayer","comesDeep"], ["hugsLine","cutsInside"],
   ["runsLeft","runsRight"], ["shortSimple","longPasses"],
   ["looksForPass","shootsDistance"], ["comesDeep","getsIntoArea"], ["placesShots","shootsPower"]
 ];
 /* 선수 특성(Player Traits) — 능력치가 특출나면 붙는다 */
+/* 🧩 대분류가 바뀐 뒤 특성 정리 — 능숙도 기준으로 pos 가 옮겨지면(syncPosBand)
+   그 전에 뽑아 둔 특성이 자리와 어긋난다. 어긋난 것만 걷어내고 그만큼 다시 채운다. */
+function retuneTraits(p){
+  if(!p || !Array.isArray(p.traits) || !p.traits.length) return 0;
+  const okOne=(k)=>{
+    const T=TRAIT_BY_KEY[k]; if(!T) return false;
+    if(!traitGrpOK(p, k)) return false;
+    try{ if(typeof traitPosOK==="function" && !traitPosOK(p, T)) return false; }catch(e){}
+    return true;
+  };
+  const keep=p.traits.filter(okOne);
+  const lost=p.traits.length-keep.length;
+  if(!lost) return 0;
+  p.traits=keep;
+  try{
+    const cand=genTraits(p.pos, p.attr||{}, p);
+    for(const k of cand){
+      if(p.traits.length>=Math.min(TRAIT_MAX, keep.length+lost)) break;
+      if(p.traits.includes(k)) continue;
+      if(TRAIT_CONFLICT.some(([x,y])=>(x===k&&p.traits.includes(y))||(y===k&&p.traits.includes(x)))) continue;
+      p.traits.push(k);
+    }
+  }catch(e){}
+  return lost;
+}
+/* 자리별 「축 평균」 — 특성 개수를 정할 때 이 값을 기준으로 같은 눈금에 올린다 */
+const TR_KEY_BASE={GK:70, DF:80, MF:73, FW:74};
+const TR_HOME_W=2.6;      // 「대표 자리」가 맞으면 가중치 배수
+const TR_SIDE_W=0.85;     // 어울리지만 대표 자리는 아닐 때
 function genTraits(pos, a, p){
   // 조건을 만족하는 특성 중에서 가중 추첨. 능력치가 평범하면 특성도 적게 붙는다.
   const self = p || {pos, prefPos:pos, by:1998};
+  /* 🧤 골키퍼 특성의 조건은 골키퍼 능력치(gkA)를 본다 — 필드 능력치만 넘기면
+     cmd·han·kic·ref 가 undefined 라 조건이 전부 거짓이 되어 특성이 하나도 안 붙었다. */
+  const ra = (self.pos==="GK" && p && p.gkA) ? Object.assign({}, a||{}, p.gkA) : (a||{});
   const pool=[];
   for(const t of TRAITS){
+    /* 🧩 자리 분류 — 어울리지 않는 자리에는 아예 붙지 않는다.
+       (예전엔 능력치 조건만 봐서 골키퍼가 「득점보다 패스」를, 수비수가 로빙 슛 선호를 가졌다) */
+    if(!traitGrpOK(self, t.k)) continue;
+    try{ if(typeof traitPosOK==="function" && !traitPosOK(self, t)) continue; }catch(e){}
     let ok=false;
-    try{ ok=!!t.req(a, self); }catch(e){ ok=false; }
+    try{ ok=!!t.req(ra, self); }catch(e){ ok=false; }
     if(ok) pool.push(t);
   }
   if(!pool.length) return [];
   // 특성 개수 — 실제 FM처럼 대부분 0~3개, 뛰어난 선수일수록 많다
-  const key=(a.tec+a.dri+a.pas+a.fin+a.mar+a.pac)/6;
+  /* 🧤 골키퍼는 필드 능력치로 재면 언제나 「평범」이라 특성이 거의 안 붙었다 — 키퍼는 키퍼 능력치로 잰다 */
+  const g=(self.pos==="GK") ? ((p&&p.gkA)||{}) : null;
+  const _v=(k,d)=>{ const x=(a&&a[k]); return (typeof x==="number")?x:(d||60); };
+  /* 🧩 자리마다 「잘하는 것」이 다르다 — 수비수를 마무리·드리블로 재면 언제나 평범해져
+     특성이 거의 안 붙었다(실측 DF 평균 0.54 vs MF 0.92). 각 자리의 축으로 잰다. */
+  const axis = g
+    ? (((g.ref||60)+(g.han||60)+(g.cmd||60)+(g.kic||60)+_v("ant")+_v("cnt"))/6)
+    : self.pos==="DF" ? ((_v("mar")+_v("tck")+_v("pos")+_v("str")+_v("jum")+_v("hea"))/6)
+    : self.pos==="MF" ? ((_v("pas")+_v("vis")+_v("dec")+_v("tec")+_v("wor")+_v("dri"))/6)
+    : self.pos==="FW" ? ((_v("fin")+_v("otb")+_v("dri")+_v("tec")+_v("pac")+_v("acc"))/6)
+    : ((_v("tec")+_v("dri")+_v("pas")+_v("fin")+_v("mar")+_v("pac"))/6);
+  /* 축마다 평균이 다르다(실측 GK 70 · DF 80 · MF 73 · FW 74) — 그대로 쓰면 수비수만
+     특성 부자가 된다. 자리별 평균을 빼서 같은 눈금으로 맞춘다. */
+  const key = axis - (TR_KEY_BASE[self.pos]!=null?TR_KEY_BASE[self.pos]:73) + 70;
   let n=0; const roll=Math.random();
   if(key>=78) n = roll<0.12?1:roll<0.45?2:roll<0.80?3:4;
   else if(key>=66) n = roll<0.25?0:roll<0.60?1:roll<0.88?2:3;
   else n = roll<0.55?0:roll<0.87?1:2;
   const out=[];
   let bag=pool.slice();
+  const wOf=(t)=>{
+    const gg=traitGroups(t.k);
+    const home=(gg[0]===self.pos);
+    const only=(gg.length===1);
+    /* 자기 자리의 특성이 훨씬 잘 붙는다. 그 자리 전용 특성이면 더더욱 */
+    return t.w * (home ? (only?TR_HOME_W*1.25:TR_HOME_W) : TR_SIDE_W);
+  };
   while(out.length<n && bag.length){
-    let tot=0; for(const t of bag) tot+=t.w;
+    let tot=0; for(const t of bag) tot+=wOf(t);
     let r=Math.random()*tot, pickT=bag[bag.length-1];
-    for(const t of bag){ r-=t.w; if(r<=0){ pickT=t; break; } }
+    for(const t of bag){ r-=wOf(t); if(r<=0){ pickT=t; break; } }
     out.push(pickT.k);
     bag=bag.filter(t=>t.k!==pickT.k && !TRAIT_CONFLICT.some(c=>
       (c[0]===pickT.k&&c[1]===t.k)||(c[1]===pickT.k&&c[0]===t.k)));
@@ -2487,6 +2621,7 @@ function normalizeFx(fx){
   add("fwd", (fx.boxPlayer||0)*0.18);   // 박스 안에 머물기
   add("wide", -(fx.boxPlayer||0)*0.30);
   add("sweep", (fx.gkSweeper||0)*0.55); // 발로 공을 다루는 키퍼
+  add("sweep", (fx.gkOut||0)*0.65);     // 🧤 적극적으로 뛰어나옴 / 골라인을 지킴
   add("fwd", (fx.lateRun||0)*0.20);
   add("dribble", (fx.carryOut||0)*0.35);  // 수비진에서 몰고 나오기 → 운반 성향
   add("fwd",     (fx.carryOut||0)*0.10);
@@ -3567,6 +3702,7 @@ function mkTeam(d, div){
       pl.uid=uidForReal(name, by, bd, d.id);  // 🆔 실존 선수 — 이름·생일 기반 고정 번호(원본 이름 기준)
       pl.prefPos=assignPrefPos(pl, d.id); pl.posFam=initPosFam(pl); applyPlayerTweak(pl, d.id);
       syncPosBand(pl);                        // 🧭 대분류는 능숙도를 따른다 (등록 오류 교정)
+      try{ retuneTraits(pl); }catch(e){}      // 🧩 자리가 옮겨졌으면 특성도 그 자리 것으로
       pl.name=fictName(pl.name, pl.frn);      // 🎭 라이선스 대비 개명 — 모든 설정이 끝난 뒤
       t.players.push(pl);
     }
@@ -3576,6 +3712,7 @@ function mkTeam(d, div){
       pl.uid=uidForReal(p[0], p[2], "", d.id);  // 🆔 수기 명단 실존 선수(원본 이름 기준)
       pl.prefPos=assignPrefPos(pl, d.id); pl.posFam=initPosFam(pl); applyPlayerTweak(pl, d.id);
       syncPosBand(pl);                        // 🧭 대분류는 능숙도를 따른다
+      try{ retuneTraits(pl); }catch(e){}      // 🧩 자리가 옮겨졌으면 특성도 그 자리 것으로
       pl.name=fictName(pl.name, pl.frn); t.players.push(pl); }
   }
   assignNumbers(t);   // 실명 선수는 이미 번호가 있다 — 비어 있는 선수만 채운다
@@ -10340,7 +10477,7 @@ function startNewSeason(){
     const yp=mkPlayer(hgY?genFrnName():genName(),pos,G.season-17-R(2),54+R(10)+(yl-1)+Math.round((tl-1)*0.6),hgY?1:0);
     if(hgY) yp.hg=1;
     /* 세부 자리를 못 박는다 — 능력치 추론에 맡기면 풀백·윙어가 거의 안 나온다 */
-    try{ yp.prefPos=_slot.pref; yp.posFam=initPosFam(yp); syncPosBand(yp); applySpecialization(yp); }catch(e){}
+    try{ yp.prefPos=_slot.pref; yp.posFam=initPosFam(yp); syncPosBand(yp); applySpecialization(yp); retuneTraits(yp); }catch(e){}
     /* ⚠ 제보 — 「유스·훈련 시설이 최상이면 해마다 특급이 두세 명씩 나와 스쿼드가 너무 강해진다」.
        실측(유스5·훈련5): 포텐 92+ 가 1.8년에 1명, 85~91 이 매년 1명, 80~84 가 2.6명.
        특급이 흔하면 특급이라는 말이 의미를 잃는다.
@@ -13051,7 +13188,7 @@ function migrateLoadedG(){
   /* 포지션 대분류를 능숙도 기준으로 다시 읽는다 — 등록만 FW 였던 풀백 같은 선수가 바로잡힌다 */
   step("포지션 대분류", ()=>{
     const band=(arr)=>{ if(!Array.isArray(arr)) return;
-      for(const p of arr) if(p && p.posFam){ migratePosFam(p); syncPosBand(p); } };
+      for(const p of arr) if(p && p.posFam){ migratePosFam(p); syncPosBand(p); try{ retuneTraits(p); }catch(e){} } };
     for(const id in G.teams) band(G.teams[id].players);
     band(G.freeAgents); band(G.overseas); band(G.youthPool); band(G.retired);
     if(G.scout) band(G.scout.list);
@@ -15306,9 +15443,19 @@ function editorView(){
         ${(p.traits||[]).length<TRAIT_MAX?`<div class="edRow"><span class="edL">특성 추가</span>
           <select onchange="edAddTrait(this.value); this.value='';" style="max-width:240px">
             <option value="">— 특성 선택 (${TRAITS.filter(T=>(p.traits||[]).indexOf(T.k)<0).length}종) —</option>
-            ${(()=>{ const byCat={};
-              for(const T of TRAITS){ if((p.traits||[]).indexOf(T.k)>=0) continue; (byCat[T.c||"기타"]=byCat[T.c||"기타"]||[]).push(T); }
-              return Object.keys(byCat).map(c=>`<optgroup label="${c}">${byCat[c].map(T=>`<option value="${T.k}">${T.n}</option>`).join("")}</optgroup>`).join("");
+            ${(()=>{
+              const rest=TRAITS.filter(T=>(p.traits||[]).indexOf(T.k)<0);
+              const shown=new Set();
+              let h="";
+              for(const gp of ["FW","MF","DF","GK"]){
+                const list=rest.filter(T=>traitGroups(T.k).length<4 && traitHomeGrp(T.k)===gp);
+                if(!list.length) continue;
+                for(const T of list) shown.add(T.k);
+                h+=`<optgroup label="${TRAIT_GRP_KO[gp]} 특성 (${list.length})">${list.map(T=>`<option value="${T.k}">${T.n} · ${T.c}</option>`).join("")}</optgroup>`;
+              }
+              const com=rest.filter(T=>!shown.has(T.k));
+              if(com.length) h+=`<optgroup label="자리 공통 (${com.length})">${com.map(T=>`<option value="${T.k}">${T.n} · ${T.c}</option>`).join("")}</optgroup>`;
+              return h;
             })()}
           </select></div>`:""}
         <div class="edSec">능력치 <span class="small">— 1~20 (수정하면 오버롤이 함께 움직입니다. 현재 ${dispOvr(p)})</span></div>
@@ -16481,6 +16628,50 @@ function homeCanParty(){
   const h=homeOf();
   return (h.party||0)>0;
 }
+/* 🎉 집들이를 열 수 없는 이유 — 없으면 null.
+   ⚠ 무직 감독에게는 부를 선수단이 없다. 옛 코드는 그대로 열려 있었다. */
+function homePartyBlock(){
+  if(G.jobless) return {ic:"🪑", t:"지금은 부를 선수단이 없습니다.",
+    d:"감독직에서 물러난 상태입니다. 다시 부임하면 선수들을 집으로 초대할 수 있습니다."};
+  const t=userTeam();
+  if(!t || !Array.isArray(t.players) || !t.players.length)
+    return {ic:"🪑", t:"맡고 있는 구단이 없습니다.", d:"부임한 뒤에 열 수 있습니다."};
+  if(!homeCanParty()) return {ic:"🏠", t:"사람을 부를 만한 거실이 없습니다.",
+    d:"<b>옥탑방</b> 이상이면 선수단을 초대할 수 있습니다."};
+  return null;
+}
+/* 🎯 직접 초대 — 감독이 지목한 선수 (비어 있으면 호감도 낮은 순 자동) */
+let PARTY_PICK=[];
+function partyCap(){ const h=homeOf(); return (h.party||0)*4+6; }
+function partyPickToggle(pid){
+  pid=+pid;
+  const i=PARTY_PICK.indexOf(pid);
+  if(i>=0) PARTY_PICK.splice(i,1);
+  else {
+    if(PARTY_PICK.length>=partyCap()){ flash(`거실이 ${partyCap()}명까지입니다. 먼저 한 명을 빼세요.`,"warn"); show("mylife"); return; }
+    PARTY_PICK.push(pid);
+  }
+  show("mylife");
+}
+function partyPickClear(){ PARTY_PICK=[]; show("mylife"); }
+function partyPickAuto(){
+  const t=userTeam(); if(!t) return;
+  PARTY_PICK=[...t.players].filter(p=>!p.loan||p.loan.to===t.id)
+    .sort((a,b)=>aff(a)-aff(b)).slice(0, partyCap()).map(p=>p.id);
+  show("mylife");
+}
+/* 실제로 갈 사람 — 지목한 선수를 먼저, 남은 자리는 호감도 낮은 순으로 */
+function partyGuestList(){
+  const t=userTeam(); if(!t) return [];
+  const cap=partyCap();
+  const pool=t.players.filter(p=>p && (!p.loan || p.loan.to===t.id));
+  const picked=PARTY_PICK.map(id=>pool.find(p=>p.id===id)).filter(Boolean).slice(0, cap);
+  const ids=new Set(picked.map(p=>p.id));
+  const rest=pool.filter(p=>!ids.has(p.id)).sort((a,b)=>aff(a)-aff(b));
+  const out=picked.slice();
+  for(const p of rest){ if(out.length>=cap) break; out.push(p); }
+  return out.map(p=>({p, picked:ids.has(p.id)}));
+}
 const HOME_PARTY_CD=60;       // 집들이 간격(일) — 두 달에 한 번
 /* ⚠ 제보 — 「집들이를 계속 열 수 있다」.
    G.day 가 0 인 날(프리시즌 첫날)에 열면 partyAt 이 0 으로 저장되는데,
@@ -16527,11 +16718,50 @@ const PARTY_SAY={
   poor:[  // 집이 소박할 때
     ["감독님 이런 데 사시는 줄 몰랐습니다.", 2],
     ["소박하시네요. 저희 숙소보다 좁은데요 ㅋㅋ", 1],
-    ["옥상에서 고기 굽는 거 좋았습니다.", 2]]
+    ["옥상에서 고기 굽는 거 좋았습니다.", 2]],
+  /* 🎯 감독이 이름을 콕 집어 부른 선수 — 그 사실 자체를 안다 */
+  picked:[
+    ["저를 따로 불러 주신 거… 무슨 뜻인지 알겠습니다.", 2],
+    ["명단에 제 이름 있는 거 보고 좀 놀랐습니다. 감사합니다.", 2],
+    ["직접 부르셨다고 들었습니다. 잘하겠습니다.", 1],
+    ["감독님이 저를 챙기신다는 게 느껴집니다.", 2],
+    ["기대에 보답하겠습니다. 이건 약속입니다.", 1]],
+  pickedAmb:[  // 야심가 — 초대를 신호로 읽는다
+    ["따로 부르신 이유가 있겠죠. 저 쓰실 생각이신 겁니까?", 1],
+    ["이런 자리에 부르셨다는 건… 저 믿으신다는 뜻으로 받겠습니다.", 1]],
+  pickedHot:[  // 다혈질 — 감동한다
+    ["형님… 아니 감독님! 저 부르신 거 잊지 않겠습니다!", 2],
+    ["솔직히 좀 울컥했습니다. 다음 경기 몸 던지겠습니다.", 2]],
+  pickedCold:[ // 사이가 안 좋았는데 지목당했다
+    ["…저를 부르실 줄은 몰랐습니다. 생각을 좀 해보겠습니다.", 2],
+    ["할 말이 많았는데, 오늘은 밥만 먹고 가겠습니다.", 0],
+    ["이렇게라도 자리를 만들어 주시니… 알겠습니다.", 2]],
+  /* 😔 초대받지 못한 주전 — 라커룸에서 새어나오는 말 */
+  snub:[
+    ["명단에 제 이름은 없었다면서요? …알겠습니다.", -2],
+    ["다들 감독님 집 얘기하는데 저만 못 들었습니다.", -2],
+    ["뭐, 저는 안 부르셔도 뛰기만 하면 됩니다.", -1],
+    ["저는 왜 빠졌는지 정도는 알고 싶습니다.", -2]],
+  snubHot:[
+    ["저 빼고 부르셨다고요? …기억하겠습니다.", -3],
+    ["이런 건 좀 서운합니다. 아니, 많이 서운합니다.", -3]],
+  snubPro:[
+    ["초대 명단은 감독님 권한입니다. 신경 쓰지 않습니다.", 0],
+    ["저는 훈련장에서 보여드리면 됩니다.", 0]]
 };
-function partySay(p, h, gain){
+function partySay(p, h, gain, picked){
   const pool=[];
   const a=aff(p);
+  /* 🎯 직접 지목한 선수 — 열에 일곱은 「따로 불러 주셨다」는 이야기를 한다.
+     나머지 셋은 평소 하던 말이 섞여야 자연스럽다. */
+  if(picked){
+    const sp=[];
+    sp.push(...(a<45?PARTY_SAY.pickedCold:PARTY_SAY.picked));
+    if(p.pers===1) sp.push(...PARTY_SAY.pickedAmb, ...PARTY_SAY.pickedAmb);
+    if(p.pers===3) sp.push(...PARTY_SAY.pickedHot, ...PARTY_SAY.pickedHot);
+    if(sp.length && Math.random()<0.70) return pick(sp);
+    pool.push(...sp);
+  }
   pool.push(...(a<45?PARTY_SAY.cold:PARTY_SAY.warm));
   if(p.pers===0) pool.push(...PARTY_SAY.pro);
   else if(p.pers===1) pool.push(...PARTY_SAY.amb);
@@ -16540,35 +16770,72 @@ function partySay(p, h, gain){
   else if(h.party<=1) pool.push(...PARTY_SAY.poor);
   return pick(pool);
 }
+/* 😔 초대받지 못한 주전이 남기는 말 */
+function partySnubSay(p){
+  const pool=[];
+  if((p.pers||0)===0) pool.push(...PARTY_SAY.snubPro, ...PARTY_SAY.snubPro);
+  else if((p.pers||0)===3) pool.push(...PARTY_SAY.snubHot, ...PARTY_SAY.snubHot, ...PARTY_SAY.snub);
+  else pool.push(...PARTY_SAY.snub);
+  return pick(pool);
+}
 function homeParty(){
   const M=me(), t=userTeam(), h=homeOf();
+  const blk=homePartyBlock();
+  if(blk){ flash(blk.t,"warn"); return; }
   if(!t) return;
-  if(!homeCanParty()){ flash("사람을 부를 만한 거실이 없습니다. 더 큰 집이 필요합니다.","warn"); return; }
   const left=homePartyLeft();
   if(left>0){ flash(`얼마 전에 불렀습니다 — ${dateLabel((M.partyAt||0)+HOME_PARTY_CD)}부터 다시 열 수 있습니다 (${left}일 남음).`,"warn"); return; }
   const cost=Math.round((0.15+h.party*0.12)*100)/100;
   if(M.cash<cost){ flash(`비용 ${cost}억이 부족합니다.`,"warn"); return; }
-  showConfirm(`<b>🎉 ${h.ic} ${h.n} 집들이</b>\n\n선수단을 집으로 부릅니다. 음식과 준비에 <b>${cost}억</b>이 듭니다.\n\n· 호감도가 낮은 선수부터 <b>${h.party*4+6}명</b>을 초대합니다\n· 호감도 상승 · 팀 분위기 개선\n· 집이 좋을수록 효과가 큽니다\n\n<span class="small">${HOME_PARTY_CD}일에 한 번 열 수 있습니다.</span>`,
+  const _g0=partyGuestList();
+  const _pk=_g0.filter(x=>x.picked).length;
+  showConfirm(`<b>🎉 ${h.ic} ${h.n} 집들이</b>\n\n선수단을 집으로 부릅니다. 음식과 준비에 <b>${cost}억</b>이 듭니다.\n\n· 초대 <b>${_g0.length}명</b>${_pk?` — 직접 지목 <b style="color:var(--gold)">${_pk}명</b> · 자동 ${_g0.length-_pk}명`:" (호감도가 낮은 선수부터 자동)"}\n· 호감도 상승 · 팀 분위기 개선\n· 집이 좋을수록 효과가 큽니다${_pk?`\n\n<span class="small" style="color:var(--gold)">지목한 선수는 「감독이 나를 따로 불렀다」는 걸 압니다 — 효과가 더 큽니다.\n대신 초대받지 못한 주전은 서운해합니다.</span>`:""}\n\n<span class="small">${HOME_PARTY_CD}일에 한 번 열 수 있습니다.</span>`,
     ()=>{
       mePay(-cost, `${h.n} 집들이`);
       M.partyAt=G.day||0;
-      const n=h.party*4+6;
-      const guests=[...t.players].sort((a,b)=>aff(a)-aff(b)).slice(0, n);
+      const guestSet=partyGuestList();
+      const guests=guestSet.map(x=>x.p);
+      const pickSet=new Set(guestSet.filter(x=>x.picked).map(x=>x.p.id));
       let up=0;
       const log=[];
       for(const p of guests){
-        const gain=Math.round((3+h.party*1.6+Math.random()*3)*10)/10;
+        const isPk=pickSet.has(p.id);
+        /* 🎯 이름을 콕 집어 불렀다면 그 마음이 더 크게 남는다 */
+        let gain=(3+h.party*1.6+Math.random()*3) * (isPk?1.45:1);
+        gain=Math.round(gain*10)/10;
         const a0=aff(p);
-        const [say, mood]=partySay(p, h, gain);
+        const [say, mood]=partySay(p, h, gain, isPk);
         affSet(p, clamp(a0+gain, 0, 100));
-        p.morale=clamp((p.morale||70)+1.5+h.party*0.6+mood*0.6, 25, 99);
-        log.push({id:p.id, n:p.name, pos:p.pos, pers:p.pers||0,
+        p.morale=clamp((p.morale||70)+1.5+h.party*0.6+mood*0.6+(isPk?1.2:0), 25, 99);
+        log.push({id:p.id, n:p.name, pos:p.pos, pers:p.pers||0, pk:isPk?1:0,
                   a0:Math.round(a0), a1:Math.round(aff(p)), g:gain, say, mood});
         up++;
       }
+      /* 😔 초대받지 못한 주전 — 지목 초대를 썼을 때만. 아무 이름도 안 골랐으면 서운할 일도 없다.
+         (감독이 「호감도 낮은 순」에 맡긴 경우는 선수들도 그렇게 받아들인다) */
+      const snub=[];
+      if(pickSet.size>0){
+        const went=new Set(guests.map(p=>p.id));
+        let xi=[]; try{ xi=(bestXI(t)||[]).map(p=>p.id); }catch(e){}
+        const xiSet=new Set(xi);
+        for(const p of t.players){
+          if(went.has(p.id)) continue;
+          if(p.loan && p.loan.to!==t.id) continue;
+          if(!xiSet.has(p.id)) continue;                  // 주전만 서운해한다
+          const [say, mood]=partySnubSay(p);
+          const dn = (p.pers===3? 3.0 : p.pers===0? 0.6 : 1.8) * (0.8+Math.random()*0.5);
+          const a0=aff(p);
+          affSet(p, clamp(a0-dn, 0, 100));
+          p.morale=clamp((p.morale||70)-(p.pers===0?0.3:1.2), 25, 99);
+          snub.push({id:p.id, n:p.name, pos:p.pos, pers:p.pers||0,
+                     a0:Math.round(a0), a1:Math.round(aff(p)), g:-Math.round(dn*10)/10, say, mood});
+        }
+      }
       /* 누가 왔고 뭐라고 했는지 남긴다 — 다음 집들이 전까지 화면에 보인다 */
-      M.partyLog={d:G.day||0, home:h.k, hn:h.n, ic:h.ic, cost, guests:log};
-      addMood(`🎉 감독이 ${h.n}으로 선수단을 초대했습니다. 오랜만에 다들 편하게 웃었습니다. (${up}명 참석)`);
+      M.partyLog={d:G.day||0, home:h.k, hn:h.n, ic:h.ic, cost, guests:log, snub, pick:pickSet.size};
+      PARTY_PICK=[];
+      addMood(fixJosa(`🎉 감독이 ${h.n}으로/로 선수단을 초대했습니다. 오랜만에 다들 편하게 웃었습니다. (${up}명 참석${pickSet.size?` · 지목 ${pickSet.size}명`:""})`));
+      if(snub.length) addMood(fixJosa(`😔 초대 명단에서 빠진 ${snub.map(x=>x.n).slice(0,3).join(", ")}${snub.length>3?` 외 ${snub.length-3}명`:""}이/가 서운해합니다.`));
       try{ meLog(`🎉 집들이 — ${up}명 초대 (${cost}억)`); }catch(e){}
       try{ notify(`🎉 집들이를 열었습니다 — <b>${up}명</b>이 다녀갔고 호감도가 올랐습니다.`,"good"); }catch(e){}
       try{ socialFill(["감독님이 선수들 집에 불러서 밥 먹였다더라 ㅋㅋ 좋네",
@@ -16576,6 +16843,45 @@ function homeParty(){
                        "감독 집 좋더라 ㄷㄷ"], 2, 1, {t:t.short}); }catch(e){}
       saveGame(); show("mylife");
     }, {okLabel:`🎉 ${cost}억 쓰고 연다`, cancelLabel:"다음에"});
+}
+/* 🎯 초대 명단 고르기 — 선수를 눌러 지목한다. 아무도 안 고르면 호감도 낮은 순으로 자동. */
+function partyPickHtml(){
+  const t=userTeam(); if(!t) return "";
+  const cap=partyCap();
+  const list=partyGuestList();
+  const going=new Set(list.map(x=>x.p.id));
+  const pk=new Set(list.filter(x=>x.picked).map(x=>x.p.id));
+  let xi=new Set(); try{ xi=new Set((bestXI(t)||[]).map(p=>p.id)); }catch(e){}
+  const pool=[...t.players].filter(p=>!p.loan || p.loan.to===t.id)
+    .sort((a,b)=>(pk.has(b.id)?1:0)-(pk.has(a.id)?1:0) || aff(a)-aff(b));
+  const chip=(p)=>{
+    const on=pk.has(p.id), auto=!on&&going.has(p.id);
+    const A=affLabel(aff(p));
+    const snub=pk.size>0 && !going.has(p.id) && xi.has(p.id);
+    return `<div class="ptPick${on?" on":auto?" auto":""}" onclick="partyPickToggle(${p.id})"
+      title="${on?"직접 지목 — 누르면 뺍니다":auto?"자동 초대 — 누르면 확정 지목":"초대 안 함 — 누르면 지목"}">
+      <span class="ptMark">${on?"⭐":auto?"·":"＋"}</span>
+      <b class="pos-${p.pos}">${p.pos}</b>
+      <span class="ptN">${p.name}</span>
+      <span class="ptA" style="color:${A.c}">${A.ic}${Math.round(aff(p))}</span>
+      ${snub?'<span class="ptSnub">서운</span>':""}
+    </div>`;
+  };
+  return `<div style="margin-top:9px;border-top:1px solid #21262d;padding-top:9px">
+    <div class="small" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+      <b style="color:var(--gold)">🎯 초대 명단</b>
+      <span style="color:var(--sub)">지목 <b style="color:var(--gold)">${pk.size}</b> · 자동 ${list.length-pk.size} · 정원 ${cap}명</span>
+      <button class="mini" style="padding:2px 8px;margin-left:auto" onclick="partyPickAuto()">호감도 낮은 순으로 채우기</button>
+      <button class="mini" style="padding:2px 8px" onclick="partyPickClear()">지목 비우기</button>
+    </div>
+    <div class="ptWrap">${pool.map(chip).join("")}</div>
+    <div class="small" style="margin-top:6px;color:var(--sub);line-height:1.55">
+      ⭐ 직접 지목 · · 자동 초대 · ＋ 초대 안 함<br>
+      <b style="color:var(--gold)">지목한 선수</b>는 감독이 자기를 따로 불렀다는 걸 압니다 — 호감도 상승이 <b>1.45배</b>입니다.
+      ${pk.size>0?`<br><b style="color:#f0883e">다만 지목을 쓰면</b>, 초대받지 못한 <b>주전</b>은 서운해합니다(다혈질은 특히).`
+                 :`<br>아무도 고르지 않으면 <b>호감도가 낮은 선수부터</b> 자동으로 채우고, 빠진 선수도 서운해하지 않습니다.`}
+    </div>
+  </div>`;
 }
 /* 🎉 지난 집들이 — 누가 왔고 뭐라고 했는지 */
 function partyLogHtml(){
@@ -16586,7 +16892,7 @@ function partyLogHtml(){
   return `<div style="margin-top:12px;border-top:1px solid #21262d;padding-top:10px">
     <div class="small" style="color:var(--sub);margin-bottom:7px">
       ${L.ic||"🎉"} <b style="color:var(--txt)">${L.hn||"집"}</b> 집들이 · ${dateLabel(L.d)} ·
-      <b>${L.guests.length}명</b> 참석 · 평균 호감 <b style="color:var(--green)">+${up.toFixed(1)}</b> · 비용 ${L.cost}억</div>
+      <b>${L.guests.length}명</b> 참석${L.pick?` <span style="color:var(--gold)">(지목 ${L.pick}명)</span>`:""} · 평균 호감 <b style="color:var(--green)">+${up.toFixed(1)}</b> · 비용 ${L.cost}억</div>
     ${L.guests.map(x=>{
       const p=t&&t.players.find(q=>q.id===x.id);
       const gone=!p;
@@ -16601,6 +16907,22 @@ function partyLogHtml(){
         </div>
         <div class="partySay">${x.mood>=2?"😄":x.mood>=1?"🙂":"🙂"} “${x.say}”</div>
       </div>`;}).join("")}
+    ${(L.snub&&L.snub.length)?`
+      <div class="small" style="margin:10px 0 6px;color:#f0883e"><b>😔 초대받지 못한 주전 ${L.snub.length}명</b>
+        <span style="opacity:.8">— 지목 초대의 대가입니다</span></div>
+      ${L.snub.map(x=>{
+        const p=t&&t.players.find(q=>q.id===x.id);
+        const pn=["프로","야심","온화","다혈"][x.pers||0];
+        return `<div class="partyRow snub${p?"":" gone"}" ${p?`onclick="openPlayerMenu(event,${x.id})"`:""}>
+          <div class="partyHead">
+            <b class="pos-${x.pos}">${x.pos}</b>
+            <span class="partyN">${x.n}</span>
+            <span class="stkTag">${pn}</span>
+            <span class="partyAff">호감 ${x.a0} → <b style="color:#f85149">${x.a1}</b>
+              <span style="color:#f85149">(${x.g})</span></span>
+          </div>
+          <div class="partySay">${(x.pers||0)===0?"😐":"😔"} “${x.say}”</div>
+        </div>`;}).join("")}`:""}
   </div>`;
 }
 /* ── 🏚️ 생활 이벤트 — 집마다 겪는 일이 다르다 ─────────────── */
@@ -19712,7 +20034,7 @@ function mylifeView(){
         <button class="mini" style="flex:1;padding:9px;border-color:var(--green);color:var(--green)" onclick="hmlRepay(HML_AMT)">💵 상환</button>
       </div>
     </div>`:""}
-    ${homeCanParty()?(()=>{ const left=homePartyLeft(), done=HOME_PARTY_CD-left, pc=Math.round(done/HOME_PARTY_CD*100);
+    ${!homePartyBlock()?(()=>{ const left=homePartyLeft(), done=HOME_PARTY_CD-left, pc=Math.round(done/HOME_PARTY_CD*100);
       const openDay=(M.partyAt||0)+HOME_PARTY_CD;
       return `<div class="card"><h3>🎉 집들이 <span class="small">— 거실 ${h.party}등급 · ${h.party*4+6}명 초대 · ${HOME_PARTY_CD}일에 한 번</span></h3>
       <p class="small" style="color:var(--sub);margin-bottom:7px">호감도가 낮은 선수부터 불러 밥을 먹입니다. 집이 좋을수록 효과가 큽니다.</p>
@@ -19724,11 +20046,14 @@ function mylifeView(){
           지난 집들이 ${dateLabel(M.partyAt||0)} · 다음 가능 <b style="color:var(--gold)">${dateLabel(openDay)}</b>
           <span style="opacity:.75">— 너무 자주 부르면 선수들도 부담스러워합니다.</span></div>
       </div>`
-      :`<button class="mini" style="width:100%;padding:10px;border-color:var(--gold);color:var(--gold);font-weight:700"
+      :`${partyPickHtml()}
+        <button class="mini" style="width:100%;padding:10px;margin-top:9px;border-color:var(--gold);color:var(--gold);font-weight:700"
           onclick="homeParty()">🎉 집들이 열기 (${(0.15+h.party*0.12).toFixed(2)}억)</button>`}
       ${partyLogHtml()}
-    </div>`; })():`<div class="card"><h3>🎉 집들이</h3>
-      <p class="small" style="padding:6px 2px;color:var(--sub)">사람을 부를 만한 거실이 없습니다. <b>옥탑방</b> 이상이면 선수단을 초대할 수 있습니다.</p></div>`}
+    </div>`; })():(()=>{ const b=homePartyBlock();
+      return `<div class="card"><h3>🎉 집들이</h3>
+      <p class="small" style="padding:6px 2px;color:var(--sub)">${b.ic} <b>${b.t}</b><br>${b.d}</p>
+      ${partyLogHtml()}</div>`; })()}
     <div class="card"><h3>🏠 매물 <span class="small">— 사는 곳이 곧 감독의 얼굴입니다</span></h3>
       ${HOMES.map(x=>{ const px=homePrice(x), mk=homeMkt(x.k);
         const dv=x.buy?Math.round((mk-1)*1000)/10:0;
@@ -22656,7 +22981,8 @@ const TRAIT_CAT_POS={
   "골 결정력":       ["MF","FW"],
   "규율":            ["GK","DF","MF","FW"],
   "수비":            ["DF","MF"],
-  "개인기":          ["DF","MF","FW"]
+  "개인기":          ["DF","MF","FW"],
+  "골키핑":          ["GK"]
 };
 /* 자리 전용 — 이 포지션에서만 배울 수 있다 */
 const TRAIT_POS_ONLY={
@@ -22695,6 +23021,7 @@ function learnableTraits(p){
   return TRAITS.filter(t=>{
     if(have.includes(t.k)) return false;
     if(conflict(t.k)) return false;
+    if(!traitGrpOK(p, t.k)) return false;      // 🧩 자리 분류 — 어울리지 않는 자리는 배울 수 없다
     return traitPosOK(p, t);
   });
 }
@@ -22728,15 +23055,29 @@ function dropTrait(pid, key){
     }, {okLabel:"지운다", cancelLabel:"취소", danger:true});
 }
 /* 프로필의 특성 카드 — 경험치 막대, 포인트, 보유/습득 목록 */
+/* 🧩 특성의 「자리」 뱃지 — 이 선수 자리의 대표 특성이면 금색으로 강조한다 */
+function traitGrpTag(p, k){
+  const g=traitGroups(k);
+  const home=g[0];
+  const mine=(p && home===p.pos);
+  const lb=(g.length>=4) ? "공통" : g.map(x=>TRAIT_GRP_KO[x]||x).join("·");
+  return `<span class="trGrp${mine?" on":""}" title="${lb} 특성${mine?" — 이 선수의 자리에 딱 맞습니다":""}">${TRAIT_GRP_KO[home]||home}</span>`;
+}
 function traitTrainCard(p){
   const mine = teamOfPlayer(p)===userTeam();
   const xp=traitXp(p), pt=traitPts(p);
   const have=(p.traits||[]).filter(k=>TRAIT_BY_KEY[k]);
-  const learn=mine?learnableTraits(p):[];
+  /* 목록 순서 — 이 선수 자리의 대표 특성부터, 그 다음 어울리는 특성, 그리고 갈래별로 */
+  const learn=(mine?learnableTraits(p):[]).slice().sort((x,y)=>{
+    const hx=(traitHomeGrp(x.k)===p.pos)?0:1, hy=(traitHomeGrp(y.k)===p.pos)?0:1;
+    if(hx!==hy) return hx-hy;
+    if(x.c!==y.c) return x.c<y.c?-1:1;
+    return (y.w||0)-(x.w||0);
+  });
   const byCat={}; for(const t of learn){ (byCat[t.c]=byCat[t.c]||[]).push(t); }
   const bar=`<div class="txpBar"><div class="txpFill" style="width:${xp}%"></div><span>${xp.toFixed(0)} / ${TXP_FULL}</span></div>`;
   const haveHtml = have.length ? have.map(k=>{ const T=TRAIT_BY_KEY[k];
-      return `<div class="trRow"><span class="trN" title="${T.e}">${T.n}</span><span class="trC">${T.c}</span>
+      return `<div class="trRow"><span class="trN" title="${T.e}">${T.n}</span>${traitGrpTag(p,k)}<span class="trC">${T.c}</span>
         ${mine?`<button class="mini trDel" onclick="dropTrait(${p.id},'${k}')" ${pt<1?"disabled":""} title="특성 포인트 1점으로 지웁니다">🧹</button>`:""}</div>`;
     }).join("") : `<p class="small" style="margin:4px 0">아직 몸에 밴 선호 플레이가 없습니다.</p>`;
   /* 한 번에 다섯 개씩 — 쉰 줄을 한꺼번에 뿌리면 아무것도 눈에 안 들어온다 */
@@ -22753,7 +23094,7 @@ function traitTrainCard(p){
   const learnHtml = !mine ? "" : (learn.length
     ? page.map(T=>`<div class="trRow ${traitMeetsReq(p,T)?"":"trOff"}">
           <span class="trTxt"><span class="trN" title="${T.e}${traitMeetsReq(p,T)?"":" — 능력치가 어울리지 않습니다"}">${traitMeetsReq(p,T)?"":"⚠ "}${T.n}
-            <span class="trCatIn">${T.c}</span></span>
+            ${traitGrpTag(p,T.k)}<span class="trCatIn">${T.c}</span></span>
           <span class="trC">${(Object.keys(T.fx||{})[0])?traitFxText(T):"—"}</span></span>
           <button class="mini trBuy" onclick="buyTrait(${p.id},'${T.k}')" ${(pt<1||have.length>=TRAIT_MAX)?"disabled":""}>1P 습득</button></div>`).join("")+pager
     : `<p class="small" style="margin:4px 0">이 포지션에서 익힐 수 있는 특성을 모두 배웠습니다.</p>`);
@@ -22762,7 +23103,7 @@ function traitTrainCard(p){
     ${bar}
     <p class="small" style="margin:6px 0 2px;color:var(--sub)">경기에 나가고, 잘하고, 감독과 이야기를 나눌수록 쌓입니다. 100이 되면 1포인트.</p>
     <div class="trHead">보유 특성</div>${haveHtml}
-    ${mine?`<div class="trHead">익힐 수 있는 특성 <span class="small">(${learn.length})</span></div>${learnHtml}`:""}
+    ${mine?`<div class="trHead">익힐 수 있는 특성 <span class="small">(${learn.length}) — ${TRAIT_GRP_KO[p.pos]||p.pos} 자리 대표 특성이 위로 옵니다</span></div>${learnHtml}`:""}
   </div>`;
 }
 function traitFxText(T){
@@ -22773,7 +23114,8 @@ function traitFxText(T){
     longThrow:"롱스로인", overhead:"오버헤드", fkPower:"강한 FK", lob:"로빙 슛", round:"키퍼 제치기",
     place:"정확한 슛", longShot:"중거리 슛", power:"강한 슛", firstTimeShot:"원터치 슛", longFK:"먼 FK",
     cardRisk:"카드 위험", slide:"슬라이딩", tightMark:"밀착 마크", curl:"감아차기", escape:"압박 탈출",
-    carryOut:"드리블 전개", repeatBeat:"반복 돌파", toFeet:"발밑 요구", gkSweeper:"스위퍼 키퍼"};
+    carryOut:"드리블 전개", repeatBeat:"반복 돌파", toFeet:"발밑 요구", gkSweeper:"스위퍼 키퍼",
+    gkOut:"골문 이탈 성향", gkFist:"펀칭 성향", gkLong:"골킥 거리", gkPen:"페널티 선방", gkCmd:"수비 지휘"};
   const ks=Object.keys(T.fx||{});
   if(!ks.length) return "—";
   return ks.map(k=>(M[k]||k)+((T.fx[k]<0)?" ↓":"")).join(" · ");
@@ -36727,7 +37069,9 @@ function gkPosError(gk, ball){
   const A=(gk.p&&gk.p.attr)||{};
   const pos=clamp(attr20(A.pos!=null?A.pos:60)/20, 0.15, 1);
   const off=clamp(Math.abs(ball.y-0.5)/0.35, 0, 1);               // 각이 열릴수록 어렵다
-  return Math.sin((gk.seed||0)*3.1) * (1-pos) * 0.020 * (0.45+off*0.85);
+  /* 🧤 특성 「수비 라인을 소리로 지휘」 — 뒷선을 정리하면서 자기 각도 함께 잡는다 */
+  let k=1; try{ k=clamp(1-FX(gk,"gkCmd")*0.35, 0.55, 1); }catch(e){}
+  return Math.sin((gk.seed||0)*3.1) * (1-pos) * 0.020 * (0.45+off*0.85) * k;
 }
 const GK_REACT_BASE=0.34;          // 기본 반응 지연(초) — 능력치가 깎는다
 /* 몸을 뻗는 속도 — 실제 키퍼는 0.5초에 2~3m를 간다(약 5m/s).
@@ -42768,7 +43112,8 @@ class MatchSim{
     const st=this.stats[gk.side];
     // 잡을지 놓칠지 — 공중 장악력이 8할, 붙어 있는 사람 수가 나머지
     if(Math.random() < clamp(0.32+aer*0.55-crowd*0.05, 0.15, 0.94)){
-      if(Math.random() < clamp((gk.gkPunch||0.5)*0.55, 0.05, 0.60)){
+      /* 🧤 특성 — 「캐치보다 펀칭」은 주먹으로, 「품에 안는다」는 끝까지 잡는다 */
+      if(Math.random() < clamp((gk.gkPunch||0.5)*0.55 + FX(gk,"gkFist")*0.30, 0.02, 0.85)){
         st.shotPunched=(st.shotPunched||0)+1;
         this.clearBall(gk);                            // 펀칭 — 멀리 걷어낸다
       } else {
@@ -42795,7 +43140,8 @@ class MatchSim{
     const acc=clamp(0.14 - (carrier.gkKick||0.5)*0.10, 0.03, 0.14);   // 골킥 능력 → 낙하 오차
     /* 낙하점 상한 — 상대 진영 70%선. 0.92까지 열어 두니 바운드가 골문까지 굴러
        「키퍼 득점」이 자주 나왔다(제보). 실제 골킥도 상대 박스까지는 못 보낸다. */
-    const capAdv=0.62;   /* 0.70→0.62 — 바운드 포함 최대 도달을 상대 박스 앞으로 제한 */
+    /* 🧤 특성 — 「골킥을 길게 찬다」는 낙하점이 더 멀리 나간다 */
+    const capAdv=0.62 + clamp(FX(carrier,"gkLong")*0.05, 0, 0.06);
     const capX = carrier.dir>0 ? capAdv : 1-capAdv;
     const tx0 = tgt ? tgt.x + carrier.dir*0.02 + (Math.random()-0.5)*acc
                     : carrier.x + carrier.dir*(0.46+Math.random()*0.10);
@@ -44477,7 +44823,8 @@ class MatchSim{
       if(isPen){
         // 페널티는 방향 싸움이다 — 거리·각도·비행시간 공식이 통하지 않는다.
         // 키퍼 실력이 올리고 키커의 페널티 능력치가 내린다. 평균적으로 20% 남짓 막힌다.
-        save = clamp((PEN_SAVE_BASE + gkSkill*PEN_SAVE_GK - skill*PEN_SAVE_KICKER) * meTune("pen"), 0.02, 0.9);
+        save = clamp((PEN_SAVE_BASE + gkSkill*PEN_SAVE_GK - skill*PEN_SAVE_KICKER
+                      + (gk?FX(gk,"gkPen")*0.09:0)) * meTune("pen"), 0.02, 0.9);   // 🧤 페널티에 강하다
       } else {
       /* ⚠ 여기에 키퍼 능력치를 곱하지 않는다(능력치 → 선방 확률 이라는 지름길 금지).
          이 값은 「상황이 얼마나 막기 좋은가」만 담는다 — 각도·거리·슛 종류·굴절·시야.
@@ -44604,6 +44951,8 @@ class MatchSim{
         /* 얼마나 여유 있게 닿았는가가 캐치/쳐내기를 가른다 — 손끝에 걸린 공은 못 잡는다 (§25·§27) */
         const _mg=isPen?0.5:clamp(margin,0,1);
         let hold = 0.10 + _a("han",62)*0.50 + _mg*0.42 - (power-1.0)*0.30 - nearPost*0.20;
+        /* 🧤 특성 — 펀칭 선호는 덜 잡고, 「품에 안는다」는 더 잡는다 */
+        if(gk) hold -= FX(gk,"gkFist")*0.28;
         if(deflected) hold -= 0.20;
         if(type===SHOT_TYPE.POWER) hold += 0.12;
         if(type===SHOT_TYPE.CHIP) hold += 0.10;   // 느리게 떠오는 공은 잡기 쉽다
