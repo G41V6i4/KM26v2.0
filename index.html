@@ -879,6 +879,13 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
 .h2aList{margin:0;padding-left:20px;font-size:13px;line-height:1.85;}
 .h2aList li{margin-bottom:2px;}
 .h2aList li::marker{color:var(--gold);font-weight:800;}
+/* 🌱 유스 명단 — 우리 선수 / 임대 나간 선수 / 임대 온 선수 */
+.yTag{display:inline-block;font-size:10px;font-weight:800;padding:0 5px;border-radius:4px;border:1px solid;white-space:nowrap;}
+.yTag.own{color:#8b949e;border-color:#30363d;background:#0d1117;}
+.yTag.out{color:#ffb27a;border-color:#8b4a1a;background:#1c1108;}
+.yTag.in {color:#79c0ff;border-color:#1f4b8f;background:#0c1a2e;}
+tr.yOut{background:linear-gradient(90deg,rgba(240,136,62,.10),rgba(240,136,62,0) 40%);}
+tr.yIn {background:linear-gradient(90deg,rgba(47,129,247,.10),rgba(47,129,247,0) 40%);}
 /* 🎯 집들이 초대 명단 */
 .ptWrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px;max-height:270px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .ptPick{display:flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #21262d;border-radius:7px;
@@ -30287,7 +30294,26 @@ function gateCard(t){
 /* ---------- 유스 ---------- */
 function youth(){
   const t=userTeam();
-  const young=t.players.filter(p=>G.season-p.by<=23).sort((a,b)=>b.pot-a.pot);
+  /* 🌱 유망주 명단 — 「지금 어디에 있는가」를 함께 본다 (제보).
+     ⚠ 임대로 내보낸 우리 유망주는 상대 구단 명단에 들어가 있어서 이 목록에 아예 없었다.
+        정작 「잘 크고 있나」를 확인해야 하는 선수들이 빠져 있던 셈이다.
+        임대해 온 남의 유망주는 반대로 우리 명단에 섞여 있어 우리 자원처럼 보였다. */
+  const YMAX=23;
+  const rows=[];
+  for(const p of t.players){
+    if(G.season-p.by>YMAX) continue;
+    if(p.loan && p.loan.own!==t.id) rows.push({p, kind:"in",  club:G.teams[p.loan.own]||null});   // 빌려온 선수
+    else                            rows.push({p, kind:"own", club:null});                        // 우리 선수
+  }
+  try{
+    for(const {p, c} of loanedOut(t)){
+      if(G.season-p.by>YMAX) continue;
+      rows.push({p, kind:"out", club:c});                                                          // 내보낸 선수
+    }
+  }catch(e){}
+  const young=rows.sort((a,b)=>(b.p.pot||0)-(a.p.pot||0)).map(x=>x.p);
+  const META={}; for(const x of rows) META[x.p.id]=x;
+  const nOut=rows.filter(x=>x.kind==="out").length, nIn=rows.filter(x=>x.kind==="in").length;
   const grade=(v)=>"◆".repeat(v)+"◇".repeat(5-v);
   if(isArmyTeam(t)){
     return `<h2>🌱 유스 & 유망주</h2>
@@ -30317,10 +30343,33 @@ function youth(){
     })()}
   </div>
   <div class="msg info">시즌이 끝날 때마다 유스 아카데미에서 2~3명이 콜업됩니다. 외국 국적 유소년도 만 18세까지 국내 유스에서 합계 5년(또는 연속 3년) 이상 성장하면 <b>🌱 홈그로운</b>으로 인정되어 국내 선수로 등록됩니다 — 외국인 쿼터를 차지하지 않으며 이름이 초록색으로 표시됩니다. 23세 이하 선수는 매 시즌 잠재력까지 성장합니다. 잘 키운 유망주는 이적 자금과 팀의 미래가 됩니다.</div>
-  <div class="card"><div class="tblScroll"><table><tr><th>이름</th><th>포지션</th><th>나이</th><th>현재</th><th>잠재력</th><th>성장 전망</th></tr>
-  ${young.map(p=>`<tr><td class="clickable" onclick="openPlayerMenu(event,${p.id})">${nmF(p)}${pTags(p)}</td><td class="pos-${p.pos}">${p.pos}</td><td>${G.season-p.by}세</td>
+  <div class="card">
+    <h3>🌱 ${YMAX}세 이하 유망주 <span class="small">${rows.length}명 — 우리 팀 ${rows.length-nOut-nIn}명${nOut?` · 🔁 임대 중 ${nOut}명`:""}${nIn?` · 📥 임대 영입 ${nIn}명`:""}</span></h3>
+    ${(nOut||nIn)?`<p class="small" style="margin:2px 0 8px;color:var(--sub)">
+      ${nOut?`<b style="color:#f0883e">🔁 임대 중</b>인 선수는 다른 구단에서 뛰고 있습니다 — 출전 시간이 그대로 성장으로 돌아옵니다. `:""}
+      ${nIn?`<b style="color:#79c0ff">📥 임대 영입</b>은 <b>우리 소유가 아닙니다</b> — 임대가 끝나면 원소속으로 돌아가고, 판매·트레이드도 할 수 없습니다.`:""}</p>`:""}
+    <div class="tblScroll"><table><tr><th>이름</th><th>소속</th><th>포지션</th><th>나이</th><th>현재</th><th>잠재력</th><th>성장 전망</th></tr>
+  ${young.map(p=>{
+    const m=META[p.id]||{kind:"own"};
+    const cls = m.kind==="out" ? "yOut" : m.kind==="in" ? "yIn" : "";
+    let where;
+    if(m.kind==="out"){
+      const played=(p.apps||0)-((p.loan&&p.loan.apps0)||0);
+      const bi=(function(){ try{ return loanBackInfo(p)||{}; }catch(e){ return {}; } })();
+      where=`<span class="yTag out">🔁 임대 중</span> <b>${m.club?m.club.short:"-"}</b>
+        <div class="small" style="opacity:.8">${played}경기${p.apps?` · 평점 ${(p.seasonRating||0).toFixed(2)}`:""}${bi.txt?` · ${bi.txt}`:""}</div>`;
+    } else if(m.kind==="in"){
+      const bi=(function(){ try{ return loanBackInfo(p)||{}; }catch(e){ return {}; } })();
+      where=`<span class="yTag in">📥 임대 영입</span> <b>${m.club?m.club.short:"-"}</b> 소유
+        <div class="small" style="opacity:.8">${bi.txt||""}</div>`;
+    } else {
+      where=`<span class="yTag own">우리 팀</span>`;
+    }
+    return `<tr class="${cls}"><td class="clickable" onclick="openPlayerMenu(event,${p.id})">${nmF(p)}${pTags(p)}</td>
+   <td class="small">${where}</td><td class="pos-${p.pos}">${p.pos}</td><td>${G.season-p.by}세</td>
    <td>${abilityStars(p)}</td><td>${potentialStars(p)}</td>
-   <td>${"▮".repeat(clamp(Math.round((p.pot-p.ovr)/3),0,8))||"완성"}</td></tr>`).join("")}</table></div></div>`;
+   <td>${"▮".repeat(clamp(Math.round(((p.pot||0)-(p.ovr||0))/3),0,8))||"완성"}</td></tr>`;}).join("")}
+    </table></div></div>`;
 }
 /* ---------- 기록실 ---------- */
 function stats(){
