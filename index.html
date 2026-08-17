@@ -3482,7 +3482,15 @@ function goalNeeded(){
   if(G.jobless || !G.introDone) return false;
   return !(G.goal && G.goal.s===G.season);
 }
-function capNeeded(){ const t=userTeam(); if(!t) return false; const c=capInfo(t); return !c.set || !captainOf(t); }
+/* ⚠ 제보 — 「주장단 선임 필요에서 자진 사임하면 진행 버튼이 그 상태로 멈춘다」.
+   goalNeeded 에는 무직 가드가 있었는데 여기에는 없었다. 팀을 떠난 뒤에도 옛 팀의 주장이
+   비어 있다고 판정해 진행 버튼이 「🎖️ 주장단 선임 필요」로 굳고, 눌러도 무직에게는 잠겨 있는
+   스태프 화면으로 보내 버려서 아무것도 못 하게 된다. 맡은 팀이 없으면 주장도 없다. */
+function capNeeded(){
+  if(G.jobless || !G.introDone) return false;
+  const t=userTeam(); if(!t) return false;
+  const c=capInfo(t); return !c.set || !captainOf(t);
+}
 function setCaptain(pid, role){
   const t=userTeam(); const p=t.players.find(x=>x.id===pid); if(!p) return;
   const c=capInfo(t);
@@ -8793,9 +8801,12 @@ function completeRound(M){
   if(G.staff && G.staff.handled) G.staff.handled={};
   if(G.sue && G.sue.chill>0) G.sue.chill--;   // 눈치 보던 기간이 하루씩 풀린다
   if(G.sue && (G.sue.embold||0)>0) G.sue.embold--;   // 기고만장도 며칠이면 식는다
-  // ── 유저 팀 선수 불만·약속 처리
+  /* ── 유저 팀 선수 불만·약속 처리
+     ⚠ 제보 — 「무직인데 일정 진행에 면담이 필요해 보입니다가 뜬다」.
+        맡은 팀이 없어도 이 블록이 옛 팀 선수들의 불만·태업·약속을 계속 굴리고 있었다.
+        면담을 할 수도, 약속을 지킬 수도 없는 사람에게 그 알림이 갈 이유가 없다. */
   const rp=ut.div===1?G.r1:G.r2, tAvg=teamOVR(ut);
-  for(const p of ut.players){
+  for(const p of (G.jobless ? [] : ut.players)){
     if(p.sulk>0){ // 태업 중: 사기 바닥, 컨디션 저하
       p.sulk--; p.morale=Math.min(p.morale,38); p.cond=clamp(p.cond-3,55,100);
       if(p.sulk===0){ p.morale=50; addMood(`😔 ${p.name}이(가) 태업을 끝내고 훈련에 복귀했습니다. 앙금은 남아 있습니다.`); }
@@ -8887,12 +8898,14 @@ function completeRound(M){
       else if(p.wage<wageExpect(p.ovr,p.frn,(teamOfPlayer(p)||{}).div)*0.6 && Math.random()<0.04*affK){ p.unhappy=1; p.uWhy="연봉"; addMood(`😠 ${p.name} 측이 연봉 인상을 원하고 있습니다. (스쿼드 탭에서 면담 가능)`); }
     }
   }
-  brewRumors();                     // 시장이 떠든다
-  pruneUserLineup();                // 못 뛰게 된 선수를 선발·배치도에서 빼 둔다
-  affWeekly(ut);                    // 출전 시간에 따라 감독을 보는 눈이 달라진다
-  if(typeof sackCheck==="function" && sackCheck()) return;   // 경질되면 여기서 끝난다
-  brewGrievances();                 // 수석코치가 다음 회의에 들고 올 안건
-  try{ brewConcerns(); }catch(e){}  // 체중 등 개인 고민
+  brewRumors();                     // 시장이 떠든다 (리그 이야기 — 무직이어도 돈다)
+  if(!G.jobless){
+    pruneUserLineup();              // 못 뛰게 된 선수를 선발·배치도에서 빼 둔다
+    affWeekly(ut);                  // 출전 시간에 따라 감독을 보는 눈이 달라진다
+    if(typeof sackCheck==="function" && sackCheck()) return;   // 경질되면 여기서 끝난다
+    brewGrievances();               // 수석코치가 다음 회의에 들고 올 안건
+    try{ brewConcerns(); }catch(e){}  // 체중 등 개인 고민
+  }
   for(const id in G.teams) addFam(G.teams[id], FAM_MATCH);
   // 날짜는 '진행' 버튼이 하루씩 넘긴다(stepDay). 여기서 몰아서 넘기면 그 사이 소식이 통째로 사라지고,
   // 하루라도 억지로 밀면 '경기 다음 날 회복'이 통째로 날아가 시즌 말에 스쿼드가 방전된다.
@@ -10234,21 +10247,28 @@ function userSeasonOver(){ return userRoundNow() >= userFixCount(); }
    ─ ① 내 일정이 끝났으면 atMatchDay 를 멈춘다
      ② 대신 남은 부의 라운드를 「그 라운드 날짜가 되면」 하루씩 진행한다 */
 function tickOtherDivRounds(){
-  if(G.phase!=="league" || !G.cal || G.jobless) return 0;
+  if(G.phase!=="league" || !G.cal) return 0;
   const ut=userTeam(); if(!ut) return 0;
   /* ⚠ K리그1 은 정규 33라운드 뒤에 파이널 라운드 5경기가 붙는다. 스플릿이 아직 안 갈렸으면
      내 일정이 끝난 것처럼 보인다 — 여기서 먼저 갈라 준다(안 그러면 33라운드에서 시즌이 멈춘다). */
   try{ if(!G.splitDone && G.r1>=splitAt()) makeSplit(); }catch(e){}
-  if(!userSeasonOver()) return 0;                 // 아직 내 일정이 남았다
-  const other = ut.div===1 ? 2 : 1;
-  const oFix = (other===1?G.k1Fix:G.k2Fix)||[];
+  /* 어느 부를 날짜에 맞춰 굴릴 것인가
+       · 무직        — 내가 치를 경기가 없다. 두 부 모두 리그가 알아서 굴러간다
+       · 내 일정 종료 — 남은 부만
+       · 그 밖        — 내가 경기를 치를 때 completeRound 가 함께 굴린다 */
+  const divs = G.jobless ? [1,2] : (userSeasonOver() ? [ut.div===1?2:1] : []);
+  if(!divs.length) return 0;
   let played=0, guard=0;
-  while(guard++<6){
-    const r = other===1?G.r1:G.r2;
-    if(r>=oFix.length) break;
-    if(G.day < matchDayOf(r)) break;
-    playRound(other, false);
-    played++;
+  for(const d of divs){
+    const fx=(d===1?G.k1Fix:G.k2Fix)||[];
+    while(guard++<14){
+      const r = d===1?G.r1:G.r2;
+      if(r>=fx.length) break;
+      if(G.day < matchDayOf(r)) break;
+      playRound(d, false);
+      played++;
+      try{ if(!G.splitDone && G.r1>=splitAt()) makeSplit(); }catch(e){}
+    }
   }
   if(played){
     try{ if(!G.splitDone && G.r1>=splitAt()) makeSplit(); }catch(e){}
@@ -11112,6 +11132,8 @@ function seasonCeremony(t1, t2, champ, champ2, relIds, proIds){
                   [`${label} 축하합니다!! 내년에도 부탁해요`,1]], 2, 1, V);
     }
   }
+  /* 📜 계약 만료 — 재계약이 안 됐으면 여기서 팀을 떠난다 (시즌 정산의 맨 마지막) */
+  try{ mgrCtSeasonEnd(); }catch(e){}
 }
 function ageDecline(p, drop){ // 33세 이상: 세부 능력치도 함께 하락 (신체 능력 > 정신 능력 순으로 빠르게 하락)
   const phys=Math.max(1,Math.round(drop*1.1));
@@ -12158,6 +12180,7 @@ function tickAiRenew(){
 }
 /* 타 구단이 우리 선수를 임대로 빌려 가겠다고 연락해 온다 */
 function tickLoanAsk(){
+  if(G.jobless) return;              // 무직 — 맡은 선수가 없으니 임대 문의가 올 곳도 없다
   if(!transferOpen()) return;
   if(Math.random()>LOAN_ASK_P) return;
   const t=userTeam(); if(!t) return;
@@ -12182,8 +12205,8 @@ function tickLoanAsk(){
    출전 기회가 없는 유망주를 가진 구단이 감독의 평판·유스 등급을 보고 연락한다. */
 const LOAN_OFFER_P=0.055;
 function tickLoanOffer(){
+  if(G.jobless) return;              // 무직 — 맡은 팀이 없으니 임대 제안도 오지 않는다
   if(!transferOpen()) return;
-  if(G.jobless) return;
   const t=userTeam(); if(!t || isArmyTeam(t)) return;
   if(Math.random()>LOAN_OFFER_P) return;
   if((G.loanOffers||[]).length>=3) return;
@@ -12520,6 +12543,9 @@ function genOffers(){
   if(!transferOpen()){ G.offers=[]; return; }
   aiReleaseCheck();
   aiToAiTransferCheck();
+  /* 🕊️ 무직 — 내 선수가 없으니 나에게 오는 영입 제안도 없다.
+     ⚠ 가드를 함수 맨 위에 두면 AI끼리의 이적·방출까지 멈춰 리그가 얼어붙는다. 여기가 맞는 자리다. */
+  if(G.jobless){ G.offers=[]; return; }
   const ut=userTeam();
   /* ⚠ 제보 — "3/31에 온 제안이 진행 누르면 확인도 못 하고 증발". 유저가 제의 탭을 아직
      열어보지 않은 제안(o.seen 없음)은 만료를 최대 3번까지 유예한다 — 볼 기회는 준다. */
@@ -19102,11 +19128,327 @@ function bankMyHtml(){
 
 function homeOf(){ return HOMES.find(h=>h.k===me().home)||HOMES[0]; }
 /* 감독 연봉 — 구단 규모와 리그가 정한다 (억/년) */
-function mgrSalary(){
-  const t=userTeam(); if(!t) return 2;
+/* ═══════════════════════════════════════════════════════════════════════════
+   📜 감독 계약 — 부임에도 끝이 있다
+   지금까지 감독에게는 계약이 없었다. 부임한 라운드만 기록하고, 구단주 신뢰가 바닥나면
+   경질되는 게 전부였다. 연봉도 계약이 아니라 구단 규모에서 매번 계산했다.
+   ─ 이제 부임할 때 기간과 연봉을 맺는다.
+     · 마지막 시즌 중반, 구단이 재계약을 판단한다 — 성적·신뢰·평판을 본다
+     · 제안이 오면 연봉·기간·이적 예산 약속을 흥정한다 (3회)
+     · 제안이 안 오면 시즌이 끝나는 날 계약 만료로 팀을 떠난다
+     · 언제든 자진 사임할 수 있다 — 남은 계약만큼 위약금을 문다
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* 구단 규모가 매기는 「시장가」 연봉 — 계약을 맺을 때의 기준선 */
+function mgrWageBase(t){
+  t=t||userTeam(); if(!t) return 2;
   const base=(t.div===1?3.2:1.4)+(t.fans||10)*0.045+(t.budget||0)*0.004;
   const tr=G.trust?(G.trust.owner-70)/100*0.8:0;
   return Math.round(clamp(base+tr, 1.0, 22)*10)/10;
+}
+function mgrCt(){
+  if(G.jobless || !userTeam()) return null;
+  if(!G.mgrCt || G.mgrCt.tid!==G.userTeamId){
+    /* 구세이브·새 게임 — 지금 맡고 있는 구단과의 계약을 지금 시즌부터 소급해 맺어 둔다 */
+    const t=userTeam();
+    G.mgrCt={tid:t.id, from:G.season, years:3, wage:mgrWageBase(t),
+             bud:0, signedAt:G.day||0, renewS:0, talk:null, hist:[]};
+  }
+  if(typeof G.mgrCt.years!=="number") G.mgrCt.years=3;
+  if(typeof G.mgrCt.wage!=="number")  G.mgrCt.wage=mgrWageBase();
+  return G.mgrCt;
+}
+function mgrCtLastSeason(){ const c=mgrCt(); return c ? c.from+c.years-1 : G.season; }
+function mgrCtLeft(){ const c=mgrCt(); return c ? Math.max(0, mgrCtLastSeason()-G.season) : 0; }   // 올 시즌 뒤 남는 햇수
+function mgrCtFinal(){ return !!mgrCt() && G.season>=mgrCtLastSeason(); }                          // 계약 마지막 시즌인가
+function mgrSalary(){
+  const c=mgrCt();
+  if(c && c.wage>0) return c.wage;
+  return mgrWageBase();
+}
+/* 구단이 감독을 어떻게 보고 있는가 — 재계약 판단의 점수 (0~100) */
+function mgrStanding(){
+  const t=userTeam(); if(!t) return 50;
+  let v=50;
+  try{ v += ((G.trust.owner||60)-60)*0.85; }catch(e){}
+  try{ v += ((G.trust.fans ||60)-60)*0.30; }catch(e){}
+  try{
+    const tb=tableOf(t.div), pos=tb.findIndex(x=>x.isUser)+1, N=tb.length||12;
+    if(pos>0) v += (1-(pos-1)/Math.max(1,N-1))*26 - 10;      // 1위 +16 · 최하위 −10
+    if(G.goal && G.goal.req){ const miss=pos-G.goal.req; v -= clamp(miss*2.2, -12, 16); }
+  }catch(e){}
+  try{ v += clamp((mgrRep()-40)*0.22, -8, 12); }catch(e){}
+  try{ if(G.eacl && G.eacl.champ===t.id) v+=10; }catch(e){}
+  try{ v -= clamp((G.board&&G.board.warned||0)*4, 0, 12); }catch(e){}
+  return clamp(Math.round(v), 0, 100);
+}
+/* 구단이 내밀 재계약 조건 — 서 있는 위치가 곧 협상력이다 */
+function mgrRenewOffer(){
+  const t=userTeam(); const c=mgrCt(); if(!t||!c) return null;
+  const s=mgrStanding();
+  const mkt=mgrWageBase(t);
+  const years = s>=78 ? 3+ (Math.random()<0.35?1:0) : s>=62 ? 3 : s>=48 ? 2 : 1;
+  const wage  = Math.round(clamp(mkt*(0.90+ (s-50)/100*0.55), mkt*0.75, mkt*1.55)*10)/10;
+  const bud   = s>=70 ? Math.round((t.budget||0)*(0.10+Math.random()*0.12)*10)/10 : 0;
+  return {years, wage, bud, s, tries:0, max:{years:years+2, wage:Math.round(wage*1.45*10)/10, bud:Math.round((bud+ (t.budget||0)*0.12)*10)/10}};
+}
+/* 🕰️ 하루가 지날 때 — 마지막 시즌 중반에 구단이 재계약을 판단한다 */
+function mgrCtTick(){
+  if(G.jobless || !userTeam()) return;
+  if(G.phase!=="league") return;
+  const c=mgrCt(); if(!c) return;
+  if(!mgrCtFinal()) return;                        // 계약 마지막 시즌이 아니다
+  if(c.renewS===G.season) return;                  // 올 시즌은 이미 판단했다
+  const t=userTeam();
+  const fixN=((t.div===1?G.k1Fix:G.k2Fix)||[]).length||33;
+  const rd=t.div===1?G.r1:G.r2;
+  if(rd < Math.round(fixN*0.55)) return;           // 시즌 중반부터 이야기가 나온다
+  c.renewS=G.season;
+  const s=mgrStanding();
+  if(s>=46){
+    c.talk=mgrRenewOffer();
+    c.noRenew=0;
+    try{ notify(`📜 <b>${t.name} 구단이 재계약을 제안했습니다.</b> 이번 시즌으로 계약이 끝납니다 — 🏠 오피스에서 확인하세요.`,"good"); }catch(e){}
+    try{ addNews(`📜 <b>${t.name}, 감독과 재계약 협상 착수</b> — ${c.talk.years}년 · 연봉 ${c.talk.wage}억 제시`, "good", "club"); }catch(e){}
+  } else {
+    c.noRenew=1; c.talk=null;
+    try{ notify(`📜 <b>재계약 제안이 오지 않았습니다.</b> 이번 시즌이 끝나면 계약이 만료됩니다.`,"warn"); }catch(e){}
+    try{ addNews(`📜 <b>${t.name}, 감독 계약 연장 여부 「검토 중」</b> — 시즌 뒤 결별 가능성`, "warn", "club"); }catch(e){}
+    try{ socialFill(SOC.sacked, 2+R(2), -1, {t:t.short}); }catch(e){}
+  }
+}
+/* 📜 재계약 협상 — 3회까지 흥정한다 */
+let CTASK={years:0, wage:0, bud:0};
+function ctSet(k,v){ CTASK[k]=Math.max(0, parseFloat(String(v).replace(/[^0-9.]/g,""))||0); show("home"); }
+function ctAccept(){
+  const c=mgrCt(); if(!c||!c.talk) return;
+  const t=userTeam(), o=c.talk;
+  mgrSignContract(o.years, o.wage, o.bud);
+  c.talk=null; c.noRenew=0;
+  try{ addNews(`✍️ <b>${t.name}, 감독과 재계약</b> — ${o.years}년 · 연봉 ${o.wage}억${o.bud?` · 이적 예산 ${o.bud}억 추가 약속`:""}`, "good", "club"); }catch(e){}
+  try{ adjustTrust("owner", 3, "재계약 체결"); adjustTrust("fans", 2, "감독 재계약"); }catch(e){}
+  try{ socialFill(SOC.hiredNew, 3+R(2), 1, {t:t.short}); }catch(e){}
+  try{ notify(`✍️ 재계약을 체결했습니다 — ${G.season+1}시즌부터 ${o.years}년 · 연봉 ${o.wage}억`,"good"); }catch(e){}
+  saveGame(); show("home");
+}
+function ctCounter(){
+  const c=mgrCt(); if(!c||!c.talk) return;
+  const o=c.talk, t=userTeam();
+  const wy=clamp(Math.round(CTASK.years||o.years),1,5);
+  const ww=Math.round((CTASK.wage||o.wage)*10)/10;
+  const wb=Math.round((CTASK.bud||0)*10)/10;
+  o.tries=(o.tries||0)+1;
+  /* 구단이 감당할 수 있는 선을 넘었는가 — 서 있는 위치가 곧 협상력이다 */
+  const over=(ww-o.max.wage)/Math.max(0.5,o.max.wage)
+            +(wy-o.max.years)*0.10
+            +(wb-o.max.bud)/Math.max(1,o.max.bud||1)*0.35;
+  if(over<=0 || Math.random() < clamp(0.55-over*1.4, 0.05, 0.9)){
+    o.years=wy; o.wage=ww; o.bud=wb;
+    ctAccept();
+    return;
+  }
+  if(o.tries>=3){
+    c.talk=null; c.noRenew=1;
+    try{ adjustTrust("owner", -4, "재계약 협상 결렬"); }catch(e){}
+    try{ notify("📜 <b>재계약 협상이 결렬됐습니다.</b> 이번 시즌이 끝나면 계약이 만료됩니다.","warn"); }catch(e){}
+    try{ addNews(`📜 <b>${t.name}, 감독과 재계약 협상 결렬</b> — 시즌 뒤 결별`, "warn", "club"); }catch(e){}
+    saveGame(); show("home"); return;
+  }
+  /* 중간에서 만난다 */
+  /* 중간에서 만나되, 구단이 감당할 수 있는 선(max)을 절대 넘지 않는다 —
+     터무니없는 요구를 먼저 던져 기준선을 끌어올리는 걸 막는다 */
+  o.years=clamp(Math.min(o.max.years, Math.round((o.years+wy)/2)),1,5);
+  o.wage =Math.round(Math.min(o.max.wage, (o.wage+ww)/2)*10)/10;
+  o.bud  =Math.round(Math.min(o.max.bud, (o.bud+wb)/2)*10)/10;
+  try{ notify(`📜 구단: "그 조건은 어렵습니다. ${o.years}년 · 연봉 ${o.wage}억${o.bud?` · 예산 ${o.bud}억`:""} 까지는 맞춰 보죠." (${o.tries}/3)`,"warn"); }catch(e){}
+  show("home");
+}
+function ctReject(){
+  const c=mgrCt(); if(!c||!c.talk) return;
+  showConfirm(`<b>📜 재계약 제안을 거절합니다</b>\n\n이번 시즌이 끝나면 계약이 만료되어 팀을 떠납니다.\n<span class="small">구단주 신뢰가 떨어지고, 시즌 중에는 다시 제안이 오지 않습니다.</span>`,
+    ()=>{ c.talk=null; c.noRenew=1;
+      try{ adjustTrust("owner", -6, "재계약 거절"); }catch(e){}
+      try{ addNews(`📜 <b>감독, 재계약 제안 거절</b> — 시즌 뒤 팀을 떠난다`, "warn", "club"); }catch(e){}
+      saveGame(); show("home"); },
+    {okLabel:"거절한다", cancelLabel:"다시 생각한다"});
+}
+/* 계약 체결 — 부임·재계약이 함께 쓴다 */
+function mgrSignContract(years, wage, bud){
+  const t=userTeam(); if(!t) return;
+  const from = (G.mgrCt && G.mgrCt.tid===t.id) ? G.season+1 : G.season;   // 재계약은 다음 시즌부터
+  G.mgrCt={tid:t.id, from, years:clamp(Math.round(years),1,5), wage:Math.round(wage*10)/10,
+           bud:Math.round((bud||0)*10)/10, signedAt:G.day||0, renewS:0, talk:null, noRenew:0,
+           hist:(G.mgrCt&&G.mgrCt.hist)||[]};
+  if(bud>0){ t.budget=Math.round((t.budget+bud)*10)/10;
+    try{ addNews(`💰 재계약 조건으로 이적 예산 <b>${bud}억</b>이 배정되었습니다.`, "good", "club"); }catch(e){} }
+}
+/* 🚪 자진 사임 — 남은 계약만큼 위약금을 문다 */
+/* 위약금 — 남은 계약에 비례하되 상한이 있다.
+   ⚠ 제보 — 「부임하자마자 자진 사임하는데 안 되네?」
+      3년 계약 직후에 나가려니 연봉의 1.65배가 잡혔고, 부임 계약금(연봉의 절반)뿐인 현금으로는
+      낼 수가 없어서 「사임 불가」가 됐다. 현실에서 감독이 돈이 없어 사임을 못 하지는 않는다.
+      ─ ① 상한을 씌우고(연봉 2년치) ② 모자라면 미납으로 남기고 나갈 수 있게 한다. */
+const QUIT_CAP_Y=2.0;              // 위약금 상한 — 연봉 몇 년치까지
+function mgrQuitFee(){
+  const c=mgrCt(); if(!c) return 0;
+  const leftY=mgrCtLeft() + (mgrCtFinal()?0.4:1);        // 올 시즌 잔여분 + 남은 햇수
+  const inSeason=(G.phase==="league");
+  let fee=c.wage*leftY*0.55;
+  if(inSeason) fee*=1.5;                                  // 시즌 중 이탈은 더 비싸다
+  fee=Math.min(fee, c.wage*QUIT_CAP_Y);                   // 상한
+  return Math.max(0.3, Math.round(fee*100)/100);
+}
+/* 🚪 사임의 맥락 — 며칠 만인가, 몇 경기나 치렀는가 */
+function mgrQuitCtx(){
+  const t=userTeam();
+  const c=(G.mgrCt && G.mgrCt.tid===(t&&t.id)) ? G.mgrCt : null;
+  const days=Math.max(0, (G.day||0)-((c&&c.signedAt)||0));
+  const rd=t ? ((t.div===1?G.r1:G.r2)-(G.hiredAtR||0)) : 0;
+  const played=Math.max(0, (t?(t.W||0)+(t.Dw||0)+(t.L||0):0));
+  const inSeason=(G.phase==="league");
+  let kind="end";
+  if(rd<=3 || days<=24) kind="instant";      // 부임하자마자 — 몇 경기 못 치렀다
+  else if(inSeason) kind="mid";              // 시즌 중
+  const nm=t?t.name:"구단";
+  const head = kind==="instant"
+      ? `🚪 <b>${nm} 감독, 부임 ${days}일 만에 자진 사임</b> — 공식 경기 ${Math.max(0,rd)}경기를 치르고 지휘봉을 내려놓았습니다.`
+    : kind==="mid"
+      ? `🚪 <b>${nm} 감독, 시즌 중 자진 사임</b> — 남은 일정은 대행 체제로 치릅니다.`
+      : `🚪 <b>${nm} 감독, 자진 사임</b> — 시즌을 마치고 팀을 떠납니다.`;
+  return {kind, days, rounds:Math.max(0,rd), played, head};
+}
+function mgrQuitOpen(){
+  if(G.jobless || !userTeam()){ flash("맡고 있는 구단이 없습니다.","warn"); return; }
+  const t=userTeam(), M=me(), fee=mgrQuitFee();
+  const inSeason=(G.phase==="league");
+  let repHit=Math.round((inSeason?9:4) + clamp(mgrCtLeft()*2, 0, 6));
+  if(mgrQuitCtx().kind==="instant") repHit=Math.round(repHit*1.8)+4;   // 부임하자마자 던지는 건 이력서에 오래 남는다
+  showConfirm(`<b style="font-size:17px">🚪 ${t.name} 감독직에서 물러납니다</b>\n\n`+
+    `· 남은 계약 <b>${mgrCtLeft()}년</b>${mgrCtFinal()?" (올 시즌이 마지막)":""}\n`+
+    `· 위약금 <b class="money">${fee}억</b> — 개인 현금에서 나갑니다 (보유 ${M.cash.toFixed(2)}억)\n`+
+    (M.cash<fee?`  <span style="color:#ff9d5c">모자란 <b>${Math.round((fee-M.cash)*100)/100}억</b>은 <b>미납</b>으로 남아 다음 구단 월급에서 공제됩니다</span>\n`:"")+
+    `· 평판 <b>−${repHit}</b> · 다음 구단 제의가 줄어듭니다\n`+
+    (inSeason?`\n<span style="color:#ff9d5c">⚠ <b>시즌 중 이탈</b>입니다 — 위약금 1.5배, 평판 타격도 더 큽니다.</span>\n`:"")+
+    (mgrQuitCtx().kind==="instant"?`\n<span style="color:#f85149">⚠ <b>부임 ${mgrQuitCtx().days}일 만입니다.</b> 이 정도면 기사보다 조롱이 먼저 옵니다 — 평판이 더 깎이고, 한동안 좋은 제의가 오지 않습니다.</span>\n`:"")+
+    `\n<span class="small">사임하면 무직이 되고, 다른 구단의 제의를 기다리게 됩니다. 되돌릴 수 없습니다.</span>`,
+    ()=>{
+      /* 현금이 모자라도 나갈 수는 있다 — 모자란 만큼은 미납으로 남아 다음 월급에서 공제된다 */
+      const own=Math.round(Math.min(Math.max(M.cash,0), fee)*100)/100;
+      const rest=Math.round((fee-own)*100)/100;
+      if(own>0) mePay(-own, `${t.short} 감독직 사임 위약금`);
+      if(rest>0){
+        M.debt=Math.round(((M.debt||0)+rest)*100)/100;
+        meLog(`－${rest.toFixed(2)}억 · 사임 위약금 미납 (다음 월급에서 공제)`);
+      }
+      try{ adjustTrust("owner", -20, "감독 자진 사임"); }catch(e){}
+      /* 🚪 얼마나 있다 나가느냐에 따라 이야기가 완전히 달라진다 */
+      const _q=mgrQuitCtx();
+      try{ addNews(_q.head, "warn"); }catch(e){}
+      try{
+        const V={t:t.short, n:_q.days, r:_q.rounds};
+        if(_q.kind==="instant"){
+          socialFill(SOC.quitInstant, 4+R(3), -1, V);
+          fmkFill(FMK.quitInstant, 3+R(3), V);
+          rivalFill(RIV_QUIT_INSTANT, 2+R(2), -1, V);
+        } else if(_q.kind==="mid"){
+          socialFill(SOC.quitMid, 3+R(3), -1, V);
+          fmkFill(FMK.quitMid, 2+R(3), V);
+          rivalFill(RIV_QUIT_MID, 1+R(2), 0, V);
+        } else {
+          socialFill(SOC.quitEnd, 3+R(2), 1, V);
+          fmkFill(FMK.quitEnd, 2+R(2), V);
+        }
+      }catch(e){}
+      /* 🎙️ 떠나는 날의 회견 — 무직이 되면 기자회견 화면이 없으므로 기사와 반응으로 남긴다 */
+      try{
+        const line=pick([
+          `"제가 더 드릴 게 없다고 판단했습니다."`,
+          `"결과에 대한 책임은 감독이 지는 겁니다."`,
+          `"팬 여러분께는 죄송하다는 말씀밖에 못 드리겠습니다."`,
+          `"다음 감독이 더 좋은 환경에서 시작하길 바랍니다."`]);
+        addNews(`🎙️ <b>${t.name} 감독 고별 회견</b> — ${line}`, "warn", "club");
+        if(G.press) G.press.rel=clamp((G.press.rel||50)-(inSeason?8:3), 0, 100);
+      }catch(e){}
+      try{ meLog(`🚪 ${t.short} 감독직 자진 사임 — 위약금 ${fee}억. 무직이 됐다.`); }catch(e){}
+      mgrLeaveClub("quit", inSeason?"시즌 중 자진 사임":"자진 사임", repHit);
+    }, {okLabel:"사임한다", cancelLabel:"계속 맡는다", danger:true});
+}
+/* 시즌이 끝나는 순간 — 재계약이 안 됐으면 계약 만료로 떠난다 */
+function mgrCtSeasonEnd(){
+  if(G.jobless || !userTeam()) return false;
+  const c=mgrCt(); if(!c) return false;
+  if(G.season < mgrCtLastSeason()) return false;       // 아직 계약이 남았다
+  if(c.talk){                                          // 답을 안 한 채 시즌이 끝났다 — 무응답은 거절이다
+    c.talk=null; c.noRenew=1;
+  }
+  const t=userTeam();
+  try{ addNews(`📜 <b>${t.name}, 감독과 계약 만료</b> — ${c.from}~${G.season} 시즌 동행이 끝났습니다.`, "warn"); }catch(e){}
+  try{ meLog(fixJosa(`📜 ${t.short}과/와의 계약 만료 — 무직. 월급이 끊겼다.`)); }catch(e){}
+  try{ notify(`📜 <b>계약이 만료되었습니다.</b> ${t.name}과의 동행이 여기서 끝납니다.`,"warn"); }catch(e){}
+  mgrLeaveClub("expire", "계약 만료", 0);
+  return true;
+}
+/* 📜 감독 계약 카드 — 오피스 맨 위 */
+function mgrCtCard(){
+  if(G.jobless || !userTeam()) return "";
+  const c=mgrCt(); if(!c) return "";
+  const t=userTeam();
+  const last=mgrCtLastSeason(), left=mgrCtLeft(), fin=mgrCtFinal();
+  const s=mgrStanding();
+  const sc = s>=70?["#3fb950","탄탄합니다"] : s>=50?["#e3b341","무난합니다"] : s>=34?["#ff9d5c","불안합니다"] : ["#f85149","위태롭습니다"];
+  const head=`<h3>📜 감독 계약 <span class="small">— ${t.short} · ${c.from}~${last} (${c.years}년) · 연봉 <b class="money">${c.wage}억</b></span></h3>`;
+  /* 재계약 협상 중 */
+  if(c.talk){
+    const o=c.talk;
+    const yy=CTASK.years||o.years, ww=CTASK.wage||o.wage, bb=CTASK.bud||o.bud;
+    return `<div class="card" style="border-color:var(--gold)">${head}
+      <div class="msg" style="background:#d2992222;border-color:#d2992266">
+        ✍️ <b>${t.name} 구단이 재계약을 제안했습니다.</b>
+        <span class="small">계약이 이번 시즌으로 끝납니다 — 흥정은 <b>3회</b>까지, 무리하면 결렬됩니다. (${o.tries||0}/3)</span></div>
+      <div class="stkSum" style="margin-top:8px">
+        <div><span>기간</span><b>${o.years}년</b></div>
+        <div><span>연봉</span><b class="money">${o.wage}억</b></div>
+        <div><span>이적 예산</span><b>${o.bud?o.bud+"억":"—"}</b></div>
+        <div><span>구단이 보는 나</span><b style="color:${sc[0]}">${s}점 · ${sc[1]}</b></div>
+      </div>
+      <div class="stkOrder" style="margin-top:10px">
+        <input type="text" inputmode="numeric" placeholder="기간(년)" value="${yy}" oninput="ctSet('years',this.value)"
+          style="flex:1;min-width:70px;padding:8px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg);text-align:right">
+        <input type="text" inputmode="decimal" placeholder="연봉(억)" value="${ww}" oninput="ctSet('wage',this.value)"
+          style="flex:1;min-width:80px;padding:8px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg);text-align:right">
+        <input type="text" inputmode="decimal" placeholder="이적 예산(억)" value="${bb}" oninput="ctSet('bud',this.value)"
+          style="flex:1;min-width:90px;padding:8px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg);text-align:right">
+      </div>
+      <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap">
+        <button class="mini" style="flex:1;padding:10px;border-color:var(--green);color:var(--green);font-weight:800" onclick="ctAccept()">✍️ 제시안 그대로 수락</button>
+        <button class="mini" style="flex:1;padding:10px;border-color:var(--gold);color:var(--gold)" onclick="ctCounter()">🤝 이 조건으로 역제안</button>
+        <button class="mini" style="padding:10px" onclick="ctReject()">거절</button>
+      </div>
+      <p class="small" style="margin-top:8px;color:var(--sub)">성적과 구단주 신뢰가 곧 협상력입니다. 상위권을 달리고 있으면 구단도 물러섭니다.</p>
+    </div>`;
+  }
+  /* 마지막 시즌인데 제안이 없다 */
+  if(fin && c.noRenew){
+    return `<div class="card" style="border-color:#f8514966">${head}
+      <div class="msg warn">⌛ <b>이번 시즌으로 계약이 끝납니다.</b> 구단은 연장 의사를 밝히지 않았습니다.
+        <span class="small">남은 경기에서 뒤집으면 이야기가 다시 나올 수도 있습니다 — 다만 이번 시즌 안에 다시 제안이 오지는 않습니다.</span></div>
+      <p class="small" style="margin-top:7px">구단이 보는 나 <b style="color:${sc[0]}">${s}점 · ${sc[1]}</b>
+        · 시즌이 끝나면 무직이 되어 다른 구단의 제의를 기다립니다.</p>
+      <button class="mini" style="margin-top:8px;border-color:#f85149;color:#f85149" onclick="mgrQuitOpen()">🚪 지금 사임하기</button>
+    </div>`;
+  }
+  /* 평상시 */
+  return `<div class="card">${head}
+    <div class="stkSum">
+      <div><span>남은 계약</span><b>${fin?"올 시즌이 마지막":left+"년"}</b></div>
+      <div><span>연봉</span><b class="money">${c.wage}억</b></div>
+      <div><span>구단이 보는 나</span><b style="color:${sc[0]}">${s}점 · ${sc[1]}</b></div>
+      <div><span>사임 위약금</span><b>${mgrQuitFee()}억</b></div>
+    </div>
+    <p class="small" style="margin-top:7px;color:var(--sub)">${fin
+      ? "계약 마지막 시즌입니다. 시즌 중반이 지나면 구단이 재계약 여부를 판단합니다."
+      : `${last} 시즌까지 계약되어 있습니다. 마지막 해 중반에 재계약 이야기가 나옵니다.`}</p>
+    <button class="mini" style="margin-top:6px;border-color:#f85149;color:#f85149" onclick="mgrQuitOpen()">🚪 자진 사임</button>
+  </div>`;
 }
 /* 감독 위신 — 집·자산·성적이 만든다. 선수 설득과 재계약에 쓰인다. */
 function mgrPrestige(){
@@ -19148,6 +19490,26 @@ function mgrFine(amt, why){
   }
   return amt;
 }
+/* ⚖️ 미납 위약금·징계금 직접 상환
+   ⚠ 제보 — 「미납 위약금을 주식이나 부동산으로 불린 자산으로 갚을 수 있니?」
+      지금까지는 월급에서만 자동 공제됐다. 그래서 무직이면 월급이 없어 영영 줄지 않았고,
+      주식·부동산으로 수백억을 만들어도 갚을 방법이 없었다.
+      ─ 이제 아무 때나 직접 갚는다. 주식·부동산은 팔아서 현금으로 만든 뒤 갚으면 된다. */
+function mgrDebtPay(amt){
+  const M=me();
+  const due=Math.round((M.debt||0)*100)/100;
+  if(due<=0){ flash("갚을 미납금이 없습니다.","warn"); return; }
+  let a=Math.round((parseFloat(amt)||0)*100)/100;
+  if(!(a>0)) a=due;
+  a=Math.min(a, due, Math.round(M.cash*100)/100);
+  if(a<=0){ flash(`보유 현금이 없습니다. 주식·부동산·예금을 정리한 뒤 갚을 수 있습니다. (미납 ${due.toFixed(2)}억)`,"warn"); return; }
+  mePay(-a, `미납금 상환 (잔액 ${(due-a).toFixed(2)}억)`);
+  M.debt=Math.round((due-a)*100)/100;
+  if(M.debt<=0.004){ M.debt=0; flash("⚖️ 미납금을 모두 갚았습니다.","good"); }
+  else flash(`⚖️ ${a.toFixed(2)}억을 갚았습니다 — 남은 미납금 ${M.debt.toFixed(2)}억.`,"good");
+  saveGame(); show("mylife");
+}
+function mgrDebtPayAll(){ mgrDebtPay(0); }
 function tickMoney(){
   if(!G.cal || !userTeam()) return;
   const d=dateOfDay(G.day||0);
@@ -19167,9 +19529,11 @@ function tickMoney(){
     if(cut>0){ gotPay=Math.round((pay-cut)*100)/100; mePay(gotPay, `감독 월급 (파산 압류 -${cut.toFixed(2)}억)`); }
     else { if(M.wageGarnish) M.wageGarnish=0; gotPay=pay; mePay(pay, "감독 월급"); }
   }
-  if(M.debt>0){
-    const cut=Math.round(Math.min(M.debt, pay*0.5)*100)/100;
-    if(cut>0){ mePay(-cut, `미납 징계금 상환 (잔액 ${(M.debt-cut).toFixed(2)}억)`); M.debt=Math.round((M.debt-cut)*100)/100; }
+  /* ⚠ 월급에서 떼는 돈이다 — 무직인데도 통장에서 빠져나가고 있었다(실제로 받은 월급 gotPay 기준).
+     무직 기간에는 줄지 않고, 「⚖️ 미납금」 화면에서 직접 갚아야 한다. */
+  if(M.debt>0 && gotPay>0){
+    const cut=Math.round(Math.min(M.debt, gotPay*0.5)*100)/100;
+    if(cut>0){ mePay(-cut, `미납금 상환 (잔액 ${(M.debt-cut).toFixed(2)}억)`); M.debt=Math.round((M.debt-cut)*100)/100; }
   }
   const h=homeOf();
   /* 월세도 시세를 따라 움직인다 — 시장이 오르면 재계약 때 오른다 */
@@ -19904,6 +20268,8 @@ function netWorth(){
 /* 총부채 */
 function debtTotal(){
   let v=0;
+  /* ⚠ 미납 위약금·징계금이 부채 목록에서 빠져 있었다 — 순자산이 실제보다 많아 보인다 */
+  try{ v+=Math.max(0, (me().debt||0))*1e8; }catch(e){}
   try{ v+=stkLoan(); }catch(e){}
   try{ v+=stkDebt(); }catch(e){}
   try{ v+=hmlLoan()*1e8; }catch(e){}
@@ -20318,10 +20684,27 @@ function stkTipCard(){
    ═══════════════════════════════════════════════════════════════════════════ */
 const STK_DEBT_RATE=0.0011;    // 하루 0.11% ≈ 연 49%
 const STK_DEBT_MAX =18;        // 감독 연봉의 몇 배까지 — 연봉 5억이면 90억쯤. 판은 커지되 비현실적이진 않게
+const STK_DEBT_JOB_K=1.28;     // 🕊️ 무직 이자 가산 — 갚을 기약이 없는 사람에겐 더 붙는다
 function stkDebt(){ return Math.max(0, me().stkDebt||0); }
-function stkDebtMax(){
+function stkDebtRate(){ return STK_DEBT_RATE * (G.jobless?STK_DEBT_JOB_K:1); }
+/* 🕊️ 무직 감독의 「상환 능력」 — 월급이 없다고 사채업자가 손을 놓지는 않는다.
+   ⚠ 제보 — 「무직일 때 사채 쓰게 해 줘」. 한도가 bankIncome(무직 0.5억) 기준이라
+      연봉 4.6억 재직 중 71억이던 한도가 무직이 되면 8억으로 쪼그라들어, 한 번 빌리면 바로 막혔다.
+      사채업자는 「이 사람이 다시 어디든 갈 사람인가」를 본다 — 마지막 연봉과 평판으로 잡는다. */
+function stkDebtSal(){
   let sal=8;
   try{ sal=(typeof bankIncome==="function") ? Math.max(1.5, bankIncome()) : (mgrSalary()||8); }catch(e){}
+  if(!G.jobless) return sal;
+  let last=0;
+  try{ const h=(G.mgrCtHist||[]).slice(-1)[0]; if(h && h.wage>0) last=h.wage; }catch(e){}
+  if(!last) try{ last=mgrWageBase(); }catch(e){}
+  if(!last) last=4;
+  let rep=40; try{ rep=mgrRep(); }catch(e){}
+  /* 평판 30이면 마지막 연봉의 45%, 평판 90이면 105% 로 본다 */
+  return Math.max(sal, Math.round(last*clamp(0.45+(rep-30)/100*0.60, 0.35, 1.05)*100)/100);
+}
+function stkDebtMax(){
+  const sal=stkDebtSal();
   /* 사채업자도 사람은 본다 — 은행에서 이미 밀린 사람에겐 덜 빌려준다(막지는 않는다) */
   let k=1;
   try{ const s=bankScore(); k=clamp(0.35+(s-300)/700*0.9, 0.35, 1.25); }catch(e){}
@@ -20337,7 +20720,7 @@ function stkDebtBorrow(amtWon){
   M.cash=Math.round((M.cash + a/1e8)*1e4)/1e4;
   if(!M.stkDebtAt) M.stkDebtAt=G.day||0;
   stkTxAdd({k:"loanshark", amt:a});
-  stkLog("debt", `🩸 사채 ${(a/1e8).toFixed(2)}억 차입 — 연 ${(STK_DEBT_RATE*365*100).toFixed(0)}% (잔액 ${(M.stkDebt/1e8).toFixed(2)}억)`);
+  stkLog("debt", `🩸 사채 ${(a/1e8).toFixed(2)}억 차입 — 연 ${(stkDebtRate()*365*100).toFixed(0)}%${G.jobless?" (무직 가산)":""} (잔액 ${(M.stkDebt/1e8).toFixed(2)}억)`);
   try{ meLog(`🩸 사채 ${(a/1e8).toFixed(2)}억 차입 (잔액 ${(M.stkDebt/1e8).toFixed(2)}억)`); }catch(e){}
   try{ notify(`🩸 사채 <b>${(a/1e8).toFixed(2)}억</b>을 빌렸습니다. 이자가 매일 붙습니다 — 오래 끌면 안 됩니다.`,"warn"); }catch(e){}
   saveGame(); show("mylife");
@@ -20362,7 +20745,7 @@ function stkDebtRepay(amtWon){
 function stkDebtTick(){
   const M=me();
   const D=stkDebt(); if(D<=0) return;
-  const it=Math.round(D*STK_DEBT_RATE);
+  const it=Math.round(D*stkDebtRate());
   M.stkDebt=D+it;
   M.stkDebtInt=Math.round(((M.stkDebtInt||0)+it/1e8)*1e4)/1e4;
   const days=(G.day||0)-(M.stkDebtAt||0);
@@ -20388,16 +20771,195 @@ function stkDebtTick(){
       }
     }
   }
-  /* ② 파산 — 갚을 길이 없는 상태가 오래가면 전 재산이 넘어간다 */
-  if(net < 0 && days>=120){
+  /* ② 약속 불이행 — 「자산을 정리하겠다」고 하고 안 갚으면 강제로 처분한다 (파산 전 단계) */
+  if(M._dunPromise && (G.day||0)>=M._dunPromise.due){
+    const paid=Math.max(0, (M._dunPromise.amt0||M._dunPromise.need*2) - stkDebt());
+    M._dunPromise=null;
+    if(paid < (stkDebt()*0.35)) stkForceSell("약속 불이행");
+    else try{ notify("🩸 사채업자: \"약속은 지키셨습니다. 남은 것도 부탁드립니다.\"","warn"); }catch(e){}
+  }
+  /* ③ 강제 처분 — 갚을 자산은 있는데 갚지 않고 버티는 상태.
+     ⚠ 예전에는 「순자산이 남아 있으면 아무 일도 안 일어나고, 마이너스가 되면 곧장 파산」이었다.
+        그 사이가 비어 있어서, 부동산을 잔뜩 들고 이자만 굴리며 버티는 게 최적 전략이 됐다.
+        이제 중간 단계를 둔다 — 채권자가 자산을 팔아 빚을 회수한다. 파산보다는 덜 나쁘다. */
+  const overdue = G.jobless ? 75 : 100;
+  if(net>=0 && stkDebt()>0 && days>=overdue && stkDebt() > netWorth()*0.45){
+    stkForceSell("장기 연체");
+  }
+  /* ④ 파산 — 갚을 길이 아예 없는 상태가 오래가면 전 재산이 넘어간다.
+     무직이면 소득이 없어 회복 가능성이 낮다 — 기한이 앞당겨진다. */
+  const bkDays = G.jobless ? 90 : 120;
+  if(net < 0 && days>=bkDays){
     stkBankrupt();
   } else if(net>=0 && net < stkDebt()*0.8 && days>=60 && !M._sellWarn){
     M._sellWarn=1;
     try{ notify(`⚠️ 사채 잔액이 순자산을 위협합니다 — 부동산이나 주식을 정리해 갚으셔야 합니다. <span class="small">(순자산 ${stkMoney(net)} · 사채 ${stkMoney(stkDebt())})</span>`,"warn"); }catch(e){}
   } else if(net<0 && !M._debtWarn){
     M._debtWarn=1;
-    try{ notify(`⚠️ 빚이 자산을 넘어섰습니다. 이대로 넉 달이 지나면 <b>파산</b>합니다 — 주식을 정리하거나 갚으세요.`,"warn"); }catch(e){}
+    try{ notify(`⚠️ 빚이 자산을 넘어섰습니다. 이대로 ${Math.round(bkDays/30)}달이 지나면 <b>파산</b>합니다 — 주식·부동산을 정리하거나 갚으세요.${G.jobless?" 무직 상태라 기한이 더 짧습니다.":""}`,"warn"); }catch(e){}
   } else if(net>0 && M._debtWarn) M._debtWarn=0;
+}
+/* 🏷️ 강제 처분 — 채권자가 자산을 팔아 빚을 회수한다. 파산 전 마지막 경고. */
+function stkForceSell(why){
+  const M=me();
+  let got=0;                                  // 회수액(억)
+  const sold=[];
+  /* ① 주식부터 — 시장에서 즉시 현금화된다 (급매 손실 8%) */
+  try{
+    const v=stkEval()/1e8;
+    if(v>0.2){ M.stkInv={}; M.short={}; M.fut=null;
+      try{ (stkState().orders||[]).length=0; }catch(e){}
+      const cash=Math.round(v*0.92*100)/100; got+=cash; sold.push(`📉 주식 ${v.toFixed(1)}억 (급매 −8%)`); }
+  }catch(e){}
+  /* ② 예·적금 해지 */
+  try{ const d=bankDepTotal();
+    if(d>0.2){ const B=bank(); B.acc=[]; got+=Math.round(d*100)/100; sold.push(`🏦 예·적금 ${d.toFixed(1)}억`); }
+  }catch(e){}
+  /* ③ 그래도 모자라면 투자 부동산 — 사는 집은 남긴다 (급매 손실 12%) */
+  try{
+    const need=Math.round(stkDebt()/1e8*100)/100;
+    if(got<need && Array.isArray(M.props) && M.props.length){
+      const ps=M.props.slice().sort((a,b)=>(b.value||b.price)-(a.value||a.price));
+      for(const p of ps){
+        if(got>=need) break;
+        const v=Math.round((p.value||p.price)*0.88*100)/100;
+        got+=v; sold.push(`🏢 ${p.n||"부동산"} ${v.toFixed(1)}억 (급매 −12%)`);
+        M.props=M.props.filter(x=>x!==p);
+      }
+      try{ M.pln=0; }catch(e){}
+    }
+  }catch(e){}
+  const use=Math.min(got, Math.round(stkDebt()/1e8*100)/100);
+  M.stkDebt=Math.max(0, stkDebt()-Math.round(use*1e8));
+  const back=Math.round((got-use)*100)/100;
+  if(back>0) M.cash=Math.round((M.cash+back)*100)/100;    // 남은 돈은 돌려준다
+  M._dunAt=G.day||0; M._sellWarn=0;
+  if(stkDebt()<=0){ M.stkDebtAt=null; M._dunN=0; }
+  try{ stkLog("debt", `🏷️ 강제 처분 (${why}) — ${use.toFixed(2)}억 회수 · 잔액 ${(stkDebt()/1e8).toFixed(2)}억`); }catch(e){}
+  try{ meLog(`🏷️ 자산 강제 처분 (${why}) — ${use.toFixed(2)}억이 사채 상환에 쓰였다`); }catch(e){}
+  try{ notify(`🏷️ <b>자산이 강제로 처분되었습니다</b> — ${why}. ${use.toFixed(2)}억이 사채 상환에 쓰였습니다.`
+    + (stkDebt()>0?` <span class="small">(남은 잔액 ${(stkDebt()/1e8).toFixed(2)}억)</span>`:` <span class="small">사채를 모두 정리했습니다.</span>`), "warn"); }catch(e){}
+  try{ if(!G.jobless){ adjustTrust("owner", -6, "감독 자산 강제 처분"); addNews(`📰 ${userTeam()?userTeam().short:""} 감독, 개인 채무로 자산 강제 처분 — 구단 "개인 사안"`, "warn", "club"); } }catch(e){}
+  G.dun=null;
+  return {got:use, sold, left:stkDebt()};
+}
+/* ═══ 🩸 사채업자 방문 ═══════════════════════════════════════════════════
+   ⚠ 제보 — 「무직일 때 사채를 다 안 갚고 일정을 진행하면 사채업자가 찾아오는 인카운터를 하자」.
+   재직 중에는 전화로 독촉하지만(구단 사무실까지 오기엔 부담이다), 무직이면 집으로 온다.
+   갚을 소득이 없으니 그들도 급해진다 — 대응에 따라 유예·폭력·강제 처분으로 갈린다. */
+const DUN_GAP=24;              // 방문 간격(일)
+function stkDunDue(){
+  const M=me();
+  if(stkDebt()<=0) return false;
+  if(!G.jobless) return false;
+  const days=(G.day||0)-(M.stkDebtAt||0);
+  if(days<18) return false;
+  if(M._dunAt!=null && (G.day||0)-M._dunAt < DUN_GAP) return false;
+  return true;
+}
+function stkDunFire(){
+  const M=me();
+  M._dunAt=G.day||0;
+  M._dunN=(M._dunN||0)+1;
+  G.dun={n:M._dunN, d:G.day||0, amt:stkDebt()};
+  return G.dun;
+}
+function dunSay(n){
+  return n<=1 ? `"감독님. 이자가 벌써 이만큼입니다. 얼굴 뵙고 이야기하고 싶어서 왔습니다."`
+       : n===2 ? `"두 번째입니다. 저희도 위에 보고를 해야 합니다."`
+       : `"이제는 저희가 말로 할 수 있는 단계가 아닙니다."`;
+}
+/* 방문 장면 — 선택지 네 개 */
+function stkDunView(){
+  const M=me(), D=stkDebt()/1e8, n=(G.dun&&G.dun.n)||1;
+  const it=Math.round(stkDebt()*stkDebtRate()*30)/1e8;      // 한 달 이자 상당
+  const part=Math.max(0.3, Math.round(it*100)/100);
+  const net=netWorth()/1e8;
+  return `<h2>🩸 사채업자 방문</h2>
+  <div class="card stCard" style="border-color:#f8514988">
+    <div class="msg warn" style="font-size:16px">${dunSay(n)}</div>
+    <p class="small" style="margin-top:9px">현관 앞에 두 사람이 서 있습니다. ${n>=3?"이번엔 웃지 않습니다.":"명함을 내밀지만 이름은 없습니다."}</p>
+    <div class="stkSum" style="margin-top:8px">
+      <div><span>사채 잔액</span><b style="color:#f85149">${D.toFixed(2)}억</b></div>
+      <div><span>한 달 이자</span><b>${part.toFixed(2)}억</b></div>
+      <div><span>보유 현금</span><b class="money">${M.cash.toFixed(2)}억</b></div>
+      <div><span>순자산</span><b style="color:${net>=0?"var(--green)":"#f85149"}">${net.toFixed(2)}억</b></div>
+    </div>
+    <p class="small" style="margin-top:9px;color:var(--sub)">방문 ${n}회차 · 무직이라 월급 압류가 불가능한 상태입니다.</p>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-top:12px">
+      <button class="mini" style="padding:11px;border-color:var(--green);color:var(--green)" onclick="stkDunPick('pay')">💵 이자만이라도 넣는다 (−${part.toFixed(2)}억)</button>
+      <button class="mini" style="padding:11px;border-color:var(--gold);color:var(--gold)" onclick="stkDunPick('talk')">🗣️ 사정을 설명하고 시간을 번다</button>
+      <button class="mini" style="padding:11px;border-color:#ff9d5c;color:#ff9d5c" onclick="stkDunPick('sell')">🏷️ 자산을 정리하겠다고 약속한다</button>
+      <button class="mini" style="padding:11px;border-color:#f85149;color:#f85149" onclick="stkDunPick('hide')">🚪 문을 열지 않는다</button>
+    </div>
+  </div>`;
+}
+function stkDunPick(k){
+  const M=me(), n=(G.dun&&G.dun.n)||1;
+  const it=Math.max(0.3, Math.round(stkDebt()*stkDebtRate()*30)/1e8);
+  const fx=[], soc=[];
+  let body="", ok=true;
+  if(k==="pay"){
+    const a=Math.min(M.cash, it);
+    if(a<it*0.95){
+      body=`<p>지갑을 열었지만 채울 수가 없었습니다. 한 사람이 짧게 웃고 돌아섭니다.<br>
+        <b>"다음엔 준비해 두십시오. 저희도 사정이 있습니다."</b></p>`;
+      M._dunAt=(G.day||0)-Math.round(DUN_GAP*0.55);        // 곧 다시 온다
+      fx.push("⏳ 다음 방문이 더 빨라졌습니다");
+      ok=false;
+    } else {
+      mePay(-a, "사채 이자 납입");
+      M.stkDebt=Math.max(0, stkDebt()-Math.round(a*1e8*0.55));   // 이자 + 원금 일부
+      body=`<p>현금을 세어 건넸습니다. 두 사람은 고개를 끄덕이고 돌아섭니다.<br>
+        <b>"이렇게만 해 주시면 저희도 조용히 갑니다."</b></p>`;
+      fx.push(`💵 ${a.toFixed(2)}억 납입 — 잔액 <b>${(stkDebt()/1e8).toFixed(2)}억</b>`);
+      fx.push("⏳ 다음 방문까지 여유가 생겼습니다");
+    }
+  } else if(k==="talk"){
+    let rep0=40; try{ rep0=mgrRep(); }catch(e){}
+    const p=clamp(0.30+(rep0-30)/100*0.5-(n-1)*0.12, 0.08, 0.72);
+    if(Math.random()<p){
+      M._dunAt=(G.day||0)+Math.round(DUN_GAP*0.6);
+      body=`<p>한참을 서서 이야기했습니다. 결국 한 사람이 손목시계를 보고 말합니다.<br>
+        <b>"한 달만 더 봅니다. 그때는 이 이야기 안 합니다."</b></p>`;
+      fx.push("⏳ 한 달 유예를 받았습니다");
+    } else {
+      body=`<p>말이 끝나기 전에 문틀을 잡는 손이 보였습니다. 밀치고 들어오지는 않았지만,
+        나가면서 현관에 있던 화분이 넘어갔습니다.<br><b>"말은 다 들었습니다. 다음에 뵙죠."</b></p>`;
+      try{ if(typeof mgrInjure==="function") mgrInjure(1, "사채업자와의 실랑이"); }catch(e){}
+      fx.push("😖 실랑이 — 다음 방문이 더 험해집니다");
+      ok=false;
+    }
+  } else if(k==="sell"){
+    M._dunPromise={due:(G.day||0)+30, need:Math.round(stkDebt()*0.5), amt0:stkDebt()};
+    M._dunAt=(G.day||0)+30-DUN_GAP;
+    body=`<p>부동산과 주식을 정리해 절반을 갚겠다고 약속했습니다. 한 사람이 수첩에 날짜를 적습니다.<br>
+      <b>"${dateLabel((G.day||0)+30)}. 적었습니다."</b></p>`;
+    fx.push(`📝 30일 안에 <b>${(M._dunPromise.need/1e8).toFixed(2)}억</b>을 갚기로 약속`);
+    fx.push("⚠ 못 지키면 자산이 강제로 처분됩니다");
+  } else {
+    const add=Math.round(stkDebt()*0.06);
+    M.stkDebt=stkDebt()+add;
+    M._dunAt=(G.day||0)-Math.round(DUN_GAP*0.4);
+    body=`<p>인터폰을 끄고 숨을 죽였습니다. 한동안 문을 두드리는 소리가 이어졌습니다.<br>
+      돌아갔지만, 다음 날 우편함에 종이 한 장이 꽂혀 있었습니다.</p>`;
+    fx.push(`🩸 「방문비」가 붙었습니다 — 잔액 <b>${(stkDebt()/1e8).toFixed(2)}억</b> (+${(add/1e8).toFixed(2)})`);
+    fx.push("⏳ 곧 다시 옵니다");
+    try{ if(Math.random()<0.5){ stkSocial("debt"); soc.push("💬 동네에 이야기가 돌기 시작했습니다."); } }catch(e){}
+    ok=false;
+  }
+  G.dun=null;
+  try{ stkLog("debt", `🩸 사채업자 방문 ${n}회차 — ${({pay:"이자 납입",talk:"사정 설명",sell:"자산 정리 약속",hide:"문을 열지 않음"})[k]}`); }catch(e){}
+  try{ saveGame(); }catch(e){}
+  VIEW="home";
+  $("#main").innerHTML=`<h2>🩸 사채업자 방문 ${n}회차</h2>
+  <div class="card stCard" style="border-color:${ok?"#d2992288":"#f8514988"}">
+    ${body}
+    ${fx.length?`<div class="msg ${ok?"info":"warn"}" style="margin-top:10px">${fx.join("<br>")}</div>`:""}
+    ${soc.length?`<div class="small" style="margin-top:8px;opacity:.85">${soc.join("<br>")}</div>`:""}
+    <button class="bigbtn" style="max-width:260px;margin-top:14px" onclick="show('home')">확인 ▶</button>
+  </div>`;
+  window.scrollTo(0,0);
 }
 /* 💬 파산·사채가 알려졌을 때의 반응 — 팬들은 성적보다 이 이야기를 더 오래 한다 */
 const STK_SOC={
@@ -21290,9 +21852,11 @@ function stkDebtCard(){
   const M=me(), D=stkDebt();
   const net=stkNet();
   const days=D>0 ? (G.day||0)-(M.stkDebtAt||0) : 0;
-  return `<div class="card" style="border-color:#f8514944"><h3>🩸 사채 <span class="small">— 연 ${(STK_DEBT_RATE*365*100).toFixed(0)}% · 감독 연봉의 ${STK_DEBT_MAX}배까지</span></h3>
+  return `<div class="card" style="border-color:#f8514944"><h3>🩸 사채 <span class="small">— 연 ${(stkDebtRate()*365*100).toFixed(0)}%${G.jobless?" (무직 가산)":""} · ${G.jobless?"상환 능력":"감독 연봉"}의 ${STK_DEBT_MAX}배까지</span></h3>
+    ${G.jobless?`<div class="msg warn" style="margin-bottom:8px">🕊️ <b>무직 상태에서도 빌릴 수 있습니다.</b>
+      한도는 마지막 연봉과 평판으로 잡고(현재 상환 능력 <b>${stkDebtSal().toFixed(2)}억</b>), 이자는 <b>${Math.round((STK_DEBT_JOB_K-1)*100)}% 더</b> 붙습니다.</div>`:""}
     <div class="msg warn" style="margin-bottom:8px">
-      신용 한도가 막혀도 여기서는 빌려줍니다. 대신 <b>이자가 연 ${(STK_DEBT_RATE*365*100).toFixed(0)}%</b>이고, 담보도 심사도 없습니다.<br>
+      신용 한도가 막혀도 여기서는 빌려줍니다. 대신 <b>이자가 연 ${(stkDebtRate()*365*100).toFixed(0)}%</b>이고, 담보도 심사도 없습니다.<br>
       갚지 못하고 시간이 흐르면 <b>독촉 → 구단주 신뢰 하락 → 기사</b>로 번지고,
       빚이 자산을 크게 넘어선 채 넉 달이 지나면 <b style="color:#f85149">개인 파산</b>합니다 — 주식과 부동산이 전부 넘어갑니다.</div>
     <div class="stkSum" style="margin-bottom:8px">
@@ -21494,6 +22058,41 @@ function donToggleAnon(){ DON_ANON=DON_ANON?0:1; show("mylife"); }
 function hmlSet(v){ HML_AMT=String(v||"").replace(/[^0-9.]/g,""); }
 function meSelGift(k){ meGiftSel=(meGiftSel===k)?"":k; show("mylife"); }
 function meSetTab(k){ meTab=k; show("mylife"); }
+/* ⚖️ 미납금 상환 화면 — 주식·부동산으로 불린 돈으로도 갚을 수 있다 */
+let DEBT_AMT="";
+function debtSetAmt(v){ DEBT_AMT=String(v||"").replace(/[^0-9.]/g,""); }
+function mgrDebtCard(){
+  const M=me(), due=Math.round((M.debt||0)*100)/100;
+  if(due<=0) return `<div class="card"><h3>⚖️ 미납금</h3><p class="small">갚을 미납금이 없습니다.</p></div>`;
+  const a=Math.round((parseFloat(DEBT_AMT)||0)*100)/100;
+  const canNow=Math.min(due, Math.round(M.cash*100)/100);
+  let stk=0, prop=0, dep=0;
+  try{ stk=stkEval()/1e8; }catch(e){}
+  try{ prop=propTotal(); }catch(e){}
+  try{ dep=bankDepTotal(); }catch(e){}
+  return `<div class="card" style="border-color:#f8514966">
+    <h3>⚖️ 미납금 <span class="small">— 사임 위약금 · 징계금</span></h3>
+    <div class="stkSum">
+      <div><span>남은 미납금</span><b style="color:#f85149">${due.toFixed(2)}억</b></div>
+      <div><span>보유 현금</span><b class="money">${M.cash.toFixed(2)}억</b></div>
+      <div><span>지금 갚을 수 있는 금액</span><b>${canNow.toFixed(2)}억</b></div>
+      <div><span>월급 공제</span><b>${G.jobless?"없음 (무직)":"월급의 절반"}</b></div>
+    </div>
+    ${G.jobless?`<div class="msg warn" style="margin-top:9px">🕊️ <b>무직이라 월급 공제가 없습니다.</b> 직접 갚지 않으면 미납금은 줄지 않습니다.</div>`:""}
+    ${(canNow<due)?`<div class="msg" style="margin-top:9px;background:#1f6feb22;border-color:#1f6feb66">
+      💡 현금이 모자랍니다. <b>주식 ${stk.toFixed(1)}억 · 부동산 ${prop.toFixed(1)}억 · 예·적금 ${dep.toFixed(1)}억</b>을
+      팔거나 해지해 현금으로 만든 뒤 갚을 수 있습니다.</div>`:""}
+    <div class="stkOrder" style="margin-top:10px">
+      <input type="text" inputmode="decimal" placeholder="상환 금액(억)" value="${DEBT_AMT}" oninput="debtSetAmt(this.value)"
+        style="flex:1;min-width:110px;padding:9px 10px;font-size:16px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg);text-align:right">
+      <button class="mini" onclick="DEBT_AMT=String(Math.round(((parseFloat(DEBT_AMT)||0)+1)*100)/100);show('mylife')">+1</button>
+      <button class="mini" onclick="DEBT_AMT='${canNow.toFixed(2)}';show('mylife')">가능한 전액</button>
+    </div>
+    <button class="mini" style="width:100%;margin-top:10px;padding:11px;font-size:15px;border-color:var(--green);color:var(--green)"
+      onclick="mgrDebtPay('${a>0?a:canNow}')">⚖️ ${a>0?a.toFixed(2)+"억 ":""}갚기</button>
+    <p class="small" style="margin-top:9px;color:var(--sub)">미납금은 <b>순자산에서 부채로 잡힙니다.</b> 남아 있는 동안 감독 평판에도 영향을 줍니다.</p>
+  </div>`;
+}
 /* 💝 기부 화면 — 무직이면 잠긴다 */
 function donCard(){
   const why=donBlockWhy();
@@ -21748,6 +22347,8 @@ function mylifeView(){
     body=stkView();
   } else if(meTab==="don"){
     body=donCard();
+  } else if(meTab==="debt"){
+    body=mgrDebtCard();
   } else {
     body=`<div class="card"><h3>📒 가계부</h3>
       ${M.log.length?M.log.map(x=>`<div style="padding:4px 0;border-bottom:1px solid #21262d;font-size:13px">
@@ -21767,6 +22368,7 @@ function mylifeView(){
     ["자가", (()=>{try{return M.homeOwn?homePrice(homeOf())*1e8:0}catch(e){return 0}})(), "#e3b341"]
   ].filter(x=>Math.abs(x[1])>1e4);
   const debts=[
+    ["미납금(위약금·징계금)", (()=>{try{return Math.max(0,(M.debt||0))*1e8}catch(e){return 0}})()],
     ["증권 신용", (()=>{try{return stkLoan()}catch(e){return 0}})()],
     ["사채", (()=>{try{return stkDebt()}catch(e){return 0}})()],
     ["주택담보", (()=>{try{return hmlLoan()*1e8}catch(e){return 0}})()],
@@ -21787,14 +22389,15 @@ function mylifeView(){
   </div>
   <div class="row">
     <div class="card"><h3>💰 보유 현금</h3><div style="font-size:26px" class="money">${M.cash.toFixed(2)}억</div>
-      ${M.debt>0?`<p class="small" style="margin:4px 0 0;color:var(--red)">⚖️ 미납 징계금 <b>${M.debt.toFixed(2)}억</b> — 매달 월급의 절반이 공제됩니다.</p>`:""}
+      ${M.debt>0?`<p class="small" style="margin:4px 0 0;color:var(--red)">⚖️ 미납금 <b>${M.debt.toFixed(2)}억</b> — ${G.jobless?"무직이라 월급 공제가 없습니다. 직접 갚아야 줄어듭니다.":"매달 월급의 절반이 공제됩니다."}
+        <button class="mini" style="padding:1px 7px;font-size:11px;margin-left:5px;border-color:var(--gold);color:var(--gold)" onclick="show('mylife')">💼 자산에서 갚기</button></p>`:""}
       <p class="small" style="margin-top:6px">연봉 <b>${sal}억</b> (월 ${(sal/12).toFixed(2)}억) · 세후 월 순수입 <b style="color:${monthly>=0?"var(--green)":"var(--red)"}">${monthly>=0?"+":""}${(monthly*0.86).toFixed(2)}억</b></p></div>
     <div class="card"><h3>🏠 거주</h3><div style="font-size:20px">${h.ic} ${h.n}</div>
       <p class="small" style="margin-top:6px">${M.homeOwn?"자가 · 관리비":"월세"} ${(M.homeOwn?h.rent*0.35:homeRent(h)).toFixed(2)}억/월</p></div>
     <div class="card"><h3>👔 감독 위신</h3><div style="font-size:26px;color:var(--gold)">${pres}</div>
       <p class="small" style="margin-top:6px">선수 영입 설득력과 재계약 성공률에 반영됩니다.<br>집 ${h.pres>=0?"+":""}${h.pres} · 부동산 ${Math.min(15,M.props.length*3).toFixed(0)} · 현금 ${clamp(M.cash*0.05,0,10).toFixed(1)}</p></div>
   </div>
-  <div style="margin:10px 0">${tab("home","🏠 거주")} ${tab("prop","🏢 부동산")} ${tab("stock","📈 주식")} ${tab("shop","🛍️ 쇼핑 · 선물")} ${tab("bank","🏦 은행")} ${tab("don","💝 기부")} ${tab("log","📒 가계부")}</div>
+  <div style="margin:10px 0">${tab("home","🏠 거주")} ${tab("prop","🏢 부동산")} ${tab("stock","📈 주식")} ${tab("shop","🛍️ 쇼핑 · 선물")} ${tab("bank","🏦 은행")} ${tab("don","💝 기부")}${(M.debt||0)>0?" "+tab("debt","⚖️ 미납금"):""} ${tab("log","📒 가계부")}</div>
   ${body}`;
 }
 /* ---------- 공통 렌더 ---------- */
@@ -21846,7 +22449,8 @@ function show(v){
   try{ if(G.phase==="pre" && typeof checkPreseasonEnd==="function") checkPreseasonEnd(); }catch(e){}
   /* 연습경기든 정규 라운드든 버튼은 "경기 시작 ▶" 하나로 통일한다 — 어떤 경기인지는
      경기 화면의 태그(프리시즌 친선경기)와 로딩창이 이미 알려 준다. */
-  $("#advBtn").textContent = goalNeeded() ? "🎯 시즌 목표 설정 필요" : capNeeded() ? "🎖️ 주장단 선임 필요"
+  $("#advBtn").textContent = G.jobless ? (G.phase==="seasonEnd" ? "다음 시즌 시작 ▶▶" : "🕊️ 시간 보내기 ▶")
+    : goalNeeded() ? "🎯 시즌 목표 설정 필요" : capNeeded() ? "🎖️ 주장단 선임 필요"
     : (typeof mgrInjured==="function" && mgrInjured() && atMatchDay()) ? "🩺 수석코치 대행 경기 ▶" :
 
     G.phase==="seasonEnd" ? "다음 시즌 시작 ▶▶" : G.phase==="po" ? "승강 PO 진행 ▶"
@@ -22011,6 +22615,7 @@ function home(){
   return `<h2>🏠 감독 오피스</h2>
   ${h2aTip()}
   ${G.phase==="seasonEnd"?seasonEndPanel():""}
+  ${mgrCtCard()}
   ${situationCard()}
   <div class="row">
     <div class="card"><h3>구단 현황</h3>
@@ -35580,6 +36185,14 @@ function takeJob(tid){
   G.press={rel:50, skip:(G.press&&G.press.skip)||0};
   G.board={stage:0, ultiFrom:null, ultiPts:0, warned:0, ultiCool:0, ultiSaved:0};
   G.hiredAtR = t.div===1?G.r1:G.r2;
+  /* 📜 부임 계약 — 구단 규모와 감독 평판이 조건을 정한다 */
+  G.mgrCt=null;
+  {
+    const rep0=(typeof mgrRep==="function")?mgrRep():40;
+    const yrs = rep0>=62 ? 3 : rep0>=42 ? 2+ (Math.random()<0.4?1:0) : 2;
+    const wg  = Math.round(mgrWageBase(t)*(0.86+clamp((rep0-40)/100,0,0.34))*10)/10;
+    mgrSignContract(yrs, wg, 0);
+  }
   G.goal=null;                                     // 중도 부임 — 이번 시즌 공식 목표는 없다
   G.userXI=null;
   if(t.tactic){ t.tactic.benchSel=[]; t.tactic.benchExcl=[]; t.tactic.benchManual=false; }
@@ -35590,7 +36203,8 @@ function takeJob(tid){
   try{ socialFill(SOC.hiredNew, 3+R(2), 0, {t:t.short}); fmkFill(FMK.hiredNew, 2+R(2), {t:t.short}); }catch(e){}
   saveGame();
   show("home");
-  notify(`🤝 <b>${t.name}</b> 감독으로 부임했습니다! 유예 ${SACK_GRACE}라운드 안에 팀을 파악하세요.`,"good");
+  { const c=mgrCt();
+    notify(`🤝 <b>${t.name}</b> 감독으로 부임했습니다 — <b>${c?c.years:2}년</b> 계약 · 연봉 <b>${c?c.wage:0}억</b>. 유예 ${SACK_GRACE}라운드 안에 팀을 파악하세요.`,"good"); }
 }
 /* 무직 홈 화면 */
 function joblessView(){
@@ -35618,10 +36232,10 @@ function joblessView(){
         <td>${blocked?`<span class="small">재지원 대기</span>`:`<button class="mini" style="padding:2px 10px" onclick="applyJob('${t.id}')">📨 지원</button>`}</td></tr>`;
     }).join("");
   return `<h2>🕊️ 무직 감독</h2>
-  <div class="msg warn"><b>${(G.sack&&G.sack.team)||"전 구단"}</b>에서 경질된 뒤 ${J.weeks||0}주째 — 월급은 끊겼지만 집세는 나갑니다.
+  <div class="msg warn"><b>${(G.sack&&G.sack.team)||"전 구단"}</b>에서 ${leaveWay().past} 뒤 ${J.weeks||0}주째 — 월급은 끊겼지만 집세는 나갑니다.
     리그는 계속 돌아갑니다. <b>진행 ▶</b>으로 시간을 보내면 제의가 오고, 아래에서 직접 지원할 수도 있습니다.</div>
   <div class="card"><h3>📇 감독 평판 <b style="color:var(--gold)">${rep}</b><span class="small"> /90 — 위신·경력·마지막 성적으로 계산됩니다. 평판보다 급이 높은 구단은 연락이 잘 오지 않습니다.</span></h3>
-    <p class="small">경질 사유: ${(G.sack&&G.sack.reason)||"-"} · 당시 성적 ${(G.sack&&G.sack.rec)||"-"} (${(G.sack&&G.sack.pos)||"-"}위)</p>
+    <p class="small">${leaveWay().why}: ${(G.sack&&G.sack.reason)||"-"} · 당시 성적 ${(G.sack&&G.sack.rec)||"-"} (${(G.sack&&G.sack.pos)||"-"}위)</p>
     ${(G.mgrFineTot||0)>=10?`<p class="small" style="color:var(--red)">⚖️ 커리어 누적 징계금 <b>${Math.round(G.mgrFineTot)}억</b> — 이 이력이 평판을 깎고, 구단들의 연락을 머뭇거리게 합니다.</p>`:""}</div>
   ${J.enc&&JOBLESS_ENC[J.enc.k]?(()=>{ const E=JOBLESS_ENC[J.enc.k];
     return `<div class="card" style="border-color:var(--green)">
@@ -35640,6 +36254,30 @@ function joblessView(){
     <div class="tblScroll" style="max-height:380px;overflow-y:auto"><table>
       <tr><th>리그</th><th>구단</th><th>순위</th><th>최근 5경기</th><th></th></tr>${rows}</table></div></div>`;
 }
+/* ── 📜 계약 만료 · 자진 사임 — 경질과 같은 「무직으로 나가는 문」을 쓴다 ── */
+function mgrLeaveClub(kind, reason, repHit){
+  const t=userTeam(); if(!t) return;
+  const c=mgrCt();
+  G.sack={reason, s:G.season, r:t.div===1?G.r1:G.r2, kind:kind,
+          rec:`${t.W}승 ${t.Dw}무 ${t.L}패`, pos:tableOf(t.div).findIndex(x=>x.isUser)+1,
+          owner:Math.round(G.trust.owner), fans:Math.round(G.trust.fans),
+          team:t.name, tid:t.id, goal:G.goal?G.goal.n:null};
+  t.isUser=false;
+  try{ assignAITactics(t); }catch(e){}
+  G.jobless=1;
+  G.mgrFree={from:t.id, reason, s:G.season, off:[], block:{}, weeks:0, repMod:0};
+  if(repHit) G.mgrFree.repMod=-Math.abs(repHit);
+  G.userXI=null;
+  /* 남아 있던 「나에게 온」 일거리는 함께 접는다 — 무직 화면에 유령으로 남으면 안 된다 */
+  G.offers=[]; G.loanAsks=[]; G.loanOffers=[]; G.transferBids=[];
+  G._loanStopPing=null; G.nego=null; G.snego=null;
+  /* 지난 계약을 이력으로 남기고 계약서는 접는다 */
+  try{ if(c){ (c.hist=c.hist||[]).push({tid:c.tid, from:c.from, to:G.season, years:c.years, wage:c.wage, end:kind});
+    G.mgrCtHist=(G.mgrCtHist||[]).concat(c.hist.slice(-1)); } }catch(e){}
+  G.mgrCt=null;
+  saveGame();
+  showSackScreen();
+}
 function doSack(reason){
   const t=userTeam();
   G.sack={reason, s:G.season, r:t.div===1?G.r1:G.r2,
@@ -35654,35 +36292,58 @@ function doSack(reason){
   G.jobless=1;
   G.mgrFree={from:t.id, reason, s:G.season, off:[], block:{}, weeks:0};
   G.userXI=null;
+  G.offers=[]; G.loanAsks=[]; G.loanOffers=[]; G.transferBids=[];
+  G._loanStopPing=null; G.nego=null; G.snego=null;
+  try{ const c=mgrCt(); if(c) G.mgrCtHist=(G.mgrCtHist||[]).concat([{tid:c.tid, from:c.from, to:G.season, years:c.years, wage:c.wage, end:"sack"}]); }catch(e){}
+  G.mgrCt=null;
   addNews(`🪑 <b>${t.name}, 감독 경질</b> — ${reason}`);
   socialFill(SOC.sacked, 4+R(2), -1, {t:t.short});
   fmkFill(FMK.sacked, 4+R(2), {t:t.short});
   rivalOnManager(false);
-  meLog(`🪑 ${t.name}에서 경질 — 무직. 월급이 끊겼다.`);
+  meLog(`🪑 ${t.short}에서 경질 — 무직. 월급이 끊겼다.`);
+  G.sack.kind="sack";
   saveGame();
   showSackScreen();
+}
+/* 🪑 어떻게 팀을 떠났는가 — 경질 · 자진 사임 · 계약 만료
+   ⚠ 제보 — 「자진 사임했는데 'OO에서 경질된 뒤 0주째'로 나온다」.
+      무직으로 나가는 문을 경질과 함께 쓰다 보니 문구까지 경질로 굳어 있었다. */
+function leaveWay(){
+  const k=(G.sack&&G.sack.kind)||"sack";
+  const nm=(G.sack&&G.sack.team)||"전 구단";
+  if(k==="quit")   return {k, ic:"🚪", ttl:"자진 사임", past:"자진 사임한", why:"사임 사유", col:"#ff9d5c",
+                           head:`${nm} 감독직에서 스스로 물러났습니다.`};
+  if(k==="expire") return {k, ic:"📜", ttl:"계약 만료", past:"계약이 만료된", why:"계약 종료", col:"#d29922",
+                           head:fixJosa(`${nm}과/와의 계약이 만료되었습니다.`)};
+  return {k:"sack", ic:"🪑", ttl:"경질", past:"경질된", why:"경질 사유", col:"var(--red)",
+          head:`${nm} 구단은 감독과의 계약을 해지했습니다.`};
 }
 function showSackScreen(){
   const k=G.sack||{}; const t=userTeam();
   VIEW="home";
   document.querySelectorAll(".navbtn").forEach(b=>b.classList.remove("on"));
-  const btn=$("#advBtn"); if(btn){ btn.disabled=false; }   // 무직으로도 시간은 흐른다
+  /* ⚠ 이 화면은 show() 를 타지 않아서 진행 버튼 문구가 직전 상태(「경기 시작 ▶」)로 남아 있었다 */
+  const btn=$("#advBtn"); if(btn){ btn.disabled=false; btn.textContent="🕊️ 시간 보내기 ▶"; }
   const tbl=(G.social||[]).slice(0,6).map(x=>`<div class="small" style="padding:2px 0">💬 ${x.txt}</div>`).join("");
   const fmk=(G.fmk||[]).slice(0,5).map(x=>`<div class="small" style="padding:2px 0">🔥 ${x.txt}</div>`).join("");
-  $("#main").innerHTML=`<h2>🪑 경질</h2>
-  <div class="card stCard" style="border-color:var(--red)">
-    <div class="msg warn" style="font-size:17px;font-weight:800">${k.team} 구단은 감독과의 계약을 해지했습니다.</div>
-    <p style="margin-top:10px">사유: <b>${k.reason}</b></p>
+  const W=leaveWay();
+  $("#main").innerHTML=`<h2>${W.ic} ${W.ttl}</h2>
+  <div class="card stCard" style="border-color:${W.col}">
+    <div class="msg warn" style="font-size:17px;font-weight:800">${W.head}</div>
+    <p style="margin-top:10px">${W.why}: <b>${k.reason}</b></p>
     <p class="small">
       ${k.s} 시즌 ${k.r}라운드 · 성적 <b style="color:#fff;font-weight:800">${k.rec}</b> (리그 ${k.pos}위)<br>
       ${k.goal?`시즌 목표: <b style="color:#fff;font-weight:800">${k.goal}</b><br>`:""}
-      구단주 신뢰 <b style="color:var(--red);font-weight:800">${k.owner}</b> ·
-      서포터 신뢰 <b style="color:var(--red);font-weight:800">${k.fans}</b></p>
+      구단주 신뢰 <b style="color:${W.col};font-weight:800">${k.owner}</b> ·
+      서포터 신뢰 <b style="color:${W.col};font-weight:800">${k.fans}</b></p>
   </div>
   <div class="card stCard"><h3>💬 여론</h3>${tbl}${fmk}</div>
   <div class="card">
-    <p class="small">여기서 끝이 아닙니다 — <b>무직 감독</b>으로 남아 타 구단에 지원하거나 제의를 기다릴 수 있습니다.
-      리그는 계속 돌아가고, 시간이 흐를수록 흔들리는 구단의 문이 열립니다.</p>
+    <p class="small">${W.k==="quit"
+      ? "스스로 내려놓은 자리입니다 — <b>무직 감독</b>으로 남아 다음 구단을 고르거나 직접 지원할 수 있습니다. 다만 한동안은 좋은 제의가 뜸할 겁니다."
+      : W.k==="expire"
+      ? "계약이 끝났을 뿐입니다 — <b>무직 감독</b>으로 남아 타 구단에 지원하거나 제의를 기다릴 수 있습니다. 평판에는 흠이 남지 않았습니다."
+      : "여기서 끝이 아닙니다 — <b>무직 감독</b>으로 남아 타 구단에 지원하거나 제의를 기다릴 수 있습니다. 리그는 계속 돌아가고, 시간이 흐를수록 흔들리는 구단의 문이 열립니다."}</p>
     <button class="bigbtn" style="width:100%;max-width:none" onclick="show('home')">🕊️ 무직으로 커리어 계속 ▶</button>
     <button class="mini" style="display:block;width:100%;margin-top:8px;padding:10px" onclick="restartAfterSack()">🔄 아니면 새 커리어 시작</button>
   </div>`;
@@ -35748,6 +36409,76 @@ FMK.sacked=[
  ["다음 감독도 3개월 컷이면 진짜 구단이 문제임",0],
  ["경질 축하 파티 어디서 함?",-1],
  ["솔직히 감독만 문제였나? 프런트도 갈아엎어야지",0]];
+
+/* ═══ 🚪 자진 사임 — 경질과는 결이 다르다 ═══════════════════════════════
+   잘린 게 아니라 스스로 나간 것이다. 팬들은 「왜」를 먼저 묻고,
+   그 「왜」가 납득이 안 될수록 화살은 감독에게 돌아간다.
+   특히 부임하자마자 나가면 그건 사건이 아니라 코미디가 된다. */
+/* ① 부임 직후 (경기도 몇 번 못 치르고) */
+SOC.quitInstant=[
+ ["...엥? 방금 부임한 거 아니었나요? {n}일 만에 사임이요?",-1],
+ ["기자회견 사진 잉크도 안 말랐는데 나갔다고요",-1],
+ ["환영 걸개 어제 걸었는데 이거 어떡하죠",-1],
+ ["유니폼에 감독 이름 새긴 사람 지금 심정 어떨까",-1],
+ ["이 정도면 부임한 게 아니라 잠깐 들른 거 아님?",-1],
+ ["뭘 보고 도망친 건지 그게 더 궁금하다",-1],
+ ["구단이 뭘 숨긴 건지 감독이 뭘 본 건지 알려주세요 제발",-1],
+ ["역대 최단 재임 기록 아니냐 이거",-1],
+ ["...그래도 위약금은 다 내고 갔다니까 그건 인정",0],
+ ["프런트 브리핑 한 번만 받고 튄 수준인데",-1]];
+FMK.quitInstant=[
+ ["{t} 신임 감독 {n}일 만에 사임 ㅋㅋㅋㅋㅋㅋ",-1],
+ ["부임 기사랑 사임 기사가 같은 페이지에 뜬다",-1],
+ ["이 구단은 감독이 도망칠 정도구나 ㄷㄷ",-1],
+ ["출근 도장은 찍었냐",-1],
+ ["역대 최단 재임 갱신 ㅋㅋ 기네스 올려라",-1],
+ ["감독이 스쿼드 보고 현타 온 듯",-1],
+ ["위약금 내고 나갈 정도면 진짜 뭔가 있는 거임",0],
+ ["{t} 팬들 불쌍하다 진심으로",0],
+ ["차기 감독 후보들 지금 전화 안 받는다에 한 표",-1]];
+const RIV_QUIT_INSTANT=[
+ ["{t} 감독 사임했대 ㅋㅋ 며칠 만이야",-1],
+ ["부임하자마자 도망가는 팀 처음 본다",-1],
+ ["우리 감독은 최소한 시즌은 채운다",0],
+ ["{t} 감독직 = 기피 직종 등극",-1]];
+
+/* ② 시즌 중 사임 */
+SOC.quitMid=[
+ ["시즌 중에 나가는 건 좀... 끝은 보고 가시지",-1],
+ ["힘드셨겠죠. 그래도 이 타이밍은 아프네요",-1],
+ ["남은 경기는 누가 지휘하나요 진짜",-1],
+ ["감독님 마음은 알겠는데 선수들은 어쩌라고",-1],
+ ["책임지고 나간다는 말이 제일 무책임할 때가 있다",-1],
+ ["그동안 고생하셨습니다. 원망은 안 할게요",0],
+ ["구단이 등 떠민 거면 그건 그거대로 화나는데",0],
+ ["시즌 중 감독 교체... 우리 팀 잔류는 어떡하죠",-1]];
+FMK.quitMid=[
+ ["{t} 감독 시즌 중 자진 사임 ㄷㄷ",-1],
+ ["도망간 거지 사임이냐 이게",-1],
+ ["시즌 중에 던지는 감독은 좀 아니지 않냐",-1],
+ ["위약금 물고 나갔다는데 그럼 진짜 못 버틴 거네",0],
+ ["대행 체제로 남은 시즌 ㅋㅋ 강등 각",-1],
+ ["{t} 프런트 vs 감독 뭐가 있었는지 궁금하다",0]];
+const RIV_QUIT_MID=[
+ ["{t} 감독 시즌 중에 던졌다는데 ㅋㅋ",-1],
+ ["저 팀 지금 대행 체제라던데 붙기 딱 좋네",-1],
+ ["감독 나간 팀이랑 하는 경기는 조심해야 하는데",0]];
+
+/* ③ 시즌을 마치고 물러날 때 — 이건 이별에 가깝다 */
+SOC.quitEnd=[
+ ["감독님, 그동안 고생 많으셨습니다",1],
+ ["떠나신다니 실감이 안 나네요. 좋은 기억 감사합니다",1],
+ ["더 좋은 곳에서 뵙겠습니다 감독님",1],
+ ["결국 이렇게 끝나는구나... 마지막 홈경기 못 간 게 후회된다",0],
+ ["구단이 더 붙잡았어야 하는 거 아닌가요",0],
+ ["다음 감독이 이 자리를 채울 수 있을지 모르겠다",0],
+ ["박수로 보내드립시다. 그럴 자격 있는 분입니다",1]];
+FMK.quitEnd=[
+ ["{t} 감독 자진 사퇴. 뭐 이 정도면 명예로운 퇴진 아니냐",0],
+ ["잡을 만한 감독이었는데 프런트가 안 잡았나",0],
+ ["다음 팀 어디 갈지가 더 궁금함",0],
+ ["{t} 감독 나간다니까 우리 팀 팬들이 더 아쉬워하네 ㅋㅋ",1],
+ ["떠날 때를 아는 감독은 드물다",1]];
 /* ═══════════════════════════════════════════════════════════════
    👋 작별 인사
    선수가 팀을 떠나는 날, 감독실에 들른다. 무슨 말을 남기고 가는지는
@@ -52263,6 +52994,10 @@ function atMatchDay(){
      판정을 eaclUserDue 그대로 쓰는 이유: 여기서만 멈추고 advance 가 안 잡으면 무한 루프가 된다. */
   try{ if(eaclUserDue()) return true; }catch(e){}
   // ">=" 인 이유: 어떤 경로로든 경기일을 지나쳐 버리면 영영 멈추지 않는 무한 루프가 된다.
+  /* ⚠ 제보 — 「무직일 때 경기 시작 버튼이 뜨고 임대 제안에 진행이 멈춘다」.
+     팀을 떠나도 userTeamId 는 달력 축으로 남아 있어서, 옛 팀의 경기일이 그대로 내 경기일로 잡혔다.
+     맡은 팀이 없으면 내 경기도 없다 — 옛 팀 경기는 AI 가 알아서 치른다. */
+  if(G.jobless) return false;
   /* ⚠ 내 부의 일정이 모두 끝났으면 더는 「경기일」이 아니다 — 여기서 멈추면 날짜가 영영 안 넘어간다 */
   if(userSeasonOver()) return false;
   return G.phase==="league" && !!G.cal && userRoundNow()<G.cal.roundDay.length && G.day>=matchDayOf(userRoundNow());
@@ -52275,7 +53010,7 @@ function dailyEvents(d){
   // 시장은 매일 조금씩 움직인다 (종전에는 라운드가 끝날 때 한 번에 몰아서 처리했다)
   if(Math.random()<0.22) genOffers();
   /* ⚠ 제보 — 진행 도중 온 영입 제안이 경기일로 건너뛰며 증발. 감독이 봐야 할 일이면 멈춘다. */
-  if((G.offers||[]).length>offersBefore){
+  if(!G.jobless && (G.offers||[]).length>offersBefore){
     const o=(G.offers||[])[(G.offers||[]).length-1];
     const p=userTeam().players.find(x=>x.id===o.pid), b=G.teams[o.tid];
     out.push({txt:`📨 <b>${b?b.short:"타 구단"}</b>이/가 <b>${p?p.name:"우리 선수"}</b> 영입을 제안했습니다 — 답을 기다립니다`, offerStop:true});
@@ -52366,7 +53101,12 @@ function openProgressBox(){
       <button class="gcCancel" id="prgSkip" style="display:none">일정 진행 ▶</button>
       <button class="gcOk" id="prgGo" style="display:none">진행 ▶</button></div>
   </div></div>`;
-  $("#prgStop").onclick=()=>{ haltProgress(); closeProgress(); refreshAfterProgress(); };
+  $("#prgStop").onclick=()=>{
+    /* 🩸 사채업자 방문에서 「멈춤」은 곧 「문을 열지 않는다」다 — 그 결과를 남긴다 */
+    const s0=PROG&&PROG.stop;
+    haltProgress(); closeProgress(); refreshAfterProgress();
+    if(s0 && s0.kind==="dun" && G.dun){ try{ stkDunPick("hide"); }catch(e){} }
+  };
   $("#prgGo").onclick=()=>{ const s=PROG&&PROG.stop; closeProgress(); refreshAfterProgress(); resolveStop(s); };
   /* ⏩ 일정 진행 — 제안·소식을 무시하고 그대로 달린다. 알림 점은 남으니 나중에 확인하면 된다.
      경기일·기자회견·판결처럼 반드시 처리해야 하는 멈춤에는 뜨지 않는다. */
@@ -52431,7 +53171,7 @@ function stepDay(){
   if(!G.cal){ haltProgress(); closeProgress(); return; }
   if(G.phase!=="pre" && (userRoundNow()>=G.cal.roundDay.length || G.day>=G.cal.last)){ stopProgress({kind:"end"}); return; }
   /* 내 일정이 끝났는데 다른 부도 다 끝났다면 더 흘려보낼 이유가 없다 */
-  if(G.phase==="league" && !G.jobless && userSeasonOver()
+  if(G.phase==="league" && (G.jobless || userSeasonOver())
      && G.r1>=(G.k1Fix||[]).length && G.r2>=(G.k2Fix||[]).length){ stopProgress({kind:"end"}); return; }
   G.day++;
   prgHeader();
@@ -52449,6 +53189,7 @@ function stepDay(){
   try{ tickOverseasAI(); }catch(e){} // 해외 시장 — 타 구단도 뛰어든다 (이적시장 기간만)
   try{ scoutTick(); }catch(e){}     // 🔎 스카우트 — 파견 기간이 차면 보고가 한 건씩 올라온다
   try{ tickOtherDivRounds(); }catch(e){}  // 🗓️ 내 일정이 먼저 끝났으면 남은 부는 날짜에 맞춰 진행된다
+  try{ mgrCtTick(); }catch(e){}     // 📜 감독 계약 — 마지막 시즌 중반에 구단이 재계약을 판단한다
   try{ tickSuit(); }catch(e){}      // 진행 중인 소송 — 사과·폭발·판결일
   try{ tickCoachTalk(); }catch(e){} // 타구단 감독들의 뜬금 언급 — 칭찬·관찰·비난
   try{ tickMgrInj(); }catch(e){}    // 🤕 감독 부상 회복 — 전치 기간이 끝나면 복귀
@@ -52509,9 +53250,14 @@ function stepDay(){
   }
   if(!isMatchDay(G.day)){
     const pl=dayPlan(G.day);
-    const lab = pl.t==="rest" ? "휴식" : `훈련 · ${TRAIN_INT[pl.i||0].n}`;
+    /* ⚠ 제보 — 「무직인데 일정 진행에 선수 불만이 뜬다」.
+       팀을 떠나도 옛 팀에 내 훈련 계획을 적용하고 있었다(applyDayToTeam(userTeam(), ...)).
+       그 안에서 사기·불만·훈련 부상이 「내 선수 일」로 처리돼 로딩창에 새어 나왔다.
+       무직이면 옛 팀도 다른 AI 구단과 똑같이 굴러가야 한다 — 아래 루프가 이미 그 일을 한다. */
+    const lab = G.jobless ? "무직 — 리그를 지켜봅니다"
+              : (pl.t==="rest" ? "휴식" : `훈련 · ${TRAIN_INT[pl.i||0].n}`);
     prgPush(`<span class="prgD">${dateLabel(G.day)}</span> <span class="prgT">${lab}</span>`, "prgDay");
-    const hurt=applyDayToTeam(userTeam(), pl);
+    const hurt = G.jobless ? null : applyDayToTeam(userTeam(), pl);
     for(const id in G.teams){
       const t=G.teams[id]; if(t.isUser) continue;
       const ah=applyDayToTeam(t, aiDayPlan(t,G.day));
@@ -52531,20 +53277,29 @@ function stepDay(){
     }
     // 오늘 예정된 영입 발표 기자회견이 있으면 여기서 멈춘다
     const pres=duePresser();
-    if(pres){
+    if(pres && !G.jobless){
       prgPush(`🎙️ <b>${pres.name}</b> 영입 발표 기자회견이 예정돼 있습니다.`, "prgStop");
       saveGame(); stopProgress({kind:"presser", info:pres}); return;
     }
     // 이적 문의·이적 뉴스도 흘려보낸다. 진행을 끊는 건 경기와 기자회견뿐이다.
     for(const e of dailyEvents(G.day)){
-      prgPush(e.txt, e.offerStop?"prgStop":e.alert?"prgAlert":"prgNews");
-      if(e.offerStop){ saveGame(); stopProgress({kind:"offers"}); return; }
+      prgPush(e.txt, (e.offerStop&&!G.jobless)?"prgStop":e.alert?"prgAlert":"prgNews");
+      /* ⚠ 무직 — 구단 일로 진행을 멈출 이유가 없다 (제보) */
+      if(e.offerStop && !G.jobless){ saveGame(); stopProgress({kind:"offers"}); return; }
+    }
+    /* 🩸 사채업자 방문 — 무직이면 집으로 찾아온다 */
+    if(stkDunDue()){
+      const D=stkDunFire();
+      prgPush(`🩸 <b>사채업자들이 찾아왔습니다.</b> 현관 앞에 두 사람이 서 있습니다 — 잔액 ${(D.amt/1e8).toFixed(2)}억 (${D.n}회차)`, "prgStop");
+      saveGame(); stopProgress({kind:"dun"}); return;
     }
     /* 🔁 임대 제안·요청 — 이적 제의와 똑같이 일정을 멈추고 알려 준다 (제보) */
     if(G._loanStopPing){
       const lp=G._loanStopPing; G._loanStopPing=null;
-      prgPush(lp.txt+" — 임대 센터에서 기다립니다", "prgStop");
-      saveGame(); stopProgress({kind:"loan"}); return;
+      if(!G.jobless){
+        prgPush(lp.txt+" — 임대 센터에서 기다립니다", "prgStop");
+        saveGame(); stopProgress({kind:"loan"}); return;
+      }
     }
     if(Math.random()<(transferOpen()?0.30:0.10)){
       const rr=genRumor();
@@ -52560,6 +53315,13 @@ function stopProgress(s){
   if(!PROG) return;
   PROG.stop=s;
   const go=$("#prgGo"), st=$("#prgStop");
+  if(s.kind==="match" && G.jobless){
+    /* 🕊️ 무직 — 내가 치를 경기가 없다. 어떤 경로로 여기까지 와도 경기 문구는 띄우지 않는다. */
+    prgPush(`<span class="prgD">${dateLabel(G.day)}</span> 리그 경기가 치러졌습니다. 나는 지켜보는 쪽입니다.`, "prgDay");
+    if(go){ go.textContent="🕊️ 계속 보내기 ▶"; go.style.display=""; }
+    if(st) st.textContent="닫기";
+    return;
+  }
   if(s.kind==="match"){
     /* 🌏 오늘 EACL 경기가 걸려 있으면 그쪽을 먼저 안내한다 — advance()도 EACL을 먼저 잡는다 */
     let _eq=null; try{ _eq=eaclUserDue(); }catch(e){ _eq=null; }
@@ -52589,6 +53351,9 @@ function stopProgress(s){
     if(go){ go.textContent="📩 사과문 확인 ▶"; go.style.display=""; }
   } else if(s.kind==="suitVerdict"){
     if(go){ go.textContent="⚖️ 판결문 확인 ▶"; go.style.display=""; }
+  } else if(s.kind==="dun"){
+    if(go){ go.textContent="🩸 만나러 나간다 ▶"; go.style.display=""; }
+    if(st) st.textContent="문을 열지 않는다";
   } else if(s.kind==="loan"){
     if(go){ go.textContent="🔁 임대 센터 확인 ▶"; go.style.display=""; }
     const sk=$("#prgSkip"); if(sk) sk.style.display="";
@@ -52605,6 +53370,7 @@ function resolveStop(s){
   if(s.kind==="end"){ runAdvanceNow(); return; }
   if(s.kind==="presser"){ if(openSignPresser(s.info)) return; show("home"); return; }
   if(s.kind==="offers"){ show("offers"); return; }
+  if(s.kind==="dun"){ VIEW="home"; $("#main").innerHTML=stkDunView(); window.scrollTo(0,0); return; }
   if(s.kind==="loan"){ try{ lcTab="offer"; }catch(e){} show("loancenter"); return; }
   if(s.kind==="suitApology"){ show("media"); suitApologyPopup(); return; }
   if(s.kind==="suitVerdict"){ show("media"); sueVerdict(); return; }
