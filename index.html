@@ -2731,7 +2731,10 @@ addPref("seoul", [["구성윤","GK"],["강현무","GK"],["임준섭","GK"],
   ["김진수","LB"],["최준","RB"],["박수일","RB"],["야잔","CB"],["바베츠","DM"],["이상민","CB"],["이한도","CB"],["안재민","LB"],["박성훈","CB"],
   ["정승원","RW"],["이승모","CM"],["로스","CB"],["황도윤","CM"],["정현우","LW"],["김지원","CB"],["손정범","CM"],
   ["안데르손","RW"],["송민규","LW"],["클리말라","ST"],["조영욱","ST"],["후이즈","ST"],["천성훈","ST"],["문선민","RW"],["바또","RW"],["고필관","CM"],["윤기욱","ST"],["박장한결","CM"]]);
-addPref("pohang", [["황인재","GK"],["윤평국","GK"],["김호진","GK"],
+/* ⚠ 제보 — 「포항 구호진(김호진)이 키퍼로 돼 있다」.
+   옛 수기 명단에는 GK 였는데 실제 등록은 센터백(#36)이다. 그런데 이 주포지션 표에
+   GK 가 남아 있어서 능숙도가 GK 100 으로 깔리고, 대분류까지 골키퍼로 끌려갔다. */
+addPref("pohang", [["황인재","GK"],["윤평국","GK"],["김호진","CB"],
   ["박찬용","CB"],["전민광","CB"],["조성욱","CB"],["어정원","RB"],["김동진","CM"],["신광훈","RB"],["김예성","CB"],["진시우","CB"],["이수아","LB"],
   ["기성용","CM"],["김승호","CM"],["김용학","CM"],["니시야 켄토","CM"],["김범준","CM"],["이창우","CM"],["강민준","RB"],["백승원","CM"],
   ["조르지","ST"],["주닝요","RW"],["완델손","LB"],["트란지스카","ST"],["안재준","ST"],["정한민","ST"],["황재환","ST"],["조상혁","ST"],["황서웅","ST"],["홍성민","ST"]]);
@@ -2939,6 +2942,12 @@ const PLAYER_TWEAK={
   "anyang:박정훈":{ pref:"LW", famOnly:true, fam:{LW:100, AML:100, ST:80, RW:50, AMC:50, AMR:50} },
   "anyang:채현우":{ pref:"CAM", famOnly:true, fam:{AMC:100, AMR:80, RW:80, AML:50, LW:50} },
   "anyang:김운":{ pref:"ST", famOnly:true, fam:{ST:100} },
+  /* 구호진(포항 #36) — 등록은 센터백. 수비형·중앙 미드필더까지 내려앉아 소화한다(제보).
+     2005년생 21세 — 지금은 로테이션이지만 잠재력은 3.5성급. */
+  "pohang:김호진":{ pos:"DF", pref:"CB", ovr:64, pot:70, potMax:70, famOnly:true,
+    fam:{DC:100, DM:84, MC:74, SW:70},
+    min:{jum:74, hea:73, str:74, mar:70, tck:70, pos:71, det:72, bra:72, tea:70,
+         pas:66, fir:63, cmp:64, dec:65, cnt:65, sta:70, wor:70} },
   /* ── 서울 이랜드 FC — 실측 포지션 능숙도 ── */
   "seoule:최랑":{ pref:"LM", famOnly:true, fam:{ML:100, WBL:50, MC:50, AML:50, DL:45, LW:45, AMC:45} },
   "seoule:김주환":{ pref:"RWB", famOnly:true, fam:{WBR:100, WBL:100, DR:85, DL:85, MR:50, ML:50} },
@@ -3140,6 +3149,8 @@ function applyTweakObj(p, k){
     if((p.pot||0)<p.ovr) p.pot=p.ovr;
   }
   if(typeof k.pot==="number") p.pot=clamp(Math.max(p.pot||0, k.pot), p.ovr||40, 99);
+  /* potMax — 잠재력을 「그 값으로 못박는다」. pot 은 하한(끌어올림)만 하므로 상한이 따로 필요하다. */
+  if(typeof k.potMax==="number") p.pot=clamp(Math.min(p.pot||99, k.potMax), p.ovr||40, 99);
   const A=p.attr||(p.attr={});
   /* 골키퍼 능력치는 p.gkA 에 따로 산다 — 키 이름으로 어느 쪽인지 갈라 준다 */
   const isGk=(a)=>GKT_ATTRS.indexOf(a)>=0;
@@ -3154,7 +3165,11 @@ function applyTweakObj(p, k){
 }
 function assignPrefPos(p, teamId){
   if(p && p.pos==="GK") return "GK";   // 🧤 골키퍼의 주 포지션은 언제나 GK — 필드 자리로 추론되면 대분류가 흔들린다
-  return PREF_POS_OVERRIDE[teamId+":"+p.name] || inferPrefPos(p);
+  const ov=PREF_POS_OVERRIDE[teamId+":"+p.name];
+  /* 🧤 반대 방향도 막는다 — 등록이 필드 선수인데 표에 GK 가 남아 있으면(옛 명단의 잔재)
+     능숙도가 GK 100 으로 깔려 대분류까지 골키퍼로 끌려간다(제보 — 포항 구호진). */
+  if(ov && ov!=="GK") return ov;
+  return inferPrefPos(p);
 }
 /* 현재 배치된 슬롯이 선수의 선호 포지션과 얼마나 맞는지 — green(적합)/yellow(다소 안맞음, 같은 라인)/red(라인 자체가 다름) */
 /* ── 포지션 능숙도 (FM식) ─────────────────────────────────────────
@@ -8143,7 +8158,33 @@ function completeRound(M){
     }
     if(p.promise){
       if(p.apps-p.promise.apps0>=p.promise.need){ p.promise=null; p.unhappy=0; p.morale=clamp(p.morale+5,30,99);
-        affAdd(p, +12, "약속 이행"); addMood(`🤝 ${p.name}과의 출전 약속 이행 — 신뢰가 깊어졌습니다. (호감도 상승)`); }
+        affAdd(p, +12, "약속 이행"); addMood(fixJosa(`🤝 ${p.name}과/와의 출전 약속 이행 — 신뢰가 깊어졌습니다. (호감도 상승)`)); }
+      /* ⚠ 제보 — 「m경기 안에 n경기 출전 약속을 했는데, 부상·경고 누적으로 못 나오는 동안에도
+            카운트가 흘러가서 약속이 깨지고 태업한다」.
+         감독이 안 내보낸 게 아니라 선수가 나올 수 없었던 것이다 — 그 라운드는 세지 않는다.
+         약속 기간이 그만큼 뒤로 밀리므로 약속 자체는 살아 있다. */
+      else if((()=>{
+        const why = p.inj>0 ? `부상(${p.inj}주)`
+                  : p.ban>0 ? "출장정지"
+                  : p.banE>0 ? `${eaclShort()} 출전정지`
+                  : (p.army && p.army.out) ? "군 복무"
+                  : (p.loan && p.loan.own===ut.id && p.loan.to!==ut.id) ? "타 구단 임대"
+                  : null;
+        if(!why) return false;
+        p.promise.skip=(p.promise.skip||0)+1;
+        /* 너무 오래 못 나오면 약속은 자연 소멸한다 — 벌은 없다. 장기 부상은 누구의 잘못도 아니다. */
+        if(p.promise.skip>=9){
+          p.promise=null;
+          addMood(`🤝 ${p.name}의 출전 약속 — ${why} 기간이 길어져 없던 일로 정리했습니다. <b>불이익은 없습니다.</b>`);
+          return true;
+        }
+        if(p.promise.skip===1 || p.promise.skip%3===0){
+          const left=Math.max(0, p.promise.need-(p.apps-p.promise.apps0));
+          addMood(`🤝 ${p.name} 출전 약속 — ${why} 때문에 나올 수 없어 이번 라운드는 세지 않았습니다. `
+            +`(남은 ${p.promise.rounds}R · ${left}경기 필요)`);
+        }
+        return true;
+      })()){ /* 이 라운드는 흘려보낸다 */ }
       else if(--p.promise.rounds<=0){
         /* 💢 약속을 어겼다 — 여기서부터는 유기적으로 굴러간다.
            이적시장이 열려 있으면 → 공개 이적 요청 (제의가 들어오기 시작한다)
@@ -8476,31 +8517,35 @@ const CLUB_TYPE={
   busan:    {k:"corp",  o:"부산도시개발"},
   jeonnam:  {k:"corp",  o:"남해산업그룹"},
   seoule:   {k:"corp",  o:"이스트랜드그룹"},
-  gangwon:  {k:"civic", o:"강원개발공사"},
-  incheon:  {k:"civic", o:"인천항만그룹"},
-  anyang:   {k:"civic", o:"안양도시공사"},
-  gwangju:  {k:"civic", o:"광주산업그룹"},
-  daegu:    {k:"civic", o:"대구미래산업"},
-  suwonfc:  {k:"civic", o:"수원도시공사"},
-  seongnam: {k:"civic", o:"성남도시개발"},
-  bucheon:  {k:"civic", o:"부천도시공사"},
-  gyeongnam:{k:"civic", o:"경남도민체육재단"},
-  gimpo:    {k:"civic", o:"김포도시개발"},
-  ansan:    {k:"civic", o:"안산도시공사"},
-  cheonan:  {k:"civic", o:"천안도시개발"},
-  hwaseong: {k:"civic", o:"화성도시공사"},
-  yongin:   {k:"civic", o:"용인도시공사"},
-  gimhae:   {k:"civic", o:"가야산업그룹"},
-  paju:     {k:"civic", o:"파주도시개발"},
-  asan:     {k:"civic", o:"아산시민체육재단"},
-  cheongju: {k:"mixed", o:"충북미래산업"},
-  gimcheon: {k:"army",  o:"국방체육단"}
+  /* 🏙️ 시민구단 — 운영 주체는 회사가 아니라 지자체와 시민 주주다.
+     ⚠ 제보 — 「시민구단 모기업이 주식시장에 상장돼 있는 게 어색하다」.
+        「○○도시공사」·「○○산업그룹」 같은 회사 이름을 달고 있어서 상장사로 올라갔다.
+        실제 운영 형태(지자체 + 시민주주)에 맞는 이름으로 바꾸고, 증시에서는 빼낸다. */
+  gangwon:  {k:"civic", o:"강원도 · 도민주주"},
+  incheon:  {k:"civic", o:"인천광역시 · 시민주주"},
+  anyang:   {k:"civic", o:"안양시 · 시민주주"},
+  gwangju:  {k:"civic", o:"광주광역시 · 시민주주"},
+  daegu:    {k:"civic", o:"대구광역시 · 시민주주"},
+  suwonfc:  {k:"civic", o:"수원시 · 시민주주"},
+  seongnam: {k:"civic", o:"성남시 · 시민주주"},
+  bucheon:  {k:"civic", o:"부천시 · 시민주주"},
+  gyeongnam:{k:"civic", o:"경상남도 · 도민주주"},
+  gimpo:    {k:"civic", o:"김포시 · 시민주주"},
+  ansan:    {k:"civic", o:"안산시 · 시민주주"},
+  cheonan:  {k:"civic", o:"천안시 · 시민주주"},
+  hwaseong: {k:"civic", o:"화성시 · 시민주주"},
+  yongin:   {k:"civic", o:"용인시 · 시민주주"},
+  gimhae:   {k:"civic", o:"김해시 · 시민주주"},
+  paju:     {k:"civic", o:"파주시 · 시민주주"},
+  asan:     {k:"civic", o:"아산시 · 시민주주"},
+  cheongju: {k:"mixed", o:"청주시 · 지역기업 컨소시엄"},
+  gimcheon: {k:"army",  o:"국군체육부대"}
 };
 const CLUB_TYPE_N={
-  corp: {n:"기업구단",  ic:"🏢", c:"#d29922", d:"모기업의 재정 지원을 받습니다. 예산이 크고 안정적입니다."},
-  civic:{n:"시민구단",  ic:"🏙️", c:"#58a6ff", d:"지자체 예산과 시민 주주로 운영됩니다. 규모는 작지만 지역 밀착도가 높습니다."},
-  mixed:{n:"기업+시민", ic:"🤝", c:"#3fb950", d:"지자체와 지역 기업이 함께 참여하는 컨소시엄 구단입니다."},
-  army: {n:"군경구단",  ic:"🎖️", c:"#8b949e", d:"국군체육부대 소속 선수로 구성됩니다. 선수 영입·이적이 자유롭지 않습니다."}
+  corp: {n:"기업구단",  ic:"🏢", c:"#d29922", ol:"모기업",   d:"모기업의 재정 지원을 받습니다. 예산이 크고 안정적입니다."},
+  civic:{n:"시민구단",  ic:"🏙️", c:"#58a6ff", ol:"운영 주체", d:"지자체 예산과 시민 주주로 운영됩니다. 규모는 작지만 지역 밀착도가 높습니다. 상장사가 아니라 증시에는 올라오지 않습니다."},
+  mixed:{n:"기업+시민", ic:"🤝", c:"#3fb950", ol:"운영 주체", d:"지자체와 지역 기업이 함께 참여하는 컨소시엄 구단입니다."},
+  army: {n:"군경구단",  ic:"🎖️", c:"#8b949e", ol:"소속",     d:"국군체육부대 소속 선수로 구성됩니다. 선수 영입·이적이 자유롭지 않습니다."}
 };
 function clubType(t){
   const c=(t && CLUB_TYPE[t.id]) || {k:"civic", o:(t&&t.name)||""};
@@ -13168,6 +13213,35 @@ function migrateLoadedG(){
   step("전술 프리셋 인선 정리", ()=>{
     /* 인선(선발·벤치)은 전술 슬롯이 갖지 않는다 — 옛 세이브의 프리셋에 남아 있으면 걷어낸다 */
     for(const id in G.teams){ try{ scrubPresetSquads(G.teams[id]); }catch(e){} }
+  });
+  step("증시 — 시민구단 운영주체 상장 해제", ()=>{
+    const S=G.stock; if(!S || !Array.isArray(S.list)) return;
+    const gone=[];
+    const used=new Set(S.list.map(x=>x.n));
+    for(const s of S.list){
+      if(!s || !s.tid) continue;
+      const t=G.teams[s.tid]; if(!t) continue;
+      const ct=clubType(t);
+      if(stkListable(ct)){ if(ct.o && s.n!==ct.o){ s.n=ct.o; } continue; }   // 기업구단 — 이름만 최신으로
+      /* 시민·기업+시민·군경 — 상장사가 아니다. 계열 관계를 끊고 사기업으로 남긴다. */
+      let nn=STK_SPINOFF[s.tid] || (s.n+"홀딩스");
+      let g=0; while(used.has(nn) && g++<9) nn=nn+"㈜";
+      used.delete(s.n); used.add(nn);
+      gone.push({old:s.n, nw:nn, tm:t.short});
+      s.n=nn; s.tid=null;
+      /* 업종이 「도시개발」에서 온 값이라 그대로 쓰면 어색하지 않다 — 손대지 않는다 */
+    }
+    try{ delete G._stkSpin; }catch(e){}      // 세이브에 남기지 않는다 (재로딩마다 같은 안내가 뜨던 문제)
+    if(gone.length){
+      STK_SPIN_N=gone.length;
+      try{ for(const x of gone.slice(0,4)){
+        /* 조사는 이름 바로 뒤 글자를 봐야 한다 — 태그(</b>) 뒤에 붙이면 판정이 어긋난다 */
+        const _ro=fixJosa(x.nw+"으로/로").slice(x.nw.length);
+        stkLog(null, `🏙️ ${x.old} — ${x.tm} 운영에서 손을 떼고 사명을 <b>${x.nw}</b>${_ro} 변경, 계열 분리`, 0);
+      } }catch(e){}
+      try{ setTimeout(()=>{ try{ notify(`🏙️ <b>시민구단 운영 주체 ${gone.length}곳</b>이 증시에서 내려갔습니다.
+        <span class="small">시·도와 시민 주주가 운영하는 구단은 상장사가 아닙니다. 보유 주식은 계열 분리된 사기업으로 그대로 남습니다.</span>`,"info"); }catch(e){} }, 1500); }catch(e){}
+    }
   });
   step("관심 목록", ()=>{
     if(!Array.isArray(G.shortlist)) G.shortlist=[];
@@ -18010,9 +18084,42 @@ const STK_EXTRA=[
   ["한울금융지주","fin","blue"],["신영증권","fin","grow"],          ["빛고을교육","edu","penny"],
   ["에듀케어","edu","junk"],    ["철강코리아","steel","blue"],      ["신성특수강","steel","penny"],
   ["코어모터스","auto","blue"], ["이브이테크","auto","grow"],       ["배터리셀","auto","junk"],
-  ["메디케어","med","grow"]
+  ["메디케어","med","grow"],
+  /* 🏙️ 시민구단 운영 주체를 증시에서 빼면서(제보) 비어 버린 자리 — 리그와 무관한 기업으로 채운다.
+     업종이 한쪽으로 몰리지 않게 골고루 넣었다. */
+  ["한도시개발","cons","grow"],  ["누리건설","cons","blue"],       ["동성토건","cons","penny"],
+  ["예성항만개발","logi","grow"],["백두해운","logi","penny"],       ["가온물산","ret","grow"],
+  ["성일정공","auto","penny"],   ["한빛정밀","elec","grow"],        ["세종반도체소재","elec","penny"],
+  ["나래바이오팜","bio","grow"],  ["청산제약","med","penny"],        ["다온화학","chem","penny"],
+  ["미래전력","ener","blue"],     ["그린에너지솔루션","ener","penny"],["케이푸드","food","grow"],
+  ["온기식품","food","junk"],     ["새벽택배","logi","junk"],        ["하나캐피탈","fin","penny"],
+  ["금강제강","steel","grow"]
 ];
 /* 구단 모기업은 업종을 이름에서 읽어 맞춘다 — 「제철」이면 철강, 「중공업」이면 조선 */
+/* 🏙️ 옛 세이브 정리용 — 증시에 올라 있던 시민구단 운영 주체를 「계열 분리한 사기업」으로 남긴다.
+   보유 주식과 시세 기록을 지우지 않고 사명만 바꾸는 방식이라, 물려 있던 돈이 사라지지 않는다. */
+let STK_SPIN_N=0;   // 진단용 — 이번 불러오기에서 계열 분리된 종목 수
+const STK_SPINOFF={
+  gangwon:"태백개발",     incheon:"서해항만물류",   anyang:"만안건설",
+  gwangju:"무등산업",     daegu:"팔공테크",         suwonfc:"화홍건설",
+  seongnam:"판교디벨롭",  bucheon:"복사골산업",     gyeongnam:"남강산업",
+  gimpo:"한강신도시개발", ansan:"반월산업",         cheonan:"천호건설",
+  hwaseong:"동탄디벨롭",  yongin:"기흥테크노",      gimhae:"낙동산업",
+  paju:"임진개발",        asan:"온양산업",          cheongju:"상당테크",
+  gimcheon:"직지산업"
+};
+/* 이 구단의 운영 주체가 증시에 올라올 수 있는가 — 기업구단의 모기업만 상장사다 */
+function stkListable(ct){
+  if(!ct || !ct.o) return false;
+  if(ct.k!=="corp") return false;                       // 시민·기업+시민·군경 제외
+  if(/시$|도$|시청|도청|시민주주|도민주주|체육부대|컨소시엄|재단|·/.test(ct.o)) return false;
+  return true;
+}
+/* tid 로 상장 종목 찾기 — 시민구단은 아예 없으므로 null 이 정상이다 */
+function stkOfTeam(tid){
+  const S=stkState(); if(!S) return null;
+  return S.list.find(x=>x.tid===tid && !x.dead) || null;
+}
 function stkGuessSector(nm){
   const s=String(nm||"");
   if(/제철|철강|특수강/.test(s)) return "steel";
@@ -18068,14 +18175,17 @@ function stkInit(){
   /* 업종별 사이클 — 업종 전체가 같이 오르내린다 */
   for(const k in STK_SECTOR) S.sec[k]={t:Math.random()*6.28, v:0};
   let id=1;
-  /* ① 구단 모기업 — 리그를 아는 사람이 바로 알아보는 종목들 */
+  /* ① 구단 모기업 — 리그를 아는 사람이 바로 알아보는 종목들.
+     ⚠ 상장사는 「기업구단의 모기업」뿐이다. 시민구단의 운영 주체는 시·도와 시민 주주이고
+        군경구단은 국군체육부대다 — 주식시장에 있을 수가 없다(제보). */
   try{
     for(const tid in G.teams){
       const t=G.teams[tid];
       if(!t || t.div!==1 && t.div!==2) continue;
       const ct=clubType(t); if(!ct || !ct.o) continue;
+      if(!stkListable(ct)) continue;
       if(S.list.some(x=>x.n===ct.o)) continue;
-      const tier = ct.k==="corp" ? (Math.random()<0.72?"blue":"grow") : (Math.random()<0.5?"grow":"penny");
+      const tier = (Math.random()<0.72?"blue":"grow");
       S.list.push(stkMake(id++, ct.o, stkGuessSector(ct.o), tier, tid));
     }
   }catch(e){}
@@ -23267,7 +23377,10 @@ function profileCard(p){
     연봉: ${p.wage}억 <span class="small">(적정 ${we}억)</span> · 계약 ${p.ct||1}년 남음 · 시장가치 ${marketValue(p)}억<br>
     ${careerTable(p, tm)}
     ${owned&&p.unhappy>0?`<div class="msg warn" style="margin-top:8px">💢 불만 단계 ${p.unhappy}/3 — 사유: <b>${p.uWhy}</b>${p.unhappy>=3?" (공개 이적 요청 상태!)":""}</div>`:""}
-    ${owned&&p.promise?`<div class="msg info" style="margin-top:8px">🤝 출전 약속 이행 중 — ${p.promise.rounds}R 내 ${p.promise.need-(p.apps-p.promise.apps0)}경기 더 출전 필요</div>`:""}
+    ${owned&&p.promise?(()=>{ const _hold = p.inj>0?`부상(${p.inj}주)` : p.ban>0?"출장정지" : p.banE>0?"출전정지" : null;
+      return `<div class="msg info" style="margin-top:8px">🤝 출전 약속 이행 중 — ${p.promise.rounds}R 내 ${p.promise.need-(p.apps-p.promise.apps0)}경기 더 출전 필요${
+        _hold?` <b style="color:var(--gold)">· ⏸ ${_hold}으로 카운트 보류 중</b>`:""}${
+        p.promise.skip?` <span class="small">(지금까지 ${p.promise.skip}R 보류)</span>`:""}</div>`; })():""}
     ${owned&&p.sulk>0?`<div class="msg warn" style="margin-top:8px;border-color:var(--red)">🤬 <b>태업 중</b> (${p.sulk}R 남음) — 경기 출전 불가. 평소 화법은 통하지 않습니다. 이적을 설득해 보세요.</div>`:""}
     ${attrsHtml}
   </div>`;
@@ -26206,7 +26319,10 @@ function situationCard(){
     if(p.noMove) items.push(`🙅 <b class="clickable" onclick="openPlayerMenu(event,${p.id})">${p.name}</b> — <b>잔류 선언</b>: 어떤 이적 제안도 본인이 거부합니다 (명단 철회로 해제)`);
     if(p.unhappy>=3) items.push(`🚨 <b class="clickable" onclick="openPlayerMenu(event,${p.id})">${p.name}</b> — <b>공개 이적 요청</b> (사유: ${p.uWhy}) — 면담·이적 허용·연봉 인상으로 해결`);
     else if(p.unhappy>0) items.push(`😠 <b class="clickable" onclick="openPlayerMenu(event,${p.id})">${p.name}</b> — 불만 ${p.unhappy}/3 (${p.uWhy})`);
-    if(p.promise){ const left=Math.max(0,p.promise.need-(p.apps-p.promise.apps0)); items.push(`🤝 <b class="clickable" onclick="openPlayerMenu(event,${p.id})">${p.name}</b> — 출전 약속: ${p.promise.rounds}R 내 <b>${left}경기</b> 더 출전 필요`); }
+    if(p.promise){ const left=Math.max(0,p.promise.need-(p.apps-p.promise.apps0));
+      const hold = p.inj>0?`부상(${p.inj}주)` : p.ban>0?"출장정지" : p.banE>0?"출전정지" : null;
+      items.push(`🤝 <b class="clickable" onclick="openPlayerMenu(event,${p.id})">${p.name}</b> — 출전 약속: ${p.promise.rounds}R 내 <b>${left}경기</b> 더 출전 필요`
+        +(hold?` <b style="color:var(--gold)">· ⏸ ${hold}으로 카운트 보류</b>`:"")); }
   }
   if(G.nego){ const np=G.teams[G.nego.fromId].players.find(x=>x.id===G.nego.pid); if(np) items.push(`💸 영입 협상 진행 중: <b>${np.name}</b> (${G.teams[G.nego.fromId].short}) — ${{fee:"이적료",wage:"연봉",agent:"에이전트"}[G.nego.stage]} 단계`); }
   if(G.snego){ const sp=t.players.find(x=>x.id===G.snego.pid); if(sp) items.push(`💼 판매 협상 진행 중: <b>${sp.name}</b> ← ${G.teams[G.snego.tid].short} (현재 제시 ${G.snego.bid}억)`); }
