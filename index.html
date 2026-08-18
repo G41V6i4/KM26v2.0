@@ -6581,6 +6581,101 @@ const MOM_FMK={
    ["MOM 논란 없는 경기였음",1],["{p} 하이라이트 올라왔는데 미쳤다",1],
    ["이 선수 곧 해외 나갈 듯",0],["{t} 팬들 오늘 행복하겠네",0]]
 };
+/* ═══ 🕸️ 패스맵 ══════════════════════════════════════════════════════════
+   실제 패스맵과 같은 규칙으로 그린다.
+     · 노드 = 그 선수의 「평균 위치」 (공을 갖지 않은 시간까지 포함한 실제 서 있던 자리)
+     · 선   = 두 선수 사이의 패스 연결. 굵기와 진하기가 곧 횟수다
+     · 15분 미만 뛴 선수는 그리지 않는다 — 교체 투입 선수까지 넣으면 그림이 뭉갠다
+   위쪽이 우리가 공격하는 방향이다(후반 진영 교대는 수집 단계에서 이미 뒤집어 놨다). */
+let PMAP_SIDE="h";
+function pmapSide(k){ PMAP_SIDE=k; try{ show("home"); }catch(e){} }
+function passMapCard(res, h, a){
+  const PM=res && res.pmap; if(!PM) return "";
+  const meIsHome = !!(h && h.isUser);
+  /* 기본은 우리 팀. 우리 경기가 아니면(관전) 홈 팀. */
+  if(PMAP_SIDE!=="h" && PMAP_SIDE!=="a") PMAP_SIDE = meIsHome?"h":"a";
+  const key = PMAP_SIDE;
+  const side = PM[key]; if(!side || !side.nodes || side.nodes.length<3) return "";
+  const team = key==="h" ? h : a;
+  const MIN_MIN=15;
+  const nodes=side.nodes.filter(n=>n.mn>=MIN_MIN);
+  if(nodes.length<3) return "";
+  const ok=new Set(nodes.map(n=>n.id));
+  const links=(side.links||[]).filter(l=>ok.has(l.a)&&ok.has(l.b) && l.n>=2);
+  const maxN=links.length?links[0].n:1;
+  const by={}; for(const n of nodes) by[n.id]=n;
+  /* 겹쳐 붙은 노드는 아주 조금 밀어낸다 — 번호가 서로를 가리면 읽을 수가 없다 */
+  for(let it=0; it<12; it++){
+    let moved=false;
+    for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+      const A=nodes[i], B=nodes[j];
+      let dx=A.x-B.x, dy=(A.y-B.y)*0.72, d=Math.hypot(dx,dy);
+      if(d>=0.075) continue;
+      if(d<1e-5){ dx=(i%2?1:-1)*0.01; dy=0.01; d=Math.hypot(dx,dy); }
+      const push=(0.075-d)/2/d;
+      A.x=clamp(A.x+dx*push, 0.03, 0.97); A.y=clamp(A.y+dy*push, 0.05, 0.95);
+      B.x=clamp(B.x-dx*push, 0.03, 0.97); B.y=clamp(B.y-dy*push, 0.05, 0.95);
+      moved=true;
+    }
+    if(!moved) break;
+  }
+  /* 좌표 — 세로 피치. 게임 좌표는 x=길이(0~1), y=폭(0~1)이므로 세로로 세운다.
+     공격 방향이 위가 되도록 x 를 뒤집는다. */
+  const W=300, H2=430, PAD=26;
+  const px=(n)=>PAD + (1-n.y)*(W-PAD*2);
+  const py=(n)=>PAD + (1-n.x)*(H2-PAD*2);
+  const col=(team&&team.col)||"#e5484d";
+  const line=links.map(l=>{
+    const A=by[l.a], B=by[l.b];
+    const k=l.n/maxN;
+    const w=(1.2+k*5.4).toFixed(1);
+    const op=(0.30+k*0.62).toFixed(2);
+    /* 굵은 연결은 팀 색, 가는 연결은 흰빛으로 — 실제 패스맵처럼 강약이 한눈에 들어온다 */
+    const c2 = k>=0.45 ? col : "#e8eef6";
+    return `<line x1="${px(A).toFixed(1)}" y1="${py(A).toFixed(1)}" x2="${px(B).toFixed(1)}" y2="${py(B).toFixed(1)}"
+      stroke="${c2}" stroke-opacity="${op}" stroke-width="${w}" stroke-linecap="round"><title>${A.nm} ↔ ${B.nm} · ${l.n}회</title></line>`;
+  }).join("");
+  /* 노드 크기 = 그 선수가 관여한 패스 총량 */
+  const deg={}; for(const l of links){ deg[l.a]=(deg[l.a]||0)+l.n; deg[l.b]=(deg[l.b]||0)+l.n; }
+  const maxD=Math.max(1, ...Object.values(deg));
+  const dot=nodes.map(n=>{
+    const d=deg[n.id]||0;
+    const r=(9+ (d/maxD)*7).toFixed(1);
+    const x=px(n).toFixed(1), y=py(n).toFixed(1);
+    return `<g><circle cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="#fff" stroke-width="1.6"/>
+      <text x="${x}" y="${(+y+3.6).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="800" fill="#fff">${n.no||""}</text>
+      <text x="${x}" y="${(+y+ +r + 11).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#e8eef6"
+        stroke="#0d1117" stroke-width="2.2" stroke-opacity="0.85" paint-order="stroke">${n.nm}</text>
+      <title>${n.nm} · ${n.mn}분 · 연결 ${d}회</title></g>`;
+  }).join("");
+  const top=links.slice(0,3).map(l=>`${by[l.a].nm} ↔ ${by[l.b].nm} <b>${l.n}</b>`).join(" · ");
+  const tot=links.reduce((s,l)=>s+l.n,0);
+  const tab=(k,lab)=>`<button class="mini ${key===k?"sel":""}" onclick="pmapSide('${k}')">${lab}</button>`;
+  return `<div class="card"><h3>🕸️ 패스맵 <span class="small">— 평균 위치와 패스 연결</span></h3>
+  <div style="display:flex;gap:6px;margin-bottom:7px">${tab("h",h.short)}${tab("a",a.short)}</div>
+  <div style="display:flex;justify-content:center">
+  <svg viewBox="0 0 ${W} ${H2}" style="width:100%;max-width:330px;border-radius:10px">
+    <defs><pattern id="pmStripe" width="${W}" height="${(H2/8).toFixed(1)}" patternUnits="userSpaceOnUse">
+      <rect width="${W}" height="${(H2/16).toFixed(1)}" fill="#ffffff" fill-opacity="0.045"/></pattern></defs>
+    <rect width="${W}" height="${H2}" fill="#20603a"/>
+    <rect width="${W}" height="${H2}" fill="url(#pmStripe)"/>
+    <g stroke="#ffffff" stroke-opacity="0.30" fill="none" stroke-width="1.2">
+      <rect x="8" y="8" width="${W-16}" height="${H2-16}"/>
+      <line x1="8" y1="${H2/2}" x2="${W-8}" y2="${H2/2}"/>
+      <circle cx="${W/2}" cy="${H2/2}" r="42"/>
+      <rect x="${W/2-62}" y="8" width="124" height="62"/>
+      <rect x="${W/2-28}" y="8" width="56" height="24"/>
+      <rect x="${W/2-62}" y="${H2-70}" width="124" height="62"/>
+      <rect x="${W/2-28}" y="${H2-32}" width="56" height="24"/>
+    </g>
+    ${line}${dot}
+    <text x="${W/2}" y="${H2-3}" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.55">▲ 공격 방향</text>
+  </svg></div>
+  <p class="small" style="margin-top:7px">선이 굵을수록 그 둘 사이로 공이 많이 오갔습니다 · 원이 클수록 패스 관여가 많았습니다.
+    <span style="color:var(--sub)">(15분 이상 뛴 선수 · 2회 이상 연결)</span></p>
+  ${top?`<p class="small">🔗 가장 굵은 연결 — ${top} &nbsp;·&nbsp; 표시된 연결 합계 <b>${tot}</b>회</p>`:""}
+  </div>`;
+}
 /* 🏅 MOM 카드 — 경기 리포트 안에 한 줄로 */
 function momCard(m){
   if(!m) return "";
@@ -23439,7 +23534,8 @@ function home(){
     ${lastMatch.mom?momCard(lastMatch.mom):""}
     ${att0?`<div class="small" style="text-align:center;margin:-4px 0 6px;color:#c9d4e0">🏟️ ${stadOf(h).n} · 관중 <b style="color:#fff">${att0.toLocaleString()}</b>명${isSellout(h,att0)?' <span class="tag star">매진</span>':""}</div>`:""}
     ${cardLine(st.hY||0, st.aY||0, st.hR||0, st.aR||0)}
-    <div id="matchLog">${imp.map(e=>`<div class="evt-${e.type}"><b>${e.min}'</b> ${e.t?`[${e.t}] `:""}${e.txt}</div>`).join("")||'<div class="info">주요 장면 없이 종료되었습니다.'}</div></div>`;
+    <div id="matchLog">${imp.map(e=>`<div class="evt-${e.type}"><b>${e.min}'</b> ${e.t?`[${e.t}] `:""}${e.txt}</div>`).join("")||'<div class="info">주요 장면 없이 종료되었습니다.'}</div></div>
+    ${(function(){ try{ return passMapCard(res, h, a); }catch(e){ return ""; } })()}`;
   }
   const next=nextOpponent();
   return `<h2>🏠 감독 오피스</h2>
@@ -44363,6 +44459,10 @@ class MatchSim{
     this.evlog=[];   // 📓 내러티브용 구조화 이벤트 로그 — 문장이 아니라 데이터를 녹음한다
     this.pendingOff=null;   // 늦게 올라갈 수 있는 오프사이드 깃발
     this.t=0;
+    /* 🕸️ 패스맵 — 「누가 누구에게 몇 번 줬는가」와 「그동안 어디에 서 있었는가」.
+       실제 패스맵이 그렇듯, 노드 위치는 평균 위치이고 선 굵기는 연결 횟수다. */
+    this.pmap={h:{link:{}, pos:{}, ppos:{}, meta:{}}, a:{link:{}, pos:{}, ppos:{}, meta:{}}};
+    this._pmTick=0;
     this.agents=[];
     this.buildSquads();
     /* 🧠 AI 벤치 — 경기 시작 시점의 전술을 스냅샷해 두고, 상황에 따라 실시간 조정한다.
@@ -47492,8 +47592,79 @@ class MatchSim{
   counterOn(side){ return !!(this._cw && this._cw.side===side && this.t<this._cw.until); }
   /* 역습 창의 세기 (0~1) — 열려 있지 않으면 0 */
   counterK(side){ return this.counterOn(side) ? (this._cw.k!=null?this._cw.k:0.75) : 0; }
+  /* 패스 한 번을 장부에 적는다 — 같은 팀끼리, 자기 자신 제외 */
+  pmLink(from, to){
+    try{
+      if(!from || !to || from.side!==to.side || from.id===to.id) return;
+      const P=this.pmap[from.side]; if(!P) return;
+      const k=from.id+">"+to.id;
+      P.link[k]=(P.link[k]||0)+1;
+      /* 📍 노드 위치는 「패스를 주고받은 순간의 자리」다 — 실제 패스맵이 쓰는 기준이다.
+         경기 내내의 평균을 쓰면 모두가 공을 따라다닌 결과로 중앙에 뭉쳐 형태가 사라진다. */
+      for(const q of [from,to]){
+        if(!P.meta[q.id]) P.meta[q.id]={n:(q.p&&q.p.no)||0, nm:(q.p&&q.p.name)||"", pos:q.p?q.p.pos:"MF", slot:q.slot};
+        const o=P.ppos[q.id] || (P.ppos[q.id]={x:0, y:0, n:0});
+        const flip=q.dir<0;
+        o.x += flip ? (1-q.x) : q.x;
+        o.y += flip ? (1-q.y) : q.y;
+        o.n++;
+      }
+    }catch(e){}
+  }
+  /* 평균 위치 — 1초에 한 번 그라운드 위 좌표를 적립한다 */
+  pmSample(){
+    try{
+      for(const a of this.agents){
+        if(!a || !a.p) continue;
+        const P=this.pmap[a.side]; if(!P) continue;
+        const o=P.pos[a.id] || (P.pos[a.id]={x:0, y:0, n:0});
+        /* 후반에 진영을 바꿔도 「우리가 공격하는 방향」이 위쪽이 되도록 좌표를 뒤집어 둔다 */
+        const flip = a.dir<0;
+        o.x += flip ? (1-a.x) : a.x;
+        o.y += flip ? (1-a.y) : a.y;
+        o.n++;
+        if(!P.meta[a.id]) P.meta[a.id]={n:(a.p.no)||0, nm:a.p.name||"", pos:a.p.pos||"MF", slot:a.slot};
+      }
+    }catch(e){}
+  }
+  /* 경기가 끝나면 M 에 옮겨 담는다 — 리포트가 이걸 그린다 */
+  pmFinish(){
+    try{
+      const out={};
+      for(const key of ["h","a"]){
+        const P=this.pmap[key];
+        const nodes=[];
+        /* 표본 수 → 출전 시간. 틱·클럭 환산에 기대지 않고 「가장 오래 뛴 선수 = 풀타임」으로 잡는다 */
+        let topN=1; for(const id in P.pos) topN=Math.max(topN, P.pos[id].n||0);
+        for(const id in P.pos){
+          const o=P.pos[id]; if(!o.n) continue;
+          const m=P.meta[id]||{};
+          /* 패스 표본이 충분하면 그 평균을, 아니면 경기 내내의 평균 위치를 쓴다 */
+          const pp=P.ppos[id];
+          const use=(pp && pp.n>=4) ? pp : o;
+          nodes.push({id:+id, x:+(use.x/use.n).toFixed(4), y:+(use.y/use.n).toFixed(4),
+                      mn:Math.round(o.n/topN*90), tch:(pp?pp.n:0),
+                      no:m.n||0, nm:m.nm||"", pos:m.pos||"MF"});
+        }
+        /* 양방향을 하나로 합친다 — 패스맵은 「두 사람 사이의 연결」을 본다 */
+        const pair={};
+        for(const k in P.link){
+          const [f,t2]=k.split(">").map(Number);
+          const kk=(f<t2?f+"-"+t2:t2+"-"+f);
+          pair[kk]=(pair[kk]||0)+P.link[k];
+        }
+        const links=Object.keys(pair).map(kk=>{
+          const [f,t2]=kk.split("-").map(Number);
+          return {a:f, b:t2, n:pair[kk]};
+        }).sort((x,y)=>y.n-x.n);
+        out[key]={nodes, links};
+      }
+      this.M.pmap=out;
+    }catch(e){}
+  }
   giveTo(a, opt){
     const b=this.ball;
+    try{ if(b._passer && !b.setPiece) this.pmLink(b._passer, a); }catch(e){}
     /* ⚽ 퍼스트 터치 — 닿는 순간의 공 속도·높이·각도와 선수의 능력으로 결과가 갈린다.
        공을 발밑에 붙이지 않는다. 터치한 방향으로 밀려나고, 속도도 완전히 죽지 않는다. */
     /* 💥 접촉 해석 — 어느 부위에, 어떤 상대 속도로 맞았는가 */
@@ -49575,6 +49746,8 @@ class MatchSim{
     this.drainStamina();
     this.subCheck();
     this.syncGuard();
+    /* 🕸️ 패스맵 표본 — 1초(5틱)에 한 번이면 90분에 5,400점이라 충분하다 */
+    if((this._pmTick=(this._pmTick||0)+1) % 5 === 0) this.pmSample();
   }
   /* 🛟 그라운드 인원과 도트 수가 어긋나면 그 자리에서 맞춘다.
      ⚠ 제보 — 「부상 교체를 했는데 들어온 선수가 엉뚱한 데 있다」.
@@ -49836,6 +50009,7 @@ class MatchSim{
     this.restoreAITactics();
     const M=this.M;
     this.syncStats();
+    this.pmFinish();          // 🕸️ 패스맵 — 평균 위치·연결 횟수를 M 에 옮겨 담는다
     M.min=Math.floor(this.endSec/60);
     M.half=2; M.done=true;
     // 출전 시간 — 교체가 없으면 전원 풀타임으로 기록된다
@@ -53989,14 +54163,14 @@ function finishLive(){
     const mine=M.home.isUser?M.hg:M.ag, his=M.home.isUser?M.ag:M.hg;
     const opp=M.home.isUser?M.away:M.home;
     addNews(`🤝 연습경기: ${ut.short} ${mine}-${his} ${opp.short}`);
-    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, friendly:true, att:M.att||0};
+    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, friendly:true, att:M.att||0};
     checkPreseasonEnd();
     saveGame();
   } else if(G.pendingPO){
     const {m,hid,aid}=G.pendingPO; G.pendingPO=null;
     applyMatchResult(M);
     poResolve(m, hid, aid, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0);
-    lastMatch={type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, tag:m.tag, att:M.att||0, mom:M.mom||null};
+    lastMatch={type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, tag:m.tag, att:M.att||0, mom:M.mom||null};
     saveGame();
   } else if(G.pendingEACL){
     /* 🌏 EACL — 리그 순위표를 건드리지 않고 대회 기록만 남긴다(noTable). 라운드도 넘기지 않는다. */
@@ -54008,10 +54182,10 @@ function finishLive(){
     if((P2.m||P2.t)) eaclResolveUser(P2, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0);
     try{ eaclGate(M); }catch(e){}
     try{ matchNewsEacl(M, P.tag); }catch(e){}
-    lastMatch={type:"eacl", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, tag:P.tag, att:M.att||0, mom:M.mom||null};
+    lastMatch={type:"eacl", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, tag:P.tag, att:M.att||0, mom:M.mom||null};
     saveGame();
   } else {
-    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
+    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
     completeRound(M);
   }
   }catch(e){ try{ console.warn("경기 결과 반영 실패:", e); }catch(_){} }
@@ -54617,7 +54791,7 @@ function runDelegatedMatch(M, tag){
   addNews(`🩺 ${t.short} ${mine}-${his} ${opp.short} — 부상 중인 감독 대신 수석코치가 지휘했습니다 (복귀까지 약 ${w}주)`,
           mine>his?"good":mine<his?"warn":null, "club");
   try{ staffLog(`수석코치가 ${opp.short}전을 대신 지휘했습니다. (${mine}-${his})`); }catch(e){}
-  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
+  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
   saveGame();
   const outcome=mine>his?"win":mine===his?"draw":"loss";
   const cls=outcome==="win"?"good":outcome==="loss"?"warn":"info";
@@ -54658,7 +54832,7 @@ function runDelegatedFriendly(M){
   addNews(`🤝 연습경기(위임): ${t.short} ${mine}-${his} ${opp.short}`);
   staffLog(`수석코치가 ${opp.short}전 연습경기를 지휘했습니다. (${mine}-${his})`);
   checkPreseasonEnd();
-  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[]}, h:M.home, a:M.away, friendly:true, att:M.att||0};
+  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, friendly:true, att:M.att||0};
   saveGame();
   const outcome = mine>his?"win":mine===his?"draw":"loss";
   const cls = outcome==="win"?"good":outcome==="loss"?"warn":"info";
