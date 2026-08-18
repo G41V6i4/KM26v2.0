@@ -14214,6 +14214,184 @@ function overseasList(){
   return G.overseas;
 }
 /* ═══════════════════════════════════════════════════════════════
+   🇸🇦 사우디 프로리그 — 오일머니가 우리 선수를 부른다
+   실제로도 사우디 클럽들은 아시아 전역의 검증된 자원에게 시장가를 훌쩍 넘는 이적료와
+   상상 밖의 연봉을 던진다. 감독에게는 「거절할 수 없는 돈」과 「팀의 기둥」 사이의 선택이다.
+     · 제안은 능력치가 좋은 선수에게만 온다. 잘 키울수록 자주 온다.
+     · 이적료는 시장가의 두세 배, 연봉은 서너 배 — 구단 재정이 통째로 바뀔 액수다.
+     · 선수 본인이 먼저 흔들린다. 거절하면 사기가 꺾이고, 이적 요청으로 이어지기도 한다.
+     · 팬 여론도 갈린다 — 거액이면 이해하고, 헐값이거나 기둥이면 폭발한다.
+   ═══════════════════════════════════════════════════════════════ */
+const SAUDI_CLUBS=[
+  {n:"알 힐랄",    c:"#1a4fa0", d:"아시아 최다 우승 클럽. 돈도 야심도 아시아 최고다."},
+  {n:"알 나스르",  c:"#d4b106", d:"세계적인 스타를 앞세워 리그를 끌고 가는 구단."},
+  {n:"알 이티하드",c:"#1f6f3f", d:"제다의 명문. 최근 몇 년 사이 씀씀이가 완전히 달라졌다."},
+  {n:"알 아흘리",  c:"#0f8f4f", d:"승격과 함께 대규모 투자를 시작한 구단."},
+  {n:"알 카디시야",c:"#c8452b", d:"국부펀드 계열 자본이 새로 들어온 신흥 강호."},
+  {n:"알 샤밥",    c:"#c9a227", d:"리야드의 전통 구단. 아시아 무대 복귀를 노린다."},
+  {n:"알 에티팍",  c:"#2f7d3a", d:"담맘 연고. 검증된 아시아 자원을 선호한다."},
+  {n:"알 타아운",  c:"#7a3fa0", d:"중위권이지만 특정 포지션에는 아낌없이 쓴다."}
+];
+const SA_MIN_OVR=77;        // 이 아래로는 사우디가 움직이지 않는다
+const SA_FEE_K=[2.1, 3.6];  // 시장가 대비 이적료 배수
+const SA_WAGE_K=[3.2, 6.0]; // 현재 연봉 대비 제시 연봉 배수
+const SA_EXP=6;             // 답변 기한(일)
+function saudiOffer(){ return G.saOffer || null; }
+function saClubOf(o){ return (SAUDI_CLUBS.find(x=>x.n===(o&&o.club)) || SAUDI_CLUBS[0]); }
+/* 하루치 — 이적시장이 열려 있을 때만 */
+function tickSaudi(){
+  try{
+    if(G.jobless || !userTeam()) return;
+    const day=G.day||0;
+    /* 기한이 지난 제안은 조용히 사라진다 — 사우디는 기다려 주지 않는다 */
+    if(G.saOffer){
+      const ut0=userTeam();
+      const still=ut0.players.some(p=>p.id===G.saOffer.pid);
+      if(!still){ G.saOffer=null; }
+      else if(day>=G.saOffer.due){
+        const p=ut0.players.find(x=>x.id===G.saOffer.pid);
+        const cn=G.saOffer.club;
+        G.saOffer=null;
+        addNews(`🇸🇦 ${cn}, ${p.name} 영입 협상 철회 — "다른 자원으로 방향을 틀었다"`, null, "club");
+        if(p){ delete p._saWant; p._saCool=day+30+R(30); }
+      }
+      return;                                    // 한 번에 한 건만 굴린다
+    }
+    if(typeof transferOpen==="function" && !transferOpen()) return;
+    const ut=userTeam();
+    /* 한 번 거절했거나 제안이 지나간 선수는 한동안 조용하다 —
+       매번 흔들어 대면 거절할 때마다 사기가 깎여 감독이 벌을 받는 구조가 된다 */
+    const cands=ut.players.filter(p=>
+      p.ovr>=SA_MIN_OVR && !p.emg && !p.loan && !p.army && (p.inj||0)<=0
+      && !(G.saGone||[]).includes(p.id) && !(p._saCool>day));
+    if(!cands.length) return;
+    /* 잘하는 선수일수록 자주 온다 — 77에서는 거의 안 오고, 85 이상이면 시즌에 몇 번씩 */
+    let best=null, bw=0;
+    for(const p of cands){
+      const w=Math.pow(p.ovr-(SA_MIN_OVR-1), 1.7) * (1+clamp((28-(G.season-p.by))/10, -0.35, 0.45));
+      if(w>bw){ bw=w; best=p; }
+    }
+    if(!best) return;
+    if(Math.random() > clamp(bw*0.00042, 0, 0.05)) return;
+    const p=best;
+    const club=pick(SAUDI_CLUBS);
+    const mv=marketValue(p);
+    const fee=Math.round(mv*(SA_FEE_K[0]+Math.random()*(SA_FEE_K[1]-SA_FEE_K[0])));
+    const wage=Math.round((p.wage||1)*(SA_WAGE_K[0]+Math.random()*(SA_WAGE_K[1]-SA_WAGE_K[0]))*10)/10;
+    G.saOffer={pid:p.id, club:club.n, fee, wage, mv, due:day+SA_EXP, at:day, seen:0};
+    /* 선수 본인이 먼저 흔들린다 — 야심가일수록, 나이가 있을수록 크게 */
+    const age=G.season-(p.by||2000);
+    let want=0.34 + (p.pers===1?0.26:0) + clamp((age-27)/12, 0, 0.24) + clamp((wage/Math.max(0.2,p.wage||1)-3)*0.05, 0, 0.16);
+    if(p.pers===2) want-=0.12;                    // 조용한 성격은 덜 흔들린다
+    if((p.loyal||0)>=70) want-=0.14;
+    p._saWant = Math.random() < clamp(want, 0.10, 0.86) ? 1 : 0;
+    addNews(`🇸🇦 <b>${club.n}</b>, ${p.name} 영입 제안 — 이적료 <b>${fee}억</b> · 연봉 <b>${wage}억</b> (시장가 ${mv}억)`, "warn", "club",
+      {cat:"transfer", ic:"🇸🇦", tone:0, tid:ut.id, src:"사우디 프로리그",
+       head:`${club.n}, ${ut.short} ${p.name}에 거액 제시`,
+       sub:`${club.d} 이적료 ${fee}억은 ${p.name}의 시장가(${mv}억)를 크게 웃도는 금액이다.`});
+    try{ socialFill(SOC.saudiIn, 3+R(3), 0, {t:ut.short, p:p.name, c:club.n, m:fee, w:wage}); }catch(e){}
+    try{ fmkFill(FMK.saudiIn, 2+R(3), {t:ut.short, p:p.name, c:club.n, m:fee, w:wage}); }catch(e){}
+    if(p._saWant) addMood(`💬 ${p.name}: "감독님... ${club.n}에서 연락이 왔다고 들었습니다. 솔직히 마음이 흔들립니다."`);
+    else addMood(`💬 ${p.name}: "${club.n} 얘기는 들었습니다. 저는 여기서 더 하고 싶습니다."`, "good");
+    notify(`🇸🇦 <b>${club.n}</b>이(가) ${p.name}에게 이적료 ${fee}억을 제시했습니다 — 📨 타 구단 제의에서 확인하세요.`, "warn");
+  }catch(e){}
+}
+/* 수락 — 선수는 K리그를 떠난다 */
+function saudiAccept(){
+  const o=G.saOffer; if(!o) return;
+  const ut=userTeam(); const p=ut.players.find(x=>x.id===o.pid);
+  if(!p){ G.saOffer=null; show("offers"); return; }
+  if(ut.players.length<=18){ notify("⚠️ 스쿼드가 18명 이하라 선수를 보낼 수 없습니다.","warn"); return; }
+  const club=saClubOf(o), wasStar=p.ovr>=SA_MIN_OVR+2, wanted=!!p._saWant;
+  showConfirm(`<b>🇸🇦 ${o.club}행을 수락합니다</b>\n\n${p.name} (${p.pos} ${dispOvr(p)}) — 이적료 <b>${o.fee}억</b>\n선수 연봉은 ${p.wage}억 → ${o.wage}억이 됩니다.\n\n<span class="small">${wanted?"본인도 떠나고 싶어 합니다.":"본인은 잔류를 원하고 있습니다 — 강행하면 라커룸이 흔들립니다."}</span>`,
+  ()=>{
+    try{ socialOnSale(p); }catch(e){}
+    ut.players.splice(ut.players.indexOf(p),1);
+    try{ clearClubBaggage(p, 80); }catch(e){}
+    ut.budget=Math.round((ut.budget+o.fee)*10)/10;
+    try{ const fin=finLedger(ut); fin.sell=Math.round(((fin.sell||0)+o.fee)*100)/100; }catch(e){}
+    try{ tfLogAdd("out", p, o.club+" (사우디)", o.fee, null, null); }catch(e){}
+    G.offers=(G.offers||[]).filter(x=>x.pid!==p.id);
+    G.transferBids=(G.transferBids||[]).filter(b=>b.pid!==p.id);
+    (G.saGone=G.saGone||[]).push(p.id);
+    if(Array.isArray(G.userXI)) G.userXI=G.userXI.filter(id=>id!==p.id);
+    G.saOffer=null;
+    const V={t:ut.short, p:p.name, c:o.club, m:o.fee, w:o.wage};
+    addNews(`🇸🇦 <b>${p.name}, ${o.club} 이적 확정</b> — 이적료 ${o.fee}억 (시장가 ${o.mv}억). 구단 예산에 반영되었습니다.`, "warn", "club",
+      {cat:"transfer", ic:"✍️", tone:0, tid:ut.id, src:"K리그 공식",
+       head:`${p.name}, 사우디로 — ${o.fee}억`,
+       sub:`${ut.name}은 시장가의 ${(o.fee/Math.max(1,o.mv)).toFixed(1)}배를 받았다. 그라운드에 남은 공백은 감독의 몫이다.`});
+    try{ socialFill(wasStar&&!wanted?SOC.saudiOutRage:SOC.saudiOut, 4+R(3), wasStar&&!wanted?-1:0, V);
+         fmkFill(FMK.saudiOut, 3+R(3), V); }catch(e){}
+    try{ queueFarewell(p, o.club); }catch(e){}
+    if(wasStar && !wanted){
+      ut.morale=clamp(ut.morale-5, 40, 99);
+      G.starGone=3;
+      adjustTrust("fans", -9, `${p.name} 사우디 이적`);
+      adjustTrust("owner", o.fee>=o.mv*2.5 ? 6 : -2, `${p.name} 이적료 ${o.fee}억`);
+      addMood(`😥 기둥이 떠났습니다. 라커룸이 조용합니다. <span class="small">(팀 사기 -5)</span>`);
+    } else {
+      adjustTrust("owner", 5, `${p.name} 고액 매각 (${o.fee}억)`);
+      if(wanted) addMood(`💬 ${p.name}: "보내 주셔서 감사합니다. 이 팀은 제 커리어의 전부였습니다."`, "good");
+    }
+    try{ bumpHype(ut, -clamp((playerLevel(p)-starRefLevel())*0.008, 0, 0.09)*(wanted?0.5:1), `${p.name} 사우디 이적`); }catch(e){}
+    notify(`💰 <b>이적 확정</b> — ${p.name} → ${o.club} (${o.fee}억)`, "good");
+    saveGame(); show("offers");
+  }, {okLabel:`${o.fee}억에 보낸다`, cancelLabel:"다시 생각한다"});
+}
+/* 거절 */
+function saudiReject(){
+  const o=G.saOffer; if(!o) return;
+  const ut=userTeam(); const p=ut.players.find(x=>x.id===o.pid);
+  G.saOffer=null;
+  if(!p){ show("offers"); return; }
+  const V={t:ut.short, p:p.name, c:o.club, m:o.fee, w:o.wage};
+  addNews(`🚫 ${ut.name}, ${o.club}의 ${p.name} 영입 제안 거절 — "팔 생각이 없다"`, "good", "club");
+  try{ socialFill(SOC.saudiKeep, 3+R(3), 1, V); fmkFill(FMK.saudiKeep, 2+R(2), V); }catch(e){}
+  if(p._saWant){
+    p.morale=clamp((p.morale||70)-14, 25, 99);
+    try{ affAdd(p, -12, "사우디행 거절"); }catch(e){}
+    p.unhappy=Math.max(p.unhappy||0, 1); p.uWhy="이적 무산";
+    addMood(`😠 ${p.name}: "...알겠습니다. 하지만 이런 기회가 또 올지 모르겠습니다." <span class="small">(사기 -14 · 불만)</span>`, "warn");
+    adjustTrust("owner", -3, `${o.fee}억 제안 거절`);
+  } else {
+    p.morale=clamp((p.morale||70)+4, 25, 99);
+    try{ affAdd(p, 6, "잔류 결정"); }catch(e){}
+    addMood(`💪 ${p.name}: "저를 붙잡아 주셔서 감사합니다. 그라운드에서 갚겠습니다."`, "good");
+    adjustTrust("fans", 4, `${p.name} 잔류`);
+  }
+  delete p._saWant;
+  p._saCool=(G.day||0)+45+R(45);        // 거절했으니 당분간은 조용하다
+  saveGame(); show("offers");
+}
+/* 제의 탭에 띄울 카드 */
+function saudiCard(){
+  const o=G.saOffer; if(!o) return "";
+  const ut=userTeam(); const p=ut && ut.players.find(x=>x.id===o.pid);
+  if(!p) return "";
+  o.seen=1;
+  const club=saClubOf(o);
+  const left=Math.max(0, o.due-(G.day||0));
+  const mult=(o.fee/Math.max(1,o.mv)).toFixed(1);
+  return `<div class="card" style="border:2px solid ${club.c}">
+    <h3>🇸🇦 ${o.club}의 영입 제안 <span class="small">— 답변 기한 D-${left}</span></h3>
+    <p class="small" style="margin:2px 0 8px">${club.d}</p>
+    <div class="tblScroll"><table>
+      <tr><th>선수</th><th>제시 이적료</th><th>시장가</th><th>제시 연봉</th><th>본인 의사</th></tr>
+      <tr><td><b>${p.name}</b> <span class="small">${p.pos} ${dispOvr(p)}</span></td>
+          <td><b class="money">${o.fee}억</b> <span class="small">(시장가의 ${mult}배)</span></td>
+          <td class="small">${o.mv}억</td>
+          <td>${p.wage}억 → <b class="money">${o.wage}억</b></td>
+          <td>${p._saWant?'<span style="color:#d29922">떠나고 싶어 함</span>':'<span style="color:var(--green)">잔류를 원함</span>'}</td></tr>
+    </table></div>
+    <p class="small" style="margin-top:6px">오일머니는 기다려 주지 않습니다. 기한이 지나면 제안은 사라집니다.
+      ${p._saWant?"거절하면 <b>선수가 크게 실망</b>합니다.":"본인은 남고 싶어 합니다 — 강행하면 라커룸이 흔들립니다."}</p>
+    <div style="display:flex;gap:7px;margin-top:8px">
+      <button class="mini" style="flex:1;border-color:var(--green);color:var(--green)" onclick="saudiAccept()">💰 ${o.fee}억에 보낸다</button>
+      <button class="mini" style="flex:1;border-color:#f85149;color:#f85149" onclick="saudiReject()">🚫 거절한다</button>
+    </div></div>`;
+}
+/* ═══════════════════════════════════════════════════════════════
    해외 이적시장 — 타 구단의 개입
    ⚠ 지금까지 해외 시장은 감독(유저)만 손댈 수 있었다. 시즌 내내 같은 이름이 그대로 걸려 있어서
      "언제든 데려오면 되는 명단"처럼 느껴졌다. 이제 K리그 다른 구단들도 이 시장에 뛰어든다.
@@ -29770,6 +29948,7 @@ function offersView(){
   ${wi.open?`<div class="msg info">🤝 <b>협상</b>: 이적료 올려받기 · ✅ <b>수락</b>: 즉시 이적 · 🚫 <b>차단</b>: 협상 거부 — 선수 성격·충성심에 따라 반응이 갈립니다. 야심가는 강팀행이 막히면 불만을 갖고, 이적을 원하던 선수는 강하게 반발합니다.</div>`
           :`<div class="msg warn">이적시장이 닫혀 있어 새로운 제의는 들어오지 않습니다.</div>`}
   ${situationCard()}
+  ${(function(){ try{ return saudiCard(); }catch(e){ return ""; } })()}
   ${G.snego?`<div class="msg good">💼 <b>판매 협상</b>이 진행 중입니다 — 🤝 협상 탭에서 계속하세요.</div>`:""}
   ${offers.length?`<div class="card"><h3>받은 제의 (${offers.length}건)</h3>
     <div class="tblScroll"><table><tr>${sortTh("offers","name","선수")}${sortTh("offers","club","제안 구단")}${sortTh("offers","fee","제안 내용")}${sortTh("offers","mv","시장가치")}${sortTh("offers","unhappy","선수 상태")}<th>성사 전망</th>${sortTh("offers","exp","만료")}<th></th></tr>
@@ -35281,6 +35460,39 @@ SOC.champ=[
 /* 🏆 우승 확정 순간 — 최종전이 아니라 「수학적으로 정해지는」 그날.
    트로피를 드는 날과는 감정이 다르다. 믿기지 않고, 계산기를 몇 번이나 두드려 보고,
    남은 경기가 갑자기 의미를 잃는다. */
+SOC.saudiIn=[
+ ["{c}에서 {p} 데려간다는데?? 이적료 {m}억이라고?",0],
+ ["연봉 {w}억이면... 나라도 간다 솔직히",0],
+ ["오일머니 진짜 무섭다. 우리 선수를 저 값에 부르네",0],
+ ["제발 붙잡아 주세요 감독님 🙏",-1],
+ ["{m}억이면 그 돈으로 셋은 사 온다. 팔자 이건",1],
+ ["{p} 없는 우리 팀이 상상이 안 감",-1],
+ ["사우디 갈 나이는 아니지 않나... 아직 더 뛸 수 있는데",-1],
+ ["구단이 어떻게 나올지 그것만 보고 있다",0],
+ ["돈은 돈이고 성적은 성적이다. 지금 팔면 시즌 망함",-1],
+ ["{c}면 아시아에서 제일 잘 쓰는 팀 아님? 대우는 확실할 듯",0]];
+SOC.saudiOut=[
+ ["{p} 잘 가라... {c}에서도 잘하길",0],
+ ["{m}억이면 서운해할 이적료는 아니다",1],
+ ["보내 줄 건 보내 주고 그 돈으로 보강하자",1],
+ ["공항 사진 보는데 왜 내가 울컥하냐",0],
+ ["{p} 유니폼은 안 버릴 거다",0],
+ ["잘 팔았다. 이제 프런트가 일할 차례",1]];
+SOC.saudiOutRage=[
+ ["기둥을 {m}억에 팔아? 이건 아니지",-1],
+ ["돈이 그렇게 급했나 진짜",-1],
+ ["{p} 없이 이번 시즌 어떻게 하려고",-1],
+ ["프런트는 축구를 안 보나 봄",-1],
+ ["시즌 중에 이러는 건 팬 무시다",-1],
+ ["대체 자원 데려온다는 말, 몇 년째 듣는 중",-1],
+ ["오늘부로 시즌권 갱신 안 한다",-1]];
+SOC.saudiKeep=[
+ ["안 판다!!! 이게 우리 구단이지",1],
+ ["{m}억 거절이면 진짜 대단한 거다",1],
+ ["돈보다 성적이다. 잘했다 프런트",1],
+ ["{p} 남았다 진짜 다행이다",1],
+ ["감독님 믿습니다",1],
+ ["이래야 우승 도전이라고 말할 자격이 있지",1]];
 SOC.clinch=[
  ["확정이다 확정!!! 남은 경기 뭐가 됐든 우리가 1등이다",1],
  ["계산기 열 번은 두드려 봤는데 진짜네요... {n}경기 남기고 확정",1],
@@ -35294,6 +35506,24 @@ SOC.clinch=[
  ["{n}경기 남기고 확정이면 압도적인 거 맞지?",1],
  ["오늘 밤에 잠 못 잘 듯. 하이라이트 백 번 돌려 보는 중",1],
  ["강등 걱정하던 시절이 엊그제 같은데",1]];
+FMK.saudiIn=[
+ ["[속보] {c}, {t} {p}에 이적료 {m}억 제시",1],
+ ["연봉 {w}억이면 K리그에서 줄 수 있는 돈이 아님",0],
+ ["요즘 사우디는 검증된 아시아 자원 쓸어 담는 중",0],
+ ["{t} 입장에선 고민될 듯. 그 돈이면 스쿼드 갈아엎음",0],
+ ["부럽다 우리 팀은 이런 제안 오는 선수가 없음",-1],
+ ["팔면 욕먹고 안 팔면 선수 상함. 답 없는 상황",0]];
+FMK.saudiOut=[
+ ["{p} {c}행 확정 — {m}억",1],
+ ["{t} 이번에 제대로 챙겼네. 이적료 장사 잘함",1],
+ ["K리그에서 사우디로 가는 루트가 이제 정착된 듯",0],
+ ["그 돈 어디에 쓰는지가 진짜 관전 포인트",0],
+ ["솔직히 저 나이에 저 돈이면 안 갈 이유가 없음",0]];
+FMK.saudiKeep=[
+ ["{t}, {c}의 {m}억 제안 거절",1],
+ ["요즘 세상에 {m}억을 거절하네 ㄷㄷ",1],
+ ["선수가 삐지지만 않으면 좋은 판단임",0],
+ ["{t} 프런트 강단 있다 인정",1]];
 FMK.clinch=[
  ["[속보] {t}, {n}경기 남기고 {d} 우승 확정",1],
  ["{n}경기 남기고 확정이면 올 시즌 사실상 독주였음",1],
@@ -54722,6 +54952,16 @@ function stepDay(){
     if(Array.isArray(G.loanNotes) && G.loanNotes.length){
       for(const n of G.loanNotes) prgPush(n.h, n.c);
       G.loanNotes=[]; saveGame(); stopProgress({kind:"loan"}); return;
+    }
+  }catch(e){}
+  /* 🇸🇦 사우디 클럽의 영입 제안 — 감독이 반드시 봐야 할 일이라 진행을 멈춘다 */
+  try{
+    const _sa0=G.saOffer;
+    tickSaudi();
+    if(G.saOffer && G.saOffer!==_sa0){
+      const _p=(userTeam().players||[]).find(x=>x.id===G.saOffer.pid);
+      prgPush(`🇸🇦 <b>${G.saOffer.club}</b>, <b>${_p?_p.name:"우리 선수"}</b> 영입 제안 — 이적료 <b>${G.saOffer.fee}억</b> · 연봉 ${G.saOffer.wage}억`, "prgStop");
+      saveGame(); stopProgress({kind:"offers"}); return;
     }
   }catch(e){}
   try{ const la=tickLoanAsk(); if(la) prgPush(`🔁 <b>${la.c.short}</b>, ${la.p.name} 임대 문의 — <b>🔁 임대 센터</b>에서 확인`, "prgAlert"); }catch(e){}
