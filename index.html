@@ -8805,15 +8805,20 @@ function eaclTick(force){
     for(let d=0; d<8; d++){
       if(G.eacl.fix.every(m=>m.d!==d || m.done)) continue;
       /* 우리 경기가 남았으면 매치엔진이 먼저 치른다 — 다만 기한을 한참 넘겼으면 위임한다 */
-      if(!force && eaclUserPendingMD(d) && day < eaclMdDay(d)+EACL_GRACE) continue;
+      if(!force && eaclUserPendingMD(d)) continue;   // 내 경기가 남았으면 그 차수는 기다린다
       if(force || day>=eaclMdDay(d)) eaclPlayMD(d);
     }
     const allDone=G.eacl.fix.every(m=>m.done);
     if(allDone && G.eacl.stage==="draw") eaclSeedKO();
     for(const st of ["qf","sf","f"]){
       if(G.eacl.stage!==st) continue;
-      if(!force && eaclUserPendingKO && eaclUserPendingKO(st) && day < eaclKoDue(st)+EACL_GRACE) break;
-      if(force || day>=eaclKoDue(st)) eaclPlayKO(st, force || (day>=eaclKoDue(st)+EACL_GRACE));
+      /* ⚠ 제보 — 「패치 후에도 4강·결승을 직접 지휘 못 하고 끝났다」.
+         여기 유예(EACL_GRACE)가 남아 있었다. 예정일에서 열흘이 지나면 유저 경기까지
+         「일정상 수석코치 대행」으로 밀어 버린다 — 리그가 끝난 뒤로 잡힌 4강·결승은
+         달력이 그 열흘을 순식간에 지나가므로 감독이 손쓸 새가 없었다.
+         ─ 내가 치를 대회 경기는 기다린다. 강제 진행(force)은 시즌 정산 때만 들어온다. */
+      if(!force && eaclUserPendingKO && eaclUserPendingKO(st)) break;
+      if(force || day>=eaclKoDue(st)) eaclPlayKO(st, force);
     }
   } while(force && G.eacl.stage!=="end" && guard++<10);
   return null;
@@ -14549,7 +14554,43 @@ function migrateSave(){
     const _left=(G.suit.due||0)-(G.day||0);
     if(_left>60){ G.suit.due=(G.day||0)+8+R(6); G.suit.filed=Math.max(0,(G.day||0)-10); }
     if(G.suit.filed>(G.day||0)) G.suit.filed=Math.max(0,(G.day||0)-3);
-  } else if(G.suit) G.suit=null;
+  }
+  if(G.suit && typeof G.suit!=="object") G.suit=null;
+  /* ⚠ 제보 — 「스카우트 파견이 새 시즌에 리롤되고 다음 보고까지 346일이라고 뜬다」.
+     소송과 같은 원인이다 — 기한이 절대 일자로 저장되는데 시즌이 바뀌면 축이 0 으로 돌아간다.
+     새 세이브는 rebaseDayFields 가 옮겨 주지만, 이미 어긋난 채 저장된 파일은 여기서 바로잡는다.
+     「남은 날이 그 항목의 최대 기간을 넘어섰다」면 축이 어긋난 것이다. */
+  try{
+    const day=G.day||0;
+    const cap=(o,k,max,def)=>{ if(!o||typeof o[k]!=="number") return;
+      if(o[k]-day > max) o[k]=day+(def!=null?def:Math.round(max*0.4)); if(o[k]<0) o[k]=0; };
+    const past=(o,k)=>{ if(o&&typeof o[k]==="number" && o[k]>day) o[k]=Math.max(0, day-1); };
+    if(G.scout && G.scout.trip) for(const k in G.scout.trip){
+      const t=G.scout.trip[k];
+      cap(t, "next", 70, Math.round(SCOUT_LEAD[clamp(scoutLv(),1,5)]*0.6));
+      past(t, "from");
+    }
+    const M=G.me;
+    if(M){
+      cap(M.fut, "due", 95); past(M.fut, "at");
+      if(M._dunPromise) cap(M._dunPromise, "due", 35);
+      if(M.bank){
+        /* 예적금은 상품 기간(개월)이 곧 만기다 — 그 기간을 넘어서 남아 있으면 축이 어긋난 것이다 */
+        if(Array.isArray(M.bank.acc))  for(const a of M.bank.acc){
+          const term=Math.max(1,(a.m||12))*30;
+          cap(a,"due", term+20, term); past(a,"start");
+        }
+        if(Array.isArray(M.bank.loan)) for(const a of M.bank.loan) past(a,"start");
+        if(Array.isArray(M.bank.hist)) for(const h of M.bank.hist) past(h,"d");
+      }
+    }
+    if(G.stock && Array.isArray(G.stock.tips)) for(const x of G.stock.tips){ cap(x,"due", 20); past(x,"d"); }
+    if(G.req && G.req.pend) cap(G.req.pend, "due", 12);
+    for(const id in G.teams) for(const p of (G.teams[id].players||[])){
+      if(p.osLink) cap(p.osLink, "due", 20);
+      if(typeof p._renewAt==="number" && p._renewAt>day) p._renewAt=Math.max(0, day-1);
+    }
+  }catch(e){}
   /* 구단 */
   for(const id in G.teams){
     const t=G.teams[id];
