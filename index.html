@@ -6597,11 +6597,11 @@ function passMapCard(res, h, a){
   const key = PMAP_SIDE;
   const side = PM[key]; if(!side || !side.nodes || side.nodes.length<3) return "";
   const team = key==="h" ? h : a;
-  const MIN_MIN=15;
-  const nodes=side.nodes.filter(n=>n.mn>=MIN_MIN);
+  const nodes=side.nodes.slice();     // 선발 11명 — 수집 단계에서 이미 걸러져 있다
   if(nodes.length<3) return "";
   const ok=new Set(nodes.map(n=>n.id));
   const links=(side.links||[]).filter(l=>ok.has(l.a)&&ok.has(l.b) && l.n>=2);
+  const subbed=nodes.filter(n=>n.mn<85).length;
   const maxN=links.length?links[0].n:1;
   const by={}; for(const n of nodes) by[n.id]=n;
   /* 겹쳐 붙은 노드는 아주 조금 밀어낸다 — 번호가 서로를 가리면 읽을 수가 없다 */
@@ -6672,7 +6672,7 @@ function passMapCard(res, h, a){
     <text x="${W/2}" y="${H2-3}" text-anchor="middle" font-size="9" fill="#ffffff" fill-opacity="0.55">▲ 공격 방향</text>
   </svg></div>
   <p class="small" style="margin-top:7px">선이 굵을수록 그 둘 사이로 공이 많이 오갔습니다 · 원이 클수록 패스 관여가 많았습니다.
-    <span style="color:var(--sub)">(15분 이상 뛴 선수 · 2회 이상 연결)</span></p>
+    <span style="color:var(--sub)">(선발 ${nodes.length}명 기준 · 2회 이상 연결${subbed?` · 교체된 선수는 뛴 시간까지만 반영`:""})</span></p>
   ${top?`<p class="small">🔗 가장 굵은 연결 — ${top} &nbsp;·&nbsp; 표시된 연결 합계 <b>${tot}</b>회</p>`:""}
   </div>`;
 }
@@ -20709,15 +20709,25 @@ const STK_SECTOR={
    추세(dr)를 0 으로 두면 장기적으로 전 종목이 우하향한다. 1년 기대 수익률을 먼저 정하고
    거기서 역산했다: 우량 +10% · 성장 +18% · 동전 −5% · 잡주 −25%.
    spread 는 같은 등급 안에서도 종목마다 팔자가 갈리게 하는 폭이다. */
+/* ⚠ 제보 — 「1주에 4억 하는 주식이 있다 · 우상향이 너무 심하다(우량주일수록 더) · 돈 벌기가 너무 쉽다」.
+   세 가지를 함께 손본다.
+   ① 자릿수 — 값이 너무 오르면 실제 시장처럼 액면분할을 한다(stkSplit). 4억짜리 주식은 존재할 수 없다.
+   ② 우상향 — 등급별 추세(dr)를 절반 아래로 내리고, 밸류에이션 되돌림(stkValPull)을 매일 건다.
+      비싸지면 끌어내리고 싸지면 밀어올린다 — 사놓고 기다리기만 하면 되는 시장이 아니게 된다.
+   ③ 리스크 — 변동성을 전 등급 올리고, 개별 악재 쇼크(분식회계·유상증자·감자·오너 리스크)를 넣는다.
+      며칠 연속 하한가를 맞고 반토막이 나는 일이 실제로 벌어진다. */
 const STK_TIER={
-  blue :{n:"우량주", c:"#58a6ff", vol:0.013, dr: 0.00032, sp:0.00018, dl:0},
-  grow :{n:"성장주", c:"#7ee2a8", vol:0.030, dr: 0.00040, sp:0.00052, dl:0.004},
-  penny:{n:"동전주", c:"#e3b341", vol:0.062, dr:-0.00040, sp:0.00110, dl:0.055},
-  junk :{n:"잡주",   c:"#f85149", vol:0.095, dr:-0.00078, sp:0.00230, dl:0.150}
+  blue :{n:"우량주", c:"#58a6ff", vol:0.017, dr: 0.00013, sp:0.00018, dl:0.0006},
+  grow :{n:"성장주", c:"#7ee2a8", vol:0.038, dr: 0.00016, sp:0.00052, dl:0.008},
+  penny:{n:"동전주", c:"#e3b341", vol:0.076, dr:-0.00052, sp:0.00110, dl:0.065},
+  junk :{n:"잡주",   c:"#f85149", vol:0.115, dr:-0.00095, sp:0.00230, dl:0.175}
 };
+const SPLIT_HI=400000;    // 이 값을 넘으면 액면분할 검토 (실제 시장에서도 이쯤에서 쪼갠다)
+const VAL_PULL=0.0055;    // 하루치 밸류에이션 되돌림 — 고평가는 눌리고 저평가는 밀린다
+const VAL_MAX=0.0022;     // 되돌림이 하루에 줄 수 있는 최대 추세 (±0.22%)
 const STK_HIST=90;        // 종가를 며칠치 들고 있을지 (세이브 크기 때문에 넉넉히 자른다)
 const STK_FEE=0.0015;     // 매매 수수료
-const STK_TAX=0.0018;     // 매도 시 거래세
+const STK_TAX=0.0023;     // 매도 시 거래세 (실제 국내 증권거래세 수준)
 
 /* 리그와 무관한 상장사들 — 업종이 한쪽으로 쏠리지 않게 손으로 깔아 둔다 */
 const STK_EXTRA=[
@@ -20854,7 +20864,7 @@ function stkTick(){
   if(S.day===d) return;          // 같은 날 두 번 굴리지 않는다
   S.day=d;
   /* 시장 전체 분위기 — 완만하게 방황한다 */
-  S.mood = clamp(S.mood*0.94 + stkRand()*0.0012, -0.011, 0.011);
+  S.mood = clamp(S.mood*0.90 + stkRand()*0.0012, -0.011, 0.011);
   /* 업종 사이클 */
   for(const k in S.sec){
     const c=S.sec[k];
@@ -20868,7 +20878,7 @@ function stkTick(){
     /* 바닥을 뚫으면 관리종목을 거쳐 정리된다 — 잡주에 물리면 실제로 돈이 사라진다 */
     if(T.dl>0 && s.p < (s.tier==="penny"?90:400) && Math.random()<T.dl*0.06){ stkDelist(s); continue; }
     if(T.dl>0 && Math.random()<T.dl/900){ stkDelist(s); continue; }
-    const drift = (s.dr!=null?s.dr:T.dr) + S.mood + (S.sec[s.sec]?S.sec[s.sec].v:0) + s.mom;
+    const drift = (s.dr!=null?s.dr:T.dr) + S.mood + (S.sec[s.sec]?S.sec[s.sec].v:0) + s.mom + stkValPull(s);
     const shock = stkRand()*T.vol;
     let r = drift + shock;
     r = clamp(r, -0.29, 0.29);                       // 상·하한가
@@ -20885,6 +20895,14 @@ function stkTick(){
     /* 거래량 — 많이 움직인 날 많이 터진다 */
     s.vol = Math.round(s.sh * (0.0008 + Math.abs(r)*0.06) * (0.5+Math.random()));
     s.mom *= 0.82;                                   // 모멘텀은 하루하루 식는다
+    /* ✂️ 자릿수가 커지면 액면을 쪼갠다 — 실제 시장의 관행이자, 4억짜리 주식을 막는 장치 */
+    /* 급등주는 며칠 만에 자릿수가 바뀐다 — 한참 지나서 쪼개면 그동안 4백만 원짜리가 돌아다닌다.
+       두 배를 넘기면 그날 바로, 아니면 나흘 안에 처리한다. 비율도 값에 맞춰 잡는다. */
+    if(s.p>SPLIT_HI && !(s.splitAt && (G.day||0)-s.splitAt<90)
+       && (s.p>SPLIT_HI*2 || Math.random()<0.25)){
+      S.splitN=(S.splitN||0)+1;
+      stkSplit(s, clamp(Math.round(s.p/60000), 2, 20));
+    }
     s.hist.push(s.p);
     if(s.hist.length>STK_HIST) s.hist.splice(0, s.hist.length-STK_HIST);
     /* 📈 일봉 — 캔들·이평선·거래량 차트는 종가만으로는 그릴 수 없다 */
@@ -20896,6 +20914,7 @@ function stkTick(){
   try{ stkMarginTick(); }catch(e){}    // 💳 이자 · 반대매매
   try{ stkShortTick(); }catch(e){}     // 📉 공매도 — 대여 수수료 · 숏스퀴즈 · 강제 청산
   try{ stkDebtTick(); }catch(e){}      // 🩸 사채 이자 · 독촉 · 파산
+  try{ stkShockTick(); }catch(e){}     // 💣 개별 악재 — 분식회계·유상증자·감자·오너 리스크
   try{ stkThemeTick(); }catch(e){}     // 🎪 테마주 광풍
   try{ stkIpoTick(); }catch(e){}       // 🆕 신규 상장
   try{ stkFutTick(); }catch(e){}       // 📊 지수 · 선물 만기 · 강제청산
@@ -20904,6 +20923,113 @@ function stkTick(){
   try{ stkWatchTick(); }catch(e){}
   /* 📊 분기 실적 — 90일마다 한 번 */
   try{ if(d>0 && d%90===0) stkEarnings(); }catch(e){}
+}
+/* ═══ ✂️ 액면분할 ══════════════════════════════════════════════════════
+   한 주 값이 수십만 원을 넘으면 실제 기업은 액면을 쪼갠다 — 그래야 사람들이 산다.
+   가격을 k 로 나누고 주식 수를 k 배로 늘린다. 시가총액·보유 평가액은 그대로다.
+   보유 수량·평균단가, 공매도 잔고, 예약 주문, 차트까지 함께 환산해야 어긋나지 않는다. */
+function stkSplit(s, k){
+  try{
+    k=Math.max(2, Math.round(k||5));
+    const M=me();
+    s.p=Math.max(1, Math.round(s.p/k));
+    s.pc=Math.max(1, Math.round(s.pc/k));
+    s.o=Math.max(1, Math.round(s.o/k)); s.hi=Math.max(1, Math.round(s.hi/k)); s.lo=Math.max(1, Math.round(s.lo/k));
+    s.sh=Math.round(s.sh*k);
+    if(s.eps) s.eps=Math.round(s.eps/k);
+    if(s.bps) s.bps=Math.round(s.bps/k);
+    if(Array.isArray(s.hist)) s.hist=s.hist.map(v=>Math.max(1,Math.round(v/k)));
+    if(Array.isArray(s.ohlc)) s.ohlc=s.ohlc.map(c=>[Math.max(1,Math.round(c[0]/k)),Math.max(1,Math.round(c[1]/k)),
+                                                    Math.max(1,Math.round(c[2]/k)),Math.max(1,Math.round(c[3]/k)), Math.round((c[4]||0)*k)]);
+    /* 내 계좌 */
+    const h=M.stkInv && M.stkInv[s.id];
+    if(h && h.q>0){ h.q=Math.round(h.q*k); h.avg=Math.max(1, h.avg/k); }
+    const sh2=M.short && M.short[s.id];
+    if(sh2 && sh2.q>0){ sh2.q=Math.round(sh2.q*k); sh2.avg=Math.max(1, sh2.avg/k); }
+    for(const o of stkOrders()) if(o.sid===s.id){ o.px=Math.max(1, Math.round(o.px/k)); o.q=Math.round(o.q*k); }
+    s.splitAt=G.day||0;
+    stkLog("split", `✂️ <b>${s.n}</b> 액면분할 1:${k} — 주가 ${s.p.toLocaleString()}원으로 조정 (보유 주식 수는 ${k}배)`, s.id);
+    stkPing(s, `✂️ <b>${s.n}</b> 액면분할 1:${k} — 보유 수량이 ${k}배로 늘고 단가는 ${k}분의 1이 됩니다.`, "info");
+  }catch(e){}
+}
+/* ═══ ⚖️ 과열 되돌림 ══════════════════════════════════════════════════
+   너무 가파르게 오른 값은 되돌아오고, 너무 깊이 빠진 값은 반등한다.
+   추세를 한쪽으로만 흐르게 두면 「사놓고 기다리기」가 무조건 이기는 게임이 된다.
+   ⚠ 기준을 실적(PER)으로 잡았더니, 실적 자체가 주가를 따라 조정되면서 서로를 끌어내리는
+      하강 나선이 생겼다(실측: 전 종목 1원). 기준은 그 종목 자신의 90일 평균으로 둔다 —
+      외부 값에 기대지 않아 안정적이고, 「단기 급등은 되돌린다」는 감각도 그대로다. */
+function stkValPull(s){
+  try{
+    const H=s.hist;
+    if(!Array.isArray(H) || H.length<25) return 0;
+    const n=Math.min(90, H.length);
+    let m=0; for(let i=H.length-n; i<H.length; i++) m+=H[i];
+    m/=n;
+    if(!(m>0)) return 0;
+    const gap=clamp(s.p/m-1, -0.70, 2.00);
+    return clamp(-gap*VAL_PULL, -VAL_MAX, VAL_MAX);
+  }catch(e){ return 0; }
+}
+/* ═══ 💣 개별 악재 쇼크 ════════════════════════════════════════════════
+   시장이 재미있어지는 건 우상향 때문이 아니라, 하루아침에 반토막이 나는 일이 있기 때문이다.
+   드물지만 걸리면 며칠 연속으로 흘러내린다 — 물리면 실제로 크게 잃는다. */
+const STK_SHOCK=[
+  {k:"acc",  t:"{n}, 분식회계 의혹 — 금융감독원 감리 착수", d:3, e:[-0.24,-0.42], w:1.0, tier:["grow","penny","junk"]},
+  {k:"emb",  t:"{n} 최대주주 횡령·배임 혐의 피소", d:3, e:[-0.20,-0.36], w:1.0, tier:["grow","penny","junk"]},
+  {k:"cap",  t:"{n}, 대규모 유상증자 결정 — 기존 주주 지분 희석", d:2, e:[-0.14,-0.26], w:1.4, tier:["grow","penny","junk","blue"]},
+  {k:"red",  t:"{n} 무상감자 결정 — 자본잠식 해소 목적", d:3, e:[-0.28,-0.46], w:0.7, tier:["penny","junk"]},
+  {k:"halt", t:"{n} 거래정지 — 상장폐지 실질심사 대상 결정", d:4, e:[-0.30,-0.55], w:0.5, tier:["penny","junk"]},
+  {k:"rec",  t:"{n}, 대규모 리콜 발표 — 충당금 반영 불가피", d:2, e:[-0.12,-0.22], w:1.2, tier:["blue","grow"]},
+  {k:"fine", t:"{n}, 공정위 과징금 부과 — 사상 최대 규모", d:2, e:[-0.10,-0.19], w:1.2, tier:["blue","grow"]},
+  {k:"ceo",  t:"{n} 대표이사 돌연 사임 — 경영 공백 우려", d:2, e:[-0.09,-0.18], w:1.0, tier:["blue","grow","penny"]}
+];
+/* 반대쪽도 있어야 도박이 된다 — 걸리면 며칠 만에 두 배가 되는 일도 실제로 일어난다 */
+const STK_BOOM=[
+  {k:"deal", t:"{n}, 창사 이래 최대 규모 수주 계약 체결", d:3, e:[0.20,0.38], w:1.0, tier:["grow","penny","junk","blue"]},
+  {k:"drug", t:"{n} 신약 임상 3상 성공 — 글로벌 기술수출 임박", d:3, e:[0.26,0.48], w:0.9, tier:["grow","penny","junk"]},
+  {k:"mna",  t:"{n} 경영권 인수설 — 지분 경쟁 불붙었다", d:2, e:[0.18,0.34], w:1.0, tier:["grow","penny","junk"]},
+  {k:"buy",  t:"{n}, 대규모 자사주 매입·소각 결정", d:2, e:[0.10,0.20], w:1.2, tier:["blue","grow"]},
+  {k:"free", t:"{n} 무상증자 결정 — 권리락 기대감", d:2, e:[0.12,0.26], w:1.0, tier:["grow","penny"]},
+  {k:"turn", t:"{n}, 흑자 전환 성공 — 관리종목 탈피", d:3, e:[0.22,0.42], w:0.8, tier:["penny","junk"]},
+  {k:"ord",  t:"{n} 글로벌 완성차와 장기 공급계약 체결", d:2, e:[0.11,0.21], w:1.1, tier:["blue","grow"]}
+];
+function stkShockTick(){
+  const S=stkState(); if(!S) return;
+  const live=S.list.filter(s=>!s.dead);
+  if(!live.length) return;
+  /* 진행 중인 쇼크를 하루씩 흘린다 */
+  for(const s of live){
+    if(!s.shock) continue;
+    s.shock.left--;
+    s.mom += s.shock.e;
+    if(s.shock.left<=0) s.shock=null;
+  }
+  /* 새 쇼크 — 시장 전체로 사흘에 한 번쯤. 위아래가 반반이라야 「도박」이지 「하락장」이 아니다 */
+  if(Math.random()>0.34) return;
+  const LIST = Math.random()<0.5 ? STK_SHOCK : STK_BOOM;
+  const pool=[];
+  for(const ev of LIST) for(const s of live){
+    if(s.shock || ev.tier.indexOf(s.tier)<0) continue;
+    pool.push({ev, s, w:ev.w*(s.tier==="junk"?2.4:s.tier==="penny"?1.8:s.tier==="grow"?1.0:0.45)});
+  }
+  if(!pool.length) return;
+  let tot=0; for(const p of pool) tot+=p.w;
+  let r=Math.random()*tot, hit=pool[0];
+  for(const p of pool){ r-=p.w; if(r<=0){ hit=p; break; } }
+  const {ev, s}=hit;
+  const total=ev.e[0]+Math.random()*(ev.e[1]-ev.e[0]);
+  /* ⚠ mom 은 매일 0.82배로 식으므로, 한 번 넣은 값은 결국 약 5.6배(1/0.18)로 누적된다.
+     의도한 총 낙폭이 total 이 되려면 「total×0.18」을 d 일에 나눠 넣어야 한다.
+     이 환산을 빠뜨렸다가 한 번의 악재로 20일 연속 하한가가 나왔다(실측: 전 종목 1원). */
+  s.shock={k:ev.k, left:ev.d, e:total*0.18/ev.d};
+  s.mom += s.shock.e;
+  const good=total>0;
+  const ic=good?"🚀":"💣";
+  const txt=ev.t.replace("{n}", s.n);
+  stkLog(good?"boom":"shock", `${ic} <b>${txt}</b>`, s.id);
+  stkPing(s, `${ic} <b>${txt}</b> — 며칠간 ${good?"급등":"급락"}이 이어질 수 있습니다.`, good?"good":"warn");
+  try{ if(me().stkInv && me().stkInv[s.id] && me().stkInv[s.id].q>0)
+        notify(`${ic} <b>${s.n}</b> — ${txt.replace(s.n,"").replace(/^,\s*/,"")}`, good?"good":"warn"); }catch(e){}
 }
 /* 상장폐지 */
 function stkDelist(s){
@@ -20986,11 +21112,15 @@ const STK_NEWS_BAD=[
   {t:"{n}, 주력 거래처 이탈 — 매출 급감 전망", e:[-0.065,-0.020], s:null}
 ];
 /* 시장 전체를 흔드는 매크로 뉴스 — 가끔 나오고, 전 종목에 같이 걸린다 */
+/* ⚠ 실측 — 여기 여덟 줄의 합이 -0.014 였다. 이 값은 시장 분위기(S.mood)에 누적되는데,
+   mood 는 하루 0.94배로만 식으므로 한 번의 치우침이 약 17배로 증폭된다.
+   그 결과 10시즌을 돌리면 우량주까지 96% 하락하는 「영원한 하락장」이 됐다(실측).
+   호재와 악재의 합을 0 에 맞춰 둔다 — 방향은 무작위여야 하고, 기울어져 있으면 안 된다. */
 const STK_MACRO=[
-  {t:"기준금리 인상 — 시장 전반 조정", e:-0.016}, {t:"기준금리 인하 — 유동성 기대감", e:0.015},
-  {t:"환율 급등 — 수출주 강세 · 내수주 약세", e:0.004}, {t:"국제 유가 급등 — 원가 부담 확대", e:-0.011},
-  {t:"외국인 순매수 전환 — 지수 반등", e:0.013},       {t:"글로벌 증시 급락 — 위험자산 회피", e:-0.022},
-  {t:"정부 부양책 발표 — 투자심리 개선", e:0.017},     {t:"경기 지표 부진 — 침체 우려 확산", e:-0.014}
+  {t:"기준금리 인상 — 시장 전반 조정", e:-0.016}, {t:"기준금리 인하 — 유동성 기대감", e:0.017},
+  {t:"환율 급등 — 수출주 강세 · 내수주 약세", e:0.010}, {t:"국제 유가 급등 — 원가 부담 확대", e:-0.011},
+  {t:"외국인 순매수 전환 — 지수 반등", e:0.016},       {t:"글로벌 증시 급락 — 위험자산 회피", e:-0.022},
+  {t:"정부 부양책 발표 — 투자심리 개선", e:0.019},     {t:"경기 지표 부진 — 침체 우려 확산", e:-0.014}
 ];
 function stkLog(k, txt, id){
   const S=stkState(); if(!S) return;
@@ -21022,7 +21152,13 @@ function stkNewsTick(){
   for(let i=0;i<n;i++){
     const s=pick(live);
     /* 잘 나가는 회사엔 호재가, 무너지는 회사엔 악재가 더 자주 붙는다 */
-    const up=Math.random() < clamp(0.5 + (s.dr||0)*220 + s.mom*8, 0.2, 0.8);
+    /* ⚠ 두 가지가 겹쳐 있었다.
+       ① 오른 종목에 호재가 더 붙었다(mom*8) — 추세가 스스로를 먹여 살려
+          「우량주를 사서 들고 있기만 하면 되는」 시장이 됐다. 되먹임을 없앤다.
+       ② 악재의 평균 충격(-5.2%)이 호재(+3.3%)보다 55% 컸는데 확률은 반반이었다.
+          그대로 두면 시장 전체가 영원히 흘러내린다(실측: 10시즌 뒤 우량주 -93%).
+       ─ 「악재는 세게, 대신 덜 자주」로 균형을 맞춘다(호재 61%). 실제 시장의 결이기도 하다. */
+    const up=Math.random() < clamp(0.61 + (s.dr||0)*60, 0.50, 0.72);
     const pool=(up?STK_NEWS_GOOD:STK_NEWS_BAD).filter(x=>!x.s || x.s.indexOf(s.sec)>=0);
     if(!pool.length) continue;
     const N=pick(pool);
@@ -44461,7 +44597,10 @@ class MatchSim{
     this.t=0;
     /* 🕸️ 패스맵 — 「누가 누구에게 몇 번 줬는가」와 「그동안 어디에 서 있었는가」.
        실제 패스맵이 그렇듯, 노드 위치는 평균 위치이고 선 굵기는 연결 횟수다. */
-    this.pmap={h:{link:{}, pos:{}, ppos:{}, meta:{}}, a:{link:{}, pos:{}, ppos:{}, meta:{}}};
+    this.pmap={h:{link:{}, pos:{}, ppos:{}, meta:{}, xi:[]}, a:{link:{}, pos:{}, ppos:{}, meta:{}, xi:[]}};
+    /* 🕸️ 패스맵은 「선발 11명」의 그림이다 — 교체 투입 선수까지 얹으면 13~14명이 되어
+       대형이 뭉개지고, 실제 패스맵과도 달라진다(제보). 킥오프 명단을 여기서 못 박아 둔다. */
+    try{ for(const k of ["h","a"]) this.pmap[k].xi=(M[k].list||[]).map(x=>x.p&&x.p.id).filter(v=>v!=null); }catch(e){}
     this._pmTick=0;
     this.agents=[];
     this.buildSquads();
@@ -47633,10 +47772,12 @@ class MatchSim{
       const out={};
       for(const key of ["h","a"]){
         const P=this.pmap[key];
+        const XI=new Set(P.xi||[]);
         const nodes=[];
         /* 표본 수 → 출전 시간. 틱·클럭 환산에 기대지 않고 「가장 오래 뛴 선수 = 풀타임」으로 잡는다 */
         let topN=1; for(const id in P.pos) topN=Math.max(topN, P.pos[id].n||0);
         for(const id in P.pos){
+          if(XI.size && !XI.has(+id)) continue;        // 선발 11명만
           const o=P.pos[id]; if(!o.n) continue;
           const m=P.meta[id]||{};
           /* 패스 표본이 충분하면 그 평균을, 아니면 경기 내내의 평균 위치를 쓴다 */
@@ -47650,6 +47791,7 @@ class MatchSim{
         const pair={};
         for(const k in P.link){
           const [f,t2]=k.split(">").map(Number);
+          if(XI.size && (!XI.has(f)||!XI.has(t2))) continue;   // 교체 선수와의 연결은 빼둔다
           const kk=(f<t2?f+"-"+t2:t2+"-"+f);
           pair[kk]=(pair[kk]||0)+P.link[k];
         }
