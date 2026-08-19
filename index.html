@@ -15657,9 +15657,33 @@ ${why}
   }
   return false;
 }
-/* 이 크기를 넘어가면 저장 전에 알아서 기록을 줄인다 — localStorage 한도(약 5MB)에 닿기 전에.
-   ⚠ 브라우저는 문자열을 UTF-16(글자당 2바이트)으로 세는 경우가 많다 — 글자 수 × 2 ≈ 실제 바이트. */
-const SAVE_SOFT_MAX=1500000;   // 약 1.5M 글자(≈3MB) — 이 위로는 자동 다이어트
+/* ═══ 💽 저장소 구조 ═══════════════════════════════════════════════════════
+   ⚠ 제보 — 「5MB 제한 너무 적은데 개선 못 하나?」. 개선할 수 있다.
+     그 5MB 는 브라우저 「기본 저장소(localStorage)」의 한도다. 같은 브라우저 안에
+     한도가 훨씬 큰 저장소(IndexedDB)가 이미 있고, 이 게임도 거기에 함께 쓰고 있었다.
+     문제는 기본 저장소를 여전히 「주 저장소」처럼 다뤄서,
+       ① 한도에 닿으면 기록(뉴스·이적사·주식 이력·성장 스냅샷)을 실제로 잘라 냈고
+       ② 읽기는 기본 저장소만 봐서, 큰 세이브는 이어하기 버튼조차 안 떴다.
+   ─ 이제 큰 저장소가 주 저장소다. 기본 저장소는 「빠른 사본」일 뿐이고,
+     거기에 안 들어가면 잘라 내지 않고 이정표(SAVE_PTR)만 남긴다.
+     큰 저장소까지 막혔을 때만 예전처럼 다이어트한다.
+   ═══════════════════════════════════════════════════════════════════════ */
+const SAVE_PTR=SAVE_KEY+"_at";     // 기본 저장소에 두는 아주 작은 이정표 (수십 바이트)
+/* 큰 저장소가 살아 있는가 — 아직 모르면(null) 살아 있다고 본다(첫 저장은 비동기라 결과가 늦다) */
+function idbAlive(){ return IDB_OK!==false; }
+/* 큰 저장소에만 세이브가 있는 상태인가 */
+function savePtr(){
+  try{ const v=localStorage.getItem(SAVE_PTR); return v?JSON.parse(v):null; }catch(e){ return null; }
+}
+/* 이어하기가 가능한가 — 기본 저장소든 큰 저장소든 하나라도 있으면 된다 */
+function haveSave(){
+  try{ if(localStorage.getItem(SAVE_KEY)) return true; }catch(e){}
+  return !!savePtr();
+}
+/* 이 크기를 넘어가면 저장 전에 알아서 기록을 줄인다.
+   ⚠ 큰 저장소가 살아 있으면 굳이 줄일 이유가 없다 — 한도가 기가바이트 단위다.
+     기본 저장소가 막혔을 때만 이 값이 의미를 갖는다. */
+const SAVE_SOFT_MAX=1500000;   // 약 1.5M 글자(≈3MB)
 function saveGame(){
   /* 🧬 팀 선택 화면에서 연 「선수 만들기」는 임시 세계다 — 저장소를 절대 건드리지 않는다.
      여기서 만든 선수는 preMade()(브라우저 별도 보관함)에 따로 쌓이고, 새 게임에 옮겨진다. */
@@ -15668,17 +15692,32 @@ function saveGame(){
   G._svAt=Date.now();                        // 어느 저장소가 더 최신인지 비교용
   let s;
   try{ s=JSON.stringify(G); }catch(e){ return saveFailNotice(); }
-  /* 🥗 선제 다이어트 — 한도에 부딪혀 실패한 뒤에 줄이는 건 늦다. 미리 줄여 둔다. */
-  if(s.length>SAVE_SOFT_MAX){
+  /* 🥗 선제 다이어트 — 큰 저장소가 죽어 있을 때만. 살아 있으면 기록을 잘라 낼 이유가 없다 */
+  if(s.length>SAVE_SOFT_MAX && !idbAlive()){
     try{ trimSaveData(); s=JSON.stringify(G); }catch(e){}
   }
   /* 💽 큰 저장소부터 — 여기가 주 저장소다. 비동기라 결과를 기다리지 않는다. */
   idbSave(s);
   try{ localStorage.setItem(SAVE_KEY, s); SAVE_FAIL=0; SAVE_LAST=Date.now(); SAVE_SIZE=s.length;
+    try{ localStorage.removeItem(SAVE_PTR); }catch(_){}   // 사본이 최신이다 — 이정표는 필요 없다
     try{ persistAutoOnce(); }catch(e){}      // 🔒 첫 저장 때 한 번 영구 보존을 요청해 둔다
     return true; }
   catch(e){
-    // 용량이 문제라면 기록을 잘라내고 한 번 더 — 여기서 되면 감독은 눈치채지 못한다
+    /* 💽 기본 저장소에 안 들어간다 — 큰 저장소가 살아 있으면 그걸로 충분하다.
+       ⚠ 여기서 기록을 잘라 내면 「용량 때문에 뉴스·이적사·주식 이력이 사라지는」 손실이 된다.
+         낡은 사본만 지우고(그걸 남기면 부팅 때 옛 진행이 읽힌다) 이정표를 남긴다. */
+    if(idbAlive()){
+      try{ localStorage.removeItem(SAVE_KEY); }catch(_){}
+      try{ localStorage.removeItem(SAVE_KEY+"_bak"); }catch(_){}
+      try{ localStorage.setItem(SAVE_PTR, JSON.stringify({at:G._svAt, n:s.length})); }catch(_){}
+      SAVE_FAIL=0; SAVE_LAST=Date.now(); SAVE_SIZE=s.length;
+      try{ persistAutoOnce(); }catch(_){}
+      if(!G._bigNoted){ G._bigNoted=1;
+        try{ flash("💽 세이브가 커져 큰 저장소로 옮겼습니다 — 진행에는 아무 영향이 없습니다.","good"); }catch(_){}
+      }
+      return true;
+    }
+    // 큰 저장소까지 막혔다 — 그때는 기록을 줄여서라도 살린다
     try{
       /* 불러오기 백업이 자리를 절반이나 먹고 있다 — 공간이 급하면 이것부터 버린다 */
       try{ localStorage.removeItem(SAVE_KEY+"_bak"); }catch(_){}
@@ -15859,6 +15898,16 @@ function idbSyncCheck(){
       let o=null; try{ o=JSON.parse(raw); }catch(e){ return; }
       if(!o || !o.teams) return;
       const mine=(G && G._svAt) || 0, theirs=o._svAt||0;
+      /* 💽 기본 저장소가 한도를 넘겨 이정표만 남은 상태 — 큰 저장소가 정답이다. 묻지 않고 잇는다. */
+      try{
+        const ptr=savePtr();
+        if(ptr && (!G || !G.teams || theirs>=mine)){
+          G=o; migrateLoadedG(); PID=nextPid();
+          try{ flash("💽 큰 저장소에서 이어서 진행합니다.","good"); }catch(e){}
+          try{ enterGame(); }catch(e){}
+          return;
+        }
+      }catch(e){}
       if(!G || !G.teams){                       // 브라우저 기본 저장소가 비었다 — IDB 로 살린다
         G=o; migrateLoadedG(); PID=nextPid();
         /* ⚠ 제보 — 이 안내가 「구단 소식」에 남는다. 저장소 이야기는 구단에서 벌어진 일이 아니다.
@@ -17279,6 +17328,16 @@ function saveInfoHtml(){
   let size=SAVE_SIZE, when=SAVE_LAST;
   try{ const raw=localStorage.getItem(SAVE_KEY); if(raw) size=raw.length; }catch(e){}
   const kb=size?Math.round(size/1024):0;
+  /* 💽 지금 세이브가 어디에 사는가 — 기본 저장소(약 5MB)인가, 큰 저장소인가 */
+  const _ptr=(()=>{ try{ return savePtr(); }catch(e){ return null; } })();
+  const _big=!!_ptr;
+  const _mb=size?(size*2/1024/1024):0;      // 브라우저는 글자당 2바이트로 센다
+  const whereHtml = _big
+    ? `<div class="msg good" style="margin:6px 0"><b>💽 큰 저장소(IndexedDB)에 보관 중</b>
+         <span class="small">— 세이브가 브라우저 기본 저장소 한도(약 5MB)를 넘어, 한도가 훨씬 큰 쪽으로 옮겼습니다.
+         기록을 잘라 내지 않고 통째로 보관합니다. 이어하기·자동 저장 모두 정상입니다.</span></div>`
+    : `<p class="small" style="opacity:.8">💽 저장 위치 — <b>기본 저장소</b> (사용량 약 ${_mb.toFixed(2)}MB / 한도 약 5MB)
+         · 한도를 넘으면 <b>큰 저장소</b>로 자동으로 옮겨 갑니다.</p>`;
   const t=when? new Date(when) : null;
   const ago=t? `${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}` : "—";
   return `<div class="card" style="${ok?"":"border-color:var(--red)"}">
@@ -17294,6 +17353,7 @@ function saveInfoHtml(){
       <label class="mini" style="display:inline-flex;align-items:center;cursor:pointer;margin:0">📂 세이브파일 불러오기
         <input type="file" accept="application/json,.json" style="display:none" onchange="importSave(this)"></label>
     </div>
+    ${whereHtml}
     ${storeRowHtml()}
     ${persistRowHtml()}
     <p class="small" style="margin-top:8px;color:var(--sub)">
@@ -19863,7 +19923,7 @@ function renderTeamPick(){
   /* 이어하기 + 세이브파일 불러오기.
      불러오기는 저장된 게임이 없어도 항상 띄운다 — 기기를 바꿨거나 브라우저가 저장을 지웠을 때
      감독이 다시 들어올 수 있는 유일한 문이다. */
-  let hasSave=false; try{ hasSave=!!localStorage.getItem(SAVE_KEY); }catch(e){}
+  let hasSave=false; try{ hasSave=haveSave(); }catch(e){}
   const saved=`<div class="pkResume">
     ${hasSave?`<button class="pkGo pkMain" onclick="resumeGame()">💾 이어하기<span class="pkSub">저장된 게임</span></button>`:""}
     <label class="pkGo pkLoad" title="내보낸 세이브파일(.json)을 불러옵니다">📂 불러오기
@@ -19893,7 +19953,21 @@ function startGame(id){
   try{ const pm=preMade(); if(pm.length){ G.pgMade=(G.pgMade||[]).concat(pm).slice(-100); } }catch(e){}
   enterGame();
 }
-function resumeGame(){ if(loadGame()) enterGame(); }
+function resumeGame(){
+  if(loadGame()){ enterGame(); return; }
+  /* 💽 기본 저장소에는 없다 — 큰 저장소에서 읽는다(세이브가 5MB 를 넘으면 여기에만 있다) */
+  try{ flash("💽 큰 저장소에서 세이브를 읽는 중…","info"); }catch(e){}
+  try{
+    idbGet(SAVE_KEY).then(raw=>{
+      if(!raw || typeof raw!=="string"){ try{ notify("저장된 게임을 찾지 못했습니다.","warn"); }catch(e){} return; }
+      let o=null; try{ o=JSON.parse(raw); }catch(e){}
+      if(!o || !o.teams){ try{ notify("저장된 게임을 읽지 못했습니다.","warn"); }catch(e){} return; }
+      G=o; IDB_SIZE=raw.length; IDB_OK=true;
+      try{ migrateLoadedG(); PID=nextPid(); }catch(e){}
+      try{ enterGame(); }catch(e){}
+    }).catch(()=>{ try{ notify("저장된 게임을 읽지 못했습니다.","warn"); }catch(e){} });
+  }catch(e){ try{ notify("저장된 게임을 읽지 못했습니다.","warn"); }catch(_){} }
+}
 /* ═══════════════════════════════════════════════════════════════
    첫 부임 인트로 잠금
    처음 하는 사람이 부임 기자회견 도중에 다른 탭을 눌러 빠져나가면, 진행 중이던 절차가 화면에서
