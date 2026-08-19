@@ -15167,9 +15167,22 @@ function startFANego(pid){
 /* ---------- 저장 ---------- */
 function stripCaches(){
   for(const id in G.teams){ const t=G.teams[id];
-    delete t._xiC; delete t._xiCK; delete t._autoSlots; delete t._autoForm;
+    delete t._xiC; delete t._xiCK; delete t._xiCf; delete t._xiCKf;
+    delete t._autoSlots; delete t._autoForm;
     delete t._suSet; delete t._suMap; delete t._suN;
   }   // 선수별 slotRating 캐시는 _SR_CACHE(Map)에 있으므로 세이브에 딸려 나가지 않는다
+  /* 🥗 자리별 능숙도 — 열여섯 자리 중 대부분이 0 이다. 0 은 저장하지 않는다.
+     읽는 쪽이 전부 `posFam[k]||0` 이라 없는 자리는 자연히 0으로 읽힌다(손실 없음).
+     ⚠ 제보 — 「5MB가 넘어가면 다른 기기로 못 옮긴다」. 세이브를 가볍게 만드는 쪽도 함께 손본다. */
+  try{
+    const trim=(arr)=>{ if(!Array.isArray(arr)) return;
+      for(const p of arr){ const f=p&&p.posFam; if(!f) continue;
+        for(const k in f) if(!(f[k]>0)) delete f[k]; } };
+    for(const id in G.teams) trim(G.teams[id].players);
+    trim(G.freeAgents); trim(G.overseas); trim(G.youthPool); trim(G.retired);
+    if(G.scout) trim(G.scout.list);
+    for(const k in (G.eaclClubs||{})){ const c=G.eaclClubs[k]; trim(c && c.t && c.t.players); }
+  }catch(e){}
 }
 /* ═══════════════════════════════════════════════════════════════
    세이브 호환 — 옛 파일을 새 버전에서 열 때
@@ -15695,7 +15708,9 @@ function exportSave(){
     a.href=url; a.download=name; a.style.display="none";
     document.body.appendChild(a); a.click();
     setTimeout(()=>{ try{ URL.revokeObjectURL(url); a.remove(); }catch(e){} }, 800);
-    notify(`💾 세이브파일을 저장했습니다. <span class="small">${name} (${Math.round(s.length/1024)}KB)</span>`,"good");
+    const _mb=s.length/1024/1024;
+    notify(`💾 세이브파일을 저장했습니다. <span class="small">${name} (${_mb>=1?(Math.round(_mb*10)/10+"MB"):(Math.round(s.length/1024)+"KB")})</span>`
+      + (_mb>=4.5 ? `<br><span class="small">📦 파일이 큽니다 — 다른 기기에서 불러올 때 <b>큰 저장소</b>로 넘어갑니다(정상입니다). 첫 로딩이 조금 걸릴 수 있습니다.</span>` : ""),"good");
   }catch(e){ notify("내보내기에 실패했습니다. 브라우저가 파일 저장을 막고 있을 수 있습니다.","warn"); }
 }
 function importSave(input){
@@ -15751,9 +15766,28 @@ function importSave(input){
           try{ G=JSON.parse(b2); migrateLoadedG(); PID=nextPid(); enterGame(); }catch(_){} } }).catch(()=>{}); }catch(e){}
         notify("이 파일을 읽지 못해 원래 세이브로 되돌렸습니다. 파일이 손상되지 않았는지 확인해 주세요.","warn");
       }
-      else { flash("저장소에 쓸 수 없어 이번 세션에서만 불러옵니다. 진행 상황은 다시 파일로 내보내 주세요.","warn");
-             G=obj; try{ migrateLoadedG(); PID=nextPid(); }catch(e){ try{ migrateSave(); }catch(_){} }
-             enterGame(); }
+      else {
+        /* 💽 브라우저 기본 저장소(대개 5MB)를 넘는 세이브 — 큰 저장소(IndexedDB)에 넣는다.
+           ⚠ 제보 — 「5MB가 넘어가면 아이폰에서 하던 걸 PC로 못 옮기나요? 자꾸 실패합니다」.
+             예전에는 여기서 「이번 세션에서만」 불러오고 끝났다. 새로 고치면 통째로 사라졌으니
+             옮기기가 사실상 실패였다. IndexedDB 는 한도가 훨씬 커서 이 크기를 감당한다.
+             다음에 게임을 열면 부팅 점검(idbSyncCheck)이 그 세이브를 그대로 되살린다. */
+        G=obj;
+        try{ migrateLoadedG(); PID=nextPid(); }catch(e){ try{ migrateSave(); }catch(_){} }
+        try{ G._svAt=Date.now(); }catch(e){}
+        const _mb=Math.round(txt.length/1024/1024*10)/10;
+        let _big=txt; try{ _big=JSON.stringify(G); }catch(e){}
+        try{
+          idbPut(SAVE_KEY, _big).then(()=>{
+            IDB_OK=true; IDB_SIZE=_big.length;
+            try{ notify(`💾 세이브를 불러왔습니다.<br><span class="small">파일이 커서(${_mb}MB) <b>큰 저장소</b>에 보관합니다 — 다음에 열면 그대로 이어집니다.</span>`,"good"); }catch(e){}
+          }).catch(()=>{
+            IDB_OK=false;
+            try{ notify(`💾 세이브를 불러왔지만 <b>저장은 되지 않았습니다</b> — 이번 세션에서만 유지됩니다.<br><span class="small">브라우저의 저장 공간이 막혀 있습니다. 시크릿 모드라면 일반 창에서 다시 시도해 주세요.</span>`,"warn"); }catch(e){}
+          });
+        }catch(e){ try{ flash("저장소에 쓸 수 없어 이번 세션에서만 불러옵니다.","warn"); }catch(_){} }
+        enterGame();
+      }
     }catch(e){
       /* 형식은 맞는데 불러오는 도중 문제가 생긴 경우 — 원인을 짧게 알려 준다(그래야 제보가 된다) */
       try{ const bak=localStorage.getItem(SAVE_KEY+"_bak"); if(bak){ localStorage.setItem(SAVE_KEY, bak); loadGame(); } }catch(_){}
