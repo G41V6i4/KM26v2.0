@@ -3262,6 +3262,15 @@ const PLAYER_TWEAK={
 
 
 
+  /* 루이스(김포) — K2를 지배한 브라질 골잡이. 3.5시즌 58골.
+     화려하지 않다. 박스 안에서만 산다 — 첫 터치로 각을 만들고 한 번에 마무리한다.
+     서른셋이라 발은 예전 같지 않지만 골 냄새와 침착함은 리그 최상위. 5성급. */
+  "gimpo:루이스":{ pos:"FW", pref:"ST", ovr:80, potMax:80,
+    fam:{ST:100, LW:62, RW:62, AMC:55},
+    set:{fin:94, otb:93, cmp:90, ant:88, fir:88, tec:84, dri:83, pen:90, fla:76, lon:76,
+         hea:83, jum:81, str:81, bal:81, agi:79, acc:82, pac:78, sta:70, wor:66,
+         det:86, bra:80, agg:70, tea:70, dec:78, cnt:74, vis:64, pas:66, crs:52,
+         pos:48, mar:26, tck:22} },
   /* 에드가 — 191cm 타깃맨. 몸싸움·점프·헤더가 리그 최상위(18~20). */
   "daegu:에드가":{ set:{str:92, jum:96, hea:99} },
   /* 데커스 — 200cm 96kg. 제공권은 더 키우고, 대신 골 결정력은 현실적으로 낮춘다(11~14). */
@@ -21522,14 +21531,41 @@ const STK_SECTOR={
       며칠 연속 하한가를 맞고 반토막이 나는 일이 실제로 벌어진다. */
 const STK_TIER={
   blue :{n:"우량주", c:"#58a6ff", vol:0.017, dr: 0.00013, sp:0.00018, dl:0.0006},
-  grow :{n:"성장주", c:"#7ee2a8", vol:0.038, dr: 0.00016, sp:0.00052, dl:0.008},
-  penny:{n:"동전주", c:"#e3b341", vol:0.076, dr:-0.00052, sp:0.00110, dl:0.065},
-  junk :{n:"잡주",   c:"#f85149", vol:0.115, dr:-0.00095, sp:0.00230, dl:0.175}
+  grow :{n:"성장주", c:"#7ee2a8", vol:0.038, dr: 0.00022, sp:0.00052, dl:0.008},
+  penny:{n:"동전주", c:"#e3b341", vol:0.076, dr: 0.00016, sp:0.00110, dl:0.065},
+  junk :{n:"잡주",   c:"#f85149", vol:0.115, dr: 0.00045, sp:0.00230, dl:0.175}
 };
 const SPLIT_HI=400000;    // 이 값을 넘으면 액면분할 검토 (실제 시장에서도 이쯤에서 쪼갠다)
 const VAL_PULL=0.0055;    // 하루치 밸류에이션 되돌림 — 고평가는 눌리고 저평가는 밀린다
 const VAL_MAX=0.0022;     // 되돌림이 하루에 줄 수 있는 최대 추세 (±0.22%)
 const STK_HIST=90;        // 종가를 며칠치 들고 있을지 (세이브 크기 때문에 넉넉히 자른다)
+/* ═══ 💥 시장충격 — 큰 주문은 자기가 값을 밀어 올린다 ══════════════════════
+   ⚠ 제보 — 「주식으로 경 단위를 번 사람이 있다」.
+     원인의 절반이 여기였다. 수십조짜리 주문을 넣어도 어제 종가 그대로 전량 체결됐다.
+     실제 시장에서는 큰 주문이 호가를 위로 다 먹으면서 스스로 값을 올리고,
+     팔 때는 반대로 흘러내린다. 그래서 자산이 커질수록 수익률이 떨어진다 —
+     이 브레이크가 없으면 복리가 그대로 폭주한다.
+   ─ 실제 시장에서 쓰는 제곱근 충격 모형을 그대로 쓴다: 충격 ∝ √(주문금액 / 하루 거래대금) */
+const STK_LIQ_K  =0.15;   // 충격 계수 — 하루 거래대금만큼 주문하면 15% 불리하게 체결
+const STK_LIQ_MAX=0.45;   // 한 주문이 받을 수 있는 최대 불리
+function stkTurnover(s){
+  return Math.max((s.vol||0)*s.p, stkCap(s)*0.0004, 1);
+}
+/* 주문 금액 / 하루 거래대금 에 비례한다 — 소액은 거의 티가 나지 않고, 거래대금을 넘기는
+   순간부터 급격히 나빠진다. 「자산이 커질수록 굴리기 어렵다」가 이 한 줄에서 나온다. */
+function stkImpact(s, amount){
+  if(!s || !(amount>0)) return 0;
+  return clamp(STK_LIQ_K*(amount/stkTurnover(s)), 0, STK_LIQ_MAX);
+}
+/* 체결 단가 — side 는 매수 +1 · 매도 −1 */
+function stkFillPx(s, q, side){
+  const imp=stkImpact(s, Math.max(0,q)*s.p);
+  return {px:Math.max(1, Math.round(s.p*(1+side*imp))), imp};
+}
+/* 내가 밀어 올린(내린) 값은 시장에 남는다 */
+function stkPushMom(s, side, imp){
+  if(s && imp>0) s.mom += side*imp*0.35;
+}
 const STK_FEE=0.0015;     // 매매 수수료
 const STK_TAX=0.0023;     // 매도 시 거래세 (실제 국내 증권거래세 수준)
 
@@ -22265,7 +22301,12 @@ function stkOrderTick(){
     /* 매수는 저가가 지정가 아래로 내려오면, 매도는 고가가 지정가 위로 올라가면 체결된다 */
     const hit = o.k==="buy" ? (s.lo<=o.px) : (s.hi>=o.px);
     if(!hit) continue;
-    const px=o.k==="buy" ? Math.min(o.px, s.o||o.px) : Math.max(o.px, s.o||o.px);
+    let px=o.k==="buy" ? Math.min(o.px, s.o||o.px) : Math.max(o.px, s.o||o.px);
+    /* 💥 예약이라고 충격을 피해 갈 수는 없다 — 같은 호가창이다 */
+    { const _side=o.k==="buy"?1:-1;
+      const _imp=stkImpact(s, o.q*px);
+      px=Math.max(1, Math.round(px*(1+_side*_imp)));
+      stkPushMom(s, _side, _imp); }
     if(o.k==="buy"){
       const cost=o.q*px*(1+STK_FEE);
       if(cost > M.cash*1e8){
@@ -22480,9 +22521,14 @@ function stkTipTick(){
     /* 판정일 — 이야기가 사실인지 드러나기까지 3~12일 */
     const wait=3+Math.floor(Math.random()*10);
     const txt=pick(up?STK_TIP_UP:STK_TIP_DN).replace("{n}", s.n);
+    const _rel=Math.round(clamp(SRC.rel+stkTipQuality()*0.5+(Math.random()*0.14-0.07),0.10,0.92)*100);
+    /* ⚠ 표시 신뢰도는 「소문을 옮기는 쪽의 자신감」일 뿐이다 — 실제로 맞을 확률과 다르다.
+       예전에는 이 값이 그대로 적중 확률이라, 60% 이상만 골라 타면 승률이 보장됐다(실측 100%).
+       찌라시가 찌라시인 이유는 믿을 수 없다는 데 있다. */
+    const _tp=clamp(_rel/100*0.62 + 0.10 + (Math.random()*0.34-0.17), 0.06, 0.72);
     T.unshift({id:(S.tid=(S.tid||0)+1), sid:s.id, n:s.n, k:up?"up":"down", src,
                d:G.day||0, due:(G.day||0)+wait, res:null,
-               rel:Math.round(clamp(SRC.rel+stkTipQuality()*0.5+(Math.random()*0.14-0.07),0.10,0.92)*100),
+               rel:_rel, tp:Math.round(_tp*1000)/1000,
                txt});
     if(T.length>40) T.length=40;
     /* 🫧 선반영 — 이야기가 도는 것만으로 값이 움직인다 */
@@ -22501,19 +22547,19 @@ function stkTipTick(){
     const s=stkById(t.sid);
     if(!s || s.dead){ t.res="void"; continue; }
     const SRC=STK_SRC[t.src]||STK_SRC.desk;
-    const hit=Math.random() < (t.rel/100);
+    const hit=Math.random() < (t.tp!=null ? t.tp : clamp(t.rel/100*0.62+0.10, 0.06, 0.72));
     const k=clamp(STK_TIER[s.tier].vol/0.025, 0.6, 2.4);
     if(hit){
       t.res="hit";
       /* 적중 — 신뢰도가 낮았던 이야기일수록 크게 튄다(아무도 안 믿었으니 선반영이 적다) */
-      const eff=(0.045+Math.random()*0.075)*SRC.pow*k;
+      const eff=(0.028+Math.random()*0.048)*SRC.pow*k;
       s.mom += (t.k==="up"?1:-1)*eff;
       stkLog(t.k==="up"?"tipHit":"tipHitD", `🎯 <b>[적중]</b> ${t.txt} — 사실로 확인됐습니다`, s.id);
       stkPing(s, `🎯 <b>${s.n}</b> 찌라시 적중 — ${t.k==="up"?"호재":"악재"}가 사실로 확인됐습니다`, t.k==="up"?"good":"warn");
     } else {
       t.res="miss";
       /* 불발 — 선반영됐던 만큼 되돌린다. 소문만 믿고 들어갔으면 여기서 물린다. */
-      const back=SRC.pre*0.020*k*(0.8+Math.random()*0.9);
+      const back=SRC.pre*0.020*k*(1.20+Math.random()*1.10);
       s.mom -= (t.k==="up"?1:-1)*back;
       stkLog("tipMiss", `💨 <b>[낭설]</b> ${t.txt} — 회사 측은 "사실무근"이라고 밝혔습니다`, s.id);
       stkPing(s, `💨 <b>${s.n}</b> 찌라시는 낭설이었습니다 — 회사 측 부인`, "warn");
@@ -22956,7 +23002,7 @@ function stkBankrupt(){
    오르면 손실이 끝없이 불어난다. 급등하면 숏스퀴즈로 강제 청산된다.
    ═══════════════════════════════════════════════════════════════════════════ */
 const STK_SH_MARGIN=1.40;   // 필요 증거금 = 매도 대금의 140%
-const STK_SH_FEE   =0.00020;// 대여 수수료 일 0.02%
+const STK_SH_FEE   =0.00035;// 대여 수수료 일 0.035% (연 12.8% — 빌려서 파는 값은 원래 비싸다)
 const STK_SH_CALL  =1.15;   // 증거금 유지 비율 — 이 아래면 강제 청산
 function stkShorts(){ const M=me(); if(!M.short) M.short={}; return M.short; }
 function stkShortList(){
@@ -22979,7 +23025,8 @@ function stkShortOpen(){
   const q=parseInt(STK_QTY,10)||0;
   if(q<=0){ flash("수량을 입력하세요.","warn"); return; }
   const M=me();
-  const gross=q*s.p, need=gross*STK_SH_MARGIN;
+  const F=stkFillPx(s, q, -1);                  // 💥 던지는 만큼 값이 흘러내린다
+  const gross=q*F.px, need=gross*STK_SH_MARGIN;
   if(need > M.cash*1e8 + stkEval() - stkShortVal()*STK_SH_MARGIN){
     flash(`증거금이 부족합니다 — ${stkMoney(need)} 필요 (매도 대금의 ${Math.round(STK_SH_MARGIN*100)}%)`,"warn"); return;
   }
@@ -22987,11 +23034,11 @@ function stkShortOpen(){
   M.cash=Math.round((M.cash + net/1e8)*1e4)/1e4;
   const H=stkShorts();
   const h=H[s.id]||{q:0, avg:0};
-  h.avg=Math.round((h.avg*h.q + s.p*q)/(h.q+q)); h.q+=q;
+  h.avg=Math.round((h.avg*h.q + F.px*q)/(h.q+q)); h.q+=q;
   H[s.id]=h;
-  s.mom -= Math.min(0.005, gross/Math.max(1,stkCap(s))*2.6);
-  stkTxAdd({k:"short", sid:s.id, n:s.n, q, px:s.p, amt:net});
-  try{ meLog(`📉 ${s.n} ${q.toLocaleString()}주 공매도 (@${s.p.toLocaleString()} · ${stkMoney(net)})`); }catch(e){}
+  stkPushMom(s, -1, F.imp);
+  stkTxAdd({k:"short", sid:s.id, n:s.n, q, px:F.px, amt:net});
+  try{ meLog(`📉 ${s.n} ${q.toLocaleString()}주 공매도 (@${F.px.toLocaleString()} · ${stkMoney(net)})`); }catch(e){}
   STK_QTY=""; saveGame(); show("mylife");
 }
 function stkShortCover(){
@@ -23000,14 +23047,15 @@ function stkShortCover(){
   const h=H[s.id]; if(!h||!h.q){ flash("공매도 잔고가 없습니다.","warn"); return; }
   let q=parseInt(STK_QTY,10)||0;
   if(q<=0||q>h.q){ flash(`공매도 잔고는 ${h.q.toLocaleString()}주입니다.`,"warn"); return; }
-  const cost=q*s.p*(1+STK_FEE);
+  const F=stkFillPx(s, q, +1);                  // 💥 되사는 물량이 값을 밀어 올린다
+  const cost=q*F.px*(1+STK_FEE);
   if(cost > M.cash*1e8){ flash(`현금이 부족합니다 — ${stkMoney(cost)} 필요`,"warn"); return; }
-  const real=(h.avg-s.p)*q;
+  const real=(h.avg-F.px)*q;
   M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
   M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e4)/1e4;
   h.q-=q; if(h.q<=0) delete H[s.id];
-  s.mom += Math.min(0.005, q*s.p/Math.max(1,stkCap(s))*2.6);
-  stkTxAdd({k:"cover", sid:s.id, n:s.n, q, px:s.p, amt:cost, real});
+  stkPushMom(s, +1, F.imp);
+  stkTxAdd({k:"cover", sid:s.id, n:s.n, q, px:F.px, amt:cost, real});
   try{ meLog(`📈 ${s.n} ${q.toLocaleString()}주 숏커버 (실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억)`); }catch(e){}
   STK_QTY=""; saveGame(); show("mylife");
 }
@@ -23043,12 +23091,14 @@ function stkShortTick(){
     const list=stkShortList(); if(!list.length) break;
     const h=list[0], s=h.s;
     const q=Math.max(1, Math.ceil(h.q*0.4));
-    const cost=q*s.p*(1+STK_FEE);
-    const real=(h.avg-s.p)*q;
+    const _F=stkFillPx(s, q, +1);
+    const cost=q*_F.px*(1+STK_FEE);
+    const real=(h.avg-_F.px)*q;
+    stkPushMom(s, +1, _F.imp);
     M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
     M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e4)/1e4;
     const H=stkShorts(); H[s.id].q-=q; if(H[s.id].q<=0) delete H[s.id];
-    stkTxAdd({k:"shcall", sid:s.id, n:s.n, q, px:s.p, amt:cost, real});
+    stkTxAdd({k:"shcall", sid:s.id, n:s.n, q, px:_F.px, amt:cost, real});
     if(guard===1){
       stkLog("call", `🔨 공매도 증거금 부족 — <b>${s.n}</b> 강제 숏커버`, s.id);
       try{ notify(`🔨 <b>공매도 강제 청산</b> — ${s.n} 되사기가 실행됐습니다. 손실이 확정됩니다.`,"warn"); }catch(e){}
@@ -23168,12 +23218,15 @@ function stkThemeTick(){
     /* 달아오르는 구간 → 식는 구간 → 폭락 */
     const live=S.list.filter(s=>!s.dead && T.s.indexOf(s.sec)>=0);
     if(age<T.up){
-      for(const s of live) s.mom += 0.0075*T.w*(0.6+Math.random()*0.9);
+      for(const s of live) s.mom += 0.0030*T.w*(0.6+Math.random()*0.9);
     } else if(age<T.up+T.dn){
-      for(const s of live) s.mom -= 0.0090*T.w*(0.6+Math.random()*0.9);
-      if(age===T.up){
-        stkLog("theme", `🎪 <b>${T.n}</b> 테마 급락 시작 — 차익 실현 물량이 쏟아집니다`);
-        try{ notify(`🎪 <b>${T.n}</b> 테마가 꺾였습니다. 물량이 쏟아지고 있습니다.`,"warn"); }catch(e){}
+      for(const s of live) s.mom -= 0.0058*T.w*(0.6+Math.random()*0.9);
+      /* ⚠ 꺾이는 순간을 알려 주면 그게 매도 신호가 된다 — 실측 결과 이 공지 하나로
+         「발표에 사서 공지에 판다」가 승률 98%짜리 무위험 전략이 됐다.
+         실제 시장은 꺾인 걸 한참 뒤에야 기사로 알려 준다. */
+      if(age===T.up+Math.ceil(T.dn*0.5)){
+        stkLog("theme", `🎪 <b>${T.n}</b> 테마 급락 — 며칠째 차익 실현 물량이 쏟아지고 있습니다`);
+        try{ notify(`🎪 <b>${T.n}</b> 테마가 이미 꺾였습니다. 고점 대비 많이 내려왔습니다.`,"warn"); }catch(e){}
       }
     } else {
       stkLog("theme", `🎪 ${T.n} 테마 종료 — 광풍이 지나갔습니다`);
@@ -23184,7 +23237,19 @@ function stkThemeTick(){
   /* 새 테마 — 40일에 한 번쯤 */
   if(Math.random()<0.025){
     const t=pick(STK_THEMES);
-    S.theme={n:t.n, s:t.s, w:t.w, d:G.day||0, up:6+Math.floor(Math.random()*10), dn:8+Math.floor(Math.random()*12)};
+    /* 남은 상승 기간을 짧고 들쭉날쭉하게 — 언제 꺾일지 알 수 없어야 도박이다 */
+    S.theme={n:t.n, s:t.s, w:t.w, d:G.day||0, up:1+Math.floor(Math.random()*8), dn:8+Math.floor(Math.random()*11)};
+    /* 🫧 기사가 나올 때는 이미 오른 뒤다 — 뉴스를 보고 들어가면 그만큼 비싸게 산다.
+       ⚠ mom 으로 얹으면 다음 날 반영이라 「기사 보고 오늘 종가에 사기」가 그대로 공짜가 된다.
+          오늘 종가 자체를 끌어올려야 뉴스와 값이 같은 날에 맞는다. */
+    for(const s of S.list){
+      if(s.dead || t.s.indexOf(s.sec)<0) continue;
+      const j=(0.075+Math.random()*0.105)*t.w;
+      s.p=Math.max(1, Math.round(s.p*(1+j)));
+      s.hi=Math.max(s.hi||s.p, s.p);
+      if(Array.isArray(s.hist) && s.hist.length) s.hist[s.hist.length-1]=s.p;
+      if(Array.isArray(s.ohlc) && s.ohlc.length){ const c=s.ohlc[s.ohlc.length-1]; c[3]=s.p; c[1]=Math.max(c[1], s.p); }
+    }
     stkLog("theme", `🎪 <b>${t.n}</b> 테마 급부상 — ${t.s.map(k=>(STK_SECTOR[k]||{}).n).join("·")} 업종 일제히 강세`);
     try{ notify(`🎪 <b>${t.n}</b> 테마가 뜨고 있습니다 — ${t.s.map(k=>(STK_SECTOR[k]||{}).n).join("·")} 업종이 들썩입니다.`,"info"); }catch(e){}
   }
@@ -23203,8 +23268,9 @@ function stkIpoTick(){
     const d=G.day||0;
     if(d>=P.list){                                    // 상장일
       /* 공모가 대비 시초가 — 청약 경쟁률이 높을수록 뜨겁다 */
-      const heat=clamp(P.rate/700, 0.2, 2.2);
-      const open=Math.round(P.px*(0.72 + heat*0.55 + (Math.random()*0.9-0.35)));
+      /* ⚠ 경쟁률만 보고 청약하면 무조건 남는 장사였다 — 실제 공모주는 반토막도 흔하다 */
+      const heat=clamp(P.rate/900, 0.15, 1.6);
+      const open=Math.round(P.px*(0.58 + heat*0.40 + (Math.random()*1.15-0.55)));
       const tier=P.tier;
       const s=stkMake((S.list.reduce((m,x)=>Math.max(m,x.id),0)+1), P.n, P.sec, tier, null);
       s.p=Math.max(50, open); s.o=s.p; s.hi=s.p; s.lo=s.p; s.pc=P.px;
@@ -23294,8 +23360,9 @@ function stkQtyEchoHtml(s){
   const q=parseInt(STK_QTY,10)||0;
   const h=(M.stkInv&&M.stkInv[s.id])||null;
   if(q<=0) return `보유 현금 <b class="money">${M.cash.toFixed(2)}억</b>${h?` · 보유 <b>${h.q.toLocaleString()}주</b>`:""}`;
-  const cost=q*s.p*(1+STK_FEE);
-  const net =q*s.p*(1-STK_FEE-STK_TAX);
+  const _fb=stkFillPx(s, q, +1), _fs=stkFillPx(s, q, -1);
+  const cost=q*_fb.px*(1+STK_FEE);
+  const net =q*_fs.px*(1-STK_FEE-STK_TAX);
   const cash=M.cash*1e8;
   const overCash = cost>cash;
   const overHold = !h || q>h.q;
@@ -23305,7 +23372,8 @@ function stkQtyEchoHtml(s){
     + ` · 매도 <b class="money" style="color:${overHold?"#f85149":""}">${stkMoney(net)}</b>`
     + `${overHold?` <span style="color:#f85149">— 보유 ${h?h.q.toLocaleString()+"주":"없음"}</span>`
                  :` <span style="color:${real>=0?"#f85149":"#58a6ff"}">실현 ${real>=0?"+":""}${stkMoney(real)}</span>`}`
-    + ` <span style="opacity:.7">(수수료 ${(STK_FEE*100).toFixed(2)}% · 매도세 ${(STK_TAX*100).toFixed(2)}%)</span>`;
+    + ` <span style="opacity:.7">(수수료 ${(STK_FEE*100).toFixed(2)}% · 매도세 ${(STK_TAX*100).toFixed(2)}%)</span>`
+    + (_fb.imp>0.005 ? `<br><span style="color:#ff9d5c">💥 시장충격 <b>${(_fb.imp*100).toFixed(1)}%</b> — 이 종목 하루 거래대금(${stkMoney(stkTurnover(s))})에 비해 주문이 큽니다. 매수는 ${_fb.px.toLocaleString()}원, 매도는 ${_fs.px.toLocaleString()}원에 체결됩니다.</span>` : "");
 }
 function stkQtyBtn(kind){
   const s=stkById(STK_SEL); if(!s) return;
@@ -23325,20 +23393,22 @@ function stkBuy(){
   const q=parseInt(STK_QTY,10)||0;
   if(q<=0){ flash("수량을 입력하세요.","warn"); return; }
   const M=me();
-  const cost=q*s.p*(1+STK_FEE);
+  const F=stkFillPx(s, q, +1);                  // 💥 큰 주문일수록 비싸게 체결된다
+  const cost=q*F.px*(1+STK_FEE);
   if(cost > M.cash*1e8){ flash(`현금이 부족합니다 — ${stkMoney(cost)} 필요 (보유 ${M.cash.toFixed(2)}억)`,"warn"); return; }
   M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
   if(!M.stkInv) M.stkInv={};
   const h=M.stkInv[s.id]||{q:0, avg:0};
   /* 📅 처음 담은 날 — 나중에 「얼마나 들고 있었나」를 계산하는 기준이 된다 */
   if(!(h.q>0) || h.since==null){ h.since=G.day||0; h.sinceS=G.season; }
-  h.avg=Math.round((h.avg*h.q + s.p*q)/(h.q+q));
+  h.avg=Math.round((h.avg*h.q + F.px*q)/(h.q+q));
   h.q+=q;
   M.stkInv[s.id]=h;
   M.spent=Math.round((M.spent+cost/1e8)*100)/100;
-  s.mom += Math.min(0.004, q*s.p/Math.max(1,stkCap(s))*2.2);   // 큰 손이 들어오면 값이 밀린다
-  stkTxAdd({k:"buy", sid:s.id, n:s.n, q, px:s.p, amt:cost});
-  try{ meLog(`📈 ${s.n} ${q.toLocaleString()}주 매수 (${s.p.toLocaleString()}원 · ${stkMoney(cost)})`); }catch(e){}
+  stkPushMom(s, +1, F.imp);                     // 내가 밀어 올린 값은 시장에 남는다
+  stkTxAdd({k:"buy", sid:s.id, n:s.n, q, px:F.px, amt:cost});
+  if(F.imp>0.01) stkLog("slip", `💥 <b>${s.n}</b> 매수 체결가가 시세보다 <b>${(F.imp*100).toFixed(1)}%</b> 높았습니다 — 물량이 호가를 밀어 올렸습니다`, s.id);
+  try{ meLog(`📈 ${s.n} ${q.toLocaleString()}주 매수 (${F.px.toLocaleString()}원 · ${stkMoney(cost)})`); }catch(e){}
   STK_QTY=""; saveGame(); show("mylife");
 }
 function stkSell(){
@@ -23349,16 +23419,18 @@ function stkSell(){
   if(!h||h.q<=0){ flash("보유 수량이 없습니다.","warn"); return; }
   if(q<=0||q>h.q){ flash(`보유 수량은 ${h.q.toLocaleString()}주입니다.`,"warn"); return; }
   if(s.dead){ flash("상장폐지된 종목은 매도할 수 없습니다.","warn"); return; }
-  const gross=q*s.p, net=gross*(1-STK_FEE-STK_TAX);
-  const real=(s.p-h.avg)*q;
+  const F=stkFillPx(s, q, -1);                  // 💥 큰 물량을 던지면 값이 흘러내린다
+  const gross=q*F.px, net=gross*(1-STK_FEE-STK_TAX);
+  const real=(F.px-h.avg)*q;
   M.cash=Math.round((M.cash + net/1e8)*1e4)/1e4;
   M.earned=Math.round((M.earned+net/1e8)*100)/100;
   M.stkReal=Math.round(((M.stkReal||0) + real/1e8)*1e4)/1e4;
   h.q-=q;
   if(h.q<=0) delete M.stkInv[s.id]; else M.stkInv[s.id]=h;
-  s.mom -= Math.min(0.004, gross/Math.max(1,stkCap(s))*2.2);
-  stkTxAdd({k:"sell", sid:s.id, n:s.n, q, px:s.p, amt:net, real,
-            bavg:h.avg, hold:stkHoldDays(h), ret:h.avg>0?((s.p-h.avg)/h.avg):null});
+  stkPushMom(s, -1, F.imp);
+  stkTxAdd({k:"sell", sid:s.id, n:s.n, q, px:F.px, amt:net, real,
+            bavg:h.avg, hold:stkHoldDays(h), ret:h.avg>0?((F.px-h.avg)/h.avg):null});
+  if(F.imp>0.01) stkLog("slip", `💥 <b>${s.n}</b> 매도 체결가가 시세보다 <b>${(F.imp*100).toFixed(1)}%</b> 낮았습니다 — 받아 줄 물량이 없었습니다`, s.id);
   try{ meLog(`📉 ${s.n} ${q.toLocaleString()}주 매도 (${stkMoney(net)} · 실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억)`); }catch(e){}
   STK_QTY=""; saveGame(); show("mylife");
 }
