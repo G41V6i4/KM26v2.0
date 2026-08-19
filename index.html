@@ -6607,6 +6607,13 @@ function applyMatchResult(M){
   try{ if(M.home) markTacticUsed(M.home); if(M.away) markTacticUsed(M.away); }catch(e){}
   const pairs=[[M.h,M.home,M.hg,M.ag,M.away,true],[M.a,M.away,M.ag,M.hg,M.home,false]];
   for(const [sd,t,gf,ga,opp,isHome] of pairs){
+    /* 🥅 승부차기로 갈린 경기 — 90분 스코어는 무승부지만, 감정·사기·신뢰는 승패로 갈린다.
+       ⚠ 제보 — 「승부차기로 이겼는데 경기가 끝나면 '이길 수 있었는데 아쉽다'로 평가된다」.
+         순위표에 올라가는 기록(승/무/패·승점)은 규정대로 무승부 그대로 두고,
+         사람의 반응만 실제 결과를 따르게 한다. ef/ea = 평가용 스코어(한 골 차 승부). */
+    const _pkw = (M.pk && M.pk.win) ? (((M.pk.win==="h")===isHome) ? 1 : -1) : 0;
+    const ef = gf + (_pkw>0?1:0), ea = ga + (_pkw<0?1:0);
+    const _pkTxt = _pkw ? ` · 승부차기 ${_pkw>0?"승":"패"}` : "";
     if(M.opts&&M.opts.friendly){
       // 연습경기 — 승패 기록도 순위표도 없다. 다만 라커룸 분위기는 조금 움직인다.
       const fv=resultMorale(t, opp, gf, ga, isHome)*0.4;
@@ -6614,7 +6621,7 @@ function applyMatchResult(M){
     }
     if(!M.opts.noTable){
       t.GF+=gf; t.GA+=ga;
-      const mdv=resultMorale(t, opp, gf, ga, isHome);
+      const mdv=resultMorale(t, opp, ef, ea, isHome);
       const setMor=(v)=>{ t.morale=Math.round(clamp(v,40,99)*100)/100; };
       if(gf>ga){t.W++; t.Pts+=3; t.form.push("W"); setMor(t.morale+mdv);}
       else if(gf===ga){t.Dw++; t.Pts+=1; t.form.push("D"); setMor(t.morale+mdv);}
@@ -6628,11 +6635,11 @@ function applyMatchResult(M){
     // 승강 PO 등 noTable 경기도 신뢰도만큼은 반영한다(오히려 이런 경기가 가장 크게 흔든다).
     if(t.isUser && G.mgrTaunt && G.mgrTaunt.opp===opp.id && !(M.opts&&M.opts.friendly)){
       const cn=G.mgrTaunt.cn||"상대";
-      if(gf>ga){
+      if(ef>ea){
         fmkFill([[`"${cn}의 시대는 갔다" 도발하고 진짜 이겨버림 ㅋㅋㅋ 폼 미쳤다`,1],[`도발하고 이기는 게 제일 간지지 ㅋㅋ 오늘부로 우리 감독 승부사 인정`,1]],2,{});
         addNews(`🔥 도발은 현실이 됐다 — ${t.short}, ${cn} 감독과의 설전에서 완승`,"good","club");
         adjustTrust("fans",+2,"도발 설전 승리");
-      } else if(gf<ga){
+      } else if(ef<ea){
         fmkFill([[`${cn} 시대는 갔다며 ㅋㅋㅋ 오늘 보니 누구 시대가 갔는지 알겠던데`,-1],[`도발하고 지는 게 제일 꼴받는다 진짜 ㅅㅂ`,-1],[`오늘부로 우리 감독 기자회견 금지시켜라`,-1]],3,{});
         addNews(`🤐 설전의 대가 — ${cn} 감독을 도발했던 ${t.short}, 고개를 숙였다`,"warn","club");
         adjustTrust("fans",-3,"도발 후 패배"); G.press.rel=clamp(G.press.rel-3,0,100);
@@ -6642,8 +6649,8 @@ function applyMatchResult(M){
       G.mgrTaunt=null;
     }
     if(t.isUser){
-      const {fan,owner}=matchTrustDelta(t, opp, gf, ga, isHome);
-      const reason = gf>ga?`${opp.short}전 승리 (${gf}-${ga})`:gf===ga?`${opp.short}전 무승부 (${gf}-${ga})`:`${opp.short}전 패배 (${gf}-${ga})`;
+      const {fan,owner}=matchTrustDelta(t, opp, ef, ea, isHome);
+      const reason = (ef>ea?`${opp.short}전 승리 (${gf}-${ga})`:ef===ea?`${opp.short}전 무승부 (${gf}-${ga})`:`${opp.short}전 패배 (${gf}-${ga})`)+_pkTxt;
       if(Math.abs(fan)>=0.1) adjustTrust("fans", fan, reason);
       if(Math.abs(owner)>=0.1) adjustTrust("owner", owner, reason);
     }
@@ -6685,7 +6692,7 @@ function applyMatchResult(M){
       if(frMatch){ p.fRTot=(p.fRTot||0)+clamp(base,3,10); p.fRating=Math.round(p.fRTot/p.fApps*100)/100; }
       else if(eaclMatch){ /* 대회 평점 — eaclStatCollect 가 x.rating 을 가져간다 */ }
       else { p.rTot+=clamp(base,3,10); p.seasonRating=Math.round(p.rTot/p.apps*100)/100; }
-      p.morale=clamp(p.morale+(gf>ga?3:gf<ga?-3:0)+(base>=7.6?2:0),30,99);
+      p.morale=clamp(p.morale+(ef>ea?3:ef<ea?-3:0)+(base>=7.6?2:0),30,99);
       /* 특성 경험치 — 뛴 만큼, 잘한 만큼 쌓인다 (우리 팀 선수만 관리 대상) */
       if(t.isUser){
         try{ addTraitXp(p, traitXpForMatch(p, mins, clamp(base,3,10), x.goals, x.assists,
@@ -25845,6 +25852,10 @@ function socialOnResult(M){
   }
   const mine = M.home.isUser ? "h" : "a";
   const gf = mine==="h"?M.hg:M.ag, ga = mine==="h"?M.ag:M.hg;
+  /* 🥅 승부차기로 갈린 경기 — 팬들은 「비겼다」고 말하지 않는다. 반응은 승패로 간다 (제보).
+     rf/ra = 반응 판정용 스코어. 표기 스코어(gf/ga)는 그대로 둔다. */
+  const _pkw = (M.pk && M.pk.win) ? ((M.pk.win===mine)?1:-1) : 0;
+  const rf = gf + (_pkw>0?1:0), ra = ga + (_pkw<0?1:0);
   const opp = (M.home.isUser?M.away:M.home);
   const sd  = mine==="h"?M.h:M.a;
   const best=[...sd.list].sort((a,b)=>(b.goals*2+b.assists)-(a.goals*2+a.assists))[0];
@@ -25866,30 +25877,30 @@ function socialOnResult(M){
   // 시즌 첫 경기는 따로 — 한 판 결과에 시즌 전체를 예언하는 게 팬이고 커뮤니티다
   const played=(t.div===1?G.r1:G.r2);
   const isFirst = played<=1;
-  if(gf>ga){
+  if(rf>ra){
     if(isFirst){ socialFill(SOC.firstWin, 3+R(2), 1, v); fmkFill(FMK.firstWin, 3+R(3), v); }
-    else if(gf-ga>=3){ socialFill(SOC.winBig, 2+R(2), 1, v); fmkFill(FMK.bigWin, 3+R(2), v); }
+    else if(rf-ra>=3){ socialFill(SOC.winBig, 2+R(2), 1, v); fmkFill(FMK.bigWin, 3+R(2), v); }
     else { socialFill(SOC.win, 2+R(2), 1, v); fmkFill(FMK.win, 2+R(2), v); }
     // 옆 동네 반응 — 같은 경기를 남의 눈으로 다시 본다
-    if(gf-ga>=3){ rivalFill(RIV.winBig, 2+R(2), 1, v); rivalFmk(FRIV.bigWin, 1+R(2), v); }
+    if(rf-ra>=3){ rivalFill(RIV.winBig, 2+R(2), 1, v); rivalFmk(FRIV.bigWin, 1+R(2), v); }
     else { rivalFill(RIV.win, 2+R(2), 1, v); rivalFmk(FRIV.win, 1+R(2), v); }
-  } else if(gf===ga){
+  } else if(rf===ra){
     if(isFirst){ socialFill(SOC.firstDraw, 2+R(2), 0, v); fmkFill(FMK.firstDraw, 2+R(2), v); }
     else { socialFill(SOC.draw, 2+R(2), 0, v); fmkFill(FMK.draw, 2+R(2), v); }
     rivalFill(RIV.draw, 2+R(2), 0, v); rivalFmk(FRIV.draw, 1+R(2), v);
   } else {
     if(isFirst){ socialFill(SOC.firstLose, 3+R(2), -1, v); fmkFill(FMK.firstLose, 3+R(3), v); }
-    else if(ga-gf>=3){ socialFill(SOC.loseBig, 2+R(2), -1, v); fmkFill(FMK.bigLose, 3+R(2), v); }
+    else if(ra-rf>=3){ socialFill(SOC.loseBig, 2+R(2), -1, v); fmkFill(FMK.bigLose, 3+R(2), v); }
     else { socialFill(SOC.lose, 2+R(2), -1, v); fmkFill(FMK.lose, 2+R(2), v); }
-    if(ga-gf>=3){ rivalFill(RIV.loseBig, 2+R(2), -1, v); rivalFmk(FRIV.bigLose, 2+R(2), v); }
+    if(ra-rf>=3){ rivalFill(RIV.loseBig, 2+R(2), -1, v); rivalFmk(FRIV.bigLose, 2+R(2), v); }
     else { rivalFill(RIV.lose, 2+R(2), -1, v); rivalFmk(FRIV.lose, 1+R(2), v); }
   }
   /* ── 이스터에그 ────────────────────────────────────────────────
      수원 삼성 블루윙즈: 큰 격차 승리 때 나오는 그 응원가, 그리고 2부에서 헤맬 때 옆 동네가 던지는 한마디. */
   if(t.id==="suwon"){
-    if(gf-ga>=3) socialFill(SOC.suwonRout, 1+R(2), 1, v);
+    if(rf-ra>=3) socialFill(SOC.suwonRout, 1+R(2), 1, v);
     /* '개랑'은 원래 조롱이었는데 팬들이 스스로 가져다 쓴다. 이길 때 나오는 그 구호. */
-    if(gf>ga){
+    if(rf>ra){
       const f=(t.form||[]).slice(0,-1);                 // 이번 경기 직전까지의 흐름
       const streak=(()=>{ let n=0; for(let i=f.length-1;i>=0 && f[i]==="L";i--) n++; return n; })();
       if(streak>=3){ socialFill(SOC.suwonRevive, 2+R(2), 1, v); fmkFill(FMK.suwonRevive, 2+R(2), v); }
@@ -25902,7 +25913,7 @@ function socialOnResult(M){
       rivalFmk(FMK.suwonStay, 1+R(2), v);
   }
   // 무승부는 아무 일도 없던 경기다 — 커뮤니티는 그럴 때 축구 얘기를 안 한다
-  if(gf===ga && Math.random()<0.8){
+  if(rf===ra && Math.random()<0.8){
     /* 우리 팬과 타팬이 같은 문장을 각각 뽑으면 같은 줄이 두 번 뜬다 — 풀을 나눠 쓴다 */
     const half=Math.ceil(FMK.drawNoise.length/2);
     fmkFill(FMK.drawNoise.slice(0,half), 2+R(2), v);
@@ -25916,11 +25927,11 @@ function socialOnResult(M){
   if(_derby){
     const dv=Object.assign({d:_derby.n}, v);
     const big=_derby.tier>=2 ? 1 : 0;                 // 대형 더비는 더 시끄럽다
-    if(gf>ga){
+    if(rf>ra){
       socialFill(SOC.rivalWin, 2+R(2), 1, dv); fmkFill(FMK.rivalWin, 2+R(2), dv);
       socialFill(SOC.derbyWin, 3+R(2)+big, 1, dv); fmkFill(FMK.derbyWin, 3+R(2)+big, dv);
       rivalFill(RIV.rivalWin, 1+R(2), 1, dv); rivalFill(RIV.derbyWin, 2+R(2), 0, dv); rivalFmk(FRIV.derbyWin, 1+R(2)+big, dv);
-    } else if(gf<ga){
+    } else if(rf<ra){
       socialFill(SOC.rivalLose, 2+R(2), -1, dv); fmkFill(FMK.rivalLose, 2+R(2), dv);
       socialFill(SOC.derbyLose, 3+R(2)+big, -1, dv); fmkFill(FMK.derbyLose, 3+R(2)+big, dv);
       rivalFill(RIV.rivalLose, 1+R(2), -1, dv); rivalFill(RIV.derbyLose, 2+R(2), 0, dv); rivalFmk(FRIV.derbyLose, 1+R(2)+big, dv);
@@ -25934,8 +25945,8 @@ function socialOnResult(M){
     let a=0,b=0,led=false,trailed=false;
     for(const e of M.events){ if(e.type!=="goal") continue;
       if(e.t===myShort) a++; else b++; if(a>b) led=true; if(b>a) trailed=true; }
-    if(gf>ga && trailed){ socialFill(SOC.comeback, 1+R(2), 1, v); fmkFill(FMK.comeback, 1+R(2), v); }
-    if(gf<ga && led){ socialFill(SOC.blown, 1+R(2), -1, v); fmkFill(FMK.blown, 1+R(2), v); }
+    if(rf>ra && trailed){ socialFill(SOC.comeback, 1+R(2), 1, v); fmkFill(FMK.comeback, 1+R(2), v); }
+    if(rf<ra && led){ socialFill(SOC.blown, 1+R(2), -1, v); fmkFill(FMK.blown, 1+R(2), v); }
   })();
   if(gf===0){
     // 슈팅을 많이 하고도 못 넣은 날과, 아예 못 만든 날의 반응은 달라야 한다
@@ -35257,7 +35268,10 @@ function buildCtx(stage, M){
   if(stage==="post"){
     const myG=M.home.isUser?M.hg:M.ag, opG=M.home.isUser?M.ag:M.hg;
     const sd=M.home.isUser?M.h:M.a, od=M.home.isUser?M.a:M.h;
-    ctx.res = myG>opG?"W":myG===opG?"D":"L";
+    /* 🥅 승부차기로 갈렸으면 기자들도 「비겼다」고 묻지 않는다 (제보) */
+    ctx.res = (function(){ const o=matchOutcome(M, !!M.home.isUser);
+      return o==="win"?"W":o==="loss"?"L":"D"; })();
+    ctx.pk = (M.pk && M.pk.win) ? {win:((M.pk.win==="h")===!!M.home.isUser), h:M.pk.h, a:M.pk.a} : null;
     ctx.myG=myG; ctx.opG=opG; ctx.gd=myG-opG;
     ctx.scorers=sd.list.filter(x=>x.goals>0).sort((a,b)=>b.goals-a.goals);
     ctx.multi=ctx.scorers.find(x=>x.goals>=2)||null;
@@ -53004,16 +53018,32 @@ function htTalkSay(i){
     updLiveCtrl("ht");
   }, moraleBefore, moraleAfter, M, undefined, 'ht');
 }
+/* 🥅 승부차기까지 간 경기의 결과 — 90분 스코어가 무승부여도 승패는 갈렸다.
+   ⚠ 제보 — 「승부차기로 이겼는데 경기가 끝나면 '이길 수 있었는데 아쉽다'로 평가된다」.
+     순위표 기록(승/무/패)은 규정대로 무승부지만, 라커룸·기자회견·팬 반응은 실제 결과를 따라야 한다. */
+function matchOutcome(M, isHome){
+  if(!M) return "draw";
+  const my=isHome?M.hg:M.ag, op=isHome?M.ag:M.hg;
+  if(my!==op) return my>op?"win":"loss";
+  if(M.pk && M.pk.win) return ((M.pk.win==="h")===!!isHome) ? "win" : "loss";
+  return "draw";
+}
+/* 스코어 표기에 승부차기 결과를 덧붙인다 */
+function pkScoreTag(M){
+  try{ if(!M || !M.pk || !M.pk.win) return "";
+    return ` <span class="small">· 승부차기 ${M.pk.h}-${M.pk.a}</span>`; }catch(e){ return ""; }
+}
 function showPostMatchTalk(M){
   pendingPostM=M;
   const t=userTeam(); const isHome=M.home.id===t.id;
   const myG=isHome?M.hg:M.ag, oppG=isHome?M.ag:M.hg;
-  const outcome=myG>oppG?"win":myG===oppG?"draw":"loss";
+  const outcome=matchOutcome(M, isHome);
   const opts=outcome==="win"?LOCKER_POST_WIN:outcome==="draw"?LOCKER_POST_DRAW:LOCKER_POST_LOSS;
   const cls=outcome==="win"?"good":outcome==="loss"?"warn":"info";
-  const resTxt=outcome==="win"?`🎉 승리! (${M.home.short} ${M.hg} - ${M.ag} ${M.away.short})`
-    :outcome==="draw"?`무승부 (${M.home.short} ${M.hg} - ${M.ag} ${M.away.short})`
-    :`😞 패배... (${M.home.short} ${M.hg} - ${M.ag} ${M.away.short})`;
+  const _sc=`${M.home.short} ${M.hg} - ${M.ag} ${M.away.short}${pkScoreTag(M)}`;
+  const resTxt=outcome==="win"?`🎉 승리! (${_sc})`
+    :outcome==="draw"?`무승부 (${_sc})`
+    :`😞 패배... (${_sc})`;
   lockerTalkUI("라커룸 — 경기 종료 후",
     `<div class="msg ${cls}">${resTxt}</div><div class="card"><p>경기를 마친 선수단이 라커룸에 모였습니다. 결과에 대해 한마디 남기세요.</p></div>`,
     opts, "postTalkSay");
@@ -53022,8 +53052,7 @@ function postTalkSay(i){
   const M=pendingPostM;
   if(!M){ inLockerTalk=false; return; }
   const t=userTeam(); const isHome=M.home.id===t.id;
-  const myG=isHome?M.hg:M.ag, oppG=isHome?M.ag:M.hg;
-  const outcome=myG>oppG?"win":myG===oppG?"draw":"loss";
+  const outcome=matchOutcome(M, isHome);
   const opts=outcome==="win"?LOCKER_POST_WIN:outcome==="draw"?LOCKER_POST_DRAW:LOCKER_POST_LOSS;
   const o=resolveLockerOpt(opts[i]||opts[0]);
   const moraleBefore=userTeam().morale;
@@ -53652,7 +53681,7 @@ function offerAwayLocker(M, cont){
   try{ if(M.opts && M.opts.eacl){ cont(); return; } }catch(e){ cont(); return; }
   const isHome=M.home.isUser;
   const myG=isHome?M.hg:M.ag, oppG=isHome?M.ag:M.hg;
-  const outcome = myG>oppG?"win" : myG===oppG?"draw" : "loss";
+  const outcome = matchOutcome(M, isHome);
   awayLockerCtx={M, oppId:opp.id, outcome, myG, oppG, isHome, phase:"offer", cont};
   renderAwayLocker();
 }
@@ -56770,7 +56799,7 @@ function runDelegatedMatch(M, tag){
   try{ staffLog(`수석코치가 ${opp.short}전을 대신 지휘했습니다. (${mine}-${his})`); }catch(e){}
   lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
   saveGame();
-  const outcome=mine>his?"win":mine===his?"draw":"loss";
+  const outcome=matchOutcome(M, isHome);
   const cls=outcome==="win"?"good":outcome==="loss"?"warn":"info";
   const scorers=(isHome?M.h:M.a).list.filter(x=>x.goals>0);
   const line=pick(outcome==="win"
