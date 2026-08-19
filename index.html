@@ -28413,6 +28413,19 @@ function fitColOf(v){
        : f>=60 ? "#ff9d5c"      // 교체를 고민할 때 (부상 위험이 붙기 시작하는 구간)
        :         "#f85149";     // 한계
 }
+/* 🔋 명단 표의 몸 상태 한 칸 — 선발·교체·그 외 명단이 전부 같은 모양을 쓴다.
+   ⚠ 제보 — 「선발 명단은 하트와 숫자로 나오는데 벤치·그 외 명단은 그냥 초록 숫자라
+     서로 다른 눈금처럼 보인다」. 아이콘을 색에서 뽑아 쓰므로 둘이 어긋날 수 없다.
+   useFit=true 면 경기 중 체력 눈금(주황 한 칸이 더 있다)을 쓴다. */
+function bodyIconOf(col){
+  return col==="#3fb950" ? "💚" : col==="#56d364" ? "💛"
+       : col==="#d29922" ? "🧡" : col==="#ff9d5c" ? "🧡" : "❤️";
+}
+function bodyCell(v, useFit){
+  const n=Math.round(v||0);
+  const col=useFit ? fitColOf(n) : condCol(n);
+  return `<td class="fmCond" style="color:${col};font-weight:800">${bodyIconOf(col)}<span style="font-size:11px"> ${n}</span></td>`;
+}
 /* 컨디션 색 — 명단 어디서든 같은 눈금을 쓴다 (선발 행의 하트 아이콘과 같은 기준) */
 function condCol(v){
   const c=Math.round(v||0);
@@ -28429,9 +28442,6 @@ function fmSquadRow(t, p, slotLabel, slot, idx){
   const rd=getRole(t,p,slot);
   const R=ROLE_BY_KEY[rd.r];
   const opts=rolesForSlot(slot);
-  const cond=mor(p.cond);
-  const condIc = cond>=88?'<span style="color:#3fb950">💚</span>' : cond>=72?'<span style="color:#56d364">💛</span>'
-               : cond>=58?'<span style="color:#d29922">🧡</span>' : '<span style="color:#f85149">❤️</span>';
   const warn = p.ban>0 ? '<span style="color:#f85149">✕</span>' : (p._yc>=1?'<span style="color:#d29922">▣</span>':'<span style="color:#3fb950">✓</span>');
   const A=affLabel(aff(p));
   const mt=moodTag(p);
@@ -28457,7 +28467,7 @@ function fmSquadRow(t, p, slotLabel, slot, idx){
       <b class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${p.id})">${nmF(p)}</b></td>
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
     ${fmAgeCell(p)}
-    <td class="fmCond">${condIc}<span class="small"> ${cond}</span></td>
+    ${bodyCell(p.cond)}
     <td class="fmOpt">${warn}</td>
     <td class="fmOpt">${react}</td>
     <td class="fmRt fmOpt" style="color:${rCol}">${rating}</td>
@@ -28753,7 +28763,7 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
       <span class="sqNo">${p.no||"-"}</span><b class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${p.id})">${nmF(p)}</b></td>
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
     ${fmAgeCell(p)}
-    <td class="fmCond" style="color:${condCol(p.cond)};font-weight:700">${mor(p.cond)}</td>
+    ${bodyCell(p.cond)}
     <td class="fmOpt">${p.ban>0?'<span style="color:#f85149">✕</span>':p.inj>0?'<span style="color:#f85149">🚑</span>':'<span style="color:#3fb950">✓</span>'}</td>
     <td class="fmOpt"><span class="fmReact ${moodTag(p).c}">${moodTag(p).t}</span></td>
     <td class="fmRt fmOpt">${p.apps?(p.seasonRating||0).toFixed(2):"-"}</td></tr>`;
@@ -29521,7 +29531,7 @@ function fmLiveTable(t, pitchAndGap, bench, slotOf, sd){
     const p=x.p, isGap=x.off!==null;
     const rd=getRole(t,p,sl), R=ROLE_BY_KEY[rd.r], opts=rolesForSlot(sl);
     const fit=Math.round(x.fit||0);
-    const fitCol = fitColOf(fit);
+
     const card = x.y>=2||p.red ? '<span style="color:#f85149">🟥</span>' : x.y===1 ? '🟨' : '<span style="color:#3fb950">✓</span>';
     const rt = x.rating ? x.rating.toFixed(2) : "-";
     return `<tr class="fmTr rowPick ${selSwap===p.id?'picked':''} ${isGap?'out':''} ${swapFitCls(t,p)}"
@@ -29539,7 +29549,7 @@ function fmLiveTable(t, pitchAndGap, bench, slotOf, sd){
       <td class="fmStars">${roleStarsFor(t,p,sl).replace(/ title="[^"]*"/,"")}</td>
       <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
       ${fmAgeCell(p)}
-      <td class="fmCond" style="color:${fitCol};font-weight:700">${fit}</td>
+      ${bodyCell(fit, true)}
       <td class="fmOpt">${card}</td>
       <td class="fmG fmOpt">${x.goals||0}</td>
       <td class="fmRt fmOpt">${rt}</td></tr>`;
@@ -29554,7 +29564,7 @@ function fmLiveTable(t, pitchAndGap, bench, slotOf, sd){
     <td class="fmStars">${prefStars(p).replace(/ title="[^"]*"/,"")}</td>
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
     ${fmAgeCell(p)}
-    <td class="fmCond" style="color:${condCol(p.cond)};font-weight:700">${mor(p.cond)}</td><td class="fmOpt"><span style="color:#3fb950">✓</span></td>
+    ${bodyCell(p.cond)}<td class="fmOpt"><span style="color:#3fb950">✓</span></td>
     <td class="fmG fmOpt">-</td><td class="fmRt fmOpt">-</td></tr>`).join("");
   return `<div class="fmTableWrap">
     <div class="fmTabs">
