@@ -416,6 +416,17 @@ body.matchFS .fmPitchPane{max-width:none;}
 }
 /* 인트로 잠금 — 눌리지 않는 이유가 보이도록 흐리게 처리한다 */
 .navbtn.navLocked{opacity:.32; cursor:not-allowed; filter:grayscale(.6);}
+/* 🔍 경기 일시정지 둘러보기 — 보기만 되고 어떤 조작도 통하지 않는다 */
+#main.peekOnly button, #main.peekOnly select, #main.peekOnly input, #main.peekOnly textarea,
+#main.peekOnly a, #main.peekOnly .clickable, #main.peekOnly [onclick], #main.peekOnly [onchange]{
+  pointer-events:none !important; cursor:default !important; opacity:.72;
+}
+#peekBar{position:fixed; left:0; right:0; bottom:0; z-index:9000; display:flex; gap:10px; align-items:center;
+  justify-content:center; padding:9px 12px; background:#1b1f27; border-top:2px solid var(--gold);
+  box-shadow:0 -4px 18px rgba(0,0,0,.45); font-size:13px;}
+#peekBar b{color:var(--gold)}
+#peekBar .pkBtn{background:var(--gold); color:#111; border:none; border-radius:7px; padding:7px 16px;
+  font-weight:800; font-size:13.5px; cursor:pointer;}
 .bigbtn.navLocked{opacity:.4; cursor:not-allowed;}
 #side.introLock #navScroll{position:relative;}
 .introBar{display:flex; align-items:center; flex-wrap:wrap; gap:6px; background:#161b22; border:1px solid var(--gold);
@@ -499,6 +510,7 @@ tr.inA td:first-child{box-shadow:inset 3px 0 0 #2f81f7;}
 tr.inB td:first-child{box-shadow:inset 3px 0 0 #d2691e;}
 tr.splLast td{border-bottom:2px solid #d2691e;}
 .lcArmy{color:#c9a227; font-weight:700;}      /* 🎖️ 병역 이행 중 — 임대와 눈으로 갈린다 */
+.lcCall{color:#e3b341; font-weight:700;}      /* 📨 입영 통지 — 아직 우리 팀이지만 곧 떠난다 */
 .rkLegend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:7px;font-size:11.5px;}
 .rkLegend span{display:inline-flex;align-items:center;gap:4px;}
 .rkLegend i{width:13px;height:13px;border-radius:3px;display:inline-block;border:1px solid rgba(255,255,255,.22);}
@@ -947,6 +959,7 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
 .yTag.in {color:#79c0ff;border-color:#1f4b8f;background:#0c1a2e;}
 tr.yOut{background:linear-gradient(90deg,rgba(240,136,62,.10),rgba(240,136,62,0) 40%);}
 tr.yIn {background:linear-gradient(90deg,rgba(47,129,247,.10),rgba(47,129,247,0) 40%);}
+tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0) 40%);}
 /* 🎯 집들이 초대 명단 */
 .ptWrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:5px;max-height:270px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .ptPick{display:flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #21262d;border-radius:7px;
@@ -982,6 +995,8 @@ tr.yIn {background:linear-gradient(90deg,rgba(47,129,247,.10),rgba(47,129,247,0)
 .calFriendly{opacity:.92; border-style:dashed !important;}
 .calEacl{background:#14243a; border-color:#58a6ff88 !important;}
 .calEacl .cdPre{color:#7fc7f0;}
+.calCwc{background:#2a1f3d; border-color:#b48ce088 !important;}
+.calCwc .cdPre{color:#c9a7f0;}
 .cdPre{display:block; font-size:9px; color:var(--gold); font-weight:800;}
 .fmA.fmClick{cursor:pointer;}
 .fmA.fmClick:hover{background:rgba(88,166,255,.14);}
@@ -1664,6 +1679,7 @@ let PID=1;
    ═══════════════════════════════════════════════════════════════ */
 const UID_CLUB=1001, UID_COACH=2001, UID_REAL=10000, UID_GEN=900000;
 const UID_COMP=3001, UID_REF=4001, UID_STAD=5001;   // 대회 3001~ · 심판 4001~ · 구장 5001~
+const UID_CWC=7001;   // 🌍 CWC 클럽 7001~ · 구장 7501~ · 모기업 7601~
 const UID_OWNER=7001;                               // 모기업·운영 주체 7001~
 function uidStadOf(tid){ return uidClubOf(tid)-UID_CLUB+UID_STAD; }    // 구단과 1:1로 짝을 맞춘다
 /* 🏢 모기업 — 구단과 1:1로 짝을 맞춘다. 에디터에서 이름을 바꿔도 번호는 그대로다.
@@ -1677,9 +1693,10 @@ const COMP_DEF={
   k1:   {n:"개리그1 펨코은행 {Y}", s:"개리그1"},
   k2:   {n:"개리그2 펨코은행 {Y}", s:"개리그2"},
   po:   {n:"펨코은행 개리그 승강 플레이오프 {Y}", s:"승강 PO"},
-  eacl: {n:"EACL {Y}", s:"EACL"}          // 🌏 동아시아 클럽 대항전
+  eacl: {n:"EACL {Y}", s:"EACL"},         // 🌏 동아시아 클럽 대항전
+  cwc:  {n:"세계클럽대항전 {Y}", s:"CWC"}   // 🌍 클럽 월드컵 — EACL 우승팀이 다음 해 1월에 나간다
 };
-function compKeys(){ return ["k1","k2","po","eacl"]; }
+function compKeys(){ return ["k1","k2","po","eacl","cwc"]; }
 /* 🌏 대회명 — 에디터에서 바꾼 이름이 게임 전체에 그대로 쓰이도록 한 곳에서만 만든다 */
 function eaclName(){ try{ return compName("eacl"); }catch(e){ return "EACL "+((G&&G.season)||CUR_YEAR); } }
 function eaclShort(){ try{ return compShort("eacl"); }catch(e){ return "EACL"; } }
@@ -2364,6 +2381,22 @@ function getRole(t, p, slot){
   const mem=((t&&t.tactic&&t.tactic.roleBy)||{})[p.id];
   const my=mem&&mem[g];
   if(my && ROLE_BY_KEY[my.r] && ROLE_BY_KEY[my.r].grp.includes(g)) return my;
+  /* ⚠ 제보 — 「교체명단 갔다가 선발로 다시 올릴 때 같은 포지션이면 기존 설정값이나
+     적합도/능숙도 가장 상위버전이 기본값으로 되어 있었으면 좋겠어요」.
+     기존 설정값(role → roleBy)은 위에서 이미 살렸다. 여기는 그마저 없을 때다 —
+     고정 기본값(예: CM 은 무조건 중앙 미드필더·지원) 대신, 그 선수가 가장 능숙한
+     역할(1순위 역할 능숙도 · 2순위 적합도 — rolesSortedFor 와 같은 기준)을 기본값으로 쓴다.
+     매 호출 정렬은 엔진 안쪽에서 비싸므로 시즌·자리그룹 단위로 선수에 캐시한다. */
+  try{
+    const c=p._rDef;
+    if(c && c.g===g && c.s===G.season) return {r:c.r, d:c.d};
+    const best=rolesSortedFor(p, slot)[0];
+    if(best){
+      const rd={r:best.k, d:(best.duty&&best.duty[0])||"S"};
+      p._rDef={g:g, s:G.season, r:rd.r, d:rd.d};
+      return rd;
+    }
+  }catch(e){}
   const d=ROLE_DEFAULT[g]||["CM","S"];
   return {r:d[0], d:d[1]};
 }
@@ -4176,6 +4209,12 @@ function fitPickCut(p){
   return 3.60;
 }
 function autoFitOn(){ return !!(G.opt && G.opt.autoFit); }
+/* 🔁 벤치→선발 역할 기본값 정책.
+   ⚠ 제보 — 「보통 선수가 해당 포지션 역할이 능숙하지 않아도 전술에 선수를 맞추는 편이라서,
+     전술의 역할을 그대로 가져가는 것이 기본값인 버튼이랑 선수의 포지션 역할의 적합도/능숙도
+     가장 상위 버전이 기본값인 버튼이랑 선택지를 2개로 해주셨으면」.
+   전술 화면 선발 정보 탭의 칩으로 고른다. 기본은 「선수 우선」(직전 제보 반영 동작). */
+function swapRoleTac(){ return !!(G.opt && G.opt.swapRole==="tac"); }
 function bestXISlots(t, formation, opts){
   const fname=formation||(t.tactic&&t.tactic.formation)||"4-3-3";
   const noFat=!!(opts && opts.noFatigue);
@@ -5528,8 +5567,13 @@ function planRand(key){
 }
 /* 상대 감독이 이 경기에 들고 나올 판 — 실제 적용과 정찰 미리보기가 같은 함수를 쓴다 */
 function aiPlanFor(t, opp, isHome){
-  const c=(()=>{ try{ return coachOf(t); }catch(e){ return null; } })();
+  /* 대회 클럽(EACL·CWC)은 COACHES 목록에 없다 — 팀 객체가 들고 있는 감독을 본다.
+     이게 없으면 대륙·세계 대회 상대에 대한 수석코치 조언이 기본값으로만 나온다. */
+  const c=(()=>{ try{
+    return coachOf(t) || (((t&&(t.eacl||t.cwc)) && t.coach && t.coach.tac!=null) ? t.coach : null);
+  }catch(e){ return null; } })();
   if(!c || !t || !t.tactic || t.isUser || !opp) return null;
+  if(c.judg==null || c.tac==null) return null;
   /* 이미 이 경기의 플랜이 적용돼 있으면 「원래 판」에서 다시 계산한다 —
      그러지 않으면 적용된 값 위에 또 얹혀 정찰과 실제가 어긋난다 */
   const T=t._planBase0 || t.tactic;
@@ -7102,7 +7146,7 @@ function newGame(teamId){
   _UID_USED=new Set();      // 🆔 새 게임 — 고유번호 발급 기록을 비운다 (두 번째 게임도 같은 번호가 나오게)
   G = {season:2026, userTeamId:teamId, teams:{}, news:[], history:[], userXI:null,
        k1:[], k2:[], k1Fix:[], k2Fix:[], r1:0, r2:0, phase:"league", splitDone:false,
-       results:[], poResults:[], aclTeams:[], aclFix:[], eacl:null, eaclClubs:{}, pendingEACL:null, sponHeat:0, transferBids:[], offers:[], nego:null, snego:null, freeAgents:[], press:{rel:50, skip:0}, trust:{owner:70, fans:70, log:[]}, seen:{}, introDone:false,
+       results:[], poResults:[], aclTeams:[], aclFix:[], eacl:null, eaclClubs:{}, pendingEACL:null, cwc:null, cwcClubs:{}, cwcQual:null, cwcName:{}, pendingCWC:null, sponHeat:0, transferBids:[], offers:[], nego:null, snego:null, freeAgents:[], press:{rel:50, skip:0}, trust:{owner:70, fans:70, log:[]}, seen:{}, introDone:false,
        ageV2:true, htV1:true, specV1:true};   // 선수를 만들 때 이미 나이·키만큼 몸을 깎았다 — 다시 읽어도 두 번 깎지 않는다
   for(const d of D1){ const t=mkTeam(d,1); G.teams[t.id]=t; G.k1.push(t.id); }
   for(const d of D2){ const t=mkTeam(d,2); G.teams[t.id]=t; G.k2.push(t.id); }
@@ -7323,6 +7367,8 @@ function rebaseDayFields(oldDay){
     if(G.scout && G.scout.trip) for(const k in G.scout.trip){ F(G.scout.trip[k],"next"); B(G.scout.trip[k],"from"); }
     /* 🔎 보고서의 유효기간·관찰 시작일도 함께 되감는다 — 안 그러면 영영 만료되지 않는다 (제보) */
     if(G.scout && Array.isArray(G.scout.list)) for(const p of G.scout.list){ F(p,"scUntil"); F(p,"scNewTil"); B(p,"scAt"); }
+    /* 🎖️ 입영 예정일 — 시즌이 바뀌어도 남은 날수를 지킨다 */
+    try{ for(const id in G.teams) for(const p of G.teams[id].players) if(p.armyCall) F(p.armyCall, "at"); }catch(e){}
     /* 🗓️ 날짜를 콕 집어 지정한 훈련 — 지난 시즌의 「210일차 강훈련」이 새 시즌 210일차에
        그대로 되살아난다. 그 날짜에 무슨 경기가 있는지는 시즌마다 다르므로 옮길 수가 없다.
        ⚠ 제보 — 「EACL 전날에 훈련이 자동으로 편성돼 있다」. 이게 원인 중 하나였다.
@@ -7488,6 +7534,13 @@ const NEWS_CAT={
    포메이션 카드처럼 좁은 자리에서 아이콘 한 글자가 이름을 잘라먹는 걸 막는다. */
 function nmF(p){
   if(!p) return "";
+  /* 📨 입영 통지를 받은 선수 — 아직 우리 팀에서 뛰지만 입소일이 잡혀 있다.
+     라인업을 짤 때 「이 선수는 다음 달까지만 있다」가 한눈에 보여야 한다. */
+  if(p.armyCall){
+    const L=armyCallLeft(p);
+    const d=dateOfDay(p.armyCall.at||0);
+    return `<span class="lcCall" title="입영 통지 — ${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 김천 상무 FC 입소 (${ARMY_MONTHS}개월 복무) · 그때까지 이적·임대 불가">📨 ${p.name} <span class="small">D-${L}</span></span>`;
+  }
   /* 🔁 임대 신분 — 외국인·홈그로운보다 앞세운다.
      ⚠ 제보 — 「임대해 온 선수도 이름 색을 다르게 하면 시즌 뒤 돌아갈 것을 미리 계산해
        스쿼드를 짜기 좋겠다」. 유저 구단뿐 아니라 AI 구단 명단에도 그대로 적용된다. */
@@ -7846,10 +7899,15 @@ function injWeeksLeft(p){
   if(p.injUntil!=null) return Math.max(0, Math.ceil((p.injUntil-(G.day||0))/7));
   return p.inj||0;
 }
+const INJ_BACK_W=2;   // 이 주수 이상 이탈했던 선수가 돌아오면 감독에게 따로 알린다
 function setInjury(p, weeks){
   const w=Math.max(0, Math.round(weeks));
   p.inj=w;
   p.injUntil=(G.day||0)+w*7;
+  /* 처음 진단받은 기간을 남겨 둔다 — 잔여 주(p.inj)는 매일 깎이므로
+     복귀 시점에는 「원래 몇 주짜리였는지」를 알 수 없다. */
+  if(w>0) p.injW0=Math.max(p.injW0||0, w);
+  else delete p.injW0;
 }
 /* 하루가 지날 때마다 — 회복일이 된 선수를 풀어 준다 */
 function tickInjuryDays(){
@@ -7860,8 +7918,18 @@ function tickInjuryDays(){
       if(p.injUntil==null) p.injUntil=(G.day||0)+p.inj*7;   // 옛 세이브 백필
       const left=injWeeksLeft(p);
       if(left<=0){
-        p.inj=0; p.injUntil=null;
-        if(isUser) addNews(`💪 ${p.name} 선수가 부상에서 회복해 훈련에 복귀했습니다.`);
+        const w0=p.injW0||p.inj||0;
+        p.inj=0; p.injUntil=null; delete p.injW0;
+        if(isUser){
+          addNews(`💪 ${p.name} 선수가 부상에서 회복해 훈련에 복귀했습니다.`);
+          /* ⚠ 「2주 이상 이탈했던 선수가 돌아오면 알려 주면 좋겠다 — 스쿼드 반영을 놓친다」.
+             맞는 말이다. 긴 부상은 그 사이 라인업이 통째로 바뀌어 있어서,
+             뉴스 한 줄로는 감독이 복귀를 모르고 지나간다. */
+          if(w0>=INJ_BACK_W){
+            try{ const Q=(G.injBack=G.injBack||{n:0,list:[]});
+                 Q.n++; Q.list.push({nm:p.name, pos:p.pos, w:w0, id:p.id}); }catch(e){}
+          }
+        }
       } else if(left!==p.inj){
         p.inj=left;   // 표시용 잔여 주 갱신
       }
@@ -8286,6 +8354,602 @@ function eaclSetup(){
   }
 }
 function setupACL(){ try{ eaclSetup(); }catch(e){ G.eacl=null; G.aclFix=[]; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌍 CWC — 세계클럽대항전 (뼈대)
+   EACL 우승팀이 「다음 해 1월」에 나가는 세계 대회. 16팀 · 4조 4팀 · 조 1·2위 8강.
+   ⚠ 이 대회의 가장 어려운 점은 상대가 아니라 「시점」이다.
+     1월은 이미 새 시즌이다 — 승강도, 이적도, 나이 +1도 끝난 뒤다.
+     그래서 자격은 지난 시즌 것을 들고 넘어오고(G.cwcQual), 뛰는 스쿼드는 올해 것이다.
+     (현실의 클럽 월드컵도 정확히 이 구조다)
+   ─ 지금은 뼈대다. 클럽 데이터·UI·서사는 다음 단계에서 붙인다.
+═══════════════════════════════════════════════════════════════════════════ */
+/* 대륙 — 이름과 전력 기준. teamOVR 기준점: K리그1 최상위 74~75 · EACL 최강 75.8 */
+/* ⚠ 「상금이 706억인 만큼 정말 강한 대진이어야 한다. 실제로 울산은 클럽월드컵에서 전패했다」.
+   맞는 지적이었다. 첫 뼈대는 조에 약체가 하나 섞이면 8강까지 갈 만했다 —
+   그 정도 난이도에 우승 상금 350억을 주면 이적시장이 무너진다.
+   실제 2025 대회에서 아시아 네 팀 중 조별을 통과한 건 한 팀뿐이었고,
+   K리그 대표는 아프리카 챔피언에게도 졌다. 눈금을 그 현실에 맞춘다. */
+const CWC_CONF={
+  EU:{n:"유럽",       ovr:88, fOvr:90, fN:12, pool:"EU"},
+  SA:{n:"남미",       ovr:84, fOvr:85, fN:4,  pool:"BR"},
+  AF:{n:"아프리카",   ovr:78, fOvr:80, fN:7,  pool:"AF"},
+  NA:{n:"북중미",     ovr:77, fOvr:79, fN:9,  pool:"SA"},
+  OC:{n:"오세아니아", ovr:63, fOvr:65, fN:5,  pool:"OC"},
+  AS:{n:"아시아",     ovr:76, fOvr:78, fN:5,  pool:"EU"}
+};
+/* 대륙별 참가 장수 — 합 16.
+   🌏 아시아 2장은 지난 시즌 EACL **결승에 오른 두 팀**이 가져간다 (우승·준우승).
+      우리가 결승에서 졌더라도 나간다 — 자격은 결승 진출로 얻는다.
+   나머지 14장은 대륙별로 뽑는다. 실제 대회(32팀)의 대륙 비율을 그대로 절반으로 줄인 값이다.
+      유럽 12/32 → 6 · 남미 6/32 → 3 · 아프리카 4 → 2 · 북중미 5 → 2 · 오세아니아 1 → 1 */
+const CWC_SLOTS=[["EU",6],["SA",3],["AF",2],["NA",2],["OC",1]];
+/* 임시 클럽 풀 — 다음 단계에서 구장·모기업·감독까지 갖춘 정식 데이터로 교체한다 */
+const CWC_CLUBS=[
+  /* 유럽은 안에서도 편차가 크다 — 대륙 챔피언 자격으로 오는 팀과 리그 상위 자격으로 오는 팀은
+     체급이 다르다. 여섯 장을 열세 팀에서 뽑으므로 시즌마다 조 편성의 무게가 달라진다.
+     ⚠ 편차 없이 여섯 팀을 전부 85~89로 두었더니, 우리가 유럽 챔피언급(88)까지 성장해도
+       포트 3에 눌려 우승 확률이 1% 아래로 굳었다. 그러면 350억 상금이 목표가 되지 못한다. */
+  {id:"eu_mad",  name:"마드리드 레알레스",   short:"마드리드", cf:"EU", col:"#f2f2f2", col2:"#d4af37", ovr:89, cc:"ES", nat:"스페인"},
+  {id:"eu_mcy",  name:"맨체스터 스카이",     short:"맨스카이", cf:"EU", col:"#6cabdd", col2:"#1c2c5b", ovr:89, cc:"EN", nat:"잉글랜드"},
+  {id:"eu_bar",  name:"바르셀로나 블라우",   short:"바르사",  cf:"EU", col:"#0b2d6e", col2:"#a50044", ovr:88, cc:"ES", nat:"스페인"},
+  {id:"eu_mun",  name:"뮌헨 바이언스",       short:"뮌헨",   cf:"EU", col:"#dc052d", col2:"#0066b2", ovr:88, cc:"DE", nat:"독일"},
+  {id:"eu_liv",  name:"리버풀 레즈",         short:"리버풀",  cf:"EU", col:"#c8102e", col2:"#f6eb61", ovr:87, cc:"EN", nat:"잉글랜드"},
+  {id:"eu_par",  name:"파리 생제르",         short:"파리",   cf:"EU", col:"#004170", col2:"#da291c", ovr:87, cc:"FR", nat:"프랑스"},
+  {id:"eu_int",  name:"밀라노 네라주리",     short:"밀라노",  cf:"EU", col:"#0b1a5e", col2:"#111111", ovr:86, cc:"IT", nat:"이탈리아"},
+  {id:"eu_che",  name:"런던 블루스",         short:"런던",   cf:"EU", col:"#034694", col2:"#f2f2f2", ovr:86, cc:"EN", nat:"잉글랜드"},
+  {id:"eu_juv",  name:"토리노 비앙코네리",   short:"토리노",  cf:"EU", col:"#f2f2f2", col2:"#111111", ovr:84, cc:"IT", nat:"이탈리아"},
+  {id:"eu_dor",  name:"도르트문트 옐로월",   short:"도르트문트",cf:"EU",col:"#f5c518", col2:"#111111", ovr:84, cc:"DE", nat:"독일"},
+  {id:"eu_ben",  name:"리스본 아기아스",     short:"리스본",  cf:"EU", col:"#c8102e", col2:"#f2f2f2", ovr:82, cc:"PT", nat:"포르투갈"},
+  {id:"eu_por",  name:"포르투 드라고스",     short:"포르투",  cf:"EU", col:"#1b4fa0", col2:"#f2f2f2", ovr:82, cc:"PT", nat:"포르투갈"},
+  {id:"eu_sal",  name:"잘츠부르크 불스",     short:"잘츠부르크",cf:"EU",col:"#c8102e", col2:"#f2f2f2", ovr:80, cc:"DE", nat:"오스트리아"},
+  {id:"sa_riv",  name:"리버 플라타",         short:"리버",   cf:"SA", col:"#f2f2f2", col2:"#d0021b", ovr:83, cc:"AR", nat:"아르헨티나"},
+  {id:"sa_boc",  name:"보카 주니어스",       short:"보카",   cf:"SA", col:"#12468f", col2:"#f5c518", ovr:83, cc:"AR", nat:"아르헨티나"},
+  {id:"sa_fla",  name:"플라멩구 루브로",     short:"플라멩구", cf:"SA", col:"#c8102e", col2:"#111111", ovr:85, cc:"BR", nat:"브라질"},
+  {id:"sa_pal",  name:"팔메이라스 베르지",   short:"팔메이라스",cf:"SA", col:"#0b6b3a", col2:"#f2f2f2", ovr:84, cc:"BR", nat:"브라질"},
+  {id:"sa_flu",  name:"플루미넨세 트리콜로", short:"플루미넨세",cf:"SA", col:"#7a1b3d", col2:"#0b6b3a", ovr:83, cc:"BR", nat:"브라질"},
+  {id:"sa_bot",  name:"보타포구 알비네그로", short:"보타포구", cf:"SA", col:"#111111", col2:"#f2f2f2", ovr:83, cc:"BR", nat:"브라질"},
+  {id:"af_ahl",  name:"카이로 알아흘리",     short:"카이로",  cf:"AF", col:"#c8102e", col2:"#f2f2f2", ovr:79, cc:"AB", nat:"이집트"},
+  {id:"af_raj",  name:"카사블랑카 라자",     short:"카사블랑카",cf:"AF",col:"#0b7a3b", col2:"#f2f2f2", ovr:78, cc:"AB", nat:"모로코"},
+  {id:"af_sun",  name:"프리토리아 선다운",   short:"프리토리아",cf:"AF",col:"#f5c518", col2:"#111111", ovr:78, cc:"ZA", nat:"남아공"},
+  {id:"af_wyd",  name:"카사블랑카 위다드",   short:"위다드",  cf:"AF", col:"#c8102e", col2:"#f2f2f2", ovr:77, cc:"AB", nat:"모로코"},
+  {id:"af_esp",  name:"튀니스 에스페랑스",   short:"튀니스",  cf:"AF", col:"#c8102e", col2:"#f5c518", ovr:77, cc:"AB", nat:"튀니지"},
+  {id:"na_mty",  name:"몬테레이 라야도스",   short:"몬테레이", cf:"NA", col:"#1b3d7a", col2:"#f2f2f2", ovr:78, cc:"MX", nat:"멕시코"},
+  {id:"na_sea",  name:"시애틀 사운더스",     short:"시애틀",  cf:"NA", col:"#5d9732", col2:"#00457c", ovr:76, cc:"US", nat:"미국"},
+  {id:"na_mia",  name:"마이애미 인터",       short:"마이애미", cf:"NA", col:"#f7b5cd", col2:"#111111", ovr:77, cc:"US", nat:"미국"},
+  {id:"na_gdl",  name:"과달라하라 로히블랑코",short:"과달라하라",cf:"NA",col:"#c8102e", col2:"#f2f2f2", ovr:76, cc:"MX", nat:"멕시코"},
+  {id:"na_lag",  name:"로스앤젤레스 블랙골드",short:"LA",    cf:"NA", col:"#111111", col2:"#c39e6d", ovr:77, cc:"US", nat:"미국"},
+  {id:"oc_auc",  name:"오클랜드 시티",       short:"오클랜드", cf:"OC", col:"#1a4a9c", col2:"#f2f2f2", ovr:63, cc:"OZ", nat:"뉴질랜드"},
+  {id:"oc_wel",  name:"웰링턴 피닉스",       short:"웰링턴",  cf:"OC", col:"#f5c518", col2:"#111111", ovr:62, cc:"OZ", nat:"뉴질랜드"},
+  {id:"oc_syd",  name:"시드니 하버",         short:"시드니",  cf:"OC", col:"#87ceeb", col2:"#111111", ovr:65, cc:"OZ", nat:"호주"}
+];
+const CWC_HOSTS=["카타르","미국","사우디아라비아","모로코","멕시코","호주"];
+
+/* ── 🌍 CWC 국가별 이름 생성기 ─────────────────────────────────────────
+   EACL 클럽이 일본·중국·태국·말레이 이름을 쓰듯, CWC 클럽도 제 나라 이름을 쓴다.
+   ⚠ 뼈대 단계에서는 「유럽 풀」 하나로 뭉뚱그렸다 — 마드리드와 뮌헨 선수 이름이 같은 통에서
+     나오니 어느 나라 클럽인지 이름만 봐서는 알 수 없었다. 나라별로 갈라 준다. */
+const CWC_SUR={
+  ES:["가르시아","로드리게스","페르난데스","마르티네스","산체스","로페스","고메스","디아스","모레노","루비오","나바로","이글레시아스","카스티요","오르테가"],
+  EN:["스미스","존스","윌리엄스","브라운","테일러","데이비스","윌슨","에번스","톰프슨","워커","라이트","하퍼","벤틀리","클라크"],
+  DE:["뮐러","슈미트","베버","바그너","베커","호프만","슈나이더","리히터","크뤼거","브라운","케슬러","슈타인","바흐만","로트"],
+  FR:["뒤부아","르페브르","모로","라루스","베르나르","지라르","루소","포르티에","메르시에","블랑","콜랭","르메르","가르니에","보네"],
+  IT:["로시","마르케티","콘티","리치","가투소","페라리","갈로","롬바르디","비앙키","모레티","산토로","베르가모","카타네오","마르티니"],
+  PT:["실바","산투스","페레이라","코스타","올리베이라","카르발류","소자","마샤두","핀투","브라가","모타","텍세이라","캄푸스","파리아"],
+  AR:["곤살레스","로메로","아길라르","벨라스케스","오르티스","이바라","키로가","소사","페랄타","아코스타","루한","메디나","바리오스","살라스"],
+  BR:["실바","소자","알베스","리마","히베이루","고메스","바르보사","카르도주","모라이스","피녜이루","도스산투스","마샤두","아제베두","포르투갈"],
+  AB:["하산","엘사예드","벤알리","만수르","자루크","엘아민","카데르","부슈타","라흐마니","셰리프","타히르","마스리","벤유세프","할리드"],
+  ZA:["들라미니","은코시","모케나","반데르메르베","보타","시툴레","마샤바","프리토리우스","줄루","모디세","은들로부","코에치","마발라","세페"],
+  MX:["에르난데스","라미레스","플로레스","바스케스","레예스","게레로","살라사르","메히아","콘트레라스","아코스타","델가도","루나","치아베스","마시엘"],
+  US:["존슨","밀러","앤더슨","화이트","마틴","리드","무어","베이커","페레스","산티아고","오브라이언","콜","머피","도허티"],
+  OZ:["톰슨","밀러","오브라이언","하퍼","벤틀리","케네디","마셜","도슨","라이언","포터","힐","콜린스","페인","브래들리"]
+};
+const CWC_GIV={
+  ES:["세르히오","알바로","하비에르","다니엘","파블로","이케르","마르코스","루카스","안드레스","마리오","호르헤","라울","엔리케","비센테"],
+  EN:["해리","잭","조지","올리버","찰리","루이스","메이슨","리스","코너","알피","네이선","토비","일라이","커티스"],
+  DE:["레온","막스","펠릭스","요나스","티모","루카스","니클라스","다비트","모리츠","야닉","슈테판","마티아스","엘리아스","파비안"],
+  FR:["앙투안","클레망","마티외","위고","테오","바티스트","줄리앙","아드리앵","로맹","뤼카","엔조","가브리엘","킬리안","노에"],
+  IT:["로렌초","마테오","안드레아","알레시오","다비데","리카르도","니콜로","가브리엘레","시모네","페데리코","토마소","루카","마르코","피에트로"],
+  PT:["주앙","티아구","히카르두","브루누","누누","페드루","디오구","곤살루","하파엘","비토르","안드레","시망","마누엘","제","펠리페"],
+  AR:["마르틴","세바스티안","니콜라스","산티아고","에스테반","마티아스","프란시스코","엠마누엘","루시아노","호아킨","이그나시오","레안드로","훌리안","아구스틴"],
+  BR:["가브리에우","마테우스","루카스","히카르두","펠리피","브루누","제르손","비니시우스","안드리고","제카","다닐루","카에타누","이고르","무릴루"],
+  AB:["아흐메드","무함마드","유세프","오마르","칼리드","카림","사미르","라시드","타레크","이스마일","자키","무니르","아민","파리드"],
+  ZA:["시야","템바","루카스","피터","보응아니","카고","티보","네빌","윌렘","시부시소","레라토","야니","마르코","루안"],
+  MX:["카를로스","루이스","호세","미겔","알레한드로","디에고","세사르","엑토르","라울","호나탄","에드손","이스라엘","오마르","로드리고"],
+  US:["타일러","브랜던","케빈","저스틴","코디","셰인","트래비스","마일스","제이든","오스틴","다니엘","루카스","이선","크리스"],
+  OZ:["잭","라이언","코너","루크","조시","이선","브래드","칼럼","다니엘","리암","네이트","오웬","블레이크","라클란"]
+};
+function genCwcName(cc){
+  const S=CWC_SUR[cc]||CWC_SUR.EN, G2=CWC_GIV[cc]||CWC_GIV.EN;
+  return pick(G2)+" "+pick(S);
+}
+/* 용병 — 브라질·유럽·아프리카·남미가 섞인다. 유럽 빅클럽일수록 국적이 다양하다.
+   ⚠ 처음엔 브라질 단일명(28개)·아프리카(10개) 같은 좁은 풀에 30%씩 몰아 놓았다.
+     32개 클럽 640명을 뽑으니 같은 이름이 여러 팀에 흩어져, 대회 득점 순위에
+     「무리치(카사블랑카) 6골 · 무리치(마드리드) 4골」처럼 같은 이름이 두 번 떴다.
+     성+이름 조합 풀 쪽으로 무게를 옮겨 경우의 수를 크게 늘린다. */
+function genCwcFrnName(){
+  const r=Math.random();
+  return r<0.10 ? pick(FRN_BR)
+       : r<0.32 ? genCwcName("BR")
+       : r<0.48 ? genCwcName("ES")
+       : r<0.60 ? genCwcName("FR")
+       : r<0.70 ? genCwcName("AR")
+       : r<0.78 ? pick(FRN_AF)
+       : r<0.86 ? genCwcName("AB")
+       : r<0.94 ? genCwcName("PT")
+       : genCwcName("IT");
+}
+/* 이번 시즌 CWC 클럽들이 이미 쓰고 있는 이름 — 대회 안에서 동명이인이 나오지 않게 한다 */
+function cwcUsedNames(){
+  const set=new Set();
+  const add=(arr)=>{ if(arr) for(const p of arr) if(p&&p.name) set.add(p.name); };
+  try{
+    for(const k in (G.cwcClubs||{})){
+      const c=G.cwcClubs[k];
+      if(c && c.s===G.season && c.t) add(c.t.players);
+    }
+    /* 아시아 두 장은 EACL 클럽이거나 K리그 구단이다 — 그쪽 이름도 피해야 대회 안에서 겹치지 않는다.
+       ⚠ 캐시만 읽는다. cwcTeam() 을 부르면 cwcClub → cwcUsedNames 로 되돌아와 무한 재귀가 된다. */
+    for(const k in (G.eaclClubs||{})){
+      const c=G.eaclClubs[k];
+      if(c && c.s===G.season && c.t) add(c.t.players);
+    }
+    for(const id of ((G.cwc&&G.cwc.teams)||[])) if(G.teams[id]) add(G.teams[id].players);
+  }catch(e){}
+  return set;
+}
+
+/* 🏟️🏢👔 CWC 클럽 부속 정보 — 구장 · 모기업 · 감독. K리그·EACL 클럽과 똑같이 고유번호를 갖는다. */
+const CWC_META={
+  eu_mad: {mgr:"알바로 세라노",   stad:{n:"에스타디오 블랑코",      cap:81000}, own:"소시오스 연합"},
+  eu_mcy: {mgr:"이언 홀로웨이",   stad:{n:"이스트랜즈 아레나",      cap:53000}, own:"걸프 스포츠그룹"},
+  eu_bar: {mgr:"주젭 팔라우",     stad:{n:"캄 블라우그라나",       cap:99000}, own:"소시 조합"},
+  eu_mun: {mgr:"토마스 케슬러",   stad:{n:"바이언 아레나",         cap:75000}, own:"바이에른 자동차"},
+  eu_liv: {mgr:"숀 갤러거",       stad:{n:"머지사이드 파크",       cap:61000}, own:"보스턴 스포츠홀딩"},
+  eu_par: {mgr:"뤼크 모로",       stad:{n:"파르크 데 프랭스",      cap:48000}, own:"세느 인베스트"},
+  eu_int: {mgr:"안드레아 콘티",   stad:{n:"산 시로 네라주로",      cap:76000}, own:"밀라노 캐피털"},
+  eu_che: {mgr:"롭 하퍼",         stad:{n:"템스브리지",           cap:42000}, own:"웨스트엔드 홀딩스"},
+  eu_juv: {mgr:"파올로 비앙키",   stad:{n:"토리노 알피아레나",     cap:41000}, own:"피에몬테 자동차"},
+  eu_dor: {mgr:"슈테판 리히터",   stad:{n:"베스트팔렌 옐로월",     cap:81000}, own:"루르 철강"},
+  eu_ben: {mgr:"주앙 카르발류",   stad:{n:"이스타디우 다 루스",    cap:65000}, own:"리스본 소시우스"},
+  eu_por: {mgr:"누누 파리아",     stad:{n:"이스타디우 두 드라강",  cap:50000}, own:"도루 인베스트"},
+  eu_sal: {mgr:"야닉 바흐만",     stad:{n:"잘츠부르크 아레나",     cap:31000}, own:"알프스 음료"},
+  sa_riv: {mgr:"마르틴 케베도",   stad:{n:"엘 모누멘탈",          cap:85000}, own:"리베르 소시오스"},
+  sa_boc: {mgr:"세바스티안 이바라",stad:{n:"라 봄보네라",          cap:57000}, own:"보카 소시오스"},
+  sa_fla: {mgr:"제르손 아제베두", stad:{n:"마라카낭 루브로",       cap:78000}, own:"히우 스포르치"},
+  sa_pal: {mgr:"히카르두 모라이스",stad:{n:"아레나 베르지",        cap:43000}, own:"상파울루 크레디투"},
+  sa_flu: {mgr:"브루누 텍세이라", stad:{n:"라란자이라스 파크",     cap:39000}, own:"트리콜로르 소시우스"},
+  sa_bot: {mgr:"펠리피 카르도주", stad:{n:"니우통 산투스",        cap:46000}, own:"알비네그루 홀딩"},
+  af_ahl: {mgr:"오마르 엘사예드", stad:{n:"카이로 인터내셔널",     cap:75000}, own:"나일 스포츠클럽"},
+  af_raj: {mgr:"카림 벤알리",     stad:{n:"스타드 모하메드",       cap:67000}, own:"카사블랑카 시"},
+  af_sun: {mgr:"테보 모케나",     stad:{n:"루카스 모리페 스타디움",cap:52000}, own:"골드리프 광업"},
+  af_wyd: {mgr:"라시드 부슈타",   stad:{n:"스타드 라르제",        cap:45000}, own:"위다드 협회"},
+  af_esp: {mgr:"아민 자루크",     stad:{n:"스타드 올랭피크 라데스",cap:60000}, own:"튀니스 산업"},
+  na_mty: {mgr:"엑토르 게레로",   stad:{n:"에스타디오 아세로",     cap:53000}, own:"몬테레이 제강"},
+  na_sea: {mgr:"브랜던 무어",     stad:{n:"에메랄드 필드",        cap:69000}, own:"노스웨스트 스포츠"},
+  na_mia: {mgr:"루카스 산티아고", stad:{n:"베이사이드 파크",       cap:35000}, own:"선코스트 엔터"},
+  na_gdl: {mgr:"미겔 델가도",     stad:{n:"에스타디오 사포판",     cap:49000}, own:"할리스코 홀딩"},
+  na_lag: {mgr:"크리스 도허티",   stad:{n:"골드코스트 아레나",     cap:38000}, own:"퍼시픽 미디어"},
+  oc_auc: {mgr:"라이언 케네디",   stad:{n:"킹스랜드 파크",        cap:12000}, own:"오클랜드 시티협회"},
+  oc_wel: {mgr:"조시 도슨",       stad:{n:"웰링턴 스카이스타디움", cap:34000}, own:"쿡해협 물류"},
+  oc_syd: {mgr:"루크 마셜",       stad:{n:"하버사이드 아레나",     cap:45000}, own:"뉴사우스 미디어"}
+};
+function cwcMeta(id){ return CWC_META[id] || {mgr:"미상", stad:{n:"홈구장", cap:30000}, own:"미상"}; }
+/* ⚠ 감독을 이름만 들고 있으면 정찰이 그 팀을 읽지 못한다.
+   aiPlanFor 는 감독의 판단력·전술 능력을 보고 「이 경기에 들고 나올 판」을 계산하는데,
+   EACL 클럽과 달리 CWC 클럽은 {이름, 번호}뿐이라 조언이 통째로 비어 있었다. */
+function cwcCoach(id){
+  const def=cwcClubDef(id); const M=cwcMeta(id);
+  const base=Math.round((cwcSeasonOvr(def)-64)*1.05)+10;
+  const v=(k,sp)=>clamp(base+((uidHash(id+k)%(sp*2+1))-sp), 6, 20);
+  const o={ n:M.mgr, uid:UID_CWC+700+cwcClubIdx(id), club:(def&&def.name)||"",
+    tac:v("t",3), flex:v("f",3), att:v("a",4), def:v("d",4), man:v("m",3), dev:v("v",4), judg:v("j",3) };
+  o.ovr=Math.round((o.tac+o.flex+o.att+o.def+o.man+o.dev+o.judg)/7);
+  o.nat=(def&&def.nat)||""; o.seed=uidHash(id+"|coach");
+  return o;
+}
+function cwcClubDef(id){ return CWC_CLUBS.find(c=>c.id===id)||null; }
+/* 📉📈 그 시즌의 클럽 전력 — 해마다 조금씩 오르내린다.
+   ⚠ 처음엔 표에 적힌 값을 그대로 썼다. 그러면 마드리드는 100시즌을 돌려도 언제나 89 다.
+     세대교체·주축 이적·감독 교체가 겹치면 유럽 강호도 한 해쯤 주저앉고, 중위권이 치고 올라온다.
+     시즌·구단으로 고정된 해시라 같은 시즌을 다시 열어도 값이 흔들리지 않는다. */
+const CWC_OVR_SHIFT=[-3,-2,-2,-1,-1,-1,0,0,0,0,0,1,1,1,2,2,3];
+function cwcSeasonOvr(def){
+  if(!def) return 75;
+  const base=def.ovr||75;
+  const h=uidHash(def.id+"|s"+((G&&G.season)||CUR_YEAR));
+  return clamp(base+CWC_OVR_SHIFT[h%CWC_OVR_SHIFT.length], 56, 92);
+}
+/* ✏️ 에디터에서 고친 이름 — 스쿼드는 시즌마다 새로 만들지만 이름은 덮어쓰기 표로 남는다 */
+function cwcNameOv(id){ return (G.cwcName && G.cwcName[String(id).replace(/^cwc_/,"")]) || null; }
+function cwcApplyName(t, id){
+  const o=cwcNameOv(id); if(!o || !t) return t;
+  if(o.name) t.name=o.name;
+  if(o.short) t.short=o.short;
+  return t;
+}
+function cwcSetName(id, field, v){
+  const key=String(id).replace(/^cwc_/,"");
+  if(!G.cwcName) G.cwcName={};
+  const o=G.cwcName[key] || (G.cwcName[key]={});
+  const nm=String(v||"").trim().slice(0, field==="short"?8:20);
+  if(nm) o[field]=nm; else delete o[field];
+  if(!o.name && !o.short) delete G.cwcName[key];
+  /* 캐시에 이미 만들어 둔 스쿼드가 있으면 그 자리에서 갈아 끼운다 */
+  try{ const c=G.cwcClubs && G.cwcClubs[key]; if(c && c.t) cwcApplyName(c.t, key); }catch(e){}
+}
+function cwcName(){ try{ return compName("cwc"); }catch(e){ return "CWC "+((G&&G.season)||CUR_YEAR); } }
+function cwcShort(){ try{ return compShort("cwc"); }catch(e){ return "CWC"; } }
+/* 1월 일정 — 0 = 1월 1일. 조별 4일 간격 · 녹아웃 6~7일 간격 · 결승은 1월 안에 끝난다 */
+/* ⚠ 첫 뼈대는 나흘 간격이었다. 실측해 보니 3차전 킥오프 컨디션이 68까지 떨어져,
+     대회가 실력 싸움이 아니라 체력 싸움이 됐다. 엿새 간격으로 벌려 한 달 안에 넣는다. */
+const CWC_DAY={g:[2,8,14], qf:20, sf:25, f:30};
+function cwcOn(){ return !!(G.cwc && G.cwc.s===G.season && (G.cwc.teams||[]).length); }
+function cwcMine(){ return cwcOn() && G.cwc.teams.indexOf(G.userTeamId)>=0 && !G.jobless; }
+function cwcAllDays(){ return cwcOn() ? [...G.cwc.day.g, G.cwc.day.qf, G.cwc.day.sf, G.cwc.day.f] : []; }
+/* 팀 해석 — 유저·K리그 구단 · EACL 클럽 · CWC 클럽을 한 창구로 */
+function cwcTeam(id){
+  if(!id) return null;
+  if(G.teams[id]) return G.teams[id];
+  if(String(id).indexOf("eacl_")===0){ try{ return eaclClub(String(id).slice(5)); }catch(e){ return null; } }
+  if(String(id).indexOf("cwc_")===0){ try{ return cwcClub(String(id).slice(4)); }catch(e){ return null; } }
+  try{ return eaclClub(id); }catch(e){ return null; }
+}
+function cwcNm(id, full){ const t=cwcTeam(id); return t ? (full?t.name:(t.short||t.name)) : "?"; }
+/* CWC 클럽 스쿼드 — EACL 과 같은 방식으로 그 시즌 기준 나이로 새로 만든다 */
+function cwcClub(id){
+  if(!G.cwcClubs) G.cwcClubs={};
+  const c=G.cwcClubs[id];
+  if(c && c.s===G.season) return cwcApplyName(c.t, id);
+  const def=cwcClubDef(id); if(!def) return null;
+  const CF=CWC_CONF[def.cf]||CWC_CONF.EU;
+  const base=cwcSeasonOvr(def);          // 그 시즌의 체급 — 해마다 조금씩 다르다
+  const t={id:"cwc_"+def.id, name:def.name, short:def.short, col:def.col, col2:def.col2,
+    nat:def.nat||CF.n, cf:def.cf, cwc:true, eacl:true, div:0, budget:0, fans:0, players:[],
+    form:[], morale:60, uid:UID_CWC+cwcClubIdx(def.id),
+    tactic:{formation:"4-3-3", mentality:2, pass:2, tempo:2, press:2, line:2, width:2, counter:2, crossFq:2, longShot:2, benchSel:[]},
+    W:0,Dw:0,L:0,GF:0,GA:0,Pts:0, isUser:false, aclMoney:0};
+  /* 자국 선수는 그 나라 이름으로, 용병은 브라질·유럽·아프리카·남미가 섞인다 */
+  const used={};
+  try{ used[cwcMeta(def.id).mgr]=1; }catch(e){}   // 감독과 같은 이름의 선수가 나오지 않게
+  try{ cwcUsedNames().forEach(n=>{ used[n]=1; }); }catch(e){}   // 다른 참가 클럽이 이미 쓴 이름도 피한다
+  const uniq=(frn)=>{ const f=()=>frn?genCwcFrnName():genCwcName(def.cc||"EN");
+    let n=f(); for(let k=0;k<40 && used[n];k++) n=f(); used[n]=1; return n; };
+  for(const s of eaclSquadPlan({...def, fN:CF.fN})){
+    const _bell=Math.min(R(9)+R(9), 17);
+    const _age0=18+_bell-(s.i>=3?2:0)+((s.star||s.i===0)?2:0);
+    const by=G.season-clamp(_age0, 17, 36);
+    const age=G.season-by;
+    const ageAdj = age<=19?-8 : age<=21?-5 : age<=23?-2 : age<=31?1 : age<=34?-1 : -4;
+    const depth = s.i===0?3 : s.i===1?1 : s.i===2?-1 : -4;
+    const ovr=clamp(base+ageAdj+depth+(R(5)-2), 50, base+6);
+    const frn=s.frn?1:0;
+    const pl=mkPlayer(uniq(frn), s.pos, by, ovr, 1);
+    pl.uid=nextGenUid(); pl.natCode=frn?"용병":(def.nat||CF.n);
+    t.players.push(pl);
+  }
+  /* 🆔 부속 정보 — 구장 · 모기업 · 감독이 각자 고유번호를 갖는다 */
+  const MT=cwcMeta(def.id);
+  t.stad={uid:UID_CWC+500+cwcClubIdx(def.id), n:MT.stad.n, cap:MT.stad.cap, avg:Math.round(MT.stad.cap*0.46)};
+  t.own={uid:UID_CWC+600+cwcClubIdx(def.id), n:MT.own};
+  t.coach=cwcCoach(def.id);
+  t.fans=Math.round(MT.stad.cap/800);
+  cwcApplyName(t, def.id);              // ✏️ 에디터에서 고쳐 둔 이름이 있으면 얹는다
+  try{ assignNumbers(t); }catch(e){}
+  try{ assignAIRoles(t); }catch(e){}
+  try{ assignAITactics(t); }catch(e){}
+  G.cwcClubs[id]={s:G.season, t};
+  return t;
+}
+function cwcClubIdx(id){ const i=CWC_CLUBS.findIndex(c=>c.id===id); return i<0?90:i; }
+/* ── 대회 편성 ─────────────────────────────────────────────────────────
+   startNewSeason 이 달력을 새로 깐 「뒤에」 불린다. 지난 시즌 EACL 결승 진출 두 팀이
+   아시아 2장을 가져가고, 나머지 14장은 대륙별로 채운다. */
+function cwcSetup(){
+  G.cwc=null;
+  const Q=G.cwcQual;
+  if(!Q || !Q.champ) return;                       // 지난 시즌 EACL 이 끝나지 않았다 — 대회 없음
+  /* ⚠ 자격은 「직전 시즌」 것이어야 한다. 이 확인이 없으면 옛 세이브에 남은 자격표가
+     해마다 되살아나, 아시아 챔피언이 아닌데도 매년 세계 대회에 나가게 된다. */
+  if(Q.s !== (G.season-1)){ G.cwcQual=null; return; }
+  const teams=[];
+  const push=(id)=>{ if(id && teams.indexOf(id)<0) teams.push(id); };
+  /* 🌏 아시아 2장 — 지난 시즌 EACL 결승에 오른 두 팀 (우승 · 준우승) */
+  push(Q.champ); push(Q.runner);
+  const byConf={};
+  for(const c of CWC_CLUBS) (byConf[c.cf]=byConf[c.cf]||[]).push(c.id);
+  const host=CWC_HOSTS[(G.season||0)%CWC_HOSTS.length];
+  /* 나머지 14장 — 대륙별로 뽑는다. 후보 풀이 장수보다 많아 시즌마다 얼굴이 바뀐다. */
+  for(const [cf,n] of CWC_SLOTS){
+    const pool=shuffled(byConf[cf]||[]);
+    let k=0;
+    for(const id of pool){ if(k>=n) break; if(teams.indexOf("cwc_"+id)>=0) continue; push("cwc_"+id); k++; }
+  }
+  /* 안전장치 — 어떤 대륙 풀이 모자라면 남은 클럽 중 전력이 가까운 순으로 채운다 */
+  if(teams.length<16){
+    for(const c of shuffled(CWC_CLUBS)){ if(teams.length>=16) break;
+      if(teams.indexOf("cwc_"+c.id)<0) push("cwc_"+c.id); }
+  }
+  if(teams.length<16) return;
+  /* 🏺 포트 추첨 — 실제 클럽 월드컵과 같은 방식이다.
+     전력순으로 넷씩 끊어 네 개의 포트를 만들고, 각 조가 포트마다 한 팀씩 가져간다.
+     ⚠ 예전 뼈대는 「같은 대륙만 피하는」 무작위 추첨이라 약체 둘이 한 조에 몰리는 조가 나왔다.
+       그 조에 걸리면 8강까지 갈 만했다 — 우승 상금 350억짜리 대회의 난이도가 아니다.
+     포트제에서는 아시아 팀이 사실상 항상 포트 4다. 즉 우리 조에는
+     유럽 챔피언 하나, 남미급 하나, 아프리카·북중미급 하나가 반드시 들어온다.
+     (2025년 울산이 도르트문트·플루미넨세·마멜로디와 한 조에 묶였던 그림이다) */
+  const confOf=(id)=>{ if(G.teams[id]) return "AS"; if(String(id).indexOf("eacl_")===0) return "AS";
+                       const d=cwcClubDef(String(id).replace(/^cwc_/,"")); return d?d.cf:"EU"; };
+  const powOf=(id)=>{ try{ return teamOVR(cwcTeam(id))||60; }catch(e){ return 60; } };
+  const ranked=teams.slice().sort((a,b)=>powOf(b)-powOf(a));
+  const pots=[ranked.slice(0,4), ranked.slice(4,8), ranked.slice(8,12), ranked.slice(12,16)];
+  const grp={A:[],B:[],C:[],D:[]}, KEY=["A","B","C","D"];
+  for(const pot of pots){
+    const bag=shuffled(pot);
+    /* 같은 대륙이 겹치지 않는 조를 먼저 채운다 — 안 되면 빈 조 아무 곳에나 */
+    for(const id of bag){
+      const open=KEY.filter(k=>grp[k].length<pots.indexOf(pot)+1);
+      let put=open.find(k=>!grp[k].some(x=>confOf(x)===confOf(id)));
+      grp[put || open[0] || "A"].push(id);
+    }
+  }
+  /* 조별 일정 — 4팀 단일 로빈 3차전 */
+  const RR=[[[0,1],[2,3]],[[0,2],[3,1]],[[0,3],[1,2]]];
+  const fix=[];
+  for(const k of KEY){ const a=grp[k];
+    RR.forEach((rd,ri)=>rd.forEach(([x,y])=>fix.push({g:k, r:ri, h:a[x], a:a[y], done:0, hg:0, ag:0})));
+  }
+  const tbl={}; for(const id of teams) tbl[id]={W:0,D:0,L:0,GF:0,GA:0,Pts:0};
+  G.cwc={s:G.season, host, teams, grp, tbl, fix, ko:{qf:[],sf:[],f:null},
+         stage:"grp", champ:null, day:{g:CWC_DAY.g.slice(), qf:CWC_DAY.qf, sf:CWC_DAY.sf, f:CWC_DAY.f}};
+  /* 달력이 결승일에 닿기 전에 끝나지 않게 늘려 둔다 */
+  try{ if(G.cal && (G.cal.last||0)<CWC_DAY.f+2) G.cal.last=CWC_DAY.f+2; }catch(e){}
+  /* 연습경기를 대회 뒤로 다시 깐다 — buildPreseason 은 대회가 편성되기 전에 이미 한 번 돌았다 */
+  try{ if(teams.indexOf(G.userTeamId)>=0 && !G.jobless) buildPreseason(); }catch(e){}
+  try{
+    const meIn=teams.indexOf(G.userTeamId)>=0;
+    if(meIn){ cwcPay(G.userTeamId, CWC_PRIZE.enter); try{ cwcOnEnter(); }catch(e){} }
+    addNews(`🌍 <b>${cwcName()}</b> 조 추첨 완료 — ${host} 개최, 16개 클럽이 참가합니다.`
+      + (meIn?` <b>${userTeam().short}</b>은(는) 지난 시즌 ${eaclShort()} 우승 자격으로 ${Object.keys(grp).find(k=>grp[k].indexOf(G.userTeamId)>=0)}조에 편성되었습니다.`:""),
+      meIn?"good":"info", "club");
+    if(meIn){
+      const gk=Object.keys(grp).find(k=>grp[k].indexOf(G.userTeamId)>=0);
+      const rivals=(grp[gk]||[]).filter(x=>x!==G.userTeamId).map(x=>cwcNm(x)).join(" · ");
+      try{ cwcSocial("draw", {o:rivals}); }catch(e){}
+    }
+  }catch(e){}
+}
+/* 오늘 CWC 경기가 있는 날인가 (유저 참가 여부와 무관 — 달력 표시·휴식 판정용) */
+function cwcIsDay(i){ return cwcOn() && cwcAllDays().indexOf(i)>=0; }
+/* 그날 「내 경기」가 있는가 — 경기일 판정(자동 휴식·회복)에는 이쪽을 쓴다.
+   ⚠ 대회가 열리는 날이라고 다 경기일이 아니다. 조별에서 탈락하고 나면 8강·4강·결승 날은
+     우리에게 그냥 평일이다. 예전 판정으로는 탈락 뒤에도 사흘이 통째로 훈련 금지가 됐다. */
+function cwcMyDay(i){
+  if(!cwcMine()) return false;
+  const me=G.userTeamId, C=G.cwc;
+  const gi=C.day.g.indexOf(i);
+  if(gi>=0) return C.fix.some(m=>m.r===gi && (m.h===me||m.a===me));
+  for(const st of ["qf","sf","f"]){
+    if(C.day[st]!==i) continue;
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    return (ties||[]).some(t=>t && (t.h===me||t.a===me));
+  }
+  return false;
+}
+/* 오늘 유저가 치를 CWC 경기 */
+function cwcUserDue(){
+  if(!cwcMine()) return null;
+  const me=G.userTeamId, d=G.day||0, C=G.cwc;
+  const gi=C.day.g.indexOf(d);
+  if(gi>=0){ const m=C.fix.find(f=>f.r===gi && !f.done && (f.h===me||f.a===me));
+             if(m) return {kind:"grp", m, tag:`${cwcShort()} 조별 ${gi+1}차전`}; }
+  for(const st of ["qf","sf","f"]){
+    if(C.day[st]!==d) continue;
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    for(const t of (ties||[])){ if(t && !t.done && (t.h===me||t.a===me))
+      return {kind:st, m:t, tag:`${cwcShort()} ${CWC_KO_NAME[st]}`}; }
+  }
+  return null;
+}
+const CWC_KO_NAME={qf:"8강", sf:"4강", f:"결승"};
+
+/* ── 대회 진행 ─────────────────────────────────────────────────────── */
+const CWC_PRIZE={enter:60, win:12, draw:5, qf:40, sf:80, fin:140, champ:350};
+function cwcPower(id){ try{ return teamOVR(cwcTeam(id))||70; }catch(e){ return 70; } }
+/* 모든 경기가 중립지다 — 홈 이점이 없다 */
+function cwcSim(hid, aid){
+  const hp=cwcPower(hid), ap=cwcPower(aid);
+  const poisson=(l)=>{l=Math.max(0.08,l);let L=Math.exp(-l),k=0,q=1;do{k++;q*=Math.random();}while(q>L);return k-1;};
+  return [poisson(1.20+(hp-ap)*0.075), poisson(1.20+(ap-hp)*0.075)];
+}
+function cwcRow(id){ if(!G.cwc.tbl[id]) G.cwc.tbl[id]={W:0,D:0,L:0,GF:0,GA:0,Pts:0}; return G.cwc.tbl[id]; }
+function cwcPay(id, amt){
+  if(id!==G.userTeamId) return;
+  const t=userTeam(); if(!t) return;
+  t.budget=Math.round((t.budget+amt)*10)/10;
+  t.cwcMoney=Math.round(((t.cwcMoney||0)+amt)*10)/10;
+}
+function cwcRecord(m, hg, ag, byEngine){
+  const me=G.userTeamId;
+  m.hg=hg; m.ag=ag; m.done=1;
+  try{ cwcCredit(m.h, hg, byEngine); cwcCredit(m.a, ag, byEngine); }catch(e){}
+  const H=cwcRow(m.h), A=cwcRow(m.a);
+  H.GF+=hg; H.GA+=ag; A.GF+=ag; A.GA+=hg;
+  if(hg>ag){ H.W++; A.L++; H.Pts+=3; cwcPay(m.h, CWC_PRIZE.win); }
+  else if(hg<ag){ A.W++; H.L++; A.Pts+=3; cwcPay(m.a, CWC_PRIZE.win); }
+  else { H.D++; A.D++; H.Pts++; A.Pts++; cwcPay(m.h, CWC_PRIZE.draw); cwcPay(m.a, CWC_PRIZE.draw); }
+  if(m.h===me||m.a===me){
+    const home=m.h===me, my=home?hg:ag, op=home?ag:hg;
+    const money=my>op?CWC_PRIZE.win:my===op?CWC_PRIZE.draw:0;
+    addNews(`🌍 ${cwcShort()} 조별 ${m.r+1}차전: ${userTeam().short} ${my} - ${op} ${cwcNm(home?m.a:m.h)}${money?` (+${money}억)`:""}`,
+      my>op?"good":my===op?"info":"bad", "club");
+  }
+}
+/* 조 순위 — 승점 · 골득실 · 다득점 */
+function cwcGrpSorted(k){
+  const a=(G.cwc.grp[k]||[]).slice();
+  return a.sort((x,y)=>{ const X=cwcRow(x), Y=cwcRow(y);
+    return Y.Pts-X.Pts || (Y.GF-Y.GA)-(X.GF-X.GA) || Y.GF-X.GF; });
+}
+/* 8강 대진 — A1-B2 · C1-D2 · B1-A2 · D1-C2 (같은 조끼리 다시 만나지 않는다) */
+function cwcSeedKO(){
+  const S={}; for(const k of ["A","B","C","D"]) S[k]=cwcGrpSorted(k);
+  const pair=[["A","B"],["C","D"],["B","A"],["D","C"]];
+  G.cwc.ko.qf=pair.map(([x,y])=>({h:S[x][0], a:S[y][1], done:0, hg:0, ag:0}));
+  G.cwc.stage="qf";
+  const me=G.userTeamId, adv=[].concat(...pair.map(([x,y])=>[S[x][0], S[y][1]]));
+  if(adv.indexOf(me)>=0){ cwcPay(me, CWC_PRIZE.qf);
+    addNews(`🌍 <b>${cwcShort()} 8강 진출!</b> 조별리그를 통과했습니다 (+${CWC_PRIZE.qf}억)`, "good", "club");
+    try{ cwcOnQuarter(); }catch(e){}
+    try{ cwcSocial("qfIn"); }catch(e){}
+    try{ pushFeed({cat:"club", ic:"🌍", tone:1, tid:me, src:"국제축구연맹",
+      head:`${userTeam().name}, ${cwcName()} 8강 진출`,
+      sub:`유럽·남미 챔피언들과 한 조에서 살아남았다. 아시아 클럽으로는 흔치 않은 성과다.`}); }catch(e){} }
+  else if(cwcMine()){ addNews(`🌍 ${cwcShort()} 조별리그 탈락 — 세계의 벽은 높았습니다.`, "bad", "club");
+    try{ cwcSocial("grpOut"); }catch(e){} }
+  addNews(`🌍 ${cwcShort()} 8강 대진 — ${G.cwc.ko.qf.map(t=>cwcNm(t.h)+" vs "+cwcNm(t.a)).join(" · ")}`, "info", "club");
+}
+/* 단판 — 비기면 승부차기 */
+function cwcRecordKO(t, stage, hg, ag, pk, byEngine){
+  t.hg=hg; t.ag=ag;
+  try{ cwcCredit(t.h, hg, byEngine); cwcCredit(t.a, ag, byEngine); }catch(e){}
+  if(hg===ag){
+    let hw;
+    if(pk) hw=(pk>0);
+    else {
+      const sk=(id)=>{ try{ const tm=cwcTeam(id), ps=(tm&&tm.players)||[];
+        const top=ps.slice().sort((x,y)=>pkSkillOf(y)-pkSkillOf(x)).slice(0,5);
+        return top.length? top.reduce((s,p)=>s+pkSkillOf(p),0)/top.length : 200; }catch(e){ return 200; } };
+      hw = Math.random() < 0.5+clamp((sk(t.h)-sk(t.a))/900, -0.16, 0.16);
+    }
+    t.w = hw?t.h:t.a; t.pk=1;
+  } else t.w = hg>ag ? t.h : t.a;
+  t.done=1;
+  const me=G.userTeamId;
+  if(t.h===me||t.a===me){
+    const my=(t.h===me?hg:ag), op=(t.h===me?ag:hg);
+    addNews(`🌍 ${cwcShort()} ${CWC_KO_NAME[stage]}: ${userTeam().short} ${my} - ${op} ${cwcNm(t.h===me?t.a:t.h)}${t.pk?` (승부차기 ${t.w===me?"승":"패"})`:""}`,
+      t.w===me?"good":"bad", "club");
+    /* 🚪 8강·4강에서 떨어지는 순간 — 결승 패배(준우승)는 따로 다룬다 */
+    if(t.w!==me && stage!=="f" && !G.jobless){
+      try{ cwcSocial("koOut", {o:cwcNm(t.h===me?t.a:t.h)}); }catch(e){}
+      try{ pushFeed({cat:"club", ic:"🌍", tone:0, tid:me, src:"국제축구연맹",
+        head:`${userTeam().name}, ${cwcShort()} ${CWC_KO_NAME[stage]}에서 여정 마감`,
+        sub:`${cwcNm(t.h===me?t.a:t.h)}에 ${my}-${op}${t.pk?" (승부차기)":""}. 아시아 대표의 도전은 ${CWC_KO_NAME[stage]}에서 멈췄다.`}); }catch(e){}
+    }
+  }
+}
+function cwcAdvance(stage){
+  const me=G.userTeamId, K=G.cwc.ko;
+  if(stage==="qf"){
+    if(K.qf.some(t=>!t.done)) return;
+    const w=K.qf.map(t=>t.w);
+    K.sf=[{h:w[0],a:w[1],done:0,hg:0,ag:0},{h:w[2],a:w[3],done:0,hg:0,ag:0}];
+    G.cwc.stage="sf";
+    if(w.indexOf(me)>=0){ cwcPay(me, CWC_PRIZE.sf); addNews(`🌍 <b>${cwcShort()} 4강 진출!</b> (+${CWC_PRIZE.sf}억)`, "good", "club");
+      try{ trophyAdd("cwcSF", `${G.season} ${cwcShort()} 4강`, userTeam().name); }catch(e){}
+      try{ cwcSocial("sfIn"); }catch(e){} }
+  } else if(stage==="sf"){
+    if(K.sf.some(t=>!t.done)) return;
+    const w=K.sf.map(t=>t.w);
+    K.f={h:w[0], a:w[1], done:0, hg:0, ag:0};
+    G.cwc.stage="f";
+    if(w.indexOf(me)>=0){ cwcPay(me, CWC_PRIZE.fin); addNews(`🌍 <b>${cwcShort()} 결승 진출!</b> 세계 정상까지 한 경기 남았습니다 (+${CWC_PRIZE.fin}억)`, "good", "club");
+      try{ trophyAdd("cwcSF", `${G.season} ${cwcShort()} 결승`, userTeam().name); }catch(e){}
+      try{ cwcSocial("finalIn"); }catch(e){}
+      try{ pushFeed({cat:"club", ic:"🌍", tone:1, tid:me, src:"국제축구연맹",
+        head:`${userTeam().name}, ${cwcName()} 결승 진출`,
+        sub:`K리그 구단이 세계 클럽 결승에 오른다. 한 경기 남았다.`}); }catch(e){} }
+    addNews(`🌍 ${cwcShort()} 결승 — ${cwcNm(K.f.h, true)} vs ${cwcNm(K.f.a, true)}`, "info", "club");
+  } else {
+    if(!K.f || !K.f.done) return;
+    const ch=K.f.w; G.cwc.champ=ch; G.cwc.stage="end";
+    try{ cwcArchiveStats(); }catch(e){}      // 스쿼드가 치워지기 전에 기록을 떠 둔다
+    addNews(`🏆 <b>${cwcName()} 우승 — ${cwcNm(ch, true)}!</b>`, ch===me?"good":"info", "club");
+    if(ch===me && !G.jobless){ cwcPay(me, CWC_PRIZE.champ);
+      addNews(`🏆 <b>세계 정상!</b> ${userTeam().short}이(가) ${cwcShort()} 트로피를 들어올렸습니다 (+${CWC_PRIZE.champ}억)`, "good", "club");
+      try{ cwcOnChampion(); }catch(e){}
+    } else if(!G.jobless && K.f && (K.f.h===me||K.f.a===me)){
+      try{ cwcOnRunnerUp(); }catch(e){}
+    }
+  }
+}
+/* 오늘 날짜 기준으로 대회를 굴린다. force 면 유저 경기까지 시뮬한다(마감 처리용). */
+function cwcTick(force){
+  if(!cwcOn()) return;
+  const C=G.cwc, me=G.userTeamId, d=G.day||0;
+  const mine=cwcMine();
+  const skip=(m)=>(!force && mine && (m.h===me||m.a===me));
+  /* 조별 — 오늘이 그 차전 날이면 나머지 경기를 치른다 */
+  const gi=C.day.g.indexOf(d);
+  if(gi>=0){
+    for(const m of C.fix){ if(m.r!==gi || m.done || skip(m)) continue;
+      const [hg,ag]=cwcSim(m.h,m.a); cwcRecord(m,hg,ag); }
+  }
+  if(C.stage==="grp" && C.fix.every(m=>m.done)){ try{ cwcSeedKO(); }catch(e){} }
+  /* 녹아웃 */
+  for(const st of ["qf","sf","f"]){
+    if(C.stage!==st) continue;
+    if(C.day[st]>d) break;      // force 는 유저 경기 대행일 뿐 — 날짜를 앞당기지 않는다
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    for(const t of (ties||[])){ if(!t || t.done || skip(t)) continue;
+      const [hg,ag]=cwcSim(t.h,t.a); cwcRecordKO(t, st, hg, ag, 0); }
+    try{ cwcAdvance(st); }catch(e){}
+  }
+}
+/* 내 마지막 CWC 경기일 — 대회 기간의 끝 */
+function cwcMyLastDay(){
+  if(!cwcMine()) return -1;
+  const me=G.userTeamId, C=G.cwc; let last=-1;
+  for(const m of C.fix) if(m.h===me||m.a===me) last=Math.max(last, C.day.g[m.r]);
+  for(const st of ["qf","sf","f"]){
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    if((ties||[]).some(t=>t && (t.h===me||t.a===me))) last=Math.max(last, C.day[st]);
+  }
+  return last;
+}
+/* 🌍 대회 기간인가 — 시즌 시작부터 내 마지막 경기까지.
+   ⚠ 「진출이 확정되었으면 프리시즌 컨디션과는 별개로 진행해야 한다」.
+     맞는 말이다. 1월 내내 나흘에 한 번 세계 대회를 치르는데 주간 루틴(보통 강도)이
+     그대로 깔리면, 대회 성적이 「프리시즌 훈련을 얼마나 세게 했는가」에 좌우된다.
+     대회 기간에는 감독이 따로 지정하지 않은 날을 회복 위주(가볍게)로 둔다.
+     ─ 대신 값을 치른다. 1월을 대회에 쓰면 개막 준비는 그만큼 늦다.
+       탈락하거나 대회가 끝나면 그날로 창이 닫히고 평소 루틴이 돌아온다. */
+function cwcWindow(i){
+  try{
+    if(!cwcMine() || !cwcUserLeft()) return false;
+    const last=cwcMyLastDay();
+    return last>=0 && i<=last;
+  }catch(e){ return false; }
+}
+/* 유저 경기 결과를 대회에 반영하고, 같은 날 나머지 경기를 이어서 치른다 */
+function cwcResolveUser(P, hg, ag, pk){
+  if(!cwcOn()) return;
+  const C=G.cwc;
+  if(P.kind==="grp"){
+    const m=C.fix.find(x=>x.r===P.r && x.h===P.hid && x.a===P.aid && !x.done);
+    if(m) cwcRecord(m, hg, ag, true);
+  } else {
+    const ties = P.kind==="f" ? [C.ko.f] : (C.ko[P.kind]||[]);
+    const t=(ties||[]).find(x=>x && x.h===P.hid && x.a===P.aid && !x.done);
+    if(t) cwcRecordKO(t, P.kind, hg, ag, pk||0, true);
+  }
+  try{ cwcTick(false); }catch(e){}     // 같은 날 나머지 경기 + 단계 전환
+}
+/* 유저에게 아직 남은 CWC 경기가 있는가 — 달력을 그 날까지 흘려보내기 위해 */
+function cwcUserLeft(){
+  if(!cwcMine() || G.cwc.stage==="end") return false;
+  const me=G.userTeamId, C=G.cwc;
+  if(C.fix.some(m=>!m.done && (m.h===me||m.a===me))) return true;
+  for(const st of ["qf","sf","f"]){
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    if((ties||[]).some(t=>t && !t.done && (t.h===me||t.a===me))) return true;
+  }
+  return false;
+}
+
+
 /* 기존 화면들이 보던 G.aclFix — 유저팀 일정만 비춰 준다 */
 /* 📅 EACL 경기일 — 리그 경기일 사흘 전(주중)에 잡는다.
    실제 아시아 대항전처럼 「주중 대륙대회 → 주말 리그」 리듬이 만들어지고,
@@ -8428,10 +9092,10 @@ function eaclStatOf(p){
    포지션과 능력치로 가중을 줘서 공격수가 많이 넣고, 도움은 골의 7할 정도에 붙는다. */
 const EACL_SCORE_W={FW:10, MF:4.2, DF:1.1, GK:0.02};
 const EACL_ASSIST_W={FW:5, MF:8, DF:2.4, GK:0.05};
-function eaclPickBy(list, W, ace){
+function eaclPickBy(list, W, ace, aceK){
   let tot=0; const w=list.map(p=>{
     let v=(W[p.pos]||1)*Math.pow(0.55+Math.max(0,(p.ovr||62)-58)/22, 1.7);
-    if(ace && p===ace) v*=2.2;            // 팀의 주 득점원에게 몰린다 — 그래야 득점왕이 나온다
+    if(ace && p===ace) v*=(aceK||2.2);    // 팀의 주 득점원에게 몰린다 — 그래야 득점왕이 나온다
     tot+=v; return v; });
   if(tot<=0) return list[0]||null;
   let r=Math.random()*tot;
@@ -8915,6 +9579,37 @@ function banSweepEacl(t){
     if(!(p.ban>0)) delete p.banNew;
   }
 }
+/* 🟨 CWC 전용 징계 장부 — 리그 경고도, EACL 경고도 세계 대회에 따라오지 않는다.
+   대회는 1월, EACL 조별은 3월부터라 같은 시즌 안에서 겹친다. 슬롯을 따로 둔다(banC). */
+function cwcBanPush(t){
+  if(!t || !t.players) return;
+  for(const p of t.players){
+    if(p._banLC!=null) continue;
+    p._banLC=p.ban||0; p._banNewLC=p.banNew?1:0;
+    p.ban=p.banC||0; if(p.banCNew) p.banNew=1; else delete p.banNew;
+  }
+}
+function cwcBanPop(t){
+  if(!t || !t.players) return;
+  for(const p of t.players){
+    if(p._banLC==null) continue;
+    p.banC=p.ban||0; if(p.banNew) p.banCNew=1; else delete p.banCNew;
+    p.ban=p._banLC||0; if(p._banNewLC) p.banNew=1; else delete p.banNew;
+    delete p._banLC; delete p._banNewLC;
+    if(!p.banC) delete p.banC;
+    if(!p.banCNew) delete p.banCNew;
+  }
+}
+function cwcBanTick(t){
+  if(!t || !t.players) return;
+  for(const p of t.players){
+    if(p.banCNew){ delete p.banCNew; continue; }
+    if(p.banC>0){
+      p.banC--;
+      if(!p.banC){ delete p.banC; if(t.isUser) addNews(`✅ ${p.name} 선수의 ${cwcShort()} 출전정지가 끝났습니다.`, null, "club"); }
+    }
+  }
+}
 function eaclBanPush(t){
   if(!t || !t.players) return;
   for(const p of t.players){
@@ -8946,7 +9641,7 @@ function eaclBanPop(t){
 function banSweep(){
   if(!G || !G.teams) return 0;
   /* 지금 대회 경기를 치르는 중이면 건드리지 않는다 — 그때는 갈아끼운 상태가 정상이다 */
-  try{ if(G.pendingEACL || (typeof liveM!=="undefined" && liveM && liveM.opts && liveM.opts.eacl)) return 0; }catch(e){}
+  try{ if(G.pendingEACL || G.pendingCWC || (typeof liveM!=="undefined" && liveM && liveM.opts && liveM.opts.eacl)) return 0; }catch(e){}
   let n=0;
   const fix=(p)=>{
     if(!p) return;
@@ -8959,8 +9654,18 @@ function banSweep(){
       delete p._banL; delete p._banNewL;
       n++;
     }
+    if(p._banLC!=null){          // 🌍 CWC 쪽 갈아끼우기가 짝을 못 찾은 경우
+      const c=p.ban||0, cNew=p.banNew?1:0;
+      if(c>0){ p.banC=Math.max(p.banC||0, c); if(cNew) p.banCNew=1; }
+      p.ban=p._banLC||0;
+      if(p._banNewLC) p.banNew=1; else delete p.banNew;
+      delete p._banLC; delete p._banNewLC;
+      n++;
+    }
     if(!(p.ban>0) && p.banNew){ delete p.banNew; n++; }
     if(!(p.banE>0) && p.banENew){ delete p.banENew; n++; }
+    if(!(p.banC>0) && p.banCNew){ delete p.banCNew; n++; }
+    if(p.banC>8){ p.banC=8; n++; }
     if(p.ban>8){ p.ban=8; n++; }
     if(p.banE>8){ p.banE=8; n++; }
     if(!p.ban) delete p.ban;
@@ -9060,8 +9765,10 @@ function eaclHonorOf(tid){ return (G.eaclHonors&&G.eaclHonors[tid]) || {champ:0,
    ─ 같은 대회·같은 시즌에는 가장 좋은 성적 하나만 남긴다. 8강에서 떨어졌다면 8강이,
      우승했다면 우승만 남는다. 다른 시즌의 8강 기록은 그대로 보존된다. */
 const TROPHY_RANK={champ:100, champ2:90, promo:50, po:30, releg:0,
-                   eacl:100, eaclRunner:60, eaclSF:40, eaclQF:20};
+                   eacl:100, eaclRunner:60, eaclSF:40, eaclQF:20,
+                   cwc:120, cwcRunner:70, cwcSF:45, cwcQF:25};   // 🌍 세계 대회가 가장 위다
 function trophyGroup(kind){
+  if(kind==="cwc"||kind==="cwcRunner"||kind==="cwcSF"||kind==="cwcQF") return "cwc";
   return (kind==="eacl"||kind==="eaclRunner"||kind==="eaclSF"||kind==="eaclQF") ? "eacl" : kind;
 }
 function trophyAdd(kind, label, teamName, season){
@@ -9327,6 +10034,33 @@ function advance(){
   if(!G.jobless && goalNeeded()){ show("staff"); return {type:"needGoal"}; }
   if(!G.jobless && capNeeded()){ show("staff"); return {type:"needCaptain"}; }
   if(G.phase==="pre"){
+    /* 🌍 CWC — 1월 대회는 연습경기보다 먼저 걸린다.
+       프리시즌은 지금까지 「연습경기만 있는 조용한 기간」이었다. 여기에 공식전이 들어온다. */
+    {
+      let CP=null; try{ CP=cwcUserDue(); }catch(e){ CP=null; }
+      if(CP && !G.jobless){
+        const ut0=userTeam();
+        try{ ensureSquad(ut0, true); }catch(e){}
+        const okN=ut0.players.filter(avail).length;
+        const gkN=ut0.players.filter(p=>avail(p)&&p.pos==="GK").length;
+        if(okN<7 || gkN<1){
+          /* 인원이 모자라면 수석코치가 대신 치른다 — 세계 대회를 취소할 수는 없다 */
+          try{ cwcTick(true); }catch(e){}
+          return {type:"round"};
+        }
+        const me=G.userTeamId, m=CP.m, home=(m.h===me);
+        const H=cwcTeam(m.h), A=cwcTeam(m.a);
+        /* 🟨 리그 징계를 잠시 내려놓고 대회 장부를 끼운다 — 끝나면 되돌린다 */
+        try{ cwcBanPush(ut0); }catch(e){}
+        G.pendingCWC={kind:CP.kind, hid:m.h, aid:m.a, r:(m.r!=null?m.r:-1), tag:CP.tag};
+        /* ⚠ 검증에서 걸림 — M.ko 판정이 「opts.ko || (eacl && eaclStage!=="md")」인데 CWC 는
+           eaclStage 를 넘기지 않아 8강·4강·결승도 ko=false 였다. 90분 동점이면 연장·승부차기 없이
+           경기가 끝나고, 승자는 cwcRecordKO 의 가중 동전던지기로 화면 밖에서 정해졌다
+           (실측: 8강 1-1 — 슛아웃 없이 「승부차기 패」 통보). 단판 토너먼트는 ko 를 명시한다. */
+        return {type:"live", tag:CP.tag,
+                M:createMatch(H, A, {noTable:true, cwc:true, cwcStage:CP.kind, eacl:true, neutral:true, ko:CP.kind!=="grp"})};
+      }
+    }
     const f=friendlyOn(G.day) || ((G.day||0)>=((G.cal&&G.cal.openOff)||0)-1 ? null : null);
     if(f && G.jobless){ f.done=true; }              // 무직 — 옛 팀 친선경기는 조용히 지나간다
     if(f && !G.jobless){
@@ -11125,10 +11859,13 @@ function buildPreseason(){
     const lo=i*seg, hi=Math.min(pool.length-1, lo+seg-1);
     picks.push(pool[lo+R(Math.max(1,hi-lo+1))] || pool[R(pool.length)]);
   }
-  let d=PRE_FIRST_MIN;
+  let d=PRE_FIRST_MIN, nFr=PRE_FRIENDLY_N;
+  /* 🌍 CWC 참가 시즌 — 1월이 통째로 대회다. 연습경기는 결승이 끝난 뒤로 밀고 개수도 줄인다.
+     (cwcSetup 이 대회를 편성한 뒤 이 함수를 한 번 더 부른다 — 그때 날짜를 알 수 있다) */
+  try{ if(cwcMine()){ nFr=2; d=Math.max(d, (G.cwc.day.f||30)+4); } }catch(e){}
   while(dayOfWeekOf(d)!==0) d++;                  // 첫 일요일로 맞춘다
   const list=[];
-  for(let i=0;i<PRE_FRIENDLY_N;i++){
+  for(let i=0;i<nFr;i++){
     if(d>=openOff-3) break;                       // 개막 3일 전부터는 잡지 않는다
     list.push({d, oppId:picks[i], home:i%2===0, done:false, hg:0, ag:0});
     d+=PRE_GAP;
@@ -11319,6 +12056,7 @@ function nextUserMatch(from){
     return row.some(m=>m && (m[0]===t.id || m[1]===t.id));
   };
   for(let i=d0; i<=d0+200; i++){
+    try{ if(cwcMyDay(i)) return {d:i, left:i-d0, kind:"cwc", tag:cwcShort()}; }catch(e){}
     if((G.friendlies||[]).some(x=>x.d===i && !x.done)) return {d:i, left:i-d0, kind:"friendly", tag:"연습경기"};
     try{ if(isEaclDay(i)) return {d:i, left:i-d0, kind:"eacl", tag:eaclShort()}; }catch(e){}
     if(lgOn(i)) return {d:i, left:i-d0, kind:"league", tag:"리그"};
@@ -11337,6 +12075,7 @@ function lastUserMatchDay(){
 function isMatchDay(i){
   if(((G.cal&&G.cal.roundDay)||[]).indexOf(i)>=0) return true;
   if((G.friendlies||[]).some(f=>f.d===i && !f.done)) return true;
+  try{ if(cwcMyDay(i)) return true; }catch(e){}   // 🌍 1월 CWC 도 경기일이다 (내 경기가 있는 날만)
   return isEaclDay(i);
 }
 /* 경기가 「있었거나 있을」 날 — 이미 치른 경기도 하루는 몸에 남는다.
@@ -11346,6 +12085,7 @@ function isMatchDay(i){
 function isMatchDayAny(i){
   if(((G.cal&&G.cal.roundDay)||[]).indexOf(i)>=0) return true;
   if((G.friendlies||[]).some(f=>f.d===i)) return true;
+  try{ if(cwcMyDay(i)) return true; }catch(e){}
   return isEaclDay(i, true);
 }
 /* 아직 대회에서 살아 있는가 — 리그 스테이지 통과 여부가 확정되기 전에도 「남아 있다」고 본다 */
@@ -11530,6 +12270,8 @@ function dayPlan(i){
   if(o) return Object.assign({}, o);
   if(isMatchDay(i+1) || isMatchDayAny(i+1)) return {t:"rest", auto:"경기 전날"};
   if(i>0 && isMatchDayAny(i-1)) return {t:"rest", auto:"경기 다음 날"};
+  /* 🌍 대회 기간은 회복이 먼저다 — 프리시즌 훈련 강도가 세계 대회 성적을 가르면 안 된다 */
+  if(cwcWindow(i)) return {t:"train", i:0, f:"bal", ln:"ALL", auto:"🌍 대회 기간"};
   return Object.assign({auto:"주간 루틴"}, G.train.routine[dayOfWeek(i)]);
 }
 function setDayPlan(i, t, inten, foc, ln){
@@ -12342,6 +13084,17 @@ function runPOInstant(){
 /* ---------- 시즌 종료 ---------- */
 function endSeason(){
   G.phase="seasonEnd";
+  /* 🌍 CWC 자격 — 시즌이 닫히기 전에 찍어 둔다.
+     대회는 다음 해 1월에 열리는데, 그때는 startNewSeason 이 이미 돌아가 G.eacl 이 새로 깔린 뒤다.
+     지금 남기지 않으면 「누가 아시아 챔피언이었는지」를 아무도 모르게 된다.
+     자격은 감독이 아니라 구단에 붙는다 — 우승 뒤 팀을 떠났다면 그 대회는 옛 팀의 것이다. */
+  try{
+    const E=G.eacl, F=E&&E.ko&&E.ko.f;
+    if(E && E.champ){
+      const run = F ? (F.w===F.h ? F.a : F.h) : null;
+      G.cwcQual={s:G.season, champ:E.champ, runner:run};
+    } else G.cwcQual=null;
+  }catch(e){ G.cwcQual=null; }
   const t1=tableOf(1), t2=tableOf(2);
   const champ=t1[0], champ2=t2[0];
   // 상금 — 순위별 지급 (K리그1: 38경기 승점·득실 확정 순위 기준 / K리그2도 순위별 지급)
@@ -12681,11 +13434,21 @@ function startNewSeason(){
         continue;
       }
       if(t.isUser){
+        /* ⚠ 제보 — 「36세 선수는 재계약 의미가 없어지려나요. 근데 그러면 또 은퇴인사 못보고 떠나고」.
+           은퇴는 37세부터 해마다 70% 확률이라 재계약이 무의미하진 않다 — 문제는 재계약을 안 했을 때다.
+           36세 이상은 FA 시장에 나가는 즉시 조용히 정리된다(startNewSeason 의 FA 은퇴 처리).
+           그 길로 보내면 오래 뛴 선수가 인사 한마디 없이 사라진다 — 계약 만료가 곧 은퇴인 나이면
+           FA 대신 은퇴 인사(retireFarewell)를 거쳐 배웅한다. */
+        const _age=G.season-(p.by||2000);
         t.players.splice(t.players.indexOf(p),1);
-        clearClubBaggage(p, 70); p.ct=1;
-        (G.freeAgents=G.freeAgents||[]).push(p);
-        addNews(`📄 <b>${p.name}</b> 계약 만료 — 자유계약(FA)으로 팀을 떠났습니다`,"warn");
-        renewSocial(p, "leave");
+        if(_age>=36){
+          retireFarewell(p, t);
+        } else {
+          clearClubBaggage(p, 70); p.ct=1;
+          (G.freeAgents=G.freeAgents||[]).push(p);
+          addNews(`📄 <b>${p.name}</b> 계약 만료 — 자유계약(FA)으로 팀을 떠났습니다`,"warn");
+          renewSocial(p, "leave");
+        }
       } else {
         /* AI 구단의 재계약 판단.
            ⚠ 제보 — 「어빌 좋고 어린 선수가 연봉까지 싸게 FA 시장에 너무 자주 풀린다」.
@@ -12820,6 +13583,7 @@ function startNewSeason(){
   });
   try{ poolTopUp(); }catch(e){}   // 🧮 리그 총원 평형 — 마지막에 모자란 만큼만 채운다
   buildSeason(true); setupACL();
+  try{ cwcSetup(); }catch(e){ G.cwc=null; }   // 🌍 달력이 깔린 뒤에 편성한다 — 1월 날짜가 필요하다
   try{ carryUserTacticToNewSeason(); }catch(e){}   // 🧷 12월 31일의 선발·배치·역할·벤치를 그대로 이어받는다
   try{ sponSeason(); }catch(e){}   // 🤝 새 시즌 스폰서 정산 — 지난 시즌 성적이 여기서 값으로 돌아온다
   G.poFinal1=null; G.poFinal2=null;
@@ -13192,6 +13956,7 @@ function loanOutChance(p, club, share, buyOpt, halfSeason){
 function loanOut(pid, clubId, share, buyOpt, halfSeason){
   const t=userTeam(); const p=t.players.find(x=>x.id===pid); const club=G.teams[clubId];
   if(!p||!club) return;
+  if(p.armyCall){ flash(`🎖️ ${p.name} 선수는 입영 통지를 받았습니다 — 입소(D-${armyCallLeft(p)})까지는 임대 보낼 수 없습니다.`,"warn"); return; }
   const ch=loanOutChance(p, club, share, buyOpt, halfSeason);
   if(Math.random()>=ch){
     flash(`❌ ${club.short}이/가 ${p.name} 임대를 거절했습니다.`,"warn");
@@ -14585,6 +15350,7 @@ function tradeBlockWhy(p){
     ? "다른 구단에 임대 보낸 선수입니다 — 먼저 불러들여야 합니다."
     : "임대해 온 선수입니다 — 우리 소유가 아니라 내줄 수 없습니다.";
   if(p.army) return "군 복무 중인 선수입니다 — 전역 전에는 어떤 거래도 할 수 없습니다.";
+  if(p.armyCall) return `입영 통지를 받은 선수입니다 — 입소(D-${armyCallLeft(p)})까지는 거래할 수 없습니다.`;
   if(p.emg) return "긴급 등록된 임시 소집 선수입니다.";
   if(p.noMove) return "본인이 잔류를 선언한 선수입니다.";
   return null;
@@ -15457,6 +16223,18 @@ function stripCaches(){
     trim(G.freeAgents); trim(G.overseas); trim(G.youthPool); trim(G.retired);
     if(G.scout) trim(G.scout.list);
     for(const k in (G.eaclClubs||{})){ const c=G.eaclClubs[k]; trim(c && c.t && c.t.players); }
+    for(const k in (G.cwcClubs||{})){ const c=G.cwcClubs[k]; trim(c && c.t && c.t.players); }
+    /* 🌍 대회가 끝나면 그 시즌 클럽 스쿼드는 세이브에 남길 이유가 없다 — 640명이 통째로 붙는다.
+       ⚠ 참가 클럽만 남기고, 대회가 종료됐으면 전부 버린다. 다음 시즌엔 새로 만든다. */
+    try{
+      if(!G.cwc || G.cwc.s!==G.season || G.cwc.stage==="end"){ G.cwcClubs={}; }
+      else {
+        const keep={}; for(const id of (G.cwc.teams||[])){
+          const k=String(id).replace(/^cwc_/,"");
+          if(G.cwcClubs && G.cwcClubs[k]) keep[k]=G.cwcClubs[k]; }
+        G.cwcClubs=keep;
+      }
+    }catch(e){}
   }catch(e){}
 }
 /* ═══════════════════════════════════════════════════════════════
@@ -16413,6 +17191,21 @@ function migrateLoadedG(){
       G.k1Fix.length=want;
       if((G.r1||0)>want) G.r1=want;    // 초과 진행분은 다음 진행에서 곧바로 스플릿으로 넘어간다
     }
+  });
+  /* 🗓️ 달력이 라운드보다 먼저 끝난 세이브 — 불러오는 순간 바로 고친다 (제보: 강원 2028 무한 경기) */
+  step("달력 정합성", ()=>{ calRoundRepair(); });
+  /* 🏢 ⚠ 제보 — 「부동산 제일 먼저 산 건물들이 보유 0년으로 뜹니다. 그 후에 산 건 2년이라고 뜨는데」.
+     취득 시즌(s) 필드가 생기기 전 구버전에서 산 건물에는 s 가 없어, 보유 연수 계산이
+     「올해 산 것」으로 처리했다(0년 + 양도세 중과까지). 실제 취득 시즌은 복원할 수 없지만,
+     s 가 찍힌 건물보다 먼저 산 것은 확실하므로 「기록된 것 중 가장 이른 시즌」과
+     「2시즌 전」 중 이른 쪽으로 채운다 — 최소한 2년 미만 중과는 억울하게 맞지 않는다. */
+  step("부동산 취득연도", ()=>{
+    const M=G.me; const ps=M && M.props;
+    if(!Array.isArray(ps) || !ps.length) return;
+    if(!ps.some(x=>x && x.s==null)) return;
+    const known=ps.filter(x=>x && x.s!=null).map(x=>x.s);
+    const guess=Math.min(known.length?Math.min.apply(null, known):(G.season||0), (G.season||0)-2);
+    for(const it of ps) if(it && it.s==null) it.s=guess;
   });
   /* 구버전 세이브 복구 — 꼬인 임대(원소속에 loan 잔재, 만료 미복귀, FA 고아) 정리 */
   step("임대 정합성", ()=>{ loanSweep(); });
@@ -17668,9 +18461,11 @@ function edTeam(){
   if(G.teams[ED.tid]) return G.teams[ED.tid];
   /* 🌏 대회 구단은 G.teams 에 없다 — 따로 꺼내 온다 */
   if(String(ED.tid).indexOf("eacl_")===0){ try{ return eaclTeam(ED.tid); }catch(e){ return null; } }
+  if(String(ED.tid).indexOf("cwc_")===0){ try{ return cwcClub(String(ED.tid).slice(4)); }catch(e){ return null; } }
   return null;
 }
-function edIsEacl(t){ return !!(t && (t.eacl || String(t.id||"").indexOf("eacl_")===0)); }
+function edIsCwc(t){ return !!(t && (t.cwc || String(t.id||"").indexOf("cwc_")===0)); }
+function edIsEacl(t){ return !!(t && !edIsCwc(t) && (t.eacl || String(t.id||"").indexOf("eacl_")===0)); }
 function edPlayer(){
   if(ED.pid==null) return null;
   if(ED.tid==="fa") return (G.freeAgents||[]).find(p=>p.id===ED.pid)||null;
@@ -17757,6 +18552,7 @@ function renameEverywhere(pairs){
 }
 function edSetTeamQ(t, field, v){
   /* 🌏 대회 구단은 세이브에 스쿼드가 통째로 다시 만들어지므로, 이름은 덮어쓰기 표로 관리한다 */
+  if(edIsCwc(t)  && (field==="name"||field==="short")){ cwcSetName(t.id, field, v); return; }
   if(edIsEacl(t) && (field==="name"||field==="short")){ eaclSetName(t.id, field, v); return; }
   if(field==="name"){ const nm=String(v).trim().slice(0,20); if(nm){ const old=t.name; t.name=nm; renameEverywhere([[old,nm]]); } }
   else if(field==="short"){ const nm=String(v).trim().slice(0,8); if(nm){ const old=t.short; t.short=nm; renameEverywhere([[old,nm]]); } }
@@ -18999,10 +19795,18 @@ function editorView(){
       `<option value="${x.id}" ${ED.tid===x.id?"selected":""}>${x.div===2?"[K2] ":""}${x.name}${x.isUser?" ★":""}</option>`).join("")}
     ${(function(){
       /* 🌏 해외(대회) 구단 — 이름·약칭을 여기서 고친다(제보) */
-      try{ return EACL_CLUBS.map(c=>{
-        const id="eacl_"+c.id, t2=eaclTeam(id);
-        return `<option value="${id}" ${ED.tid===id?"selected":""}>[${c.nat}] ${(t2&&t2.name)||c.name}</option>`;
-      }).join(""); }catch(e){ return ""; }
+      try{
+        const ea=EACL_CLUBS.map(c=>{
+          const id="eacl_"+c.id, t2=eaclTeam(id);
+          return `<option value="${id}" ${ED.tid===id?"selected":""}>[${c.nat}] ${(t2&&t2.name)||c.name}</option>`;
+        }).join("");
+        /* 🌍 세계 대회 구단 — 대륙대회 구단과 똑같이 이름을 고칠 수 있게 한다 */
+        const cw=CWC_CLUBS.map(c=>{
+          const ov=cwcNameOv(c.id);
+          return `<option value="cwc_${c.id}" ${ED.tid===("cwc_"+c.id)?"selected":""}>[${c.nat||"해외"}] ${(ov&&ov.name)||c.name}</option>`;
+        }).join("");
+        return ea+cw;
+      }catch(e){ return ""; }
     })()}
   </select>`;
   let body="";
@@ -21368,7 +22172,9 @@ function bankBonusToggle(bk, k){
 let BANK_SEL="kb", BANK_PROD_SEL="dep12", BANK_AMT="", BANK_TAB="save", BANK_MON=36;
 function bankSetBank(k){ BANK_SEL=k; show("mylife"); }
 function bankSetProd(k){ BANK_PROD_SEL=k; show("mylife"); }
-function bankSetAmt(v){ BANK_AMT=String(v||"").replace(/[^0-9.]/g,""); }
+/* ⚠ 제보 — 「적금 한도가 0.몇억인데 월 납입액 소수점 설정이 적용 안 된다」.
+   일부 모바일 키패드(inputmode=decimal)는 마침표 대신 쉼표만 있다 — 쉼표를 소수점으로 받는다. */
+function bankSetAmt(v){ BANK_AMT=String(v||"").replace(/,/g,".").replace(/[^0-9.]/g,""); }
 function bankSetTab(k){ BANK_TAB=k; show("mylife"); }
 function bankSetMon(m){ BANK_MON=m; show("mylife"); }
 function bankView(){
@@ -21451,8 +22257,10 @@ function bankView(){
     <div class="stkOrder">
       <input type="text" inputmode="decimal" placeholder="${P.kind==="sav"?"월 납입액(억)":"가입 금액(억)"}" value="${BANK_AMT}" oninput="bankSetAmt(this.value)"
         style="flex:1;min-width:110px;padding:9px 10px;font-size:16px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg);text-align:right">
+      <button class="mini" onclick="BANK_AMT=String(Math.round(((parseFloat(BANK_AMT)||0)+0.05)*100)/100);show('mylife')">+0.05</button>
       <button class="mini" onclick="BANK_AMT=String(Math.round(((parseFloat(BANK_AMT)||0)+1)*100)/100);show('mylife')">+1</button>
       <button class="mini" onclick="BANK_AMT=String(Math.round(((parseFloat(BANK_AMT)||0)+10)*100)/100);show('mylife')">+10</button>
+      ${P.max?`<button class="mini" onclick="BANK_AMT='${P.max}';show('mylife')">한도 ${P.max}억</button>`:""}
       <button class="mini" onclick="BANK_AMT=me().cash.toFixed(2);show('mylife')">전액</button>
     </div>
     ${amt>0&&P.m?`<div class="small" style="margin:7px 0;color:var(--sub)">
@@ -25116,7 +25924,13 @@ function mylifeView(){
 }
 /* ---------- 공통 렌더 ---------- */
 function show(v){
-  if(liveM) return;
+  /* 🔍 경기 중 — 둘러보기 모드일 때만 화면을 옮길 수 있다 */
+  if(liveM && !LIVE_PEEK) return;
+  if(liveM && LIVE_PEEK && v==="match"){ peekEnd(); return; }
+  if(liveM && LIVE_PEEK && !peekAllowed(v)){
+    try{ notify("🔍 둘러보기 중에는 <b>순위표·기록·일정</b> 같은 조회 화면만 열 수 있습니다.<br><span class=\"small\">전술·교체는 경기 화면의 ⏸ 에서 하세요.</span>","warn"); }catch(e){}
+    return;
+  }
   /* 안전망 — 인트로 도중에는 어떤 경로로 불려도 화면을 옮기지 않는다.
      버튼은 이미 잠겨 있지만, 알림 클릭 같은 다른 경로로 show() 가 불릴 수 있다. */
   if(introLocked() && v!=="home"){
@@ -25126,6 +25940,12 @@ function show(v){
   if(v!=="simwatch" && typeof stopSimWatch==="function") stopSimWatch(); // 관전 화면을 벗어나면 시뮬 정지 // 실제 경기 진행 중에는 화면 이동 불가(라이브 중계는 "경기" 탭에 고정)
   // 기자회견/첫인사/라커룸 토크는 이제 "경기" 탭에서 진행 상태가 보존되므로, 다른 탭으로 자유롭게 이동할 수 있다.
   if(v!==VIEW) selSwap=null; // 다른 화면으로 이동할 때만 선택 해제
+  /* ⚠ 제보 — 「경기 준비할 때 다른 탭 갔다오면 선발확정 버튼을 안 눌렀는데도 명단확인 화면이
+     안 나오고 자동으로 넘어갑니다. 아챔 결승 때 그래서 체력관리 못하고 져버림」.
+     준비 화면(inPreTactics)을 떠나도 그 표식이 남아, 돌아와서 누른 진행 버튼이
+     곧바로 「선발 확정」으로 처리됐다. 떠난 사실을 기억해 뒀다가, 진행 버튼은 먼저
+     준비 화면부터 다시 보여 준다. */
+  try{ if((inPreTactics||inLineupPreview) && v!=="match") preTacAway=true; }catch(e){}
   const VIEWPREV=VIEW;
   VIEW=v;
   document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
@@ -25147,7 +25967,7 @@ function show(v){
     🕊️ <b>무직</b> — 야인 생활 ${(G.mgrFree&&G.mgrFree.weeks)||0}주차<br>
     ${((G.mgrFree&&G.mgrFree.off)||[]).length?`📬 감독직 제의 <b>${G.mgrFree.off.length}건</b><br>`:""}사비 <b class="money">${me().cash.toFixed(1)}억</b> · 평판 <b>${(typeof mgrRep==="function")?mgrRep():"-"}</b>`
     : `<b class="dbDate">${calDateText()}</b><br><b>${G.season} 시즌</b> · 라운드 <b>${Math.min(r+1,fix.length)}</b> / ${fix.length}<br>
-    ${G.phase==="po"?(eaclPhaseTag(false)||"⚔️ 승강 PO 진행 중"):G.phase==="seasonEnd"?"🏁 시즌 종료":G.phase==="pre"?"🌱 프리시즌":""}${G.phase==="pre"?" · ":""}${transferOpen()?`🟢 ${windowInfo().name} 이적시장`:"🔴 이적시장 닫힘"}<br>
+    ${G.phase==="po"?(eaclPhaseTag(false)||"⚔️ 승강 PO 진행 중"):G.phase==="seasonEnd"?"🏁 시즌 종료":G.phase==="pre"?((function(){try{return cwcMine()&&cwcUserLeft()?`🌍 ${cwcShort()} 참가 중`:"🌱 프리시즌";}catch(e){return "🌱 프리시즌";}})()):""}${G.phase==="pre"?" · ":""}${transferOpen()?`🟢 ${windowInfo().name} 이적시장`:"🔴 이적시장 닫힘"}<br>
     ${(G.nego||G.snego)?`🤝 협상 진행 중<br>`:""}${(G.offers||[]).length?`📨 타 구단 제의 <b>${G.offers.length}건</b><br>`:""}이적 예산 <b class="money">${t.budget}억</b><br>연봉 ${Math.round(totalWage(t))}/${t.wageCap||0}억`;
   updateTopBar(t, r, fix);
   const badge=$("#clubBadge");
@@ -25172,6 +25992,7 @@ function show(v){
        phase 만 보고 이름을 붙였는데, 그 단계에서도 대회 경기가 남아 있을 수 있다. 대회를 먼저 본다. */
     G.phase==="seasonEnd" ? "다음 시즌 시작 ▶▶"
     : (function(){
+        try{ if(cwcUserDue()) return "🌍 "+cwcShort()+" 경기 시작 ▶"; }catch(e){}
         try{ if(eaclUserDue()) return "🌏 "+eaclShort()+" 경기 시작 ▶"; }catch(e){}
         if(G.phase==="po"){
           try{ if(!((G.poQueue||[]).length) && eaclUserLeft()) return "🌏 "+eaclShort()+" 일정 진행 ▶"; }catch(e){}
@@ -25199,6 +26020,12 @@ function show(v){
     if(lockedV.includes(v)){ v="home"; VIEW="home"; document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("on",b.dataset.v==="home")); }
   }
   $("#main").innerHTML=fx+((G.jobless && v==="home")?joblessView():V[v]());
+  try{
+    peekGuardInit();
+    const m=document.getElementById("main");
+    if(m) m.classList.toggle("peekOnly", !!(liveM && LIVE_PEEK));
+    peekBarRender();
+  }catch(e){}
   if(freshTactics){ tacBaseline(); $("#main").innerHTML=fx+((G.jobless && v==="home")?joblessView():V[v]()); }
   if(!G.seen) G.seen={};
   G.seen[v]=notifCount(v); // 이 탭을 확인했으니 알림 해제
@@ -25319,7 +26146,9 @@ function home(){
   const t=userTeam();
   const tbl=tableOf(t.div); const pos=tbl.findIndex(x=>x.isUser)+1;
   let mh="";
-  if(lastMatch&&(lastMatch.type==="match"||lastMatch.type==="pomatch")){
+  /* ⚠ 대회 경기(EACL·CWC)는 홈 리포트에 아예 뜨지 않았다 — 리그·PO 만 보고 있었다.
+     아시아 결승을 치르고 돌아왔는데 홈 화면에는 지난 리그 경기가 걸려 있는 셈이었다. */
+  if(lastMatch&&(lastMatch.type==="match"||lastMatch.type==="pomatch"||lastMatch.type==="eacl"||lastMatch.type==="cwc")){
     const {res,h,a,tag}=lastMatch;
     // "warn" 이 빠져 있어서 경고(옐로)·부상이 리포트에 하나도 안 나왔다.
     //   2D 엔진은 옐로를 "warn", 옛 엔진은 "card" 로 흘린다 — 둘 다 받아야 한다.
@@ -26674,6 +27503,18 @@ const FMK={
    ⚠ 무소속(FA) 신분으로 입대한 선수는 돌아갈 곳이 없다 — 전역과 동시에 자유계약이 된다.
 ═══════════════════════════════════════════════════════════════ */
 const ARMY_MONTHS=18;                 // 복무 기간
+/* 🎖️ 입대 예고 — 합격 통보와 입소 사이의 시간.
+   ⚠ 「현실에서도 합격하고 바로 입대하지는 않는다. 한 달 전쯤 미리 알려 줬으면 좋겠다」.
+     맞는 말이다. 예전에는 선발되는 순간 선수가 스쿼드에서 사라져,
+     감독은 다음 경기 라인업을 짜다가 그제야 알아차렸다.
+   ─ 이제 「입영 통지」가 먼저 온다. 그 사이 선수는 우리 팀에서 계속 뛰고,
+     스쿼드·달력에 D-day 가 붙는다. 대신 그동안 이적·임대는 묶인다(입영 대상자다). */
+const ARMY_CALL_DAYS=30;
+function armyCallLeft(p){
+  if(!p || !p.armyCall || p.armyCall.at==null) return null;
+  return Math.max(0, p.armyCall.at-(G.day||0));
+}
+function armyCalled(p){ return !!(p && p.armyCall); }
 /* 2026 시즌 시작 시점의 실제 명단 — [원소속 구단, 입대일, 전역일] */
 const ARMY26={
   "백종범":["seoul","2025-04-07","2026-10-06"],   "민경현":["incheon","2025-06-02","2026-12-01"],
@@ -26962,7 +27803,7 @@ function armyIntake(gc, n){
     for(const p of t.players){
       const age=G.season-p.by;
       /* 🎖️ 용병은 병역 대상이 아니다. 다만 홈그로운(이중 국적)은 국내 선수로 등록되므로 대상이다 (제보) */
-    if(age<20 || age>26 || p.loan || frnQ(p) || p.armyDone) continue;
+    if(age<20 || age>26 || p.loan || frnQ(p) || p.armyDone || p.armyCall) continue;
       cands.push({p, t, sc: p.ovr - (p.apps||0)*0.35 - (t.isUser?6:0)});   // 안 뛰는 선수부터
     }
   }
@@ -26971,14 +27812,11 @@ function armyIntake(gc, n){
   for(const c of cands){
     if(taken.length>=n) break;
     if(c.t.players.length<=22) continue;
-    c.t.players.splice(c.t.players.indexOf(c.p),1);
-    c.p.army={own:c.t.id, in:inStr, out:outStr};
-    c.p.morale=clamp((c.p.morale||70)-4,25,99);
-    gc.players.push(c.p); joinClub(gc, c.p);
+    /* 📨 즉시 데려가지 않는다 — 입영 통지를 보내고 한 달 뒤에 데려간다 */
+    armySetCall(c.p, c.t, gc);
     taken.push({p:c.p, from:c.t});
     if(c.t.isUser){
-      notify(`🎖️ <b>${c.p.name}</b> 선수가 군 복무를 위해 <b>김천 상무 FC</b>에 입대합니다. <span class="small">(${ARMY_MONTHS}개월 뒤 복귀)</span>`,"warn");
-      armyFarewell(c.p);           // 훈련소 가기 전, 마지막 인사
+      /* 통지는 armySetCall 이 이미 띄웠다 — 여기서는 배웅하지 않는다(아직 안 갔다) */
     } else if(Math.random()<0.30){
       /* 타 구단 선수의 입대도 커뮤니티는 안다 */
       fmkPush(pick([`${c.p.name} 상무 간다며 ㅋㅋ 머리 민 거 봤냐`,
@@ -27604,7 +28442,7 @@ function seasonEndPanel(){
   const xi=(h.bestXI||[]);
   const xiRow=g=>xi.filter(x=>x.pos===g).map(x=>`<b>${x.n}</b><span class="small">(${x.t} ${x.r})</span>`).join(" · ")||"-";
   const cab=(G.trophies||[]).slice().reverse().slice(0,8)
-    .map(x=>`<span class="tag">${x.kind==="eacl"?"🌏":x.kind==="eaclRunner"?"🌐":x.kind==="eaclQF"?"🎽":x.kind==="champ"?"🏆":x.kind==="champ2"||x.kind==="promo"?"⬆️":x.kind==="releg"?"⬇️":"🥈"} ${x.label}</span>`).join(" ");
+    .map(x=>`<span class="tag">${x.kind==="cwc"?"🌍":x.kind==="cwcRunner"?"🌎":(x.kind==="cwcSF"||x.kind==="cwcQF")?"🌐":x.kind==="eacl"?"🌏":x.kind==="eaclRunner"?"🌐":x.kind==="eaclQF"?"🎽":x.kind==="champ"?"🏆":x.kind==="champ2"||x.kind==="promo"?"⬆️":x.kind==="releg"?"⬇️":"🥈"} ${x.label}</span>`).join(" ");
   return `${eaclBanner}${banner}
   <div class="card">
     <h3>🏁 ${h.season} 시즌 종료 <span class="small">— 내 성적: ${divName(h.userDiv)} <b>${h.userPos}위</b></span></h3>
@@ -29590,6 +30428,10 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
         title="${autoFitOn()?"체력 우선 — 자리 능숙도와 함께 컨디션도 크게 봅니다. 지친 주전은 쉬게 하고 갓 회복한 선수를 올립니다."
                             :"실력 우선 — 컨디션과 상관없이 그 자리에 가장 잘 맞는 열한 명을 뽑습니다."}"
         onclick="G.opt=G.opt||{};G.opt.autoFit=${autoFitOn()?"false":"true"};saveGame();refreshTactics()">${autoFitOn()?"⚡ 체력 우선":"⚖️ 실력 우선"}</span>
+      <span class="fmChip clickable" style="${swapRoleTac()?"":"color:var(--gold);border-color:var(--gold)"}"
+        title="${swapRoleTac()?"전술 우선 — 벤치에서 선발로 올리면 그 자리에 내려둔 역할(나간 선수의 역할)을 그대로 물려받습니다. 눌러서 선수 우선으로 전환"
+                              :"선수 우선 — 벤치에서 선발로 올리면 본인에게 직접 골라 뒀던 역할, 없으면 능숙도·적합도 최상위 역할이 기본값이 됩니다. 눌러서 전술 우선으로 전환"}"
+        onclick="G.opt=G.opt||{};G.opt.swapRole='${swapRoleTac()?"fit":"tac"}';saveGame();refreshTactics()">${swapRoleTac()?"🧭 전술 우선":"🎓 선수 우선"}</span>
       <button class="mini" style="padding:4px 10px;font-size:11.5px"
         title="지금 포메이션 배치와 역할은 그대로 두고, 각 자리에 가장 잘 맞는 선수로 다시 뽑습니다"
         onclick="autoPickXI();selSwap=null;refreshTactics()">🔄 자동 선발</button>
@@ -29791,6 +30633,12 @@ function tacticDetailCard(t, xi){
       const ex=eaclNextForUser();
       if(ex && ex.opp && (!opp || _rank(ex.day)<_rank(when))){ opp=ex.opp; tag=ex.label; home=ex.home; when=ex.day; }
     }catch(e){}
+    /* 🌍 CWC — 1월 대회. 이게 빠져 있어서 대회 사흘 전에도 「38일 뒤 연습경기 상대」를 분석했다. */
+    let _neutral=false;
+    try{
+      const cx=cwcNextForUser();
+      if(cx && cx.opp && (!opp || _rank(cx.day)<_rank(when))){ opp=cx.opp; tag=cx.label; home=false; when=cx.day; _neutral=true; }
+    }catch(e){}
     /* 🌱 연습경기 — 프리시즌이든 시즌 중이든, 더 가까우면 그 상대를 본다 */
     try{
       const f=(G.friendlies||[]).filter(x=>!x.done).sort((a,b)=>_rank(a.d)-_rank(b.d))[0];
@@ -29806,7 +30654,8 @@ function tacticDetailCard(t, xi){
       const lv3=(v,a)=>a[v>=1.5?2:v<=0.5?0:1];
       const nm=opp.short||opp.name;
       const dLeft=Math.max(0, when-(G.day||0));
-      scout=`🔎 다음 상대 <b>${nm}</b> <span class="small" style="opacity:.85">${tag} · ${home?"홈":"원정"}${dLeft>0?` · D-${dLeft}`:" · 오늘"}</span><br>
+      scout=`🔎 다음 상대 <b>${nm}</b> <span class="small" style="opacity:.85">${tag} · ${_neutral?"중립지":(home?"홈":"원정")}${dLeft>0?` · D-${dLeft}`:" · 오늘"}</span>${
+        _neutral?`<span class="small" style="opacity:.7"> · 전력 ${Math.round(teamOVR(opp))} (우리 ${Math.round(teamOVR(t))})</span>`:""}<br>
       <b style="color:var(--gold)">${styleName(_oppView)}</b> — 라인 ${lv3(OT.line,["낮음","보통","높음"])} · 압박 ${lv3(OT.press,["약함","보통","강함"])} · ${lv3(OT.pass,["짧은 패스","혼합","다이렉트"])}${ctrLv(OT)>=3?" · 역습형":ctrLv(OT)>=2?" · 역습 병행":""}
       <span class="small">${HI(OT.line)?"→ 다이렉트/역습으로 뒷공간을 노려보세요!":LO(OT.line)?"→ 내려앉는 팀입니다. 짧은 패스+넓은 폭으로 두드리세요.":""}${HI(OT.press)?" 상대 압박이 강합니다. 미드필더가 약하면 다이렉트 패스가 안전합니다.":""}</span>`;
     }
@@ -30229,8 +31078,25 @@ function confirmSwap(a,b){
          나간 선수가 맡던 역할·임무를 그 자리에서 맡을 수 있는 한 그대로 물려준다. */
       const rMap=t.tactic.role || (t.tactic.role={});
       const oldRole=rMap[outId];
-      if(oldRole && ROLE_BY_KEY[oldRole.r]){
-        const grp=oldSlot ? ROLE_GRP[oldSlot] : null;
+      /* ⚠ 제보 ① — 「선발로 다시 올릴 때 같은 포지션이면 기존 설정값이나 적합도/능숙도
+           최상위가 기본값이었으면」.
+         ⚠ 제보 ② — 「전술에 선수를 맞추는 편이라, 전술 역할 그대로 / 선수 최적 역할
+           두 가지 버튼으로 선택지를 달라」.
+         선발 정보 탭의 「🧭 전술 우선 / 🎓 선수 우선」 칩(G.opt.swapRole)으로 고른다.
+         · 전술 우선(tac) — 나간 선수의 역할(그 자리의 지시)을 그대로 물려준다 (종전 동작)
+         · 선수 우선(기본) — 본인이 그 자리 그룹에서 직접 골랐던 역할(roleBy) →
+           없으면 능숙도·적합도 최상위 역할을 기본값으로 깐다
+         (경기 중 교체 subIn 은 흐름 유지가 우선이라 언제나 자리 역할을 잇는다) */
+      const grp=oldSlot ? ROLE_GRP[oldSlot] : null;
+      if(!swapRoleTac()){
+        const myMem=grp ? (((t.tactic.roleBy||{})[inId]||{})[grp]) : null;
+        if(myMem && ROLE_BY_KEY[myMem.r] && ROLE_BY_KEY[myMem.r].grp.includes(grp)){
+          rMap[inId]={r:myMem.r, d:myMem.d};
+        } else if(oldSlot){
+          const best=rolesSortedFor(inP, oldSlot)[0];
+          if(best) rMap[inId]={r:best.k, d:(best.duty&&best.duty[0])||"S"};
+        }
+      } else if(oldRole && ROLE_BY_KEY[oldRole.r]){
         if(!grp || ROLE_BY_KEY[oldRole.r].grp.includes(grp)) rMap[inId]={r:oldRole.r, d:oldRole.d};
       }
     }
@@ -30711,14 +31577,19 @@ function tableView(){
   let eaclOK=false;
   try{ eaclOK = eaclOn() && !G.jobless && G.eacl.teams.indexOf(G.userTeamId)>=0; }catch(e){ eaclOK=false; }
   if(!eaclOK && TBLTAB==="eacl") TBLTAB="league";
+  /* 🌍 CWC 탭 — 우리가 나가지 않는 시즌에도 볼 수 있다 (대회는 AI끼리 굴러간다) */
+  let cwcOK=false; try{ cwcOK = cwcOn(); }catch(e){ cwcOK=false; }
+  if(!cwcOK && TBLTAB==="cwc") TBLTAB="league";
   const tabs=`<div style="margin:0 0 10px; display:flex; gap:6px; flex-wrap:wrap">
     <button class="mini ${TBLTAB==='league'?'sel':''}" onclick="setTblTab('league')">🏆 리그 순위</button>
     ${eaclOK?`<button class="mini ${TBLTAB==='eacl'?'sel':''}" onclick="setTblTab('eacl')">🌏 ${eaclShort()}</button>`:""}
+    ${cwcOK?`<button class="mini ${TBLTAB==='cwc'?'sel':''}" onclick="setTblTab('cwc')">🌍 ${cwcShort()}</button>`:""}
     <button class="mini ${TBLTAB==='scorer'?'sel':''}" onclick="setTblTab('scorer')">⚽ 득점 순위</button>
     <button class="mini ${TBLTAB==='assist'?'sel':''}" onclick="setTblTab('assist')">🅰️ 도움 순위</button>
     <button class="mini ${TBLTAB==='att'?'sel':''}" onclick="setTblTab('att')">👥 관중 순위</button>
   </div>`;
   if(TBLTAB==="eacl")   return `<h2>🏆 순위표</h2>${tabs}${eaclCard()}${eaclRankCard("goal",12)}${eaclRankCard("assist",12)}`;
+  if(TBLTAB==="cwc")    return `<h2>🏆 순위표</h2>${tabs}${cwcCard()}${cwcRankCard("goal",12)}${cwcRankCard("assist",12)}`;
   if(TBLTAB==="scorer") return `<h2>🏆 순위표</h2>${tabs}${scorerCard(1)}${scorerCard(2)}`;
   if(TBLTAB==="assist") return `<h2>🏆 순위표</h2>${tabs}${assistCard(1)}${assistCard(2)}`;
   if(TBLTAB==="att")    return `<h2>🏆 순위표</h2>${tabs}${attRankCard()}`;
@@ -31125,12 +31996,14 @@ function fixtures(){
     <td style="${r.aid===t.id?'font-weight:700':''}">${a.short}</td></tr>`;
   }).join("");
   const acl = eaclSchedCard();
+  const cwcSc = (function(){ try{ return cwcSchedCard(); }catch(e){ return ""; } })();
   return `<h2>📅 일정 및 훈련</h2>
   ${preseasonCard()}
   ${famCard()}
   ${calendarCard()}
   ${routineCard()}
   ${indTrainCard()}
+  ${cwcSc}
   ${acl}
   <div class="card"><h3>내 경기 결과</h3><div class="tblScroll"><table><tr><th>R</th><th>홈</th><th>스코어</th><th>원정</th></tr>${rows||"<tr><td colspan=4>아직 경기가 없습니다.</td></tr>"}</table></div></div>`;
 }
@@ -31318,6 +32191,503 @@ function calShift(d){ calMonth=(calMonth===null?curCalMonth():calMonth)+d; calAn
 function calToday(){ calMonth=null; calAnchor=null; show("fixtures"); }
 function curCalMonth(){ const dt=dateOfDay(G.day||0); return dt.getFullYear()*12+dt.getMonth(); }
 /* 🌏 이 날짜에 우리 EACL 경기가 있는가 — 달력 칸에 쓰인다 */
+
+/* ── 🌍 CWC 화면 ───────────────────────────────────────────────────── */
+const CWC_FLAG={ "스페인":"🇪🇸","잉글랜드":"🏴","독일":"🇩🇪","프랑스":"🇫🇷","이탈리아":"🇮🇹","포르투갈":"🇵🇹",
+  "오스트리아":"🇦🇹","아르헨티나":"🇦🇷","브라질":"🇧🇷","이집트":"🇪🇬","모로코":"🇲🇦","남아공":"🇿🇦","튀니지":"🇹🇳",
+  "멕시코":"🇲🇽","미국":"🇺🇸","뉴질랜드":"🇳🇿","호주":"🇦🇺","일본":"🇯🇵","중국":"🇨🇳","태국":"🇹🇭","말레이시아":"🇲🇾","한국":"🇰🇷" };
+function cwcNat(id){ const t=cwcTeam(id); if(!t) return "-"; return G.teams[id]?"한국":(t.nat||"-"); }
+function cwcFlag(id){ return CWC_FLAG[cwcNat(id)]||"🏳️"; }
+function cwcConfOf(id){
+  if(G.teams[id]||String(id).indexOf("eacl_")===0) return "AS";
+  const d=cwcClubDef(String(id).replace(/^cwc_/,"")); return d?d.cf:"?";
+}
+function cwcDayLabel(i){ try{ return dateLabel(i); }catch(e){ return "예정"; } }
+/* 조별 순위표 한 덩어리 */
+function cwcGroupTable(k){
+  const me=G.userTeamId, C=G.cwc;
+  const rows=cwcGrpSorted(k).map((id,i)=>{
+    const r=cwcRow(id), t=cwcTeam(id);
+    return `<tr class="${i<2?"rank-acl":""}" style="${id===me?"background:rgba(80,160,255,.10)":""}">
+      <td>${i+1}</td>
+      <td style="text-align:left">${cwcFlag(id)} ${cwcNm(id)}<span class="small" style="opacity:.5"> ${Math.round(teamOVR(t)||0)}</span></td>
+      <td>${r.W}</td><td>${r.D}</td><td>${r.L}</td><td>${r.GF}:${r.GA}</td><td><b>${r.Pts}</b></td></tr>`;
+  }).join("");
+  return `<div style="flex:1 1 260px;min-width:250px">
+    <div class="small" style="font-weight:800;margin-bottom:3px">${k}조</div>
+    <div class="tblScroll"><table>
+      <tr><th>#</th><th style="text-align:left">클럽</th><th>승</th><th>무</th><th>패</th><th>득실</th><th>점</th></tr>
+      ${rows}</table></div></div>`;
+}
+function cwcCard(){
+  if(!cwcOn()) return "";
+  const C=G.cwc, me=G.userTeamId, joined=C.teams.indexOf(me)>=0;
+  const KEY=["A","B","C","D"];
+  /* ① 조별 순위표 */
+  const groups=`<div style="display:flex;gap:10px;flex-wrap:wrap">${KEY.map(cwcGroupTable).join("")}</div>`;
+  /* ② 내 일정 */
+  const myFix=!joined?"":(function(){
+    const rows=C.fix.filter(m=>m.h===me||m.a===me).sort((x,y)=>x.r-y.r).map(m=>{
+      const home=m.h===me, opp=home?m.a:m.h, my=home?m.hg:m.ag, op=home?m.ag:m.hg;
+      const res=m.done?`<b style="color:${my>op?"var(--green)":my===op?"var(--gold)":"var(--red)"}">${my} : ${op}</b>`
+                      :`<span class="small">${cwcDayLabel(C.day.g[m.r])}</span>`;
+      return `<tr><td>조별 ${m.r+1}차전</td><td class="small">${cwcDayLabel(C.day.g[m.r])}</td>
+        <td style="text-align:left">${cwcFlag(opp)} ${cwcNm(opp,true)}</td><td>${res}</td></tr>`;
+    }).join("");
+    const ko=[];
+    for(const st of ["qf","sf","f"]){
+      const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+      for(const t of (ties||[])){
+        if(!t || (t.h!==me && t.a!==me)) continue;
+        const home=t.h===me, opp=home?t.a:t.h, my=home?t.hg:t.ag, op=home?t.ag:t.hg;
+        const res=t.done?`<b style="color:${t.w===me?"var(--green)":"var(--red)"}">${my} : ${op}</b>${t.pk?'<span class="small"> (승부차기)</span>':""}`
+                        :`<span class="small">${cwcDayLabel(C.day[st])}</span>`;
+        ko.push(`<tr><td>${CWC_KO_NAME[st]}</td><td class="small">${cwcDayLabel(C.day[st])}</td>
+          <td style="text-align:left">${cwcFlag(opp)} ${cwcNm(opp,true)}</td><td>${res}</td></tr>`);
+      }
+    }
+    return `<div class="tblScroll" style="margin-top:10px"><table>
+      <tr><th>단계</th><th>날짜</th><th style="text-align:left">상대</th><th>결과</th></tr>${rows}${ko.join("")}</table></div>`;
+  })();
+  /* ③ 토너먼트 대진 */
+  const tie=(t, nm, st)=>{
+    if(!t) return "";
+    const res=t.done?`<b>${t.hg} : ${t.ag}</b>${t.pk?'<span class="small"> (승부차기)</span>':""}`
+                    :`<span class="small">${cwcDayLabel(C.day[st])}</span>`;
+    const hi=(x)=>x===me?`<b style="color:var(--gold)">${cwcNm(x)}</b>`:cwcNm(x);
+    return `<tr><td class="small">${nm}</td><td style="text-align:right">${cwcFlag(t.h)} ${hi(t.h)}</td>
+      <td>${res}</td><td style="text-align:left">${hi(t.a)} ${cwcFlag(t.a)}</td></tr>`;
+  };
+  let ko="";
+  if(C.stage!=="grp"){
+    ko=`<div class="tblScroll" style="margin-top:10px"><table>
+      ${(C.ko.qf||[]).map(t=>tie(t,"8강","qf")).join("")}
+      ${(C.ko.sf||[]).map(t=>tie(t,"4강","sf")).join("")}
+      ${tie(C.ko.f,"결승","f")}</table></div>`;
+    if(C.champ) ko+=`<div style="margin-top:6px">🏆 우승 — <b>${cwcFlag(C.champ)} ${cwcNm(C.champ,true)}</b></div>`;
+  }
+  /* ④ 참가 클럽 등록 정보 */
+  const uidCell=(u)=>`<span class="small" style="opacity:.5">#${u}</span>`;
+  const info=C.teams.map(id=>{
+    const t=cwcTeam(id); if(!t) return "";
+    const isK=!!G.teams[id];
+    const sd=isK?stadOf(t):(t.stad||{n:"-",cap:0});
+    let mgN;
+    if(isK){ if(t.isUser) mgN="감독님 (본인)";
+             else { const c=(typeof coachOf==="function")?coachOf(t):null; mgN=(c&&c.n)||mgrName(t); } }
+    else mgN=(t.coach&&t.coach.n)||"미상";
+    const own=isK?(clubType(t).o):((t.own&&t.own.n)||"-");
+    return `<tr><td style="text-align:left">${cwcFlag(id)} ${cwcNm(id)} ${uidCell(t.uid||0)}</td>
+      <td class="small">${cwcNat(id)}</td><td style="text-align:left">${mgN}</td>
+      <td style="text-align:left">${sd.n} <span class="small" style="opacity:.6">${(sd.cap||0).toLocaleString()}석</span></td>
+      <td style="text-align:left">${own}</td></tr>`;
+  }).join("");
+  const infoBox=`<details style="margin-top:8px"><summary class="small" style="cursor:pointer">🆔 참가 클럽 등록 정보 (구단 · 감독 · 구장 · 모기업)</summary>
+    <div class="tblScroll" style="margin-top:6px"><table>
+      <tr><th style="text-align:left">구단</th><th>국가</th><th style="text-align:left">감독</th><th style="text-align:left">홈구장</th><th style="text-align:left">모기업 · 운영주체</th></tr>
+      ${info}</table></div></details>`;
+  const stageN={grp:"조별리그", qf:"8강", sf:"4강", f:"결승", end:"종료"}[C.stage]||"";
+  const head=joined
+    ? `<p class="small" style="opacity:.8;margin:0 0 8px">지난 시즌 ${eaclShort()} 결승 진출 자격으로 출전합니다. 전 경기 중립지 · ${C.host} 개최 · 조 1·2위가 8강에 오릅니다.</p>`
+    : `<p class="small" style="opacity:.8;margin:0 0 8px">올해는 우리 구단이 나가지 못했습니다. ${eaclShort()} 결승에 오른 두 팀이 아시아를 대표합니다. · ${C.host} 개최</p>`;
+  return `<div class="card"><h3>🌍 ${cwcName()} <span class="small" style="color:var(--gold)">— ${stageN}</span></h3>
+    ${head}${groups}${myFix}${ko}${infoBox}</div>`;
+}
+
+/* ── 🌍 CWC 개인 기록 ───────────────────────────────────────────────
+   AI끼리의 경기는 매치엔진을 돌리지 않는다. 이걸 안 하면 대회 득점 순위가
+   우리 팀 선수만으로 채워진다 — 32팀이 나오는 대회에서 그건 말이 안 된다. */
+/* ⚠ CWC 는 여섯 경기짜리 단기 대회다. EACL(리그 스테이지 8 + 녹아웃) 가중치를 그대로 쓰면
+   득점왕이 평균 6.6골까지 치솟았다 — 실제 대회 득점왕은 네 골이다.
+   에이스 쏠림을 낮추고 미드필더·수비수의 몫을 조금 키운다. */
+const CWC_SCORE_W={FW:7, MF:4.5, DF:1.4, GK:0.02};
+const CWC_ASSIST_W={FW:5, MF:8, DF:3.0, GK:0.05};
+const CWC_ACE_K=1.45;
+function cwcStatOf(p){
+  if(!p.cwcS || p.cwcS.s!==G.season) p.cwcS={s:G.season, apps:0, goals:0, assists:0, rate:0, rn:0};
+  return p.cwcS;
+}
+function cwcCredit(tid, goals, skipUser){
+  const t=cwcTeam(tid); if(!t || !t.players) return;
+  if(t.isUser && skipUser) return;              // 우리 경기는 매치엔진이 정확히 집계한다
+  const pool=[...t.players].filter(p=>p && (!p.inj || p.inj<=0));
+  if(!pool.length) return;
+  pool.sort((a,b)=>(b.ovr-a.ovr)+(Math.random()-0.5)*6);
+  const xi=pool.slice(0, Math.min(11, pool.length));
+  for(const p of xi) cwcStatOf(p).apps++;
+  const field=xi.filter(p=>p.pos!=="GK");
+  const ace=[...t.players].filter(p=>p.pos==="FW").sort((a,b)=>b.ovr-a.ovr)[0]
+         || [...t.players].filter(p=>p.pos==="MF").sort((a,b)=>b.ovr-a.ovr)[0] || null;
+  for(let i=0;i<goals;i++){
+    const sc=eaclPickBy(field.length?field:xi, CWC_SCORE_W, ace, CWC_ACE_K); if(!sc) continue;
+    cwcStatOf(sc).goals++;
+    if(Math.random()<0.68){
+      const cand=field.filter(p=>p!==sc);
+      const as=eaclPickBy(cand.length?cand:field, CWC_ASSIST_W);
+      if(as) cwcStatOf(as).assists++;
+    }
+  }
+}
+/* 우리가 매치엔진으로 치른 경기 — 실제로 뛴 선수만 정확히 집계한다 */
+function cwcStatCollect(M){
+  try{
+    const sd=M.home.isUser?M.h:M.a; if(!sd) return;
+    for(const x of sd.list){
+      const p=x.p; if(!p) continue;
+      const mins=(x.off===null?M.min:x.off)-x.on;
+      if(mins<=0) continue;
+      const s=cwcStatOf(p);
+      s.apps++; s.goals+=(x.goals||0); s.assists+=(x.assists||0);
+      if(x.rating){ s.rate+=x.rating; s.rn++; }
+    }
+  }catch(e){}
+}
+
+
+/* ── 🌍 CWC 서사 — 팬 반응 · 커뮤니티 · 뉴스 ──────────────────────────
+   K리그 구단이 유럽·남미 챔피언과 붙는 일은 팬들에게 리그와 다른 온도의 사건이다.
+   {t}=우리 팀 · {o}=상대 · {n}=상대 국가 · {cs}=대회 약칭 */
+const CSOC={
+  draw:["{cs} 조 편성 나왔다... {o} 실화냐", "이게 우리가 만날 팀이라고?", "조 추첨 보고 술 깼다",
+    "{t}이 {o}랑 붙는 걸 살아서 보네", "일단 한 골만 넣자 진짜", "졌잘싸만 해도 성공이다 이번엔",
+    "TV로만 보던 팀을 우리 유니폼 앞에서 본다는 게", "{cs} 나가는 것만으로 감개무량하다"],
+  win:["{t}이 {o}를 잡았다고?? 지금 무슨 일이 일어난 거야", "세계가 우리를 봤다",
+    "{n} 클럽을 우리가 이겼다 이거 실화임", "오늘 밤 잠 못 잔다", "이 경기 평생 기억할 듯",
+    "K리그 무시하지 마라 진짜", "출근 못 해요 사장님"],
+  draw2:["{o} 상대로 승점 1점 가져왔다", "비긴 게 이긴 거지 이건", "잘 버텼다 진짜",
+    "이 정도면 세계 무대에서 통한다는 거 아님?", "골키퍼 오늘 미쳤다"],
+  lose:["역시 세계의 벽은 높구나", "그래도 잘 싸웠다 고생했다", "{o}는 그냥 다른 스포츠 하더라",
+    "이게 격차구나... 근데 배운 게 있을 거다", "선수들 표정 보니까 마음이 아프다",
+    "졌지만 부끄럽지 않다", "우리 애들 다치지만 마라"],
+  grpOut:["조별 탈락... 그래도 나간 게 어디냐", "다음엔 더 잘하자", "세계 무대 경험값이 남았다",
+    "3전 전패라도 괜찮다 우리가 아시아 챔피언이었으니까", "돈은 벌었잖아 그걸로 보강하자"],
+  qfIn:["{t} 8강이라고?!?! 세계 8강??", "이거 역사다 진짜", "아시아 자존심 지켰다",
+    "8강 대진 어디야 빨리", "회사에 반차 씁니다"],
+  sfIn:["세계 4강... 눈물 난다", "{t} 4강 진출 이거 진짜 실화냐", "역사에 기록될 시즌"],
+  finalIn:["세계 클럽 결승... 우리 팀이...", "한 경기 남았다", "이걸 보려고 이 팀을 응원했나 보다",
+    "결승 티켓 어디서 사냐 진심으로 묻는다"],
+  champ:["{t} 세계 챔피언!!!!!", "우리가 세계 1위 클럽이다", "이걸 살아서 보네 진짜",
+    "K리그가 세계를 먹었다", "평생 자랑할 거다 이건", "오늘부로 우리 팀은 명문이다"],
+  runnerUp:["준우승... 아쉽지만 자랑스럽다", "여기까지 온 것만으로도 대단하다",
+    "다음엔 반드시 넘는다", "선수들 고개 들어라"],
+  koOut:["여기까지... 그래도 잘 왔다", "{o} 상대로 이 정도면 진 게 아니다",
+    "아쉽다 진짜 한 골만 더 넣었으면", "울어도 되는 거 맞지?", "고생했다 우리 애들",
+    "세계 무대에서 여기까지 온 팀이 몇이나 되냐", "내년에 또 오면 되지"]
+};
+/* 🗣️ 타 구단 팬 — 세계 대회는 「우리 리그 대표」가 나가는 자리다. 평소 앙숙도 이때는 다르다.
+   ⚠ 처음엔 우리 팬 반응만 넣었다. 조 추첨부터 우승까지 리그 전체가 조용한 건 이상하다. */
+const CRIV={
+  draw:[["{t} 조 편성 봤는데 저건 좀...",0],["아시아 대표니까 응원은 한다",1],
+    ["솔직히 우리였으면 더 잘했을 듯",-1],["K리그 대표로 나가는 거니까 화이팅",1],
+    ["{t} 팬들 지금 심정 알 것 같다",0]],
+  win:[["{t} 이겼다고?? 인정한다",1],["오늘만큼은 {t} 응원했다",1],
+    ["아시아 자존심 지켜줘서 고맙다",1],["부럽다 진짜... 우리도 저기 나가고 싶다",0]],
+  lose:[["그래도 잘 싸웠다",0],["체급 차이는 어쩔 수 없지",0],
+    ["우리였어도 똑같이 졌을 거다",0],["{t} 욕하지 마라 저기 나간 것만도 대단하다",1]],
+  grpOut:[["아쉽다 진짜",0],["K리그 수준을 알게 된 대회였다",-1],
+    ["그래도 상금은 챙겼네 부럽다",0],["다음엔 우리가 나간다",1]],
+  qfIn:[["{t} 8강이라니 ㄷㄷ",1],["이건 리그 전체의 자랑이다",1],
+    ["솔직히 지금은 {t} 응원 중",1],["K리그 주가 올라가는 소리 들린다",1]],
+  champ:[["{t} 우승... 인정한다 진심으로",1],["오늘만은 다 같은 K리그 팬이다",1],
+    ["질투는 나는데 자랑스럽다",1],["우리 리그에서 세계 챔피언이 나왔다",1],
+    ["{t} 팬들 오늘 마음껏 자랑해라 그럴 자격 있다",1]],
+  runnerUp:[["준우승도 역사다",1],["잘 싸웠다 {t}",1],["아쉽겠지만 대단했다",1]],
+  koOut:[["여기까지 온 것만도 대단하다",1],["{o}는 우리도 못 이겼을 거다",0],
+    ["{t} 수고했다 진심으로",1],["K리그 위상은 확실히 올랐다",1]]
+};
+const CFMK={
+  draw:[["{t} {cs} 조편성 ㅋㅋㅋㅋ 죽음의 조",0],["아시아 대표 화이팅",1],["{o}랑 붙네 ㄷㄷ",0],
+    ["솔직히 한 골이라도 넣으면 성공",0],["K리그 클럽 세계무대 나가는 거 오랜만이네",1]],
+  win:[["{t} {o} 잡았다 ㅁㅊ",1],["아시아 자존심 ㅇㅈ",1],["이거 유럽에서도 기사 났음",1],
+    ["K리그 다시 봤다",1],["오늘 하이라이트 필수시청",1]],
+  lose:[["실력차 어쩔 수 없다",0],["그래도 잘 버팀",0],["{o}는 체급이 다름",0],["경험이 남았다고 본다",0]],
+  grpOut:[["조별 탈락 ㅠㅠ",-1],["나간 게 어디냐",0],["상금은 챙겼네",0],["다음 아챔부터 다시 시작",0]],
+  qfIn:[["{t} 세계 8강 ㄷㄷㄷ",1],["이건 진짜 사건임",1],["아시아 클럽이 8강이라니",1]],
+  champ:[["{t} 세계 챔피언 ㅅㅂ 소름",1],["K리그 역사 새로 씀",1],["이거 국가적 경사 아님?",1],
+    ["다음 시즌 우리 팀 몸값 폭등 예상",1]],
+  runnerUp:[["준우승도 대단함",1],["아쉽다 진짜 다 잡았는데",0],["잘 싸웠다",1]],
+  draw2:[["{o} 상대로 승점 따냄 ㄷㄷ",1],["버틴 것만도 대단",1],["수비 오늘 미쳤음",1]],
+  sfIn:[["{t} 세계 4강 ㅁㅊ",1],["이건 진짜 역사임",1],["아시아 클럽이 4강이라니",1],
+    ["해외 커뮤에서도 난리났다",1]],
+  finalIn:[["{t} 결승 진출 ㄷㄷㄷㄷ",1],["살다 살다 이런 걸 다 보네",1],
+    ["결승전 시청률 역대급 나올 듯",1],["이거 지면 더 아쉬울 듯",0]],
+  koOut:[["여기까지도 충분히 잘함",1],["{o}는 진짜 강했다",0],["아쉽지만 박수",1],
+    ["돈이랑 경험 다 챙겼다",0]]
+};
+function cwcSocial(kind, extra){
+  const t=userTeam(); if(!t || G.jobless) return;
+  const v=Object.assign({t:t.short, c:cwcName(), cs:cwcShort()}, extra||{});
+  try{
+    if(kind==="draw"){ socialFill(CSOC.draw, 3+R(3), 0, v); fmkFill(CFMK.draw, 2+R(3), v); rivalFill(CRIV.draw, 1+R(3), 0, v); }
+    else if(kind==="win"){ socialFill(CSOC.win, 3+R(4), 1, v); fmkFill(CFMK.win, 2+R(3), v); rivalFill(CRIV.win, 1+R(3), 1, v); }
+    else if(kind==="draw2"){ socialFill(CSOC.draw2, 2+R(3), 0, v); fmkFill(CFMK.draw2, 1+R(2), v); }
+    else if(kind==="lose"){ socialFill(CSOC.lose, 2+R(3), -1, v); fmkFill(CFMK.lose, 1+R(3), v); rivalFill(CRIV.lose, 1+R(2), 0, v); }
+    else if(kind==="grpOut"){ socialFill(CSOC.grpOut, 3+R(3), -1, v); fmkFill(CFMK.grpOut, 2+R(2), v); rivalFill(CRIV.grpOut, 1+R(3), 0, v); }
+    else if(kind==="koOut"){ socialFill(CSOC.koOut, 3+R(3), -1, v); fmkFill(CFMK.koOut, 2+R(2), v); rivalFill(CRIV.koOut, 1+R(2), 1, v); }
+    else if(kind==="qfIn"){ socialFill(CSOC.qfIn, 3+R(3), 1, v); fmkFill(CFMK.qfIn, 2+R(3), v); rivalFill(CRIV.qfIn, 2+R(2), 1, v); }
+    else if(kind==="sfIn"){ socialFill(CSOC.sfIn, 3+R(3), 1, v); fmkFill(CFMK.sfIn, 2+R(3), v); rivalFill(CRIV.qfIn, 1+R(2), 1, v); }
+    else if(kind==="finalIn"){ socialFill(CSOC.finalIn, 3+R(4), 1, v); fmkFill(CFMK.finalIn, 2+R(3), v); rivalFill(CRIV.qfIn, 2+R(2), 1, v); }
+    else if(kind==="champ"){ socialFill(CSOC.champ, 4+R(5), 1, v); fmkFill(CFMK.champ, 3+R(4), v); rivalFill(CRIV.champ, 3+R(3), 1, v); }
+    else if(kind==="runnerUp"){ socialFill(CSOC.runnerUp, 3+R(3), 0, v); fmkFill(CFMK.runnerUp, 2+R(2), v); rivalFill(CRIV.runnerUp, 2+R(2), 1, v); }
+  }catch(e){}
+}
+/* 경기 직후 — 기사 · MOM · 팬 반응. 대회 장부를 리그로 되돌리는 것도 여기서 한다. */
+function matchNewsCwc(M, tag){
+  const t=userTeam(); if(!t) return;
+  const home=M.home.isUser, my=home?M.hg:M.ag, op=home?M.ag:M.hg;
+  const opp=home?M.away:M.home;
+  addNews(`📰 <b>${tag}</b> — ${M.home.short} ${M.hg} : ${M.ag} ${M.away.short} <span class="small">(${(G.cwc&&G.cwc.host)||""} · 중립지)</span>`,
+    my>op?"good":my===op?"info":"bad", "club");
+  try{
+    const mm=M.mom;
+    if(mm){
+      addNews(`🏅 <b>${mm.name}</b> (${mm.team}) — ${tag} MOM · 평점 ${mm.rating.toFixed(2)}`
+        +`${mm.goals?` · ${mm.goals}골`:""}${mm.assists?` · ${mm.assists}도움`:""}`, mm.isUser?"good":"info", "club");
+    }
+  }catch(e){}
+  try{
+    const v={o:opp?opp.short:"상대", n:(opp&&opp.nat)||"해외"};
+    cwcSocial(my>op?"win":my===op?"draw2":"lose", v);
+  }catch(e){}
+  /* 🟨 이 경기에서 받은 카드는 대회 장부에 남기고, 리그 징계는 원래대로 돌려놓는다 */
+  try{ cwcBanPop(t); cwcBanTick(t); }catch(e){}
+}
+/* ── 🏅 CWC 성적 이력 · 보상 ────────────────────────────────────────── */
+function cwcHonorAdd(tid, kind){
+  if(!G.cwcHonors) G.cwcHonors={};
+  const h=G.cwcHonors[tid] || (G.cwcHonors[tid]={champ:0, runner:0, qf:0, apps:0, seasons:[]});
+  if(kind && h[kind]!=null) h[kind]++;
+  if(h.seasons.indexOf(G.season)<0){ h.seasons.push(G.season); h.apps++; }
+  return h;
+}
+function cwcHonorOf(tid){ return (G.cwcHonors&&G.cwcHonors[tid]) || {champ:0, runner:0, qf:0, apps:0, seasons:[]}; }
+/* 🏆 세계 정상 — 아시아 제패와는 다른 무게다 */
+function cwcOnChampion(){
+  const t=userTeam(); if(!t) return;
+  const h=cwcHonorAdd(t.id, "champ");
+  try{ trophyAdd("cwc", `${G.season} ${cwcShort()} 우승`, t.name); }catch(e){}
+  /* ① 팬 — 대륙 대회와는 자릿수가 다르다 */
+  t.fans=Math.round(clamp(t.fans*1.45, 4, 200)*10)/10;
+  for(const p of t.players) p.morale=clamp(p.morale+16, 30, 99);
+  t.morale=clamp((t.morale||70)+16, 40, 99);
+  try{ t.hype=clamp(hypeOf(t)+0.45, 0.70, 2.20); }catch(e){}
+  /* ② 스폰서 — 「세계 챔피언」 배지가 계약서를 다시 쓰게 만든다 */
+  const spon=Math.round((90+R(70))*10)/10;
+  t.budget=Math.round((t.budget+spon)*10)/10;
+  try{ const fin=finLedger(t); fin.prize=Math.round((fin.prize+spon)*100)/100; }catch(e){}
+  addNews(`🤝 세계 챔피언 <b>우승 인센티브</b> — 스폰서들이 계약서에 걸어 둔 보너스를 지급했습니다 (+${spon}억)<br><span class="small">다음 시즌 계약 갱신에서는 금액 자체가 달라집니다.</span>`, "good", "club");
+  /* ③ 감독 — 세계를 제패한 감독에게는 다른 종류의 전화가 온다 */
+  try{ mePay(20+R(15), cwcShort()+" 우승 보너스"); }catch(e){}
+  G.eaclRepBonus=(G.eaclRepBonus||0)+20;
+  G.eaclPull={s:G.season+1, v:0.28};        // 이적 시장에서 우리 이름의 무게
+  try{ adjustTrust("owner",30,cwcShort()+" 우승"); adjustTrust("fans",34,cwcShort()+" 우승"); }catch(e){}
+  /* ④ 우리 팀 최다 공격포인트 */
+  try{
+    const mine=t.players.filter(p=>p.cwcS && p.cwcS.s===G.season && p.cwcS.apps>0)
+      .sort((a,b)=>(b.cwcS.goals*2+b.cwcS.assists)-(a.cwcS.goals*2+a.cwcS.assists));
+    if(mine.length){ const b=mine[0];
+      addNews(`🥇 <b>${b.name}</b>, ${cwcName()} 우리 팀 최다 공격포인트 — ${b.cwcS.apps}경기 ${b.cwcS.goals}골 ${b.cwcS.assists}도움`, "good", "club");
+      b.morale=clamp(b.morale+10,30,99); }
+  }catch(e){}
+  addNews(`🏆 <b>${t.name}, 세계 정상!</b> 구단 통산 ${h.champ}번째 ${cwcShort()} 우승 — K리그 구단이 세계 클럽 챔피언이 되었습니다.`, "good", "club");
+  try{ pushFeed({cat:"club", ic:"🌍", tone:1, tid:t.id, src:"국제축구연맹",
+    head:`${t.name}, ${cwcName()} 우승`,
+    sub:`아시아를 넘어 세계 정상. ${t.short}이(가) 유럽·남미의 벽을 넘고 클럽 세계 챔피언에 올랐다.`}); }catch(e){}
+  try{ cwcSocial("champ"); }catch(e){}
+}
+function cwcOnRunnerUp(){
+  const t=userTeam(); if(!t) return;
+  cwcHonorAdd(t.id, "runner");
+  try{ trophyAdd("cwcRunner", `${G.season} ${cwcShort()} 준우승`, t.name); }catch(e){}
+  t.fans=Math.round(clamp(t.fans*1.22, 4, 200)*10)/10;
+  for(const p of t.players) p.morale=clamp(p.morale+7, 30, 99);
+  try{ t.hype=clamp(hypeOf(t)+0.22, 0.70, 2.20); }catch(e){}
+  G.eaclRepBonus=(G.eaclRepBonus||0)+9;
+  try{ adjustTrust("owner",14,cwcShort()+" 준우승"); adjustTrust("fans",16,cwcShort()+" 준우승"); }catch(e){}
+  addNews(`🥈 ${t.short}, ${cwcShort()} 준우승 — 세계 정상까지 한 걸음이었습니다.`, "info", "club");
+  try{ cwcSocial("runnerUp"); }catch(e){}
+  try{ pushFeed({cat:"club", ic:"🥈", tone:1, tid:t.id, src:"국제축구연맹",
+    head:`${t.name}, ${cwcName()} 준우승`,
+    sub:`세계 정상까지 한 경기를 남기고 멈췄다. 그래도 아시아 축구가 어디까지 왔는지는 충분히 보여 줬다.`}); }catch(e){}
+}
+function cwcOnQuarter(){
+  const t=userTeam(); if(!t) return;
+  cwcHonorAdd(t.id, "qf");
+  try{ trophyAdd("cwcQF", `${G.season} ${cwcShort()} 8강`, t.name); }catch(e){}
+  t.fans=Math.round(clamp(t.fans*1.10, 4, 200)*10)/10;
+  G.eaclRepBonus=(G.eaclRepBonus||0)+4;
+  try{ adjustTrust("owner",7,cwcShort()+" 8강"); adjustTrust("fans",9,cwcShort()+" 8강"); }catch(e){}
+}
+/* 참가만으로도 이력에는 남는다 */
+function cwcOnEnter(){ try{ cwcHonorAdd(G.userTeamId, null); }catch(e){} }
+/* 🗄️ 대회가 끝나면 기록을 표로 떠서 남긴다.
+   ⚠ 참가 클럽 스쿼드 640명을 세이브에 계속 들고 있으면 파일이 1MB 가까이 불어난다.
+     그렇다고 그냥 버리면 득점 순위가 우리 팀 선수만 남는다(실측으로 걸렸다).
+     상위 60명만 이름·클럽·기록으로 떠서 남기고, 스쿼드는 stripCaches 가 치운다. */
+function cwcArchiveStats(){
+  try{
+    if(!G.cwc) return;
+    const out=[];
+    for(const id of (G.cwc.teams||[])){
+      const t=cwcTeam(id); if(!t || !t.players) continue;
+      for(const p of t.players){
+        const s=p.cwcS; if(!s || s.s!==G.season) continue;
+        if(!(s.goals||s.assists)) continue;
+        out.push({n:p.name, ps:p.pos, tid:id, ap:s.apps, g:s.goals, a:s.assists,
+                  pid:(G.teams[id]?p.id:null)});
+      }
+    }
+    out.sort((x,y)=>(y.g-x.g)||(y.a-x.a)||(x.ap-y.ap));
+    G.cwc.stats=out.slice(0, 60);
+  }catch(e){}
+}
+/* 화면이 쓰는 단일 창구 — 대회 중에는 스쿼드에서, 끝난 뒤에는 남겨 둔 표에서 읽는다 */
+function cwcStatRows(){
+  if(G.cwc && Array.isArray(G.cwc.stats) && G.cwc.stats.length)
+    return G.cwc.stats.map(x=>({nm:x.n, pos:x.ps, tid:x.tid, apps:x.ap, goals:x.g, assists:x.a, pid:x.pid}));
+  return cwcAllStats().map(x=>({nm:x.p.name, pos:x.p.pos, tid:x.t.id,
+    apps:x.s.apps, goals:x.s.goals, assists:x.s.assists, pid:(G.teams[x.t.id]?x.p.id:null)}));
+}
+function cwcAllStats(){
+  const out=[];
+  if(!cwcOn()) return out;
+  for(const id of G.cwc.teams){
+    const t=cwcTeam(id); if(!t || !t.players) continue;
+    for(const p of t.players){
+      if(!p.cwcS || p.cwcS.s!==G.season) continue;
+      if(!(p.cwcS.goals||p.cwcS.assists)) continue;
+      out.push({p, t, s:p.cwcS});
+    }
+  }
+  return out;
+}
+function cwcRankCard(kind, n){
+  const all=cwcStatRows();
+  if(!all.length) return "";
+  const goal = kind!=="assist";
+  all.sort((a,b)=> goal
+    ? (b.goals-a.goals) || (b.assists-a.assists) || (a.apps-b.apps)
+    : (b.assists-a.assists) || (b.goals-a.goals) || (a.apps-b.apps));
+  const top=all.filter(x=> goal ? x.goals>0 : x.assists>0).slice(0, n||12);
+  if(!top.length) return "";
+  const me=G.userTeamId;
+  return `<div class="card"><h3>${goal?"⚽":"🅰️"} ${cwcName()} ${goal?"득점":"도움"} 순위</h3>
+    <div class="tblScroll"><table>
+      <tr><th>#</th><th style="text-align:left">선수</th><th style="text-align:left">클럽</th><th>경기</th><th>${goal?"골":"도움"}</th><th>${goal?"도움":"골"}</th></tr>
+      ${top.map((x,i)=>{
+        const mine=x.tid===me;
+        return `<tr style="${mine?"background:rgba(80,160,255,.10);font-weight:700":""}">
+          <td>${i+1}</td>
+          <td style="text-align:left"${(mine&&x.pid!=null)?` class="clickable" onclick="showPlayerInfoPopup(event,${x.pid})"`:""}>${x.nm}<span class="small pos-${x.pos}" style="margin-left:4px">${x.pos}</span></td>
+          <td style="text-align:left">${cwcFlag(x.tid)} ${cwcNm(x.tid)}</td>
+          <td>${x.apps}</td>
+          <td><b>${goal?x.goals:x.assists}</b></td>
+          <td class="small">${goal?x.assists:x.goals}</td></tr>`;
+      }).join("")}
+    </table></div></div>`;
+}
+
+/* 다음 CWC 경기 — 수석코치 정찰과 상단 표기가 같은 창구를 쓴다 */
+function cwcNextForUser(){
+  if(!cwcMine()) return null;
+  const me=G.userTeamId, C=G.cwc, day=G.day||0;
+  const out=[];
+  for(const m of C.fix){
+    if(m.done || (m.h!==me && m.a!==me)) continue;
+    out.push({day:C.day.g[m.r], label:`${cwcShort()} 조별 ${m.r+1}차전`, home:false, opp:cwcTeam(m.h===me?m.a:m.h)});
+  }
+  for(const st of ["qf","sf","f"]){
+    if(C.stage!==st) continue;
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    for(const x of (ties||[])){
+      if(!x || x.done || (x.h!==me && x.a!==me)) continue;
+      out.push({day:C.day[st], label:`${cwcShort()} ${CWC_KO_NAME[st]}`, home:false, opp:cwcTeam(x.h===me?x.a:x.h)});
+    }
+  }
+  if(!out.length) return null;
+  out.sort((a,b)=>a.day-b.day);
+  const nx=out.find(x=>x.day>=day) || out[0];
+  return nx && nx.opp ? nx : null;
+}
+/* 📅 일정 화면 카드 — 리그·EACL 과 같은 자리에 CWC 도 선다 */
+function cwcSchedCard(){
+  if(!cwcOn() || G.jobless) return "";
+  const C=G.cwc, me=G.userTeamId;
+  if(C.teams.indexOf(me)<0) return "";
+  const rows=[];
+  for(const m of C.fix.filter(x=>x.h===me||x.a===me).sort((x,y)=>x.r-y.r)){
+    const home=m.h===me;
+    rows.push({label:`조별 ${m.r+1}차전`, day:C.day.g[m.r], opp:cwcTeam(home?m.a:m.h),
+               done:m.done, my:home?m.hg:m.ag, op:home?m.ag:m.hg});
+  }
+  for(const st of ["qf","sf","f"]){
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    for(const t of (ties||[])){
+      if(!t || (t.h!==me && t.a!==me)) continue;
+      const home=t.h===me;
+      rows.push({label:CWC_KO_NAME[st], day:C.day[st], opp:cwcTeam(home?t.a:t.h),
+                 done:t.done, my:home?t.hg:t.ag, op:home?t.ag:t.hg, pk:t.pk});
+    }
+  }
+  if(!rows.length) return "";
+  const W=rows.filter(r=>r.done&&r.my>r.op).length, D=rows.filter(r=>r.done&&r.my===r.op).length,
+        L=rows.filter(r=>r.done&&r.my<r.op).length;
+  const gk=Object.keys(C.grp).find(k=>C.grp[k].indexOf(me)>=0);
+  const pos=gk?cwcGrpSorted(gk).indexOf(me)+1:0;
+  const stageN={grp:"조별리그", qf:"8강", sf:"4강", f:"결승", end:"종료"}[C.stage]||"";
+  const body=rows.map(r=>{
+    const res=r.done
+      ? `<b style="color:${r.my>r.op?"var(--green)":r.my===r.op?"var(--gold)":"var(--red)"}">${r.my} : ${r.op}</b>${r.pk?'<span class="small"> (승부차기)</span>':""}`
+      : `<span class="small" style="opacity:.7">${dateLabel(r.day)}${r.day>=(G.day||0)?` · D-${r.day-(G.day||0)}`:""}</span>`;
+    return `<tr><td class="small">${r.label}</td><td class="small">${dateLabel(r.day)}</td>
+      <td style="text-align:left">${cwcFlag(r.opp&&r.opp.id)} ${r.opp?(r.opp.short||r.opp.name):"-"}
+        <span class="small" style="opacity:.5">${r.opp?Math.round(teamOVR(r.opp)):""}</span></td><td>${res}</td></tr>`;
+  }).join("");
+  return `<div class="card"><h3>🌍 ${cwcName()} <span class="small" style="color:var(--gold)">— ${stageN}${gk?` · ${gk}조 ${pos}위`:""}</span></h3>
+    <p class="small" style="opacity:.75;margin:0 0 6px">${C.host} 개최 · 전 경기 중립지 · ${W}승 ${D}무 ${L}패</p>
+    <div class="tblScroll"><table>
+      <tr><th>단계</th><th>날짜</th><th style="text-align:left">상대</th><th>결과</th></tr>${body}</table></div>
+    <p class="small" style="opacity:.6;margin-top:6px">조 순위·대진표 전체는 <b>순위표 → 🌍 ${cwcShort()}</b> 탭에서 볼 수 있습니다.</p></div>`;
+}
+/* 상단바 표기 — 다음 CWC 경기와 남은 날수. 프리시즌 표기(🌱)보다 먼저 걸린다. */
+function cwcTopTag(){
+  try{
+    if(!cwcMine() || !cwcUserLeft()) return null;
+    const C=G.cwc, me=G.userTeamId, d=G.day||0;
+    let day=null, nm=null, opp=null;
+    const gi=C.day.g.findIndex((x,ix)=>x>=d && C.fix.some(m=>m.r===ix && !m.done && (m.h===me||m.a===me)));
+    if(gi>=0){
+      const m=C.fix.find(x=>x.r===gi && !x.done && (x.h===me||x.a===me));
+      day=C.day.g[gi]; nm=`조별 ${gi+1}차전`; opp=m?(m.h===me?m.a:m.h):null;
+    } else for(const st of ["qf","sf","f"]){
+      const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+      const t=(ties||[]).find(x=>x && !x.done && (x.h===me||x.a===me));
+      if(t){ day=C.day[st]; nm=CWC_KO_NAME[st]; opp=(t.h===me?t.a:t.h); break; }
+    }
+    if(day==null) return null;
+    const left=day-d;
+    return `🌍 ${cwcShort()} ${nm}${opp?` · ${cwcNm(opp)}`:""} ${left>0?`(D-${left})`:"— 오늘"}`;
+  }catch(e){ return null; }
+}
+/* 달력 한 칸 — 그날 내 CWC 경기 */
+function cwcCalOf(i){
+  if(!cwcMine()) return null;
+  const me=G.userTeamId, C=G.cwc;
+  const mk=(m,label,st)=>{
+    const home=m.h===me, opp=cwcTeam(home?m.a:m.h); if(!opp) return null;
+    return {m, home, opp, label, done:!!m.done, my:home?m.hg:m.ag, op:home?m.ag:m.hg};
+  };
+  const gi=C.day.g.indexOf(i);
+  if(gi>=0){ const m=C.fix.find(x=>x.r===gi && (x.h===me||x.a===me));
+             if(m) return mk(m, `${cwcShort()} ${gi+1}차전`); }
+  for(const st of ["qf","sf","f"]){
+    if(C.day[st]!==i) continue;
+    const ties = st==="f" ? [C.ko.f] : (C.ko[st]||[]);
+    for(const t of (ties||[])) if(t && (t.h===me||t.a===me)) return mk(t, `${cwcShort()} ${CWC_KO_NAME[st]}`);
+  }
+  return null;
+}
+
 function eaclCalOf(i){
   if(!eaclOn() || G.jobless) return null;
   const me=G.userTeamId; if(G.eacl.teams.indexOf(me)<0) return null;
@@ -31363,6 +32733,7 @@ function calendarCard(){
     const r=roundOfDay(i);
     const fr=(G.friendlies||[]).find(x=>x.d===i);
     const ec=eaclCalOf(i);
+    const cwcC=(function(){ try{ return cwcCalOf(i); }catch(e){ return null; } })();
     /* 치른 경기는 결과가 한눈에 보이게 — 우리 팀 기준 「내 득점 : 상대 득점」과 승/무/패 색 */
     const scHtml=(my,op)=>`<span class="cdSc">${my} : ${op}</span>`;
     const scCls =(my,op)=>my>op?" calWin":my===op?" calDraw":" calLoss";
@@ -31373,7 +32744,11 @@ function calendarCard(){
       return {my:home?g.hg:g.ag, op:home?g.ag:g.hg, forfeit:!!g.forfeit};
     };
     let inner, cls="";
-    if(ec){
+    if(cwcC){
+      cls="calMatch calCwc";
+      inner = `<span class="cdPre">${cwcC.label}</span><b>${cwcC.opp.short}</b>`;
+      if(cwcC.done){ cls+=scCls(cwcC.my,cwcC.op); inner+=scHtml(cwcC.my,cwcC.op); }
+    } else if(ec){
       cls="calMatch calEacl";
       inner = `<span class="cdPre">${ec.label}</span><b>${homeTag(ec.home)}${ec.opp.short}</b>`;
       if(ec.done){ cls+=scCls(ec.my,ec.op); inner+=scHtml(ec.my,ec.op); }
@@ -31607,7 +32982,7 @@ function offersView(){
         ? `🔀 <span class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${swapP.id})">${swapP.name}</span> <span class="small">(${swapP.pos} ${dispOvr(swapP)})</span>${o.fee>0?` + <span class="money">${o.fee}억</span>`:` <span class="small">(순수 스왑)</span>`}`
         : `<span class="money">${o.fee}억</span>`;
       return `<tr><td class="clickable" onclick="openPlayerMenu(event,${p.id})">${nmF(p)}${pTags(p)}</td>
-    <td>${G.teams[o.tid].short} ${teamStars(G.teams[o.tid], G.teams[o.tid].short+" 전력")}<span class="small">${bo>mo+0.5?" · 강팀":bo<mo-0.5?" · 약팀":""}</span></td>
+    <td>${G.teams[o.tid].short} ${teamStars(G.teams[o.tid], G.teams[o.tid].short+" 전력")}<span class="small">${bo>mo+0.5?" · 강팀":bo<mo-4?" · 약팀":bo<mo-0.5?" · 한 수 아래":""}</span></td>
     <td>${dealTxt}</td><td>${marketValue(p)}억</td>
     <td>${p.noMove?'<span class="tag u22">잔류 선언</span>':p.unhappy>0?'<span class="tag inj">이적 원함</span>':moodIcon(p)+" "+mor(p.morale)}</td>
     <td class="small">${risk}</td>
@@ -32746,7 +34121,15 @@ function osTabHtml(){
 const ARMY_CAP=38;      // 부대 정원 — 이 인원을 넘겨 받을 수 없다
 const ARMY_MIN=20;      // 이 아래로 떨어지면 연맹이 강제로 채워 준다
 function armyUserClub(){ const t=userTeam(); return (t && t.id==="gimcheon") ? t : null; }
-function armySlots(){ const gc=armyUserClub(); if(!gc) return 0; return clamp(ARMY_CAP-gc.players.length, 0, 8); }
+/* 입영 통지를 보낸 인원은 아직 부대에 없지만 자리는 예약된 상태다 */
+function armyCalledCount(){
+  let n=0;
+  try{ for(const id in G.teams){ const t=G.teams[id];
+    if(id==="gimcheon") continue;
+    for(const p of t.players) if(p.armyCall) n++; } }catch(e){}
+  return n;
+}
+function armySlots(){ const gc=armyUserClub(); if(!gc) return 0; return clamp(ARMY_CAP-gc.players.length-armyCalledCount(), 0, 8); }
 /* 상무 감독에게 막히는 행동들 — 왜 막히는지까지 설명한다 */
 function armyGate(what){
   if(!armyUserClub()) return false;
@@ -32762,7 +34145,7 @@ function armyGate(what){
 function armyEligible(p, t){
   const age=G.season-p.by;
   /* 🎖️ 용병은 제외 — 홈그로운(이중 국적·외국 국적 불행사)은 국내 선수라 대상이다 (제보) */
-  return !(age<20 || age>26 || p.loan || frnQ(p) || p.armyDone || p.army) && (t.players||[]).length>22;
+  return !(age<20 || age>26 || p.loan || frnQ(p) || p.armyDone || p.army || p.armyCall) && (t.players||[]).length>22;
 }
 function armyCandList(){
   const out=[];
@@ -32796,6 +34179,43 @@ function armyOdds(c){
   try{ ch += clamp((mgrPrestige()-10)/300, 0, 0.08); }catch(e){}   // 감독 위신도 조금은 통한다
   return clamp(ch, 0.05, 0.88);
 }
+/* 📨 입영 통지 — 자리는 이때 예약된다. 실제 이동은 입소일에 한다. */
+function armySetCall(p, from, gc){
+  const at=(G.day||0)+ARMY_CALL_DAYS;
+  p.armyCall={own:from.id, at};
+  const d=dateOfDay(at);
+  const ds=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
+  if(from.isUser){
+    notify(`🎖️ <b>${p.name}</b> 선수에게 <b>입영 통지</b>가 왔습니다 — <b>${ds}</b> 입소 (D-${ARMY_CALL_DAYS})<br>`
+      +`<span class="small">그때까지는 우리 팀에서 뜁니다. 다만 이적·임대는 묶입니다.</span>`,"warn");
+    addMood(`🎖️ ${p.name} 선수의 입영 통지가 도착했습니다. 라커룸이 잠시 조용해졌습니다.`);
+    try{ const Q=(G.armyCallPing=G.armyCallPing||{n:0,names:[],ds:ds}); Q.n++; Q.names.push(p.name); Q.ds=ds; }catch(e){}
+    try{ addNews(`🎖️ <b>${p.name}</b>(${from.short}) 입영 통지 — ${ds} 김천 상무 FC 입소 예정`, "warn", "club"); }catch(e){}
+  } else {
+    try{ addNews(`🎖️ ${from.short} ${p.name}, ${ds} 김천 상무 FC 입소 예정`, null, "club"); }catch(e){}
+  }
+  return p;
+}
+/* ⏰ 입소일 — 예고했던 날이 되면 실제로 부대로 간다 */
+function tickArmyCall(){
+  const gc=G.teams&&G.teams.gimcheon; if(!gc) return;
+  const today=G.day||0;
+  for(const id in G.teams){
+    const t=G.teams[id]; if(t===gc) continue;
+    for(const p of [...t.players]){
+      if(!p.armyCall || p.armyCall.at==null || p.armyCall.at>today) continue;
+      const own=G.teams[p.armyCall.own] || t;
+      delete p.armyCall;
+      try{ armyEnlist(p, t, gc); }catch(e){ continue; }
+      if(t.isUser){
+        notify(`🎖️ <b>${p.name}</b> 선수가 오늘 <b>김천 상무 FC</b>에 입소했습니다. <span class="small">(${ARMY_MONTHS}개월 뒤 복귀)</span>`,"warn");
+        try{ armyFarewell(p); }catch(e){}
+        try{ const A=(G.armyBack=G.armyBack||{n:0,names:[],gone:0}); A.n++; A.names.push(p.name); A.enlist=1; }catch(e){}
+      }
+      try{ addNews(`🎖️ ${t.short} <b>${p.name}</b>, 김천 상무 FC 입소 — ${ARMY_MONTHS}개월 뒤 원소속 복귀`, null, "club"); }catch(e){}
+    }
+  }
+}
 function armyEnlist(p, from, gc){
   const now=dateOfDay(G.day||0);
   const out=new Date(now); out.setMonth(out.getMonth()+ARMY_MONTHS);
@@ -32821,12 +34241,14 @@ function armyApply(pid){
     ()=>{
       st.tried[pid]=1;
       if(Math.random()<ch){
-        armyEnlist(p, from, gc);
-        addNews(`🎖️ 김천 상무 FC, <b>${p.name}</b>(${from.short}) 입대 — ${ARMY_MONTHS}개월 뒤 원소속 복귀`, "good", "club");
-        addMood(`🎖️ ${p.name} 선수가 입대해 합류했습니다. 머리가 짧아졌습니다.`);
+        armySetCall(p, from, gc);
+        const _d=dateOfDay((G.day||0)+ARMY_CALL_DAYS);
+        addNews(`🎖️ 김천 상무 FC, <b>${p.name}</b>(${from.short}) 선발 — ${_d.getMonth()+1}월 ${_d.getDate()}일 입소 예정`, "good", "club");
         showConfirm(`<b style="color:var(--green);font-size:16px">🎖️ 선발 — 합격</b>\n\n`+
-          `${p.name} 선수가 <b>${from.short}</b>에서 입대해 합류했습니다.\n\n`+
-          `· 전역 예정: <b>${p.army.out}</b>\n· 남은 정원: <b>${armySlots()}</b>명`,
+          `${p.name} 선수를 선발했습니다. 입영 통지가 <b>${from.short}</b>에 전달됩니다.\n\n`+
+          `· 입소 예정: <b>${_d.getFullYear()}년 ${_d.getMonth()+1}월 ${_d.getDate()}일</b> (D-${ARMY_CALL_DAYS})\n`+
+          `· 전역 예정: 입소 후 ${ARMY_MONTHS}개월\n· 남은 정원: <b>${armySlots()}</b>명\n\n`+
+          `<span class="small">입소일까지는 원소속 구단에서 뜁니다. 자리는 지금부터 비워 둡니다.</span>`,
           ()=>{ show("transfer"); }, {okLabel:"확인", cancelLabel:""});
       } else {
         showConfirm(`<b style="color:var(--red);font-size:16px">🎖️ 선발 — 불합격</b>\n\n`+
@@ -35339,9 +36761,21 @@ function youth(){
       rows.push({p, kind:"out", club:c});                                                          // 내보낸 선수
     }
   }catch(e){}
+  /* 🎖️ ⚠ 「유스 탭 23세 이하 명단에 김천 상무로 간 인원이 빠져 있다」.
+     입대 선수는 t.players 에도, loanedOut() 에도 없어서 통째로 사라져 있었다.
+     한창 클 나이에 군에 가 있는 자원이야말로 유망주 계획의 핵심이다. */
+  try{
+    for(const x of (armySentOut(t)||[])){
+      const p=x && x.p; if(!p) continue;            // armySentOut 은 {p, c} 꾸러미를 돌려준다
+      if(G.season-p.by>YMAX) continue;
+      if(rows.some(y=>y.p.id===p.id)) continue;
+      rows.push({p, kind:"army", club:x.c||G.teams.gimcheon||null});
+    }
+  }catch(e){}
   const young=rows.sort((a,b)=>(b.p.pot||0)-(a.p.pot||0)).map(x=>x.p);
   const META={}; for(const x of rows) META[x.p.id]=x;
   const nOut=rows.filter(x=>x.kind==="out").length, nIn=rows.filter(x=>x.kind==="in").length;
+  const nArmy=rows.filter(x=>x.kind==="army").length;
   const grade=(v)=>"◆".repeat(v)+"◇".repeat(5-v);
   if(isArmyTeam(t)){
     return `<h2>🌱 유스 & 유망주</h2>
@@ -35372,20 +36806,25 @@ function youth(){
   </div>
   <div class="msg info">시즌이 끝날 때마다 유스 아카데미에서 2~3명이 콜업됩니다. 외국 국적 유소년도 만 18세까지 국내 유스에서 합계 5년(또는 연속 3년) 이상 성장하면 <b>🌱 홈그로운</b>으로 인정되어 국내 선수로 등록됩니다 — 외국인 쿼터를 차지하지 않으며 이름이 초록색으로 표시됩니다. 23세 이하 선수는 매 시즌 잠재력까지 성장합니다. 잘 키운 유망주는 이적 자금과 팀의 미래가 됩니다.</div>
   <div class="card">
-    <h3>🌱 ${YMAX}세 이하 유망주 <span class="small">${rows.length}명 — 우리 팀 ${rows.length-nOut-nIn}명${nOut?` · 🔁 임대 중 ${nOut}명`:""}${nIn?` · 📥 임대 영입 ${nIn}명`:""}</span></h3>
-    ${(nOut||nIn)?`<p class="small" style="margin:2px 0 8px;color:var(--sub)">
+    <h3>🌱 ${YMAX}세 이하 유망주 <span class="small">${rows.length}명 — 우리 팀 ${rows.length-nOut-nIn-nArmy}명${nOut?` · 🔁 임대 중 ${nOut}명`:""}${nIn?` · 📥 임대 영입 ${nIn}명`:""}${nArmy?` · 🎖️ 병역 중 ${nArmy}명`:""}</span></h3>
+    ${(nOut||nIn||nArmy)?`<p class="small" style="margin:2px 0 8px;color:var(--sub)">
       ${nOut?`<b style="color:#f0883e">🔁 임대 중</b>인 선수는 다른 구단에서 뛰고 있습니다 — 출전 시간이 그대로 성장으로 돌아옵니다. `:""}
+      ${nArmy?`<b style="color:#c9a227">🎖️ 병역 중</b>인 선수도 김천에서 계속 뜁니다 — 전역하면 그대로 돌아옵니다. `:""}
       ${nIn?`<b style="color:#79c0ff">📥 임대 영입</b>은 <b>우리 소유가 아닙니다</b> — 임대가 끝나면 원소속으로 돌아가고, 판매·트레이드도 할 수 없습니다.`:""}</p>`:""}
     <div class="tblScroll"><table><tr><th>이름</th><th>소속</th><th>포지션</th><th>나이</th><th>현재</th><th>잠재력</th><th>성장 전망</th></tr>
   ${young.map(p=>{
     const m=META[p.id]||{kind:"own"};
-    const cls = m.kind==="out" ? "yOut" : m.kind==="in" ? "yIn" : "";
+    const cls = m.kind==="out" ? "yOut" : m.kind==="in" ? "yIn" : m.kind==="army" ? "yArmy" : "";
     let where;
     if(m.kind==="out"){
       const played=(p.apps||0)-((p.loan&&p.loan.apps0)||0);
       const bi=(function(){ try{ return loanBackInfo(p)||{}; }catch(e){ return {}; } })();
       where=`<span class="yTag out">🔁 임대 중</span> <b>${m.club?m.club.short:"-"}</b>
         <div class="small" style="opacity:.8">${played}경기${p.apps?` · 평점 ${(p.seasonRating||0).toFixed(2)}`:""}${bi.txt?` · ${bi.txt}`:""}</div>`;
+    } else if(m.kind==="army"){
+      const dl=(function(){ try{ return armyDaysLeft(p); }catch(e){ return null; } })();
+      where=`<span class="yTag out" style="background:#c9a22722;color:#c9a227">🎖️ 병역 중</span> <b>김천 상무 FC</b>
+        <div class="small" style="opacity:.8">${p.apps?`${p.apps}경기`:"출전 없음"}${dl!=null?` · 전역 D-${Math.max(0,dl)}`:""}</div>`;
     } else if(m.kind==="in"){
       const bi=(function(){ try{ return loanBackInfo(p)||{}; }catch(e){ return {}; } })();
       where=`<span class="yTag in">📥 임대 영입</span> <b>${m.club?m.club.short:"-"}</b> 소유
@@ -35576,7 +37015,7 @@ function buildCtx(stage, M){
     : null;
   if(ctx.friendly) ctx.opening=false;
   /* 🌏 대륙대회 경기는 리그 라운드가 아니다 — 개막전·잔여 라운드 같은 리그 맥락 질문을 끈다 */
-  if(M && M.opts && M.opts.eacl){ ctx.opening=false; ctx.opened=false; ctx.splitSoon=false; ctx.finalRd=false; ctx.lastRds=false; ctx.titleRace=false; }
+  if(M && M.opts && (M.opts.eacl||M.opts.cwc)){ ctx.opening=false; ctx.opened=false; ctx.splitSoon=false; ctx.finalRd=false; ctx.lastRds=false; ctx.titleRace=false; }
   ctx.opened = rd===1 && stage==="post";
   ctx.myOVR=teamOVR(me); ctx.oppOVR=teamOVR(opp);
   ctx.ovrGap=Math.round((ctx.myOVR-ctx.oppOVR)*10)/10;          // +면 내가 강팀
@@ -35604,9 +37043,36 @@ function buildCtx(stage, M){
   ctx.acl = G.aclTeams.includes(me.id) && G.aclFix.some(x=>!x.done);
   /* 🌏 EACL — 이 경기가 대륙대회인지, 어느 나라 팀과 붙는지, 대회에서 어디쯤 와 있는지.
      리그 순위 맥락으로 질문하면 "상대는 0위인데요" 같은 말이 나온다. */
+  /* 🌍 CWC — 세계 대회는 대륙대회와도 질문의 결이 다르다.
+     ⚠ CWC 경기도 엔진에는 eacl 옵션으로 들어간다(컵 처리). 그대로 두면 「일본 클럽입니다」
+       같은 EACL 질문이 유럽 챔피언과의 경기에 나온다. 여기서 갈라 놓는다. */
+  ctx.cwc=false;
+  try{
+    ctx.cwc = !!(M && M.opts && M.opts.cwc) && cwcOn();
+    if(ctx.cwc){
+      const st=(M.opts.cwcStage)||"grp";
+      ctx.cwcStage=st; ctx.cwcKO=(st!=="grp");
+      ctx.cwcStageName = ctx.cwcKO ? CWC_KO_NAME[st] : "조별리그";
+      ctx.cwcFinal = st==="f";
+      ctx.oppConf = cwcConfOf(opp.id.indexOf("cwc_")===0?opp.id:("cwc_"+String(opp.id).replace(/^cwc_/,"")));
+      try{ const _d=cwcClubDef(String(opp.id).replace(/^cwc_/,"")); if(_d) ctx.oppConf=_d.cf; }catch(e){}
+      ctx.oppNatC = opp.nat || "해외";
+      ctx.cwcGap = Math.round((teamOVR(opp)-teamOVR(me))*10)/10;   // +면 상대가 강하다
+      ctx.cwcWall = ctx.cwcGap>=6;                                  // 체급이 다르다
+      ctx.cwcEven = Math.abs(ctx.cwcGap)<3;
+      const r=cwcRow(me.id); ctx.cwcRec=r; ctx.cwcPlayed=r.W+r.D+r.L;
+      ctx.cwcLast = !ctx.cwcKO && ctx.cwcPlayed>=2;                 // 조별 3차전
+      ctx.cwcHost = (G.cwc&&G.cwc.host)||"";
+      try{ const gk=Object.keys(G.cwc.grp).find(k=>G.cwc.grp[k].indexOf(me.id)>=0);
+           ctx.cwcGrpPos=cwcGrpSorted(gk).indexOf(me.id)+1; }catch(e){ ctx.cwcGrpPos=0; }
+    } else if(cwcMine() && cwcUserLeft()){
+      ctx.cwcSoon=true;                       // 대회를 앞둔 연습경기 — 그 자체가 질문거리다
+      ctx.cwcHost=(G.cwc&&G.cwc.host)||"";
+    }
+  }catch(e){ ctx.cwc=false; }
   ctx.eacl=false;
   try{
-    ctx.eacl = !!(M && M.opts && M.opts.eacl);
+    ctx.eacl = !!(M && M.opts && M.opts.eacl) && !ctx.cwc;
     if(ctx.eacl){
       ctx.eaclStage=(M.opts.eaclStage)||"md";
       ctx.eaclKO = ctx.eaclStage!=="md";
@@ -36005,6 +37471,40 @@ function qPool(stage,c){
       O("선수들이 떨지 않게 하는 게 제 일입니다. 저까지 떨면 안 되죠.",1,1,"감독의 무게가 느껴지는 답변입니다."),
       O("이런 질문이 저희를 흔들려는 것 아닙니까? (웃음)",1,0,"하하, 들켰네요. 그래도 안 흔들리시는군요.")]);
     /* ═══ 🌏 EACL 경기 전 — 대륙대회는 리그와 질문의 결이 다르다 ═══ */
+    /* ═══ 🌍 CWC 경기 전 — 세계 대회는 대륙대회와도 결이 다르다 ═══ */
+    QP(1,c.cwc && c.oppConf==="EU" && c.cwcWall,`${c.opp.name}. 유럽 챔피언입니다. 솔직히, 이길 수 있다고 보십니까?`,[
+      O("이길 수 있다고 믿지 않으면 여기 서 있을 이유가 없습니다.",3,2,"감독님의 눈빛이 답을 대신하는군요."),
+      O("전력 차는 압니다. 그래도 축구는 숫자로만 하는 게 아닙니다.",2,2,"현실을 인정하면서도 물러서지 않으시네요."),
+      O("솔직히 어렵습니다. 하지만 90분 동안 우리가 누구인지는 보여드리겠습니다.",1,3,"그 말씀, 팬들이 오래 기억할 것 같습니다."),
+      O("유럽이라고 발이 네 개는 아니지 않습니까.",3,0,"하하, 오늘의 헤드라인이 정해졌습니다.")]);
+    QP(1,c.cwc && c.oppConf==="SA",`${c.opp.short} — 남미 챔피언입니다. 유럽과는 또 다른 팀인데요.`,[
+      O("남미 축구는 개인이 살아 있습니다. 공간을 주지 않는 게 관건입니다.",2,2,"준비가 되어 있으시군요."),
+      O("거칠 겁니다. 우리도 물러서지 않겠습니다.",3,1,"기 싸움부터 지지 않겠다는 말씀이네요."),
+      O("배우러 온 게 아닙니다. 이기러 왔습니다.",3,0,"단호하십니다.")]);
+    QP(1,c.cwc && (c.oppConf==="AF"||c.oppConf==="NA"),`${c.opp.short}, ${c.oppNatC} 챔피언입니다. 이 경기는 반드시 잡아야 하지 않습니까?`,[
+      O("반드시라는 말은 쓰지 않겠습니다. 다만 준비는 그렇게 했습니다.",2,2,"신중하시네요."),
+      O("맞습니다. 이 경기를 놓치면 다음이 없습니다.",1,1,"솔직한 인정입니다."),
+      O("아프리카든 북중미든 챔피언은 챔피언입니다. 얕보지 않습니다.",1,3,"상대를 존중하는 태도, 보기 좋습니다.")]);
+    QP(0,c.cwc && c.oppConf==="OC",`${c.opp.short}는 이번 대회 최약체로 꼽힙니다. 대승이 필요한 상황인가요?`,[
+      O("골 차까지 계산하고 있습니다. 프로라면 당연한 일입니다.",2,1,"계산이 서 있으시군요."),
+      O("최약체라는 말은 제 입으로 하지 않겠습니다. 상대에 대한 예의가 아닙니다.",1,3,"품격 있는 답변입니다."),
+      O("방심이 제일 무섭습니다. 최정예로 나갑니다.",2,2,"경계를 늦추지 않으시네요.")]);
+    QP(2,c.cwc && c.cwcLast && c.cwcGrpPos>=3,`조별 마지막 경기입니다. 지금 ${c.cwcGrpPos}위 — 탈락이 눈앞인데요.`,[
+      O("마지막까지 포기하지 않습니다. 확률이 남아 있는 한.",2,2,"끝까지 싸우겠다는 말씀이군요."),
+      O("이미 많은 걸 배웠습니다. 마지막 경기는 자존심을 위해 뜁니다.",1,3,"자존심 — 그 한마디가 크게 들립니다."),
+      O("결과는 하늘에 맡기고, 우리 축구만 하겠습니다.",1,1,"담담하시네요.")]);
+    QP(2,c.cwc && c.cwcKO && !c.cwcFinal,`${c.cwcStageName} 단판입니다. K리그 구단이 여기까지 온 건 흔한 일이 아닌데요.`,[
+      O("여기서 만족하면 여기가 끝입니다. 한 경기 더 갑니다.",3,2,"욕심을 숨기지 않으시는군요."),
+      O("선수들이 만든 자리입니다. 저는 판만 깔면 됩니다.",1,3,"겸손한 말씀입니다."),
+      O("아시아 축구를 대표한다는 마음으로 뛰겠습니다.",2,2,"무게를 아는 답변입니다.")]);
+    QP(1,c.cwc && c.cwcFinal,"세계 클럽 정상까지 한 경기입니다. K리그 구단으로는 처음 밟는 자리인데요.",[
+      O("이 자리에 서기까지 얼마나 걸렸는지 생각하면… 말이 잘 안 나옵니다.",1,3,"감독님의 목소리가 떨리는군요."),
+      O("트로피를 들고 돌아가겠습니다. 그러려고 여기까지 왔습니다.",3,1,"승부사의 말입니다."),
+      O("역사는 이미 썼습니다. 이제 결말만 남았습니다.",2,2,"멋진 표현이네요. 그대로 싣겠습니다.")]);
+    QP(0,c.cwcSoon && c.friendly,`${c.cwcHost}에서 열리는 세계 대회가 코앞입니다. 이 연습경기, 어떤 의미로 준비하셨습니까?`,[
+      O("실전 감각을 끌어올리는 데만 쓰겠습니다. 결과는 중요하지 않습니다.",1,1,"대회에 초점이 맞춰져 있군요."),
+      O("주전들은 아낍니다. 세계 대회가 먼저입니다.",2,1,"우선순위가 분명하시네요."),
+      O("연습경기도 경기입니다. 지고 시작하는 대회는 없습니다.",2,2,"승부욕이 느껴집니다.")]);
     QP(1,c.eacl && c.natKind==="JP",`${c.opp.name} — 일본 클럽입니다. 팬들에게 이 경기가 어떤 의미인지 알고 계시죠?`,[
       O("한일전이 무엇인지 압니다. 선수들에게 따로 말할 필요도 없었습니다.",3,2,"각오가 그대로 전해집니다."),
       O("상대가 어디든 우리 축구를 합니다. 감정보다 준비가 중요합니다.",1,1,"차분하시네요. 그게 더 무섭기도 합니다."),
@@ -36218,6 +37718,48 @@ function qPool(stage,c){
       O("김칫국은 기자님들이 드시죠. 저는 훈련장으로 갑니다.",1,0,"...뼈 있는 농담이네요. (웃음)")]);
 
     /* ═══ 🌏 EACL 경기 후 — 리그 순위 이야기를 하면 어색해진다 ═══ */
+    /* ═══ 🌍 CWC 경기 후 ═══ */
+    QP(2,c.cwc && c.oppConf==="EU" && c.res==="W",
+      "유럽 챔피언을 잡았습니다. 지금 이 순간을 뭐라고 표현하시겠습니까?",[
+      O("아직 실감이 안 납니다. 선수들이 다 했습니다.",1,3,"공을 선수에게 돌리시는군요."),
+      O("K리그가 이 정도는 한다는 걸 보여드렸다고 생각합니다.",2,2,"리그 전체를 대표한 승리였습니다."),
+      O("한 경기 이겼을 뿐입니다. 아직 끝나지 않았습니다.",2,1,"벌써 다음을 보고 계시네요.")]);
+    QP(2,c.cwc && c.cwcWall && c.res==="L" && c.gd<=-3,
+      "체급 차가 그대로 드러난 경기였습니다. 무엇이 가장 크게 느껴지셨습니까?",[
+      O("속도입니다. 우리가 생각하는 사이에 그들은 이미 움직였습니다.",1,3,"현장에서만 나올 수 있는 분석입니다."),
+      O("차이는 인정합니다. 이걸 알고 돌아가는 게 이번 대회의 수확입니다.",1,2,"배움을 말씀하시는군요."),
+      O("오늘은 졌지만, 우리 선수들 고개 숙일 이유 없습니다.",2,3,"감독님이 먼저 선수들을 감싸시네요."),
+      O("변명하지 않겠습니다. 준비가 부족했습니다. 제 책임입니다.",1,2,"책임을 지시는 모습입니다.")]);
+    QP(1,c.cwc && c.cwcWall && c.res==="D",
+      "세계적인 강호를 상대로 승점을 따냈습니다. 예상하셨습니까?",[
+      O("솔직히 예상 못 했습니다. 선수들이 계획보다 더 해냈습니다.",1,3,"솔직한 감탄이 전해집니다."),
+      O("버티는 그림은 준비했습니다. 그대로 나왔습니다.",2,2,"전술이 통했다는 말씀이군요."),
+      O("비긴 걸 기뻐할 단계는 지났다고 봅니다.",3,0,"눈높이가 높으시네요.")]);
+    QP(2,c.cwc && !c.cwcKO && c.cwcLast && c.res==="L" && c.cwcGrpPos>=3,
+      "조별리그 탈락이 확정됐습니다. 3경기를 돌아보면 어떻습니까?",[
+      O("세계와의 거리를 정확히 쟀습니다. 그게 이번 대회의 값입니다.",1,3,"냉정한 결산이군요."),
+      O("팬들께 죄송합니다. 더 잘 준비했어야 했습니다.",1,2,"사과부터 하시는군요."),
+      O("여기 나온 것만으로도 우리 선수들은 이미 대단합니다.",2,2,"선수들을 지켜주시는 말씀입니다."),
+      O("돌아가서 리그부터 잡겠습니다. 시즌은 이제 시작입니다.",2,1,"시선을 벌써 리그로 돌리셨네요.")]);
+    QP(1,c.cwc && c.cwcKO && !c.cwcFinal && c.res==="W",
+      `${c.cwcStageName}을 통과했습니다. 어디까지 갈 수 있다고 보십니까?`,[
+      O("여기까지 온 이상 끝을 봐야죠.",3,2,"목표를 숨기지 않으시는군요."),
+      O("한 경기씩만 보겠습니다. 그게 여기까지 온 방법입니다.",1,2,"흔들림이 없으시네요."),
+      O("아시아 축구가 어디까지 갈 수 있는지 보여드리겠습니다.",2,3,"대륙 전체를 짊어지셨습니다.")]);
+    QP(2,c.cwc && c.cwcFinal && c.res==="W",
+      "세계 클럽 챔피언입니다. 지금 무슨 생각이 드십니까?",[
+      O("아무 생각도 안 납니다. 그냥… 선수들 얼굴만 보입니다.",1,3,"감독님, 눈시울이 붉으십니다."),
+      O("K리그는 이제 세계에서 우승해 본 리그입니다.",3,3,"역사적인 한마디, 그대로 싣겠습니다."),
+      O("이걸 한 번 더 하려면 어떻게 해야 할지 벌써 생각합니다.",2,1,"쉬실 생각이 없으시군요.")]);
+    QP(2,c.cwc && c.cwcFinal && c.res==="L",
+      "결승에서 멈췄습니다. 선수들에게 어떤 말을 해주고 싶으십니까?",[
+      O("고개 들라고 했습니다. 세계 2등은 아무나 하는 게 아닙니다.",2,3,"따뜻한 위로였습니다."),
+      O("오늘의 아픔을 기억하자고 했습니다. 다음이 있습니다.",2,2,"다음을 이야기하시는군요."),
+      O("제가 부족했습니다. 선수들은 다 해줬습니다.",1,3,"책임을 스스로 지시네요.")]);
+    QP(0,c.cwc && c.res==="W" && c.gd>=3,
+      "대승이었습니다. 세계 무대에서 이 정도 경기력이 나올 줄 아셨습니까?",[
+      O("우리 축구가 통한다는 걸 확인했습니다.",2,2,"자신감을 얻으셨군요."),
+      O("한 경기입니다. 다음은 완전히 다른 상대입니다.",1,1,"냉정하십니다.")]);
     QP(2,c.eacl && c.natKind==="JP" && c.res==="W",
       `일본 클럽 ${c.opp.short} 격파. 팬들이 밤새 이 경기 이야기를 할 텐데요.`,[
       O("선수들이 오늘 무엇을 위해 뛰는지 알고 있었습니다.",3,2,"그 마음이 그라운드에 보였습니다."),
@@ -38832,7 +40374,12 @@ function persuadePick(i){
       /* 라커룸도 듣는다 — 동료를 떠밀어내려 한 이야기는 돈다 */
       if(o.af<=-10 && Math.random()<0.4) addMood(`👂 ${p.name} 면담 이야기가 라커룸에 돌고 있습니다. 몇몇이 눈치를 봅니다.`);
     }
-    p.noMove=true;                              // 한 번 버틴 선수는 당분간 요지부동
+    /* ⚠ 제보 — 「선수 본인이 이적하고 싶대서 이적명단 올렸는데 막상 협상하니
+       남고싶다고 잔류선언 해버리는 게 골때림」. 설득 실패가 무조건 잔류 선언(noMove)으로
+       굳었다. 공개적으로 나가겠다던 선수가 (전력이 크게 처지는) 한 구단을 거절했다고
+       「아무 데도 안 간다」가 되는 건 앞뒤가 안 맞는다 — 이적 요청 중이면 그 구단 제안만
+       접고 요청 상태는 유지한다. */
+    if(!wantsOut(p)) p.noMove=true;             // 한 번 버틴 선수는 당분간 요지부동 (이적 요청 중이면 예외)
     G.offers=G.offers.filter(x=>!(x.pid===P.pid&&x.tid===P.tid));
     if(G.snego&&G.snego.pid===P.pid) G.snego=null;
   }
@@ -40974,6 +42521,61 @@ const MATCH_MODE={TEXT:"TEXT_MODE", HIGHLIGHT:"HIGHLIGHT_MODE"};
 let matchMode=MATCH_MODE.TEXT;
 const TEXT_TICK_MS=110; // 텍스트 모드에서 경기 1분이 흐르는 실제 시간(ms) — 하이라이트가 없을 땐 빠르게 지나간다
 let liveM=null, liveTimer=null, liveSpeed=TEXT_TICK_MS, livePaused=false, liveShown=0, livePanelKey="", liveTag=null;
+/* 🔍 둘러보기 — 경기를 세워 두고 다른 탭을 「보기만」 한다.
+   ⚠ 「상대 팀이 몇 위였는지 확인하러 순위표를 들락날락하고 싶다. 단, 보는 것 외에는
+     아무것도 못 하게 해 달라 — 안 그러면 무슨 버그가 날지 모른다」. 정확한 우려다.
+     경기 중에 선수를 팔거나 훈련을 바꾸면 진행 중인 경기 데이터와 어긋난다.
+   ─ 화면은 그대로 그리되 조작만 통째로 막는다. CSS(pointer-events)와
+     클릭 가로채기(캡처 단계) 두 겹으로 잠근다. */
+let LIVE_PEEK=false, _peekGuardOn=false;
+/* 둘러봐도 안전한 화면만 연다.
+   ⚠ 전술판은 들어가고 나올 때 기준선을 다시 잡고(tacBase) 프리셋을 저장한다 —
+     경기 중 라이브 전술과 섞이면 그때 만진 게 어느 쪽인지 알 수 없게 된다.
+     경기 중 전술·교체는 원래대로 「⏸ → 전술 탭」 경로를 쓴다. */
+const PEEK_VIEWS=["table","stats","media","fixtures","finance","mylife","youth","squad","home","osquad","loancenter"];
+function peekAllowed(v){ return PEEK_VIEWS.indexOf(v)>=0; }
+function peekLive(){
+  if(!liveM) return;
+  livePaused=true; LIVE_PEEK=true;
+  try{ updLiveCtrl(); }catch(e){}
+  show("table");
+  try{ notify("🔍 <b>둘러보기</b> — 경기가 멈춰 있습니다. 화면은 볼 수 있지만 조작은 되지 않습니다.","info"); }catch(e){}
+}
+function peekEnd(){
+  LIVE_PEEK=false;
+  try{ const el=document.getElementById("peekBar");
+       if(el){ try{ el.remove(); }catch(_){}
+               try{ el.style.display="none"; el.innerHTML=""; }catch(_){} } }catch(e){}
+  try{ const m=document.getElementById("main");
+       if(m){ try{ m.classList.remove("peekOnly"); }catch(_){}
+              try{ m.className=String(m.className||"").replace(/\bpeekOnly\b/g,"").trim(); }catch(_){} } }catch(e){}
+  try{ enterMatchTab(); }catch(e){}
+}
+/* 둘러보기 중에는 화면 안의 어떤 클릭도 목적지에 닿지 못한다 (캡처 단계에서 끊는다) */
+function peekGuardInit(){
+  try{
+    const m=document.getElementById("main"); if(!m || _peekGuardOn) return;
+    _peekGuardOn=true;
+    m.addEventListener("click", (e)=>{ if(LIVE_PEEK){ e.stopPropagation(); e.preventDefault(); } }, true);
+    m.addEventListener("change", (e)=>{ if(LIVE_PEEK){ e.stopPropagation(); e.preventDefault(); } }, true);
+    m.addEventListener("keydown", (e)=>{ if(LIVE_PEEK){ e.stopPropagation(); } }, true);
+  }catch(e){}
+}
+/* 화면 아래 고정 띠 — #main 밖에 두어야 「돌아가기」가 잠기지 않는다 */
+function peekBarRender(){
+  if(typeof document==="undefined") return;
+  let el=document.getElementById("peekBar");
+  if(!LIVE_PEEK || !liveM){
+    if(el){ try{ el.remove(); }catch(_){} try{ el.style.display="none"; el.innerHTML=""; }catch(_){} }
+    return;
+  }
+  if(!el){ el=document.createElement("div"); el.id="peekBar"; document.body.appendChild(el); }
+  let sc="";
+  try{ sc=`${liveM.home.short} <b>${liveM.hg} : ${liveM.ag}</b> ${liveM.away.short} · ${liveM.min}'`; }catch(e){}
+  el.innerHTML=`<span>⏸ <b>경기 일시정지</b> — 둘러보기 모드 · 조작은 잠겨 있습니다</span>`
+    +`<span style="opacity:.85">${sc}</span>`
+    +`<button class="pkBtn" onclick="peekEnd()">⚽ 경기로 돌아가기</button>`;
+}
 /* 연속 2D 매치엔진으로 치르는 중인 경기. null 이면 기존 분 단위 엔진으로 진행 중이라는 뜻이다. */
 let liveSim=null, liveSimHalf=false;
 /* 지금 재생 중인 하이라이트 — {frames, i, acc, kind, side}. null 이면 경기를 빨리 감는 중이다. */
@@ -46681,13 +48283,17 @@ class MatchSim{
     const H=SIM_SECONDS/2;
     const up=(s)=>Math.max(1, Math.ceil(s/60));
     if(c<=H) return String(Math.floor(c/60));
-    if(c<=H+a1) return "45+"+up(c-H);
+    /* ⚠ 제보 — 「후반 시작 직후에 45+n분 이게 잠깐 떴다가 바뀐다」.
+       후반은 clock==htSec(45분+전반 추가시간)에서 대기하는데, 경계 판정이 <= 라서
+       그 순간의 전광판이 「45+n」으로 찍혔다. 경계를 후반으로 넘긴다(하프타임 판정과 같은 쪽). */
+    if(c<H+a1) return "45+"+up(c-H);
     const c2=c-a1;                                  // 후반 — 전반 추가시간을 뺀 실제 시계
     if(c2<=SIM_SECONDS) return String(Math.floor(c2/60));
-    if(!this.M.etOn || c2<=SIM_SECONDS+a2) return "90+"+up(c2-SIM_SECONDS);
+    if(!this.M.etOn) return "90+"+up(c2-SIM_SECONDS);
+    if(c2<SIM_SECONDS+a2) return "90+"+up(c2-SIM_SECONDS);   // 연장 시작 대기 순간은 「90」쪽으로
     const c3=c2-a2;                                 // 연장
     if(c3<=SIM_SECONDS+ET_SECONDS/2) return String(Math.floor(c3/60));
-    if(c3<=SIM_SECONDS+ET_SECONDS/2+a3) return "105+"+up(c3-(SIM_SECONDS+ET_SECONDS/2));
+    if(c3<SIM_SECONDS+ET_SECONDS/2+a3) return "105+"+up(c3-(SIM_SECONDS+ET_SECONDS/2));
     const c4=c3-a3;
     if(c4<=SIM_SECONDS+ET_SECONDS) return String(Math.floor(c4/60));
     return "120+"+up(c4-(SIM_SECONDS+ET_SECONDS));
@@ -52211,17 +53817,30 @@ class MatchSim{
     if(!M || !M.ko || M.pk || !koLevel(M)) return false;
     /* ⚠ 아직 끝나지 않은 경기에서 부르면 안 된다 — run(짧은 초) 로 일부만 굴릴 때 걸린다 */
     if(this.clock < this.endSec-1) return false;
+    return this._runShootout();
+  }
+  _runShootout(){
+    const M=this.M;
     try{
       M.pk=runShootout(M);
       for(const line of pkLines(M, M.pk)) this.say(null, line, "info", {kind:"pk"});
     }catch(e){ M.pk=null; return false; }
     return true;
   }
+  /* 🅿️ 진행 중인 반칙 장면·PK·날아가는 슛·세리머니 — 끝날 때까지 휘슬(하프타임·종료)을 미룬다.
+     ⚠ 제보 — 「경기 종료 직전에 PK 떴는데 그대로 경기가 끝났다. 리포트에도 "선언됩니다"
+       이후 그대로 경기 종료」. 하프타임에는 htHold 로 막아 놓고(전반 추가시간에 차는 그림),
+       종료 휘슬 판정(라이브 루프·하이라이트 꼬리·위임 run)은 varPending 만 보고 있었다.
+       선언된 PK는 반드시 차고 끝난다 — 성공/실축 멘트도 그때 나온다. */
+  pkHold(){
+    const b=this.ball;
+    return !!(b && (b.foulScene || b.isPenalty || (b.setPiece && b.setPiece.kind==="penalty") || b.state==="SHOT" || b.celebrate));
+  }
   run(seconds){
     /* ⚠ 연장에 들어가면 종료 시각이 늘어난다 — 시작할 때 잡아 둔 값을 쓰면 연장을 못 뛴다 */
     const fixedEnd=seconds||0;
     let guard=0;
-    while((this.clock<(fixedEnd||this.endSec) || (!seconds && this.varPending)) && guard++<200000){
+    while((this.clock<(fixedEnd||this.endSec) || (!seconds && (this.varPending || this.pkHold()))) && guard++<200000){
       this.tick();
       // 하프타임 — 해설에 한 줄 남긴다 (실제 경기 모드일 때만)
       if(this.emitEvents) this.stoppageCheck();
@@ -53181,7 +54800,9 @@ function updateTopBar(t, r, fix){
     dEl.textContent=`${G.season} 시즌`;
   }
   let sub="";
+  const _cwcTag=cwcTopTag();
   if(G.phase==="sacked") sub="🪑 경질";
+  else if(_cwcTag) sub=_cwcTag;
   else if(G.phase==="po") sub=eaclPhaseTag(true) || "⚔️ 승강 플레이오프";
   else if(G.phase==="seasonEnd") sub="🏁 시즌 종료";
   else if(G.cal){
@@ -54758,6 +56379,7 @@ const AWAY_HEADLINE={
    (advance() 가 미리 만들어 둔 M 은 옛 라인업이라 그대로 쓰면 바꾼 게 반영되지 않는다)
 ═══════════════════════════════════════════════════════════════ */
 let inPreTactics=false;
+let preTacAway=false;   // ⚽ 킥오프 준비 화면을 떠나 다른 탭을 보고 있는 중인가
 function showPreMatchTactics(M, tag){
   pendingLiveM=M; pendingLiveTag=tag;
   inPreTactics=true; inLineupPreview=false; inLiveTactics=false;
@@ -55257,7 +56879,7 @@ function startLive(M, tag){
   }catch(err){
     liveM=null; liveSim=null; liveTag=null;
     try{ eaclBanPop(userTeam()); }catch(e){}   // 🟨 대회용으로 갈아 끼운 징계를 원위치
-    G.pendingFriendly=null; G.pendingPO=null; G.pendingEACL=null;
+    G.pendingFriendly=null; G.pendingPO=null; G.pendingEACL=null; G.pendingCWC=null;
     try{ wakeRelease(); }catch(e){}
     try{ $("#advBtn").disabled=false; }catch(e){}
     try{ notify("⚠️ 경기를 시작할 수 없습니다 — 출전 가능한 선수가 부족합니다. 선수단을 먼저 추스르세요.","warn"); }catch(e){}
@@ -55476,10 +57098,9 @@ function stepLiveSim(){
   /* ⚠ 제보 — 전반 45분에 PK를 얻으면 휘슬이 울리고 후반에 차는 버그.
      실제 규정처럼, 진행 중인 반칙 장면·PK·날아가는 슛·세리머니가 있으면 그게 끝날 때까지
      하프타임을 미룬다 (전반 추가시간에 PK를 차는 그림). */
-  const htHold=()=>{ const b=s.ball;
-    return !!(b && (b.foulScene || b.isPenalty || (b.setPiece && b.setPiece.kind==="penalty") || b.state==="SHOT" || b.celebrate)); };
+  const htHold=()=>s.pkHold();   // 진행 중인 PK·슛·세리머니 — 클래스 공용 판정으로 통일
   /* 📺 판독 중이면 종료 휘슬을 미룬다 — 하프타임을 미루는 htHold 와 같은 이치 (제보) */
-  while((s.clock<s.endSec || s.varPending) && guard++<4000){
+  while((s.clock<s.endSec || s.varPending || htHold()) && guard++<4000){   // 🅿️ 종료 직전 PK — 찰 때까지 계속 굴린다
     s.tick();
     s.stoppageCheck();
     if(s.hl) break;                        // 결정적 장면 발생 — 여기서 끊고 되감는다
@@ -55495,7 +57116,7 @@ function stepLiveSim(){
     liveSimHalf=true; M.half=2; M.min=45; M.htBreak=true;
     return;
   }
-  if(!liveHL && s.clock>=s.endSec && !s.varPending){
+  if(!liveHL && s.clock>=s.endSec && !s.varPending && !htHold()){
     /* ⏱️ 녹아웃 동점 — 여기서 연장으로 넘어간다 (넘어가면 이번 호출은 그대로 끝낸다) */
     if(s.tryExtraTime()) return;
     /* 🥅 차기 전에 키커 순서를 정하게 한다 — 정하고 나면 그 자리에서 이어서 끝낸다 */
@@ -55687,7 +57308,7 @@ function startHighlight(){
   //    슛 → 키퍼 선방 → 리바운드 → 정리, 또는 골대 맞고 튕겨 나가 골라인 아웃까지가 한 장면이다.
   const tMin=s.t+HL_TAIL_MIN, tMax=s.t+HL_TAIL_MAX;
   let calm=0, guard=0, pending=null;
-  while(s.t<tMax && (s.clock<s.endSec || s.varPending) && guard++<900){
+  while(s.t<tMax && (s.clock<s.endSec || s.varPending || s.pkHold()) && guard++<900){
     s.tick();
     /* ⚠ 예전에는 꼬리 구간의 새 트리거를 무조건 지웠다(s.hl=null). 슛 장면 직후 반칙 → PK가 나면
        PK 트리거가 여기서 삼켜져서, PK가 하이라이트도 해설도 없이 라이브로 흘러갔다("아무 말 없이
@@ -55812,7 +57433,7 @@ function endHighlight(){
     liveSimHalf=true; liveM.half=2; liveM.min=45; liveM.htBreak=false;
     livePaused=true; showHalftimeTalk(liveM); return;
   }
-  if(liveSim && liveSim.clock>=liveSim.endSec && !liveSim.varPending && !liveM.done){
+  if(liveSim && liveSim.clock>=liveSim.endSec && !liveSim.varPending && !liveSim.pkHold() && !liveM.done){
     if(liveSim.tryExtraTime()){ syncLive(); return; }
     if(pkNeedsPick(liveM) && !PK_PICK){
       livePaused=true;
@@ -55927,6 +57548,7 @@ function updLiveCtrl(state){
   if(state==="ht"){ el.innerHTML=`<button class="mini sel" onclick="resumeLive()">후반전 시작 ▶</button>`; return; }
   el.innerHTML=`
     <button class="mini ${livePaused?'sel':''}" onclick="${livePaused?'resumeLive()':'pauseLive()'}" title="${livePaused?'재개':'일시정지'}">${livePaused?"▶":"⏸"}</button>
+    <button class="mini" onclick="peekLive()" title="경기를 세워 두고 순위표·기록 같은 다른 탭을 봅니다 (보기 전용)">🔍 둘러보기</button>
     <button class="mini" onclick="toggleSpdPanel()" title="경기·다시보기 배속">${liveMulUI().toFixed(1)}× ▾</button>`;
 }
 /* 하이라이트 씬 하나를 재생 예약한다 — 실제 프레임 그리기는 지속 루프(render2DTick)가 current2DScene을
@@ -56414,6 +58036,7 @@ function finishLive(){
   try{ const _a=$("#advBtn"); if(_a){ _a.disabled=false; _a.classList.remove("navLocked"); _a.textContent="진행 ▶"; } }catch(e){}
   try{ wakeRelease(); }catch(e){}   // 경기가 끝났으니 화면 유지를 푼다
   const M=liveM; liveM=null;
+  try{ LIVE_PEEK=false; peekBarRender(); const _m=document.getElementById("main"); if(_m) _m.classList.remove("peekOnly"); }catch(e){}
   if(liveTimer){ clearInterval(liveTimer); liveTimer=null; }
   if(revealTimer){ clearTimeout(revealTimer); revealTimer=null; } revealQueue=[];
   current2DScene=null; matchMode=MATCH_MODE.TEXT; stop2DLoop();
@@ -56435,6 +58058,15 @@ function finishLive(){
     applyMatchResult(M);
     poResolve(m, hid, aid, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0);
     lastMatch={type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, tag:m.tag, att:M.att||0, mom:M.mom||null};
+    saveGame();
+  } else if(G.pendingCWC){
+    /* 🌍 CWC — 프리시즌 한복판의 공식전. 리그 순위표도 라운드도 건드리지 않는다. */
+    const P=G.pendingCWC; G.pendingCWC=null;
+    applyMatchResult(M);
+    try{ cwcStatCollect(M); }catch(e){}
+    try{ cwcResolveUser(P, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0); }catch(e){}
+    try{ matchNewsCwc(M, P.tag); }catch(e){}
+    lastMatch={type:"cwc", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, tag:P.tag, att:M.att||0, mom:M.mom||null};
     saveGame();
   } else if(G.pendingEACL){
     /* 🌏 EACL — 리그 순위표를 건드리지 않고 대회 기록만 남긴다(noTable). 라운드도 넘기지 않는다. */
@@ -56519,8 +58151,12 @@ function enterMatchTab(){
     else showLockerReactions(s.title, s.toneScore, lockerReactCont, s.moraleBefore, s.moraleAfter, s.M, s.reactionsData, s.stage);
     return;
   }
-  if(inPreTactics && pendingLiveM){ renderPreMatchTactics(); return; }
-  if(inLineupPreview && pendingLiveM){ showLineupPreview(pendingLiveM, pendingLiveTag); return; }
+  if(inPreTactics && pendingLiveM){
+    preTacAway=false;
+    /* 다른 탭에 다녀오면 show() 가 버튼 문구를 「경기 시작」으로 되돌려 놓는다 — 여기서 복구 */
+    { const _a=$("#advBtn"); if(_a){ _a.disabled=false; _a.classList.remove("navLocked"); _a.textContent="✅ 선발 확정 ▶"; } }
+    renderPreMatchTactics(); return; }
+  if(inLineupPreview && pendingLiveM){ preTacAway=false; showLineupPreview(pendingLiveM, pendingLiveTag); return; }
   $("#main").innerHTML=matchTabIdleView();
   if(!G.seen) G.seen={};
   G.seen.match=notifCount("match");
@@ -56558,9 +58194,10 @@ function matchTabIdleView(){
 /* ---------- 이벤트 바인딩 ---------- */
 document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>{
   document.body.classList.remove("matchFS");   // 안전망 — 경기 밖 화면으로 이동하면 풀스크린 해제
-  if(liveM) return; // 실제 라이브 경기 중에는 다른 탭으로 이동 불가
-  if(b.dataset.v==="__exit"){ exitToTitle(); return; }
-  if(b.dataset.v==="match"){ enterMatchTab(); return; }
+  /* 🔍 경기 중이라도 「둘러보기」를 켠 상태면 다른 탭을 볼 수 있다 (보기 전용) */
+  if(liveM && !LIVE_PEEK) return;
+  if(b.dataset.v==="__exit"){ if(liveM) return; exitToTitle(); return; }
+  if(b.dataset.v==="match"){ if(liveM && LIVE_PEEK){ peekEnd(); return; } enterMatchTab(); return; }
   show(b.dataset.v);
 });
 /* ═══════════════════════════════════════════════════════════════
@@ -56573,6 +58210,37 @@ const PROG_MS=190;              // 하루가 지나가는 속도
 const PROG_MAX_LINES=90;
 let PROG=null;                  // {timer, lines, stop}
 function progBusy(){ return !!(liveM||IV||inGreeting||inLockerTalk||inLineupPreview||inPreTactics||fanTownhallCtx||awayLockerCtx); }
+/* 🗓️ 달력-라운드 불일치 복구
+   ⚠ 제보 — 「아직도 날짜가 멈춘 체 경기만 계속 시작됩니다. 경기종료후 시즌이 종료되었다고는
+     나오지만 계속을 누르면 또 그대로 경기 시작입니다」 (세이브: 강원 2028, day=393=cal.last, r1=10).
+     구버전 빌드에서 달력이 라운드보다 먼저 끝까지 흘러 버린 세이브가 그대로 넘어온 것이다.
+     stepDay 는 「날짜가 달력 끝 → 시즌 종료」를 띄우고, advance() 는 「라운드가 남았다 → 경기 시작」 —
+     둘이 딴소리를 하며 날짜가 393에 얼어붙은 채 경기만 반복됐다.
+   ─ 라운드가 남았는데 달력이 먼저 끝났으면, 남은 라운드를 오늘 이후로 사흘 간격으로 다시 깔고
+     달력 끝을 그만큼 늘린다. 시즌이 늦게 끝나는 값을 치르지만, 남은 경기를 통째로 날리는 것보다 낫다.
+     (다음 시즌은 startNewSeason 이 달력을 새로 깔므로 영향이 없다) */
+function calRoundRepair(){
+  try{
+    if(G.phase!=="league" || !G.cal || !Array.isArray(G.cal.roundDay)) return false;
+    const need1=(G.k1Fix||[]).length, need2=(G.k2Fix||[]).length;
+    const left1=(G.r1||0)<need1, left2=(G.r2||0)<need2;
+    if(!left1 && !left2) return false;                 // 라운드가 다 끝났으면 정상 종료 수순
+    const rd=G.cal.roundDay;
+    const rNow=Math.min(left1?(G.r1||0):Infinity, left2?(G.r2||0):Infinity);
+    const maxNeed=Math.max(left1?need1:0, left2?need2:0);
+    const nd=rd[rNow];
+    /* 정상 세이브는 건드리지 않는다 — 다음 라운드 날짜를 아직 지나지 않았거나,
+       지났더라도 달력에 여유가 있으면 atMatchDay 의 >= 판정이 알아서 따라잡는다 */
+    const broken = (nd===undefined) || ((G.day||0)>nd && (G.day||0)>=(G.cal.last||0));
+    if(!broken) return false;
+    let d=(G.day||0)+3;
+    for(let i=rNow;i<maxNeed;i++){ rd[i]=d; d+=3; }
+    G.cal.last=Math.max(G.cal.last||0, d+4);
+    const leftN=maxNeed-rNow;
+    addNews(`📢 <b>일정 복구</b> — 달력이 남은 <b>${leftN}개 라운드</b>를 남겨둔 채 먼저 끝나 있었습니다. 남은 경기를 ${dateLabel(rd[rNow])}부터 사흘 간격으로 다시 편성했습니다.`, "info");
+    return true;
+  }catch(e){ return false; }
+}
 function atMatchDay(){
   if(G.jobless) return false;          // 🕊️ 무직 — 내가 치를 경기는 없다 (연습경기 포함)
   /* ⚠ 제보 — 「경기 종료 후 다음을 누르면 날짜는 그대로인데 경기가 바로 또 진행된다. 체력이 계속 갈린다」.
@@ -56583,6 +58251,10 @@ function atMatchDay(){
     if((G.day||0) < G.lastMD) G.lastMD=null;            // 시즌이 바뀌어 달력이 되감겼다
     else if((G.day||0) <= G.lastMD) return false;
   }
+  /* 🌍 CWC 경기일 — 1월 대회는 프리시즌 한복판에 있다.
+     ⚠ 프리시즌 분기가 연습경기만 보고 곧장 돌아가서, 세계 대회 당일에도 「평일」로 판정됐다.
+       진행 버튼이 「진행 ▶」으로 뜨고, 감독 부상 시 수석코치 대행 판정도 걸리지 않았다. */
+  try{ if(cwcUserDue()) return true; }catch(e){}
   if(G.phase==="pre") return !!friendlyOn(G.day);
   /* 🌏 EACL 경기일 — 리그 경기일과 별개로 하루를 멈춘다.
      판정을 eaclUserDue 그대로 쓰는 이유: 여기서만 멈추고 advance 가 안 잡으면 무한 루프가 된다. */
@@ -56812,15 +58484,29 @@ function stepDay(){
   const _aclHold = _aclLeft && _aclDay>=0 && (G.day||0)<_aclDay
                    && !(G.phase==="po" && ((G.poQueue||[]).length>0));
   if(!_aclHold){
-    if(G.phase!=="pre" && (userRoundNow()>=G.cal.roundDay.length || G.day>=G.cal.last)){ stopProgress({kind:"end"}); return; }
+    if(G.phase!=="pre" && (userRoundNow()>=G.cal.roundDay.length || G.day>=G.cal.last)){
+      /* 🗓️ 라운드가 남았는데 달력이 먼저 끝난 세이브 — 종료를 선언하지 말고 달력을 고쳐 계속 간다 (제보) */
+      if(calRoundRepair()){ prgPush("📢 남은 라운드에 맞춰 일정을 다시 깔았습니다 — 진행을 계속합니다.", "prgAlert"); }
+      else { stopProgress({kind:"end"}); return; }
+    }
     /* 내 일정이 끝났는데 다른 부도 다 끝났다면 더 흘려보낼 이유가 없다 */
     if(G.phase==="league" && (G.jobless || userSeasonOver())
        && G.r1>=(G.k1Fix||[]).length && G.r2>=(G.k2Fix||[]).length){ stopProgress({kind:"end"}); return; }
   }
+  /* 🌍 ⚠ 검증에서 걸림 — 조별 경기일(1/3)에 입영 통지 멈춤이 겹치면 stepDay 가 대회 블록 전에
+     돌아간다. 거기서 진행 모달의 「+N일 / 계속 ▶」(prgRun)를 누르면 — prgRun 의 필수처리 목록에
+     army·injback·loan·offers 가 없어서 — 날짜가 경기일을 그대로 지나친다. 그 라운드 8경기가
+     영영 안 치러지고 fix.every(done) 이 거짓 → cwcSeedKO 불발 → 대회가 조별에서 우승자 없이
+     영구 정지했다(실측 재현). EACL 도 날짜 단위 판정이라 같은 구멍이다.
+     ─ 오늘 치를 경기가 남아 있으면 어떤 경로로 재개해도 날짜를 넘기지 않는다.
+       startProgress 의 「atMatchDay() → runAdvanceNow()」 가드와 같은 원리. 경기를 치르고 나면
+       cwcUserDue/eaclUserDue 가 비고 리그는 lastMD 가 잡아 주므로 무한 멈춤은 없다. */
+  if(atMatchDay()){ stopProgress({kind:"match"}); return; }
   G.day++;
   if(PROG){ PROG.n=(PROG.n||0)+1; if(PROG.left!=null) PROG.left--; }
   prgHeader(); try{ prgDaysBar(); }catch(e){}
   tickSeasonTickets();          // 시즌권은 1월 2일부터 개막 전날까지 하루씩 팔린다
+  try{ tickArmyCall(); }catch(e){}  // 🎖️ 입영 통지 — 입소일이 되면 부대로 간다
   try{ tickArmy(); }catch(e){}  // 상무 전역 — 전역일이 되면 원소속으로 돌아간다
   try{ tickMoney(); }catch(e){} // 감독 월급·집세·임대수익 (매달 1일)
   try{ if(!G.stock) stkInit(); stkTick(); }catch(e){}   // 📈 증시 — 하루에 한 번 시세가 움직인다
@@ -56878,10 +58564,31 @@ function stepDay(){
      그때그때 흘려보낸다 — 재계약, 임대 문의, 계약 만료 경고, 남의 집 소식. */
   try{ const rn=tickAiRenew(); if(rn) prgPush(`📝 <b>${rn.t.short}</b>, ${rn.p.name} 재계약 (${rn.y}년)`, "prgNews"); }catch(e){}
   /* 🎖️ 전역 — 내 선수가 군에서 돌아왔다. 진행을 멈추고 알린다(제보) */
+  /* 💪 긴 부상 복귀 — 2주 이상 빠져 있던 선수가 돌아왔다. 스쿼드를 다시 볼 때다. */
+  try{
+    if(G.injBack && G.injBack.n){
+      const Q=G.injBack; G.injBack=null;
+      const txt=Q.list.slice(0,5).map(x=>`<b>${x.nm}</b>(${POS_KO[x.pos]||x.pos} · ${x.w}주)`).join(" · ");
+      prgPush(`💪 <b>부상 복귀 ${Q.n}명</b> — ${txt}${Q.n>5?` 외 ${Q.n-5}명`:""}`
+        +`<span class="small"> · 선발·교체 명단에 다시 넣을지 확인하세요</span>`, "prgStop");
+      saveGame(); stopProgress({kind:"injback"}); return;
+    }
+  }catch(e){}
+  /* 🎖️ 입영 통지 — 내 선수에게 통지가 왔다. 라인업 계획이 바뀌므로 진행을 멈추고 알린다. */
+  try{
+    if(G.armyCallPing && G.armyCallPing.n){
+      const Q=G.armyCallPing; G.armyCallPing=null;
+      prgPush(`🎖️ <b>입영 통지 ${Q.n}명</b> — ${Q.names.join(", ")} · <b>${Q.ds}</b> 김천 상무 FC 입소 예정`
+        +`<span class="small"> (그때까지는 우리 팀에서 뜁니다 · 이적·임대 불가)</span>`, "prgStop");
+      saveGame(); stopProgress({kind:"army"}); return;
+    }
+  }catch(e){}
   try{
     if(G.armyBack && G.armyBack.n){
       const A=G.armyBack; G.armyBack=null;
-      prgPush(A.gone
+      prgPush(A.enlist
+        ? `🎖️ <b>${A.n}명이 오늘 입소했습니다</b> — ${A.names.join(", ")} · ${ARMY_MONTHS}개월 뒤 복귀합니다`
+        : A.gone
         ? `🎖️ <b>${A.gone}명이 전역했습니다</b> — ${A.names.join(", ")} · <b>🎖️ 입대 지원</b> 탭에서 빈자리를 채우세요`
         : `🎖️ <b>${A.n}명이 전역해 복귀했습니다</b> — ${A.names.join(", ")}`, "prgStop");
       saveGame(); stopProgress({kind:"army"}); return;
@@ -56926,10 +58633,27 @@ function stepDay(){
   try{ if(Array.isArray(G.loanOffers)) G.loanOffers=G.loanOffers.filter(o=>{ o.exp--; return o.exp>0 && G.teams[o.tid] && G.teams[o.tid].players.some(x=>x.id===o.pid); }); }catch(e){}
   try{ prgContractWatch(); }catch(e){}
   if(G.phase==="pre"){
+    /* 🛌 프리시즌 경기일에도 하루치 회복은 흐른다.
+       ⚠ 「경기 당일 회복 0」은 리그 경기일만 고쳐 놓았다. 프리시즌은 이 블록에서 멈추고
+         곧장 돌아가기 때문에 아래의 matchDayRecoverAll() 에 닿지 못했다 —
+         연습경기든 세계 대회든, 경기가 있는 날은 회복이 통째로 증발했다.
+         (실측: 평일 +2.04 · 프리시즌 경기일 +0.00)
+       여기서 먼저 준다. 하루에 한 번만 적용되는 함수라 뒤에서 또 불려도 문제없다. */
+    if(isMatchDay(G.day)){ try{ matchDayRecoverAll(); }catch(e){} }
     /* ⚠ 제보 — 프리시즌 부상이 개막 전까지 한 주도 회복되지 않았다. 부상 잔여는 주 단위이므로
        프리시즌에는 7일마다 한 주씩 흘려보낸다. (정규 시즌은 라운드가 곧 한 주다) */
     if((G.day||0)>0 && (G.day||0)%7===0){ try{ tickBanInj({inj:true}); }catch(e){} }
     checkPreseasonEnd();
+    /* 🌍 CWC — 오늘 열리는 다른 경기부터 치르고, 내 경기가 있으면 멈춘다 */
+    try{ cwcTick(false); }catch(e){}
+    {
+      let cw=null; try{ cw=G.jobless?null:cwcUserDue(); }catch(e){ cw=null; }
+      if(cw){
+        const me=G.userTeamId, m=cw.m;
+        prgPush(`🌍 <b>${cw.tag}</b> — ${cwcNm(m.h===me?m.a:m.h)}전 (${(G.cwc&&G.cwc.host)||""} 개최)`, "prgStop");
+        saveGame(); stopProgress({kind:"match"}); return;
+      }
+    }
     /* ⚠ 제보 — 「무직인데 로딩창에 연습경기 알림이 뜬다」. 내가 짤 라인업도, 앉을 벤치도 없다. */
     const fr=G.jobless ? null : friendlyOn(G.day);
     if(fr){
@@ -57033,6 +58757,17 @@ function stopProgress(s){
     return;
   }
   if(s.kind==="match"){
+    /* 🌍 오늘이 CWC 경기일이면 그쪽이 먼저다 — advance() 도 CWC 를 먼저 잡는다.
+       ⚠ 이게 없으면 findUserFixture() 가 엉뚱한 리그 대진을 물어 와
+         세계 대회 당일에 「⚽ 홈 · ○○전 — 경기일입니다」라고 안내했다. */
+    let _cq=null; try{ _cq=cwcUserDue(); }catch(e){ _cq=null; }
+    if(_cq){
+      const me=G.userTeamId, m=_cq.m, opp=cwcTeam(m.h===me?m.a:m.h);
+      prgPush(`<span class="prgD">${dateLabel(G.day)}</span> 🌍 <b>${_cq.tag}</b> — ${opp?opp.name:"상대"}전입니다. <span class="small">${(G.cwc&&G.cwc.host)||""} · 중립지</span>`, "prgMatch");
+      if(go){ go.textContent="🌍 "+cwcShort()+" 경기 시작 ▶"; go.style.display=""; }
+      if(st) st.textContent="닫기";
+      return;
+    }
     /* 🌏 오늘 EACL 경기가 걸려 있으면 그쪽을 먼저 안내한다 — advance()도 EACL을 먼저 잡는다 */
     let _eq=null; try{ _eq=eaclUserDue(); }catch(e){ _eq=null; }
     if(_eq){
@@ -57078,6 +58813,9 @@ function stopProgress(s){
   } else if(s.kind==="split"){
     if(go){ go.textContent="📊 순위표 확인 ▶"; go.style.display=""; }
     if(st) st.textContent="닫기";
+  } else if(s.kind==="injback"){
+    if(go){ go.textContent="💪 스쿼드 확인 ▶"; go.style.display=""; }
+    const sk=$("#prgSkip"); if(sk) sk.style.display="";
   } else if(s.kind==="army"){
     if(go){ go.textContent="🎖️ 스쿼드 확인 ▶"; go.style.display=""; }
   } else if(s.kind==="loan"){
@@ -57101,7 +58839,7 @@ function resolveStop(s){
   if(s.kind==="joboffer"){ show("home"); window.scrollTo(0,0); return; }   // 무직 홈 = 제의 카드가 있는 화면
   if(s.kind==="dun"){ VIEW="home"; $("#main").innerHTML=stkDunView(); window.scrollTo(0,0); return; }
   if(s.kind==="split"){ try{ TBLTAB="league"; }catch(e){} show("table"); window.scrollTo(0,0); return; }
-  if(s.kind==="army"){ show("squad"); return; }
+  if(s.kind==="army"||s.kind==="injback"){ show("squad"); return; }
   if(s.kind==="loan"){ try{ lcTab=s.tab||"offer"; }catch(e){} show("loancenter"); return; }
   if(s.kind==="suitApology"){ show("media"); suitApologyPopup(); return; }
   if(s.kind==="suitVerdict"){ show("media"); sueVerdict(); return; }
@@ -57144,6 +58882,13 @@ function runDelegatedMatch(M, tag){
       const {m,hid,aid}=G.pendingPO; G.pendingPO=null;
       applyMatchResult(M);
       poResolve(m, hid, aid, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0);
+    } else if(G.pendingCWC){
+      /* 🌍 CWC 대행 — 리그 라운드를 넘기면 안 된다 */
+      const P=G.pendingCWC; G.pendingCWC=null;
+      applyMatchResult(M);
+      try{ cwcStatCollect(M); }catch(e){}
+      try{ cwcResolveUser(P, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0); }catch(e){}
+      try{ matchNewsCwc(M, P.tag); }catch(e){}
     } else if(G.pendingEACL){
       /* 🌏 EACL 대행 — 리그 라운드를 넘기면 안 된다(completeRound 금지) */
       const P=G.pendingEACL; G.pendingEACL=null;
@@ -57258,6 +59003,12 @@ function startProgress(){
     greetDone();
     try{ applyNavLock(); }catch(e){}
     return;
+  }
+  /* ⚠ 제보 — 준비 화면을 떠나 다른 탭에 있는 동안 누른 진행 버튼은 「확정」이 아니라
+     「준비 화면으로 복귀」다. 명단을 안 보여 주고 넘어가는 일이 없게 한다. */
+  if(typeof preTacAway!=="undefined" && preTacAway
+     && ((typeof inPreTactics!=="undefined" && inPreTactics) || (typeof inLineupPreview!=="undefined" && inLineupPreview))){
+    preTacAway=false; enterMatchTab(); return;
   }
   /* 선발 전술 화면 — 진행 = 선발 확정 (사용자 요청) */
   if(typeof inPreTactics!=="undefined" && inPreTactics){ confirmPreMatchTactics(); return; }
