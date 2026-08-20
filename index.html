@@ -525,7 +525,8 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text; user-se
 .clickable{cursor:pointer; text-decoration:none; text-underline-offset:3px;}
 .clickable:hover{text-decoration:underline dotted;}
 /* 선수 이름 팝업 메뉴 */
-.pmenu{position:fixed; z-index:999; background:var(--bg2); border:1px solid var(--acc); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.55); min-width:160px; overflow:hidden;}
+/* max-height+스크롤 — 게임 창이 메뉴보다 낮은 극단(가로폰 등)에서도 짤리는 대신 안에서 굴러가게 (밑 짤림 제보의 안전벨트) */
+.pmenu{position:fixed; z-index:999; background:var(--bg2); border:1px solid var(--acc); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.55); min-width:160px; overflow:hidden; max-height:calc(100vh - 12px); overflow-y:auto;}
 .pmenu .pmHead{padding:8px 12px; font-weight:700; font-size:13px; border-bottom:1px solid var(--line); background:var(--bg3); white-space:nowrap;}
 .pmenu button{display:block; width:100%; text-align:left; background:none; border:none; color:var(--txt); padding:9px 12px; cursor:pointer; font-size:13px;}
 .pmenu button:hover{background:var(--bg3); color:var(--acc);}
@@ -10662,8 +10663,7 @@ function showCoachPopup(e, tid){
   const zoom=getFontScale()/100;
   const vw=((typeof window!=="undefined"&&window.innerWidth)||1200)/zoom, vh=((typeof window!=="undefined"&&window.innerHeight)||800)/zoom;
   const px=((e&&e.clientX)||40)/zoom, py=((e&&e.clientY)||40)/zoom;
-  el.style.left=Math.max(4,Math.min(px,vw-260))+"px";
-  el.style.top=Math.max(4,Math.min(py,vh-230))+"px";
+  el.style.left="0px"; el.style.top="0px";   // 선수 메뉴와 같은 제보(밑 짤림) — 그린 뒤 실측 보정
   const rv=coachRel(tid), rl=coachRelLabel(rv);
   const lean=c.att-c.def;
   const style=lean>=2?"공격 축구":lean<=-2?"실리 축구":"균형 축구";
@@ -10674,6 +10674,10 @@ function showCoachPopup(e, tid){
       <button class="mini" style="display:block;width:100%;margin-top:8px" onclick="closePlayerInfoPopup();openCoachProfile('${tid}')">📋 프로필 <span class="small">— 능력치·스타일</span></button>
       ${G.jobless?"":`<button class="mini" style="display:block;width:100%;margin-top:5px" onclick="closePlayerInfoPopup();openCoachTalk('${tid}')">🎙️ 감독에 대한 발언 <span class="small">— 기자와 인터뷰</span></button>`}
     </div>`;
+  const rr=el.getBoundingClientRect?el.getBoundingClientRect():null;
+  const mw=((rr&&rr.width)||260)/zoom, mh=((rr&&rr.height)||230)/zoom;
+  el.style.left=Math.max(4,Math.min(px,vw-mw-6))+"px";
+  el.style.top =Math.max(4,Math.min(py,vh-mh-6))+"px";
   return false;
 }
 /* 🎙️ 감독에 대한 발언 — 기자가 달려와 상대 감독 이야기를 묻는다. 발언은 관계·언론·여론을 움직인다 */
@@ -14611,8 +14615,8 @@ function loanOfferCard(){
     const age=G.season-p.by;
     const myWage=Math.round(p.wage*o.share*10)/10;
     return `<div class="card" style="border-color:var(--gold)">
-      <h3>🔁 ${c.name}의 임대 제안 <span class="small">— 답변 기한 D-${Math.max(0,o.exp)}</span></h3>
-      <p><b>${nmF(p)}</b> <span class="small pos-${p.pos}">${p.pos}</span> · ${age}세 · ${prefSlotOf(p)} · ${abilityStars(p)}</p>
+      <h3>🔁 <span class="clickable" style="text-decoration:underline dotted;text-underline-offset:3px" title="${c.name} 스쿼드 보기" onclick="openTeamSquad('${c.id}')">${c.name}</span>의 임대 제안 <span class="small">— 답변 기한 D-${Math.max(0,o.exp)}</span></h3>
+      <p><b class="clickable" onclick="showPlayerInfoPopup(event,${p.id})" oncontextmenu="showPlayerInfoPopup(event,${p.id})">${nmF(p)}</b> <span class="small pos-${p.pos}">${p.pos}</span> · ${age}세 · ${prefSlotOf(p)} · ${abilityStars(p)}</p>
       <p class="small">잠재력 ${potentialStars(p)} · 원소속 출전 지분 ${Math.round(playShare(p)*100)}% · 연봉 ${p.wage}억</p>
       <p class="small">조건: ${o.half?"반 시즌":"시즌 종료까지"} · 우리 주급 부담 <b>${Math.round(o.share*100)}%</b>(${myWage}억)${o.buy?` · <b style="color:var(--gold)">완전이적 옵션 ${o.fee!=null?o.fee+"억":""}</b>`:""}</p>
     ${o.buy?`<p class="small" style="opacity:.85">💰 옵션가는 계약과 함께 고정됩니다 — 시즌 중에도 임대 센터에서 바로 행사할 수 있습니다. <span style="opacity:.75">(적정가 ${loanBuyFair(p)}억)</span></p>`:""}
@@ -14689,7 +14693,7 @@ function loanAskCard(){
       const acc=loanPlayerAccept(p, c);
       const L=acc>=0.65?["수락 유력","var(--green)"]:acc>=0.4?["반반","var(--gold)"]:["거절 유력","var(--red)"];
       return `<div class="msg info" style="margin-bottom:8px">
-        <b>${c.name}</b>이/가 <b>${nmF(p)}</b> (${G.season-p.by}세 ${POS_KO[p.pos]||p.pos}) 임대를 원합니다.
+        <b class="clickable" style="text-decoration:underline dotted;text-underline-offset:3px" title="${c.name} 스쿼드 보기" onclick="openTeamSquad('${c.id}')">${c.name}</b>이/가 <b class="clickable" onclick="openPlayerMenu(event,${p.id})">${nmF(p)}</b> (${G.season-p.by}세 ${POS_KO[p.pos]||p.pos}) 임대를 원합니다.
         <span class="tag" style="background:${a.half?"#33280f":"#12331d"};color:${a.half?"#e3b341":"#7ee2a8"}">${a.half?"반 시즌 (시즌 중 복귀)":"시즌 종료까지"}</span><br>
         <span class="small">우리 주급 분담 ${Math.round(a.share*100)}%
           (${Math.round(p.wage*a.share*10)/10}억) · ${a.buy?"완전이적 옵션 포함":"옵션 없음"}
@@ -20455,8 +20459,12 @@ function renderPlayerMenu(){
   const zoom=getFontScale()/100;
   const vw=((typeof window!=="undefined"&&window.innerWidth)||1200)/zoom, vh=((typeof window!=="undefined"&&window.innerHeight)||800)/zoom;
   const px=PMENU.x/zoom, py=PMENU.y/zoom;
-  el.style.left=Math.max(4,Math.min(px,vw-170))+"px";
-  el.style.top=Math.max(4,Math.min(py,vh-(owned?210:110)))+"px";
+  /* ⚠ 제보 — 「전술창에서 선수 눌러보면 박스가 게임화면 크기 때문에 밑이 짤려서 나온다」.
+     메뉴 높이를 210px로 어림잡아 눌렀는데, 내 선수 메뉴(프로필~방출 7줄)는 실제 300px를
+     넘는다. 화면 아래쪽 선수를 누르면 어림값만큼만 올라가 '임대 보내기' 아래가 잘렸다.
+     ─ 역할 메뉴(renderRoleMenu)와 같은 방식: 먼저 그리고, 실제 크기를 잰 뒤 자리를 잡는다.
+       최종 위치는 innerHTML 다음의 보정 코드가 정한다. */
+  el.style.left="0px"; el.style.top="0px";
   el.innerHTML=`<div class="pmHead">${nmF(p)}${pTags(p)}</div>
     <button onclick="closePlayerMenu();${qpHere()?`showQuickProfile(${p.id})`:`showPlayer(${p.id},'profile')`}">👤 프로필</button>
     ${qpHere()?"":`<button onclick="closePlayerMenu();showQuickProfile(${p.id})">🔎 간략 보기</button>`}
@@ -20467,6 +20475,10 @@ function renderPlayerMenu(){
     ${owned&&!p.loan?`<button onclick="closePlayerMenu();openRenew(${p.id})" title="연봉·기간·출전 약속을 놓고 협상합니다">📝 재계약 협상</button>`:""}
     ${owned&&!p.loan?`<button onclick="closePlayerMenu();openLoanOut(${p.id})" title="다른 구단에 임대를 보냅니다">🔁 임대 보내기</button>`:""}
     ${owned?`<button onclick="closePlayerMenu();releasePlayer(${p.id})" title="계약 해지 (위약금: 잔여 연봉의 70%)">✂️ 방출</button>`:""}`;
+  const rr=el.getBoundingClientRect?el.getBoundingClientRect():null;
+  const mw=((rr&&rr.width)||170)/zoom, mh=((rr&&rr.height)||210)/zoom;
+  el.style.left=Math.max(4,Math.min(px,vw-mw-6))+"px";
+  el.style.top =Math.max(4,Math.min(py,vh-mh-6))+"px";
 }
 if(typeof document!=="undefined"&&document.addEventListener){
   document.addEventListener("click", (e)=>{
@@ -20651,9 +20663,8 @@ function renderPlayerInfoPopup(){
   const px=PINFO.x/zoom, py=PINFO.y/zoom;
   // 포지션별 별점 목록은 길어질 수 있으니 팝업이 화면 밖으로 나가지 않게 여유를 더 준다
   const rows=positionStarRows(p);
-  const need=Math.min(120+rows.length*22, 420);
-  el.style.left=Math.max(4,Math.min(px,vw-260))+"px";
-  el.style.top=Math.max(4,Math.min(py,vh-need))+"px";
+  // 선수 메뉴와 같은 제보(밑 짤림) — 어림값(120+22×줄수) 대신 그린 뒤 실제 높이로 자리를 잡는다
+  el.style.left="0px"; el.style.top="0px";
   const rowHtml=rows.map(r=>
     `<div class="pInfoRow${r.pref?" pref":""}">
        <span class="piDot" style="background:${famColor(r.fam)||"#30363d"}"></span>
@@ -20672,6 +20683,10 @@ function renderPlayerInfoPopup(){
       ${G.jobless?"":`<button class="mini" style="display:block;width:100%;margin-top:8px;border-color:var(--gold);color:var(--gold);font-weight:800"
         onclick="closePlayerInfoPopup();showQuickProfile(${p.id})">🔎 상세 프로필 보기 <span class="small">— 능력치 · 능숙도</span></button>`}
     </div>`;
+  const rr=el.getBoundingClientRect?el.getBoundingClientRect():null;
+  const mw=((rr&&rr.width)||260)/zoom, mh=((rr&&rr.height)||Math.min(120+rows.length*22,420))/zoom;
+  el.style.left=Math.max(4,Math.min(px,vw-mw-6))+"px";
+  el.style.top =Math.max(4,Math.min(py,vh-mh-6))+"px";
 }
 if(typeof document!=="undefined"&&document.addEventListener){
   // 브라우저 기본 우클릭 메뉴는 전역 차단. 선수 칩 위에서는 개별 oncontextmenu가
@@ -31648,7 +31663,13 @@ function openTeamSquad(tid){
   const t=G.teams[tid] || (String(tid).indexOf("eacl_")===0 ? eaclTeam(tid) : null);
   if(!t) return;
   if(t.isUser && !G.jobless){ show("squad"); return; }   // 내 팀은 원래 스쿼드 화면으로
-  OSQ.tid=tid; OSQ.back=(t.eacl?"fixtures":"table"); show("osquad");
+  /* ⚠ 제보 — 「구단 이름 눌러도 해당 구단 정보로 넘어갈 수 있게 해달라. 임대 제안 온
+     선수가 어떤지 보려면 일일이 순위표 가서 보는 중이다」. 제안·협상 화면의 구단 이름이
+     이제 여기로 들어온다. 돌아갈 곳을 순위표로 못박아 두면 임대 센터에서 온 사람이
+     순위표에 떨어지므로, 부른 화면을 기억했다가 그리로 되돌린다. */
+  OSQ.tid=tid;
+  OSQ.back=(typeof VIEW==="string" && VIEW && VIEW!=="osquad") ? VIEW : (t.eacl?"fixtures":"table");
+  show("osquad");
 }
 function osqSort(k){
   if(OSQ.k===k) OSQ.dir=-OSQ.dir; else OSQ={tid:OSQ.tid, k, dir:1};
@@ -31705,7 +31726,7 @@ function otherSquadView(){
     <div class="msg info">
       👔 감독 <b>${c.n||"-"}</b> <span class="small">#${c.uid||"-"} · 종합 ${c.ovr||"-"}/20 (전술 ${c.tac||"-"} · 공격 ${c.att||"-"} · 수비 ${c.def||"-"} · 육성 ${c.dev||"-"})</span><br>
       🏟️ <b>${sd.n}</b> <span class="small">#${sd.uid||"-"} · ${(sd.cap||0).toLocaleString()}석</span> &nbsp;·&nbsp; 🏢 <b>${ow.n}</b> <span class="small">#${ow.uid||"-"}</span>
-      <button class="mini" style="margin-left:8px" onclick="show('fixtures')">← 일정으로</button></div>
+      <button class="mini" style="margin-left:8px" onclick="show(OSQ.back||'fixtures')">← 돌아가기</button></div>
     <div class="card"><div class="tblScroll"><table><tr>
       ${osqTh("no","#","등번호")}${osqTh("pos","포지션")}${osqTh("name","이름")}
       ${osqTh("age","나이")}${osqTh("ovr","능력","별점")}${osqTh("cond","컨디션")}
@@ -31715,7 +31736,7 @@ function otherSquadView(){
   }
   return `<h2>👥 ${t.name} <span class="small">— ${divName(t.div)} ${pos}위 · ${t.players.length}명 · 외국인 ${t.players.filter(p=>frnQ(p)).length}명${_co?` · <span class="clickable" style="text-decoration:underline dotted;text-underline-offset:3px" onclick="showCoachPopup(event,'${t.id}')">🧑‍💼 ${_co.n} 감독 (종합 ${_co.ovr}/20)</span>`:""}</span></h2>
   <div class="msg info">선수 이름을 누르면 상세 정보가 뜹니다. 계약 1년 남은 선수는 영입 노려볼 만합니다.
-    <button class="mini" style="margin-left:8px" onclick="show('table')">← 순위표로</button></div>
+    <button class="mini" style="margin-left:8px" onclick="show(OSQ.back||'table')">← 돌아가기</button></div>
   <div class="card"><div class="tblScroll"><table><tr>
     ${osqTh("no","#","등번호")}${osqTh("pos","포지션")}${osqTh("name","이름")}
     ${isA?'<th title="이 선수를 보낸 구단">원소속</th>':""}
@@ -32982,7 +33003,7 @@ function offersView(){
         ? `🔀 <span class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${swapP.id})">${swapP.name}</span> <span class="small">(${swapP.pos} ${dispOvr(swapP)})</span>${o.fee>0?` + <span class="money">${o.fee}억</span>`:` <span class="small">(순수 스왑)</span>`}`
         : `<span class="money">${o.fee}억</span>`;
       return `<tr><td class="clickable" onclick="openPlayerMenu(event,${p.id})">${nmF(p)}${pTags(p)}</td>
-    <td>${G.teams[o.tid].short} ${teamStars(G.teams[o.tid], G.teams[o.tid].short+" 전력")}<span class="small">${bo>mo+0.5?" · 강팀":bo<mo-4?" · 약팀":bo<mo-0.5?" · 한 수 아래":""}</span></td>
+    <td><span class="clickable" style="text-decoration:underline dotted;text-underline-offset:3px" title="${G.teams[o.tid].name} 스쿼드 보기" onclick="openTeamSquad('${o.tid}')">${G.teams[o.tid].short}</span> ${teamStars(G.teams[o.tid], G.teams[o.tid].short+" 전력")}<span class="small">${bo>mo+0.5?" · 강팀":bo<mo-4?" · 약팀":bo<mo-0.5?" · 한 수 아래":""}</span></td>
     <td>${dealTxt}</td><td>${marketValue(p)}억</td>
     <td>${p.noMove?'<span class="tag u22">잔류 선언</span>':p.unhappy>0?'<span class="tag inj">이적 원함</span>':moodIcon(p)+" "+mor(p.morale)}</td>
     <td class="small">${risk}</td>
