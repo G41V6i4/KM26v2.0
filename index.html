@@ -208,7 +208,7 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
 @keyframes goalflash{0%{color:#fff}50%{color:var(--gold);text-shadow:0 0 18px #e3b341}100%{color:#fff}}
 .lvMin{font-size:15px; color:var(--gold); font-weight:700; margin-top:6px;}
 /* 2D 매치엔진 (바둑알 시각화) */
-#pitch2d{width:100%; height:auto; display:block; border-radius:8px; border:1px solid var(--line); background:#143a24; transition:opacity .22s, filter .22s;}
+#pitch2d,#pvpCv{width:100%; height:auto; display:block; border-radius:8px; border:1px solid var(--line); background:#143a24; transition:opacity .22s, filter .22s;}   /* ⚔️ 게스트 캔버스도 같은 규칙 (제보: 화면 크기 동일) */
 /* ── FM식 경기 풀스크린 — 경기 중에는 메인 메뉴·상단 바를 감추고 경기창이 화면을 채운다 ── */
 /* 경기 중에도 메인 메뉴·날짜 바 모두 표시 (사용자 요청) — matchFS는 여백·레이아웃 조정만 담당 */
 body.matchFS #main{max-width:none; padding:8px 16px;}
@@ -249,7 +249,7 @@ body.matchFS .fmPitchPane{max-width:none;}
 .lvDrop h3{margin-top:0;}
 .lvDrop .lvClose{float:right; margin-left:8px;}
 /* TEXT_MODE — 하이라이트가 없는 시간에는 캔버스를 흐리게 낮춰 "지금은 시간만 흐르는 중"임을 보여준다 */
-#pitch2d.dim{opacity:.4; filter:saturate(.45);}
+#pitch2d.dim,#pvpCv.dim{opacity:.4; filter:saturate(.45);}
 .pitchMode{float:right; font-size:11px; letter-spacing:.6px; color:var(--muted); font-weight:400;}
 .pitchMode.on{color:#f85149; font-weight:700;}
 /* 코멘터리 강조 — 골·선방 같은 중요한 순간에 CommentaryManager가 동적으로 붙인다 */
@@ -380,6 +380,10 @@ body.matchFS .fmPitchPane{max-width:none;}
 .fsBtn:hover,.fsBtn:active{opacity:1; border-color:var(--gold);}
 .fsBtn.hidden{display:none;}
 @media (display-mode: standalone){ .fsBtn{display:none;} }
+/* ⚔️ ⚠ 제보 — 「모바일에서는 온라인 대전 메뉴에서는 진행 버튼이 안보이게 해줘」.
+   좁은 화면에서는 하단 버튼이 크게 자리를 차지해, 대전 메뉴에서는 눌릴 일도 없는 버튼이
+   화면 절반을 먹었다. 넓은 화면에서는 종전대로 둔다. */
+@media (max-width:760px){ body.pvpMenu #advBtn{display:none !important;} }
 /* ⚠ 760px 이하에서는 '진행 ▶' 버튼이 화면 하단에 고정(bottom:10px, z-index:950)된다.
    전체화면 버튼을 같은 자리에 두면 진행 버튼 밑에 깔려 안 보이거나 오조작이 난다. 위로 띄운다. */
 @media (max-width:760px){ .fsBtn{bottom:78px; right:8px; width:34px; height:34px; font-size:15px; opacity:.35;} }
@@ -428,6 +432,52 @@ body.matchFS .fmPitchPane{max-width:none;}
 #peekBar .pkBtn{background:var(--gold); color:#111; border:none; border-radius:7px; padding:7px 16px;
   font-weight:800; font-size:13.5px; cursor:pointer;}
 .bigbtn.navLocked{opacity:.4; cursor:not-allowed;}
+/* ⚔️ 대전 시작 버튼 — ⚠ 제보 「좀 고급스럽게 바꾸자. 줄 라인도 엉망이고」.
+   초록 덩어리 셋에 부제를 한 줄에 욱여넣어 「전력 비슷한 상 / 대」처럼 단어가 잘렸다.
+   제목과 부제를 각자 줄에 놓고, 폭이 좁아지면 칸이 줄바꿈되게 격자로 세운다. */
+.pvpStart{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:10px; margin-top:4px;}
+.pvpBtn{position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+  width:100%; padding:14px 16px 13px 19px; border-radius:12px; cursor:pointer; text-align:left;
+  background:linear-gradient(158deg,#1a2432 0%,#121926 100%); border:1px solid #2a3646; color:var(--txt);
+  font-family:inherit; overflow:hidden;
+  transition:transform .13s ease, border-color .13s ease, box-shadow .13s ease, background .13s ease;}
+.pvpBtn::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--pbC,var(--acc));}
+.pvpBtn::after{content:""; position:absolute; right:-30px; top:-30px; width:96px; height:96px; border-radius:50%;
+  background:var(--pbC,var(--acc)); opacity:.07; transition:opacity .13s ease;}
+.pvpBtn:hover:not(:disabled){transform:translateY(-2px); border-color:var(--pbC,var(--acc));
+  background:linear-gradient(158deg,#1f2c3c 0%,#141d2c 100%); box-shadow:0 7px 20px rgba(0,0,0,.45);}
+.pvpBtn:hover:not(:disabled)::after{opacity:.14;}
+.pvpBtn:active:not(:disabled){transform:translateY(0); box-shadow:none;}
+.pvpBtn:disabled{opacity:.38; cursor:default;}
+.pvpBtnH{display:flex; align-items:center; gap:8px; position:relative; z-index:1;}
+.pvpBtnIc{font-size:18px; line-height:1;}
+.pvpBtnT{font-size:15.5px; font-weight:800; letter-spacing:-.2px; white-space:nowrap; color:var(--pbC,var(--acc));}
+.pvpBtnS{font-size:11.5px; color:var(--sub); line-height:1.5; position:relative; z-index:1;
+  overflow-wrap:break-word; word-break:keep-all;}
+/* 방 코드 입력 — 버튼들과 같은 결로 */
+.pvpCode{display:flex; gap:7px; align-items:center; margin-top:11px; padding-top:11px; border-top:1px solid var(--line);}
+.pvpCode input{flex:0 1 158px; min-width:0; padding:10px 12px; font-size:15px; letter-spacing:2px; font-weight:700;
+  background:var(--bg); border:1px solid #2a3646; border-radius:9px; color:var(--txt); text-transform:uppercase; text-align:center;}
+.pvpCode input::placeholder{letter-spacing:normal; font-weight:600; color:var(--sub); opacity:.75;}
+.pvpCode input:focus{outline:none; border-color:var(--acc);}
+.pvpCode button{padding:10px 18px; border-radius:9px; white-space:nowrap;}
+.pvpCode .pvpCodeHint{white-space:nowrap;}
+@media (max-width:520px){ .pvpCode .pvpCodeHint{display:none;} }
+@media (max-width:400px){ .pvpStart{grid-template-columns:1fr;} }
+/* 🌐 실시간 전적 — 방금 끝난 남의 경기 (제보) */
+.prList{display:flex; flex-direction:column;}
+.prRow{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px;
+  padding:7px 8px; border-bottom:1px solid #1b222b; border-radius:7px;}
+.prRow:last-child{border-bottom:none;}
+.prMine{background:rgba(227,179,65,.07);}
+.prSide{display:flex; align-items:center; gap:6px; min-width:0; font-size:12.5px;}
+.prR{justify-content:flex-end;}
+.prNick{font-weight:800; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.prTeam{font-size:10.5px; font-weight:700; padding:1.5px 7px; border-radius:999px; white-space:nowrap;}
+.prWin .prNick{color:var(--gold);}
+.prScore{font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1px; white-space:nowrap;}
+.prMeta{grid-column:1/-1; font-size:10.5px; color:var(--sub); opacity:.8; text-align:center; margin-top:-2px;}
+@media (max-width:520px){ .prSide{font-size:11.5px;} .prTeam{display:none;} }
 #side.introLock #navScroll{position:relative;}
 .introBar{display:flex; align-items:center; flex-wrap:wrap; gap:6px; background:#161b22; border:1px solid var(--gold);
   border-radius:10px; padding:10px 12px; margin-bottom:12px;}
@@ -1017,6 +1067,17 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .attrRow .af{height:100%; border-radius:4px;}
 .attrRow .av{width:26px; text-align:right; font-weight:700; flex-shrink:0;}
 ::-webkit-scrollbar{width:9px;} ::-webkit-scrollbar-thumb{background:var(--bg3); border-radius:5px;}
+/* 💬 채팅창 — ⚠ 제보 「모든 채팅창에 스크롤바를 만들어줘. 그래야 채팅창 크기를 조절 할 수 있으니까」
+   overflow-y:auto 는 넘칠 때만 막대가 생겨서 끌 자리가 없었다. 항상 띄워 두고,
+   resize:vertical 로 오른쪽 아래 모서리를 끌어 높이를 바꾸게 한다(높이는 기억된다). */
+.chatBox{overflow-y:scroll; resize:vertical; min-height:70px; max-height:none;
+  border:1px solid #1b222b; border-radius:6px; padding:6px; background:#0d1117;
+  scrollbar-width:thin; scrollbar-color:#39424d #11161d;}
+.chatBox::-webkit-scrollbar{width:10px;}
+.chatBox::-webkit-scrollbar-track{background:#11161d; border-radius:8px;}
+.chatBox::-webkit-scrollbar-thumb{background:#39424d; border-radius:8px; border:2px solid #11161d;}
+.chatBox::-webkit-scrollbar-thumb:hover{background:#4d5866;}
+.chatBox::-webkit-resizer{background:#39424d;}
 /* ---------- in-game confirm modal (replaces native confirm()) ---------- */
 .gcOverlay{position:fixed; inset:0; background:rgba(1,4,9,.65); z-index:1200; display:flex; align-items:center; justify-content:center; animation:gcFadeIn .12s ease-out;}
 @keyframes gcFadeIn{from{opacity:0;} to{opacity:1;}}
@@ -6560,7 +6621,8 @@ function subIn(M, sd, key, outX, inP, silent){
     if(!M.subQueue) M.subQueue=[];
     M.subQueue.push({out:outX.p.name, in:inP.name, side:key, min:M.min,
                team:t?t.short:"", isUser:!!(t&&t.isUser), col:(t&&t.col)||null, shown:false,
-               cn:(t&&!t.isUser&&typeof COACHES!=="undefined"&&COACHES[t.id])?COACHES[t.id].n:null});
+               /* ⚔️ 제보 — 온라인 대전 상대는 사람이다. AI 감독 실명 대신 팀 이름(닉네임)으로 읽는다 */
+               cn:(t&&!t.isUser&&!t.pvpRemote&&typeof COACHES!=="undefined"&&COACHES[t.id])?COACHES[t.id].n:null});
   }
   return nx;
 }
@@ -6658,7 +6720,7 @@ const AI_SUB_URGENT=54;       // 이 밑이면 최고 선수라도 뺀다
       실제 감독은 들것이 나가는 즉시 교체 카드를 쓴다. */
 function aiFillGaps(M){
   for(const [sd,key] of [[M.h,"h"],[M.a,"a"]]){
-    if(!sd || sd.team.isUser) continue;
+    if(!sd || sd.team.isUser || sd.team.pvpRemote) continue;   // ⚔️ PvP — 부상 공백도 감독이 직접 채운다
     let guard=0;
     while(guard++<12 && (sd.subs||0)<subMax(M)){
       const gap=(sd.list||[]).find(x=>x.off!==null && !x.red && x.injGap);
@@ -6681,7 +6743,7 @@ function aiSubs(M, minNow){
   aiFillGaps(M);                            // 교체 창과 상관없이 빈 자리부터
   if(AI_SUB_WINDOWS.indexOf(m)<0) return;
   for(const [sd,key,myG,opG] of [[M.h,"h",M.hg,M.ag],[M.a,"a",M.ag,M.hg]]){
-    if(sd.team.isUser) continue;
+    if(sd.team.isUser || sd.team.pvpRemote) continue;   // ⚔️ 제보 — PvP 는 감독이 직접 교체한다
     if(!sd.bench || !sd.bench.length) continue;
     /* 선수단이 지쳐 있을수록 벤치를 적극적으로 쓴다 */
     let _tiredN=0;
@@ -7626,12 +7688,27 @@ function feedTone(tid, good){ return tid===G.userTeamId ? (good?1:-1) : 0; }
 /* AI 구단 감독 이름 — 경질 소식 같은 데 쓰인다 */
 const MGR_SUR=["김","이","박","최","정","강","조","윤","장","임","한","오","신","서","권","황","안","송","전","홍"];
 const POS_KO={GK:"골키퍼", DF:"수비수", MF:"미드필더", FW:"공격수"};
+const MGR_GIV=["정우","상철","태호","현수","진규","도훈","성환","영민","경호","재훈","기석","용수","병수","학범","남일","두리","동원","성용","진섭","건하"];
+/* ⚠ 제보 원문 — 「타구단 뉴스 중에 감독 경질인데 후임은 같은 이름의 감독대행 체제라고 내용에 뜹니다 ㅋㅋ」
+   원인 — 이름을 구단 id·이름만으로 만들어 냈다. 경질하면서 t.mgr 을 비우고 다시 부르면
+      같은 씨앗에서 같은 이름이 또 나온다 = 「김정우 감독 경질, 후임은 김정우 감독대행」.
+   ─ 몇 번째 감독인지(_mgrGen)를 씨앗에 섞어, 새로 앉힐 때마다 다른 사람이 나오게 한다. */
 function mgrName(t){
   if(t.isUser) return "감독님";
   if(!t.mgr){
-    const seed=(t.id.length*7 + (t.name||"").charCodeAt(0)) % 20;
-    t.mgr = MGR_SUR[seed] + ["정우","상철","태호","현수","진규","도훈","성환","영민","경호","재훈","기석","용수","병수","학범","남일","두리","동원","성용","진섭","건하"][(seed*3+5)%20];
+    const gen=(t._mgrGen|0);
+    const base=(t.id.length*7 + (t.name||"").charCodeAt(0)) + gen*7;
+    const seed=((base % MGR_SUR.length)+MGR_SUR.length) % MGR_SUR.length;
+    t.mgr = MGR_SUR[seed] + MGR_GIV[(seed*3+5+gen*11) % MGR_GIV.length];
   }
+  return t.mgr;
+}
+/* 새 감독을 앉힌다 — 반드시 전임과 다른 이름이 나온다 */
+function mgrRenew(t){
+  const old=t.mgr || null;
+  let guard=0;
+  do{ t._mgrGen=(t._mgrGen|0)+1; t.mgr=null; }
+  while(mgrName(t)===old && guard++<40);
   return t.mgr;
 }
 /* ── 경기 한 건에서 뽑아내는 소식 ─────────────────────────── */
@@ -7895,10 +7972,11 @@ function leagueNews(div, rnd){
     const last6=t.form.slice(-6), bad=last6.filter(f=>f==="L").length;
     const pos=tb.findIndex(x=>x.id===t.id)+1;
     if(last6.length>=6 && bad>=5 && pos>=tb.length-3 && Math.random()<0.30){
-      const old=mgrName(t); t._sacked=rnd; t.mgr=null;
+      const old=mgrName(t); t._sacked=rnd;
+      const nu=mgrRenew(t);                     // ⚠ 제보 — 후임이 전임과 같은 이름으로 나오던 자리
       pushFeed({cat:"manager", ic:"🪑", tone:0, tid:t.id,
         head:`${t.name}, ${old} 감독 경질`,
-        sub:`최근 6경기 ${bad}패. 구단은 "성적 부진에 따른 불가피한 결정"이라고 밝혔다. 후임은 ${mgrName(t)} 감독대행 체제.`});
+        sub:`최근 6경기 ${bad}패. 구단은 "성적 부진에 따른 불가피한 결정"이라고 밝혔다. 당분간 ${nu} 수석코치가 감독대행을 맡는다.`});
     }
   }
 }
@@ -7909,7 +7987,20 @@ function rumorToFeed(r){
   pushFeed({cat:"rumor", ic:r.ric||"🗞️", tone:0, tid:r.fromId||r.toId||null,
     head:r.txt, src:`${r.rep} 기자 · ${r.ro}`, sub:`신빙성: ${tr.t}`, truth:r.truth});
 }
-function userTeam(){ return G.teams[G.userTeamId]; }
+/* ⚔️ ⚠ 제보 원문 — 「내가 원하는 전술창은 일반 리그 경기 중 전술 수정 창하고 똑같아야하는데,
+   그게 아니네? 온라인 매칭도 경기중 전술 수정창이 리그에서의 경기중 전술 수정창과 동일하게
+   만들어줘」.
+   온라인 대전은 양 팀 모두 「클론」으로 뛴다(세이브 격리). 그래서 리그 전술판이 보는
+   userTeam() 이 대전에서는 엉뚱한 팀을 가리켰다 — 그 한 줄 때문에 별도 패널을 따로 만들었던 것이다.
+   ─ 전술판이 열려 있는 동안만 「지금 다루는 팀」을 갈아 끼운다. 화면이 닫히면 곧바로 되돌린다. */
+let PVP_TAC_TEAM=null;
+function userTeam(){ return PVP_TAC_TEAM || G.teams[G.userTeamId]; }
+/* 경기 중 전술판이 다루는 쪽 — 온라인 대전에서는 언제나 「내 팀 = h」로 맞춰 둔다
+   (호스트는 실제 경기의 홈, 게스트는 아래에서 만드는 그림자 경기의 홈) */
+function liveMyKey(M){
+  try{ if(M && M.opts && M.opts.pvp) return "h"; }catch(e){}
+  return (M && M.home && M.home.isUser) ? "h" : "a";
+}
 /* ⚠ 제보 — 「시즌이 끝난 뒤 골·도움·관중 순위를 보면 승격 이후 기준으로 나온다.
       전남이 우승해서 승격했는데 K리그1 득점 순위에 전남 선수가 있다.」
    순위표(tableOf)에는 「그 시즌을 치른 구성」 스냅샷이 있었는데, 득점·도움·관중 카드는
@@ -10534,6 +10625,7 @@ function completeRound(M){
   }
   playACLIfDue();
   try{ loanSweep(); }catch(e){}
+  try{ armyCallPurge(); }catch(e){}   // 🎖️ 제보 — 외국 국적 입영 통지 취소
   try{ armySweep(); }catch(e){}
   try{ loanInReview(); }catch(e){}
   if(!G.splitDone && G.r1>=splitAt()) makeSplit();
@@ -14462,11 +14554,22 @@ function loanReturnAll(){
    (제보 — "정마호 전역 D-day인데 FA로 나와 있어서 데려왔다") */
 function armySweep(){
   const gc=Object.values(G.teams).find(x=>isArmyTeam(x));
-  /* 🎖️ 상무에 섞여 든 용병 정리 — 복무 중이 아닌 외국인은 소속될 수 없다 (제보).
-     홈그로운(hg)은 국내 선수로 등록되므로 그대로 둔다. */
+  /* 🎖️ 상무에 섞여 든 용병 정리 — 외국 국적 선수는 소속될 수 없다 (제보).
+     ⚠ 제보 — 「홈그로운 외국인 선수가 김천상무로 입대한다」. 홈그로운은 쿼터만 면제될 뿐
+        국적은 외국이라 병역 대상이 아니다. 예전 판에서 이미 입대해 버린 선수는
+        여기서 즉시 소집 해제해 원소속 구단으로 돌려보낸다. */
   try{
     if(gc && Array.isArray(gc.players)){
-      const outs=gc.players.filter(p=>p && !p.army && frnQ(p));
+      const bad=gc.players.filter(p=>p && p.army && p.frn);
+      for(const p of bad){
+        gc.players.splice(gc.players.indexOf(p),1);
+        const own=(p.army && p.army.own && G.teams[p.army.own]) || null;
+        p.army=null; p.armyDone=0; delete p.armyCall;
+        if(own && !own.players.includes(p)){ own.players.push(p); try{ joinClub(own, p, false); }catch(e){} }
+        else { p.ct=1; try{ clearClubBaggage(p, 70); }catch(e){} (G.freeAgents=G.freeAgents||[]).push(p); }
+      }
+      if(bad.length) addNews(`🎖️ 국군체육부대, 병역 대상이 아닌 외국 국적 선수 ${bad.length}명 소집 해제 — 원소속 구단으로 복귀합니다`, "warn", "club");
+      const outs=gc.players.filter(p=>p && !p.army && p.frn);
       for(const p of outs){
         gc.players.splice(gc.players.indexOf(p),1);
         p.ct=1; try{ clearClubBaggage(p, 70); }catch(e){}
@@ -15399,8 +15502,12 @@ function startSellNego(pid, tid){
   const buyer=G.teams[o.tid]; const p=userTeam().players.find(x=>x.id===o.pid);
   if(!p || !buyer){ G.offers=(G.offers||[]).filter(x=>x!==o); return offerGone(); }
   const max=Math.round(o.fee*(1.15+Math.random()*0.35+Math.min(0.3,Math.max(0,buyer.budget)/500))*10)/10;
-  const swapTxt = o.swapPid ? (()=>{ const sp=buyer.players.find(x=>x.id===o.swapPid); return sp?` (+ ${sp.name} 포함)`:""; })() : "";
+  const _sp0 = o.swapPid ? buyer.players.find(x=>x.id===o.swapPid) : null;
+  const swapTxt = _sp0 ? ` (+ ${_sp0.name} 포함)` : "";
+  /* ⚠ 제보 — 상대가 「A선수 + 현금」을 먼저 내놓았는데, 그 A선수를 그대로 달라고 하면
+     거절당했다. 상대가 이미 테이블에 올린 카드의 값을 기억해 둬야 그 뒤 계산이 맞는다. */
   G.snego={pid:o.pid, tid:o.tid, bid:o.fee, max, tries:0, swapPid:o.swapPid,
+    swapV: _sp0 ? marketValue(_sp0) : 0,
     log:[{w:"club", t:`${buyer.short}: "우리 제안은 ${o.fee}억${swapTxt}입니다. 원하는 현금 조건을 말씀하시죠."`}]};
   G.offers=(G.offers||[]).filter(x=>x!==o);
   saveGame();                    // 협상 상태를 바로 저장 — 새로고침해도 협상이 사라지지 않는다
@@ -15414,8 +15521,13 @@ function sellSetWant(v){
   show("nego");
 }
 /* 상대가 그 선수를 내줄 수 있는가 — 핵심 자원은 돈으로도 안 준다 */
-function sellWantRefuse(buyer, wantP){
+/* ⚠ 제보 원문 — 「트레이드 협상할때 타구단에서 먼저 a선수+현금을 요청했는데 제가 그선수+현금을
+   좀더 요구할경우 구단이 그선수는 핵심이라 어떤경우에도 안된다고 나옵니다」.
+   상대가 제 발로 테이블에 올린 카드다 — 그걸 「핵심이라 못 준다」고 무를 수는 없다.
+   offeredId(상대가 먼저 얹은 선수)면 이 관문을 그대로 지나간다. */
+function sellWantRefuse(buyer, wantP, offeredId){
   if(!wantP) return null;
+  if(offeredId!=null && wantP.id===offeredId) return null;
   if((buyer.players||[]).length<=19) return `"저희 스쿼드도 빠듯합니다. 선수를 빼 줄 여유가 없습니다."`;
   const rank=buyer.players.slice().sort((a,b)=>b.ovr-a.ovr).findIndex(x=>x.id===wantP.id);
   if(rank<4 && wantP.ovr>=72) return fixJosa(`"${wantP.name}은/는 저희 팀의 중심입니다. 그 선수는 어떤 조건에서도 안 됩니다."`);
@@ -15436,7 +15548,7 @@ function sellDemand(){
   N.tries++;
   const say=(w,t)=>N.log.push({w,t});
   if(wantP){
-    const no=sellWantRefuse(buyer, wantP);
+    const no=sellWantRefuse(buyer, wantP, N.swapPid);
     say("me",`이적료 ${val}억 + <b>${wantP.name}</b> 트레이드를 요구했다.`);
     if(no){
       say("club",`${buyer.short}: ${no}`);
@@ -15445,8 +15557,17 @@ function sellDemand(){
       saveGame(); show("nego"); return;
     }
   } else say("me",`이적료 ${val}억을 요구했다.`);
-  /* 요구 총액 = 현금 + 데려올 선수의 시장가치. 상대는 이 총액을 기준으로 판단한다. */
-  const wantV = wantP ? marketValue(wantP) : 0;
+  /* 요구 총액 = 현금 + 데려올 선수의 시장가치.
+     ⚠ 제보 — 상대가 먼저 얹은 선수(swapPid)는 이미 상대가 내놓기로 한 값이다. 그 값을 빼지 않으면
+        「그 선수 그대로 + 현금 조금 더」가 상대 한도를 훌쩍 넘는 무리한 요구로 계산돼 무조건 거절됐다.
+        같은 선수를 그대로 달라고 하면 추가분은 0, 다른 선수로 바꾸면 그 차액만 새 요구가 된다. */
+  const swapV = (function(){
+    if(N.swapV!=null) return N.swapV;
+    if(!N.swapPid) return 0;
+    const sp=buyer.players.find(x=>x.id===N.swapPid);
+    return sp?marketValue(sp):0;
+  })();
+  const wantV = wantP ? Math.max(0, marketValue(wantP)-swapV) : 0;
   const total = Math.round((val+wantV)*10)/10;
   const okTxt = wantP ? `${val>0?`${val}억 + `:""}${wantP.name}` : `${val}억`;
   const done=()=>{ completeSale(N.pid,N.tid,val,wantP?wantP.id:N.swapPid); if(PERSU) return true; G.snego=null; runPendingBye(()=>show("nego")); return true; };
@@ -18272,6 +18393,16 @@ function showGoalPanel(side, name, minute, sub, cancelled, pos, slot){
   el.classList.remove("hidden");
   if(goalPanelTimer) clearTimeout(goalPanelTimer);
   goalPanelTimer=setTimeout(hideGoalPanel, cancelled?5200:6200);
+  /* ⚔️ 제보(게스트 득점 팝업) — 호스트가 패널을 띄우는 「공개 시점」에 그대로 중계한다.
+     읽히는 색(readableTeamColor)까지 계산해 보내 게스트도 같은 팝업을 띄운다. */
+  try{
+    if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && PVP.role==="host"){
+      pvpSend({t:"gp", off:cancelled?1:0, nm:String(name||"득점").slice(0,14), min:String(minute||""),
+               sub:String(sub||"").slice(0,40), pos:pos||"", slot:slot||"",
+               col:cancelled?"#f85149":readableTeamColor(team), tm:String(team.short||"").slice(0,18)});
+      PVP._gpOn=1;
+    }
+  }catch(e){}
 }
 /* 어두운 배경 위에서 읽히는 구단 색 — 대표색이 너무 어두우면 보조색·기본색으로 대체한다 */
 function colorLum(hex){
@@ -18303,6 +18434,17 @@ function hideGoalPanel(){
   if(goalPanelTimer){ clearTimeout(goalPanelTimer); goalPanelTimer=null; }
   const el=document.getElementById("goalPanel");
   if(el){ el.classList.add("hidden"); el.innerHTML=""; }
+  /* ⚔️ ⚠ 제보 원문 — 「게스트일때 득점 팝업 표시되는게 너무 길게 표시되거든? 호스트의 것과
+     같은 호흡으로 표시되게 해주고」.
+     원인 — 호스트는 세리머니가 끝나는 순간 syncGoalPanel 이 패널을 걷는다(타이머는 상한일 뿐).
+        게스트에는 「띄워라」만 보냈기 때문에 늘 상한(6.2초)까지 떠 있었다.
+     ─ 걷는 순간도 그대로 중계한다. */
+  try{
+    if(typeof PVP!=="undefined" && PVP && PVP._gpOn && PVP.role==="host"
+       && liveM && liveM.opts && liveM.opts.pvp){
+      PVP._gpOn=0; pvpSend({t:"gp", hide:1});
+    }
+  }catch(e){}
 }
 /* 지금 "화면에 보이고 있는" 상태를 기준으로 패널을 켜고 끈다.
    ⚠ 하이라이트 재생 중에는 시뮬이 멈춰 있고 그 시점의 ball.celebrate 는 이미 켜져 있다.
@@ -18402,6 +18544,7 @@ function drawHighlightFrame(cv, hl){
     const rx=lerp(f.rx, nf.rx!==undefined?nf.rx:f.rx, k), ry=lerp(f.ry, nf.ry!==undefined?nf.ry:f.ry, k);
     rf.x=rx; rf.y=ry; rf._rx=rx; rf._ry=ry;
   }
+  try{
   drawSimWatch(cv, s);
   /* 🟥🟨 카드 연출 — 주심이 들어 올린 카드와 「누구인지」를 그 자리에 그린다 */
   if(f.cd && cv.getContext) drawCardFx(cv, s, f.cd, byId);
@@ -18415,12 +18558,18 @@ function drawHighlightFrame(cv, hl){
     c2.textAlign="left"; c2.textBaseline="middle";
     c2.fillText("🎬 다시보기", 22, 25);
   }
+  }finally{
+  /* ⚠ 제보(투명 키커) — 되감기용 유령을 s.agents 에 잠깐 끼워 두고 그리는데, 그리기 도중
+     예외가 한 번이라도 나면 그 유령이 영영 남아 경기 로직(전담 키커 선정 등)에 끼어들었다.
+     그렇게 뽑힌 키커는 엔트리상 이미 나간 선수라 화면에 그려지지 않는다 = 「투명 선수」.
+     무슨 일이 있어도 걷어내도록 finally 로 묶는다. */
   // 원래 좌표로 되돌린다 — 재생이 끝나면 경기가 그 자리에서 이어져야 한다
   s._hlOwner=undefined;
   if(ghosts.length) s.agents=s.agents.filter(a=>ghosts.indexOf(a)<0);   // 유령은 다시 걷어낸다
   for(const [ag,x,y,fc,rx,ry] of save){ ag.x=x; ag.y=y; ag.face=fc; ag._rx=rx; ag._ry=ry; }
   b.x=bs[0]; b.y=bs[1]; b.z=bs[2]; b._rx=bs[3]; b._ry=bs[4];
   if(rs){ s.ref.x=rs[0]; s.ref.y=rs[1]; s.ref._rx=rs[2]; s.ref._ry=rs[3]; }
+  }
 }
 /* ═══ 🟥 카드 연출 ══════════════════════════════════════════════════
    주심이 카드를 들어 올린다 — 카드가 살짝 솟았다가 멈추고, 그 아래에
@@ -20453,7 +20602,19 @@ function retBtn(fb, extra){
   const v=retView(fb);
   return `<button class="mini" onclick="${extra||""}retBack('${v}')">${RET_NAME[v]||"← 돌아가기"}</button>`;
 }
-function flash(txt, cls){ FLASH={txt, cls:cls||"info"}; }
+/* ⚠ 제보 원문 — 「모바일에서는 결과 확인버튼 누르면 후반전 시작! 이런 알림창이 뜨거든?」
+   원인 — flash() 는 배너를 「다음에 화면을 그릴 때」 띄운다. 그런데 경기 화면은 show() 를
+      거치지 않고 자체 루프로 그려지므로, 경기 중에 부른 배너(하프타임 「후반전 시작!」 등)가
+      갈 곳을 잃고 앉아 있다가 경기가 끝나고 화면을 옮기는 순간에야 튀어나왔다.
+   ─ 배너에 시각을 새겨 두고, 너무 묵은 것은 조용히 버린다. */
+const FLASH_TTL=15000;
+function flash(txt, cls){ FLASH={txt, cls:cls||"info", at:Date.now()}; }
+function flashHtml(){
+  const F=FLASH; FLASH=null;
+  if(!F) return "";
+  if(F.at && (Date.now()-F.at)>FLASH_TTL) return "";   // 묵은 배너 — 지금 띄우면 엉뚱하다
+  return `<div class="msg ${F.cls}" style="border-width:2px;font-size:14px">${F.txt}</div>`;
+}
 /* 브라우저 alert() 대신 인게임 패널 — 모든 안내가 게임 화면 안에서 뜬다 */
 function gameAlert(msg){
   try{ showConfirm(`⚠️ ${String(msg).replace(/\n/g,"<br>")}`, ()=>{}, {okLabel:"확인", cancelLabel:""}); }
@@ -21349,6 +21510,8 @@ function exitToTitle(){
   if(liveM){ flash("경기 중에는 나갈 수 없습니다 — 경기를 마친 뒤에 시도하세요.","warn"); return; }
   const doExit=()=>{
     try{ saveGame(); }catch(e){}
+    /* ⚔️ 제보 — 나가면 접속 인원에서도 빠져야 한다. 새 세이브로 다시 들어오면 다시 잡힌다. */
+    try{ if(typeof pvpLiveStop==="function") pvpLiveStop(); }catch(e){}
     try{ if(PROG && PROG.stop) PROG.stop(); }catch(e){}
     try{ document.body.classList.remove("matchFS"); }catch(e){}
     try{ const m=$("#gcModal"); if(m){ m.className="hidden"; m.innerHTML=""; } }catch(e){}
@@ -26195,6 +26358,15 @@ function show(v){
     try{ notify("🔍 둘러보기 중에는 <b>순위표·기록·일정</b> 같은 조회 화면만 열 수 있습니다.<br><span class=\"small\">전술·교체는 경기 화면의 ⏸ 에서 하세요.</span>","warn"); }catch(e){}
     return;
   }
+  /* ⚔️ 제보 — 온라인 대전 진행 중(매칭~경기)에는 다른 메뉴로 못 나간다 (게스트 포함).
+     단, 매치 로비에서는 전술 탭만 허용 — 맞설 스쿼드를 꾸밀 수 있게 (제보). */
+  try{ if(typeof pvpBusy==="function"){
+    if(pvpBusy() && v!=="pvp" && !(PVP && PVP.stage==="lobby" && v==="tactics")){
+      try{ flash("⚔️ 온라인 대전 진행 중 — 취소하거나 경기를 마쳐야 이동할 수 있습니다.","warn"); }catch(e){}
+      return;
+    }
+    pvpNavSync();
+  } }catch(e){}
   /* 안전망 — 인트로 도중에는 어떤 경로로 불려도 화면을 옮기지 않는다.
      버튼은 이미 잠겨 있지만, 알림 클릭 같은 다른 경로로 show() 가 불릴 수 있다. */
   if(introLocked() && v!=="home"){
@@ -26268,8 +26440,7 @@ function show(v){
   // 어느 흐름에서든 잠금 해제를 빠뜨리면 게임이 통째로 멈춘 것처럼 보이므로 여기서 되돌린다.
   if(typeof progBusy==="function" && !progBusy()) $("#advBtn").disabled=false;
   const V={home,squad,tactics,table:tableView,fixtures,transfer,nego:negoView,offers:offersView,finance,mylife:mylifeView,youth,stats,player:playerView,match:matchTabIdleView,settings:settingsView, editor:editorView, engineEd:engineEditorView, playerGen:playerGenView, simwatch:simWatchView, staff:staffView, media:mediaView, renew:renewView, loan:loanView, contract:contractView, osquad:otherSquadView, loanin:loanInView, loancenter:loanCenterView, pvp:pvpView};
-  const fx=FLASH?`<div class="msg ${FLASH.cls}" style="border-width:2px;font-size:14px">${FLASH.txt}</div>`:"";
-  FLASH=null;
+  const fx=flashHtml();
   if(typeof closeRoleMenu==="function") closeRoleMenu();   // 화면을 옮기면 열려 있던 역할 패널을 닫는다
   const freshTactics = (v==="tactics" && VIEWPREV!=="tactics");
   if(freshTactics) tacBase=null;          // 렌더 도중 초기화되는 값(벤치 등록 등)까지 반영한 뒤에 기준선을 잡는다
@@ -26294,6 +26465,9 @@ function show(v){
   if(!G.seen) G.seen={};
   G.seen[v]=notifCount(v); // 이 탭을 확인했으니 알림 해제
   renderNavDots();
+  try{ document.body.classList.toggle("pvpMenu", v==="pvp"); }catch(e){}   // ⚔️ 제보 — 모바일 진행 버튼 숨김
+  try{ chatBoxSync(); }catch(e){}        // 💬 제보 — 채팅창 스크롤바·높이 복원
+  try{ pvpPresenceSync(v); }catch(e){}   // 🌐 제보 — ⚔️ 메뉴에 있는 동안만 접속 인원에 잡힌다
   navPush(v);              // 🖱️ 트랙패드 뒤로가기 제스처를 위해 방문 기록을 남긴다
   saveGame();
 }
@@ -28066,8 +28240,11 @@ function armyIntake(gc, n){
     if(id==="gimcheon" || t.players.length<=22) continue;
     for(const p of t.players){
       const age=G.season-p.by;
-      /* 🎖️ 용병은 병역 대상이 아니다. 다만 홈그로운(이중 국적)은 국내 선수로 등록되므로 대상이다 (제보) */
-    if(age<20 || age>26 || p.loan || frnQ(p) || p.armyDone || p.armyCall) continue;
+      /* 🎖️ ⚠ 제보 원문 — 「홈그로운 외국인 선수가 김천상무로 입대하는데 수정 부탁드리겠습니다」.
+         홈그로운(hg)은 「외국인 쿼터를 차지하지 않는다」는 등록상의 취급일 뿐 국적은 외국이다.
+         병역은 국적의 문제라 frnQ(쿼터 기준)로 거르면 홈그로운 용병이 그대로 뽑혔다.
+         ─ 입대 자격은 p.frn(국적) 으로 판정한다. */
+      if(age<20 || age>26 || p.loan || p.frn || p.armyDone || p.armyCall) continue;
       cands.push({p, t, sc: p.ovr - (p.apps||0)*0.35 - (t.isUser?6:0)});   // 안 뛰는 선수부터
     }
   }
@@ -30299,7 +30476,7 @@ function fmTopBar(t, xi, formName){
         ${[0,1,2,3,4].map(i=>`<option value="${i}" ${ment===i?"selected":""}>${["매우 수비적","수비적","균형","공격적","매우 공격적"][i]}</option>`).join("")}
       </select>
       <button class="fmDetailBtn ${tacDetailOpen?"on":""}" onclick="toggleTacDetail()">⚙️ 세부 전술 ${tacDetailOpen?"▲":"▼"}</button>
-      ${(typeof inLiveTactics!=="undefined" && inLiveTactics)
+      ${(typeof inLiveTactics!=="undefined" && inLiveTactics && !(typeof liveM!=="undefined" && liveM && liveM.opts && liveM.opts.pvp))
         ? `<button class="fmDetailBtn ${liveAdvOpen?"on":""}" onclick="toggleLiveAdvice()">📋 수석코치의 조언 ${liveAdvOpen?"▲":"▼"}</button>` : ""}
     </div>
     <div class="fmBarR">
@@ -30801,7 +30978,16 @@ function tactics(){
   // 선발 요약 — 외국인 쿼터·전력·사기는 라인업을 짜면서 계속 보게 되는 값이라 전술판 위쪽에 둔다
   const _frnFree=frnFreeNow();
   const xiInfo=`<div class="msg info" style="margin:8px 0">외국인 선발 ${xi.filter(frnQ).length}${_frnFree?"":"/"+frnLimOf(t)}${xi.some(p=>p.hg)?` <span class="small" style="color:#3fb950">+홈그로운 ${xi.filter(p=>p.hg).length}</span>`:""} <span class="small">${_frnFree?`🌏 <b style="color:#58a6ff">${frnFreeComp()} 경기 — 외국인 출전 제한 없음</b>`:"(K리그1 5명·K리그2 4명 동시 출전, 등록 무제한)"}</span> · 선발 전력 ${teamStars(Math.round(xi.reduce((s,p)=>s+p.ovr,0)/11*10)/10, "선발 11인")} · 선발 사기 ${mor(xi.reduce((s,p)=>s+p.morale,0)/11)}</div>`;
-  return `<div class="tacTopBar">
+  /* ⚔️ ⚠ 제보 원문 — 「매치 로비에서 스쿼드 전술 수정하면, 되돌아가기 버튼이 없어서 다시 메뉴를
+     클릭해야하거든? 되돌아가기 버튼을 추가하자」. 대전 로비에서 넘어온 길에는 돌아갈 문을 낸다. */
+  const _pvpBack=(function(){ try{
+    return (typeof PVP!=="undefined" && PVP && PVP.stage==="lobby")
+      ? `<div class="msg info" style="margin:0 0 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="mini sel" style="padding:8px 16px" onclick="show('pvp')">↩️ 대전 로비로 돌아가기</button>
+          <span class="small">여기서 고친 선발·전술은 돌아가는 순간 상대에게 자동으로 전송됩니다.</span>
+        </div>` : "";
+  }catch(e){ return ""; } })();
+  return `${_pvpBack}<div class="tacTopBar">
     <h2 style="margin:0">📋 전술 — <span style="color:var(--gold)">${liveFormName}</span> <span class="small">(${styleName(t)})</span></h2>
     ${tacSaveBar(t)}
   </div>
@@ -31426,7 +31612,8 @@ function resumeStashedHL(){
 }
 function openLiveTactics(){
   if(!liveM || liveM.done) return;
-  if(!(liveM.home.isUser || liveM.away.isUser)) return;
+  /* ⚔️ 제보 — 온라인 대전은 양 팀 모두 클론이라 isUser 가 없다. 대전이면 통과시킨다 */
+  if(!(liveM.home.isUser || liveM.away.isUser || (liveM.opts && liveM.opts.pvp))) return;
   pauseLive();
   if(tacApplyTimer){ clearTimeout(tacApplyTimer); tacApplyTimer=null; }   // 이전 "반영 중" 대기 정리
   // 전술 화면으로 넘어가면 #pitch2d 캔버스가 사라지므로, 그 시점에 아직 재생 중이던 장면/예약 타이머는
@@ -31576,8 +31763,10 @@ let liveAdvOpen=false;
 function toggleLiveAdvice(){ liveAdvOpen=!liveAdvOpen; renderLiveTactics(); }
 function renderLiveTactics(){
   const M=liveM; if(!M){ inLiveTactics=false; return; }
+  /* ⚔️ 제보 — 「온라인 경기중에 수석코치의 조언이 있던데 이거 안보이게」 */
+  try{ if(M.opts && M.opts.pvp) liveAdvOpen=false; }catch(e){}
   const t=userTeam();
-  const sd = M.home.isUser?M.h:M.a; const key=M.home.isUser?"h":"a";
+  const _k=liveMyKey(M); const sd=M[_k]; const key=_k;
   const gap=findLiveGap(sd);
   const pitch=onPitch(sd);
   const pitchAndGap = gap ? [...pitch, gap] : pitch;
@@ -31651,7 +31840,7 @@ function renderLiveTactics(){
 }
 function confirmLiveSwap(a,b){
   const M=liveM; if(!M){ return; }
-  const sd=M.home.isUser?M.h:M.a; const key=M.home.isUser?"h":"a";
+  const _k=liveMyKey(M); const sd=M[_k]; const key=_k;
   const gap=findLiveGap(sd);
   const findOut=(id)=> onPitch(sd).find(x=>x.p.id===id) || (gap && gap.p.id===id ? gap : undefined);
   const aOut=findOut(a), bOut=findOut(b);
@@ -31672,6 +31861,10 @@ function confirmLiveSwap(a,b){
     if(cnt>lim){ gameAlert(`외국인 동시 출전 한도 초과 (${divName(userTeam().div)}: 최대 ${lim}명 · 홈그로운 제외)`); renderLiveTactics(); return; }
   }
   const isGapFill = outEntry===gap;
+  /* ⚔️ 게스트는 그림자 경기에서 교체한다 — 호스트로 옮기려면 「누가 나가고 누가 들어왔는지」를
+     순서까지 기억해야 한다(들어온 선수가 나간 선수의 자리를 물려받으므로). */
+  const _pvpPair = (typeof PVP!=="undefined" && PVP && PVP.role==="guest" && PVP.tacBase && liveM && liveM.opts && liveM.opts.pvp)
+    ? {out:outEntry.p.no, in:inP.no} : null;
   showConfirm(`<b>${isGapFill?'🚑 부상 공백 채우기':'🔁 선수 교체'}</b>\n\n${outEntry.p.name} (${outEntry.p.pos}) OUT${isGapFill?' (이미 부상으로 이탈)':''}\n${inP.name} (${inP.pos}) IN\n\n교체하시겠습니까? (${sd.subs}/${subMax(liveM)} → ${sd.subs+1}/${subMax(liveM)})`, ()=>{
     /* ⚠ 제보 — 「잘못 올린 선수를 되돌릴 방법이 없다」.
        경기를 재개하기 전이라면 아직 아무 일도 일어나지 않은 것이나 마찬가지다.
@@ -31683,6 +31876,7 @@ function confirmLiveSwap(a,b){
         eventsLen:M.events.length, queueLen:(M.subQueue||[]).length });
     }catch(e){}
     subIn(M, sd, key, outEntry, inP);
+    if(_pvpPair){ try{ (PVP.tacBase.pairs=PVP.tacBase.pairs||[]).push(_pvpPair); }catch(e){} }
     if(isGapFill){ liveGapId=null; outEntry.injGap=false; } // 공백을 채웠으니 더 이상 후보가 아니다
     selSwap=null; renderLiveTactics();
   }, {okLabel:"교체", onCancel:()=>{ selSwap=null; renderLiveTactics(); }});
@@ -31706,6 +31900,9 @@ function saveLiveTactics(){
      경기 시계를 2초씩 멈춰서, 슬라이더 몇 칸 만지면 경기가 6~8초씩 끊겼다.
      ─ 중계가 멈추고 읽는 것은 교체뿐이다. 무엇을 바꿨는지는 전술판이 이미 보여 준다. */
   inLiveTactics=false; liveTacBackup=null; selSwap=null; liveActiveReason=null; liveGapId=null;
+  LIVE_SUB_UNDO=[];
+  /* ⚔️ 제보 — 온라인 대전도 리그와 같은 화면을 쓴다. 마무리만 대전 규칙을 따른다 */
+  if(liveM && liveM.opts && liveM.opts.pvp){ pvpTacClose(true); return; }
   // 바뀐 포메이션·역할·교체를 굴러가고 있는 시뮬에 즉시 반영한다.
   // 이게 없으면 전술판에서 무엇을 바꾸든 그라운드에서는 아무 일도 일어나지 않는다.
   if(liveSim) liveSim.resyncSquads();
@@ -31750,6 +31947,7 @@ function cancelLiveTactics(){
   }
   inLiveTactics=false; liveTacBackup=null; selSwap=null; liveActiveReason=null; liveGapId=null;
   LIVE_SUB_UNDO=[];
+  if(liveM && liveM.opts && liveM.opts.pvp){ pvpTacClose(false); return; }
   // 취소도 "되돌린 상태"로 다시 맞춰야 한다 — 편집 도중 교체를 눌렀다 취소했을 수 있다
   if(liveSim) liveSim.resyncSquads();
   saveGame();
@@ -33319,12 +33517,20 @@ function snegoCard(){
       <select onchange="sellSetWant(this.value)" style="margin-top:4px;max-width:340px">
         <option value="">— 현금만 받는다 —</option>
         ${[...buyer.players].filter(x=>!x.loan&&!x.army&&!x.emg).sort((a,b)=>b.ovr-a.ovr)
-          .map(x=>`<option value="${x.id}" ${N.wantPid===x.id?"selected":""}>${x.name} (${x.pos} ${dispOvr(x)}, 가치 ${marketValue(x)}억)</option>`).join("")}
+          .map(x=>`<option value="${x.id}" ${N.wantPid===x.id?"selected":""}>${x.name} (${x.pos} ${dispOvr(x)}, 가치 ${marketValue(x)}억)${x.id===N.swapPid?" ★ 상대가 먼저 제안한 선수":""}</option>`).join("")}
       </select>
-      ${wantP?`<div class="small" style="margin-top:5px;color:var(--gold)">✅ <b>${wantP.name}</b> 요구 중 — 시장가치 <b>${marketValue(wantP)}억</b>이 요구 총액에 합산됩니다.
-        (현금 ${wantP?"0억도 가능":""} · 총 요구 = 입력한 현금 + ${marketValue(wantP)}억)</div>`:""}
+      ${wantP?(function(){
+        /* ⚠ 제보 — 상대가 먼저 얹은 선수를 그대로 요구하면 「추가 요구」가 아니다 */
+        const sv=(N.swapV!=null?N.swapV:(swapP?marketValue(swapP):0));
+        const add=Math.max(0, Math.round((marketValue(wantP)-sv)*10)/10);
+        return wantP.id===N.swapPid
+          ? `<div class="small" style="margin-top:5px;color:var(--green)">✅ <b>${wantP.name}</b>은 상대가 <b>먼저 제안한 선수</b>입니다 — 추가 요구로 치지 않습니다.
+              (총 요구 = 입력한 현금만)</div>`
+          : `<div class="small" style="margin-top:5px;color:var(--gold)">✅ <b>${wantP.name}</b> 요구 중 — 시장가치 <b>${marketValue(wantP)}억</b>${sv>0?`, 상대가 먼저 얹은 <b>${swapP?swapP.name:"선수"}</b>(${sv}억)를 대신 받는 것이므로 차액 <b>${add}억</b>만`:""} 요구 총액에 합산됩니다.
+              (현금 0억도 가능 · 총 요구 = 입력한 현금 + ${add}억)</div>`;
+      })():""}
     </div>
-    <div class="small" style="margin-top:6px">요구 <b>총액</b>(현금 + 요구 선수 가치)이 상대 한도 안이면 성사됩니다. 상대의 핵심 자원은 어떤 조건에도 내주지 않습니다. 너무 높게 부르면 3회 만에 떠납니다.</div>
+    <div class="small" style="margin-top:6px">요구 <b>총액</b>(현금 + 추가로 요구한 선수 가치)이 상대 한도 안이면 성사됩니다. 상대의 핵심 자원은 어떤 조건에도 내주지 않지만, <b>상대가 먼저 제안한 선수(★)는 예외</b>입니다. 너무 높게 부르면 3회 만에 떠납니다.</div>
   </div>`;
 }
 function negoCard(){
@@ -34443,8 +34649,8 @@ function armyGate(what){
 /* 입대 지원 자격 — 20~26세 국내 선수, 병역 미필, 원소속 스쿼드에 여유가 있어야 한다 */
 function armyEligible(p, t){
   const age=G.season-p.by;
-  /* 🎖️ 용병은 제외 — 홈그로운(이중 국적·외국 국적 불행사)은 국내 선수라 대상이다 (제보) */
-  return !(age<20 || age>26 || p.loan || frnQ(p) || p.armyDone || p.army || p.armyCall) && (t.players||[]).length>22;
+  /* 🎖️ ⚠ 제보 — 홈그로운도 국적은 외국이다. 병역 대상이 아니므로 p.frn 으로 거른다 */
+  return !(age<20 || age>26 || p.loan || p.frn || p.armyDone || p.army || p.armyCall) && (t.players||[]).length>22;
 }
 function armyCandList(){
   const out=[];
@@ -34496,6 +34702,16 @@ function armySetCall(p, from, gc){
   return p;
 }
 /* ⏰ 입소일 — 예고했던 날이 되면 실제로 부대로 간다 */
+/* ⚠ 제보 — 홈그로운 외국인에게 이미 나가 있던 입영 통지도 무효로 돌린다 (옛 세이브 정리) */
+function armyCallPurge(){
+  try{
+    let n=0;
+    for(const id in G.teams) for(const p of (G.teams[id].players||[])){
+      if(p && p.armyCall && p.frn){ delete p.armyCall; n++; }
+    }
+    if(n) addNews(`🎖️ 병역 대상이 아닌 외국 국적 선수 ${n}명의 입영 통지가 취소됐습니다`, "warn", "club");
+  }catch(e){}
+}
 function tickArmyCall(){
   const gc=G.teams&&G.teams.gimcheon; if(!gc) return;
   const today=G.day||0;
@@ -48781,6 +48997,40 @@ class MatchSim{
     this.agents=this.agents.filter(a=>!pred(a));
     return gone;
   }
+  /* ═══ 🅿️ 「투명 선수가 페널티킥을 찬다」 ═══════════════════════════════
+     ⚠ 제보 원문 — 「교체 카드를 다 써서 부상 선수가 퇴장 당했는데 선수 교체 없이 그 부상 선수를
+        빼고 진행을 할 때 페널티킥이 났는데 투명 선수가 차는 버그가 있습니다. 아마 그 부상 선수가
+        피치 위에 없어서 이런 버그가 생긴 것 같습니다 (마침 그 부상 선수가 스트라이커라서
+        페널티킥 키커 목록에 있었습니다)」
+     원인 — 그라운드를 떠난 선수(부상 이탈·퇴장·교체 아웃)는 agents 에서 빠지지만, 어떤 경로로든
+        agents 에 유령이 남으면(하이라이트 되감기용 유령 복원이 그리기 도중 예외로 걷히지 못한
+        경우 등) 「전담 키커 목록 → 그라운드 위 선수」 검사를 그대로 통과한다. 그 선수는 실제
+        엔트리상으로는 이미 나간 사람이라 화면에 그려지지 않아 「투명 선수가 차는」 장면이 된다.
+     ─ agents 목록만 믿지 않고 「엔트리가 정말 그라운드 위인가(off===null·레드카드 아님)」를
+        마지막에 한 번 더 확인한다. 아래 onField() 가 그 창구다. */
+  onField(a){
+    try{
+      if(!a || this.agents.indexOf(a)<0) return false;
+      const x=this.entryOf(a);
+      return !!(x && x.off===null && !x.red);
+    }catch(e){ return false; }
+  }
+  /* 🧹 유령 청소 — 엔트리상 나간 선수가 agents 에 남아 있으면 그 자리에서 걷어낸다.
+     syncGuard 는 인원 수만 비교하므로 「한 명 유령 + 한 명 누락」이 겹치면 못 잡는다. */
+  reapGhosts(){
+    try{
+      if(!this.M) return;
+      const stale=this.agents.filter(a=>{ const x=this.entryOf(a); return !x || x.off!==null || x.red; });
+      if(!stale.length) return;
+      const ids=new Set(stale.map(a=>a.id));
+      this.retireAgents(a=>ids.has(a.id), "ghost");
+      const b=this.ball;
+      if(b){
+        if(b.ownerId!=null && ids.has(b.ownerId)) b.ownerId=null;
+        if(b.toId!=null && ids.has(b.toId)) b.toId=null;
+      }
+    }catch(e){}
+  }
   /* 이름·기록 조회용 — 그라운드를 떠난 선수까지 찾는다 (경기 판단에는 쓰지 않는다) */
   byIdAny(id){
     const a=this.agents.find(x=>x.id===id);
@@ -51784,7 +52034,9 @@ class MatchSim{
       if(!K || !Array.isArray(K[kind])) return null;
       for(const pid of K[kind]){
         if(!pid) continue;
-        const a=this.side(side).find(x=>x.id===pid && x.slot!=="GK");
+        /* ⚠ 제보(투명 키커) — agents 에 남은 유령이 여기를 통과하면 화면에 없는 선수가 찬다.
+           엔트리가 정말 그라운드 위인지(onField) 마지막으로 확인한다. */
+        const a=this.side(side).find(x=>x.id===pid && x.slot!=="GK" && this.onField(x));
         if(a) return a;
       }
     }catch(e){}
@@ -52658,11 +52910,14 @@ class MatchSim{
   advanceSetPiece(){
     const b=this.ball, sp=b.setPiece;
     let kicker=this.byId(sp.kickerId);
+    /* ⚠ 제보(투명 키커) — byId 로 찾히더라도 엔트리상 이미 나간 선수면 화면에 그려지지 않는다.
+       그런 유령은 「없는 것」으로 보고 아래 재지정 로직을 태운다. */
+    if(kicker && !this.onField(kicker)) kicker=null;
     /* ⚠ 제보 — 세리머니 도중 키커가 교체·퇴장으로 빠지면 「아무도 없는데 공이 차이는」 장면이 됐다.
        세트피스를 통째로 취소하지 않고, 남아 있는 선수 중에서 키커를 다시 세운다. */
     if(!kicker){
       const side=(b.ownerId!=null && this.byIdAny(b.ownerId)) ? this.byIdAny(b.ownerId).side : this.possSide;
-      const mine=this.side(side).filter(a=>a.slot!=="GK");
+      const mine=this.side(side).filter(a=>a.slot!=="GK" && this.onField(a));
       if(mine.length){
         const kind = sp.kind==="penalty" ? "pk" : sp.kind==="corner" ? "ck" : "fk";
         let nk=null;
@@ -53040,7 +53295,13 @@ class MatchSim{
   /* 페널티킥 — 박스 안 반칙. 키커와 골키퍼만 남고 나머지는 전부 박스 밖으로 물러난다. */
   penaltyKick(side){
     const b=this.ball;
-    const mine=this.side(side), dir=mine[0].dir;
+    /* ⚠ 제보(투명 키커) — 키커 후보는 「지금 그라운드 위」인 선수뿐이다.
+       유령이 하나도 없으면 아래 필터는 원래 목록 그대로다(정상 경기에 영향 없음). */
+    this.reapGhosts();
+    let mine=this.side(side).filter(a=>this.onField(a));
+    if(!mine.length) mine=this.side(side);
+    if(!mine.length) return;                       // 그라운드에 아무도 없다 — 킥 자체가 성립하지 않는다
+    const dir=mine[0].dir;
     const out={x:b.x, y:b.y};
     const spot={x: dir>0 ? PEN_SPOT_ADV : 1-PEN_SPOT_ADV, y:0.5};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false; b.isCross=false;
@@ -54029,6 +54290,7 @@ class MatchSim{
         튀는 공, 골 세리머니 — 이 전부 녹화에서 빠진다. 그래서 바깥에서 감싸 무조건 남긴다. */
   tick(){
     this.halfTimeCheck();
+    this.reapGhosts();                 // ⚠ 제보(투명 키커) — 나간 선수가 경기에 남지 않게 매 틱 확인
     this.injuryCheck(); this.processHurt(); this.tickCore(); this.recordFrame();
     this.drainStamina();
     this.subCheck();
@@ -56845,7 +57107,7 @@ function showPreMatchTactics(M, tag){
 function renderPreMatchTactics(){
   const M=pendingLiveM; if(!M){ inPreTactics=false; return; }
   const t=userTeam();
-  const fx=FLASH?`<div class="msg ${FLASH.cls}" style="border-width:2px;font-size:14px">${FLASH.txt}</div>`:""; FLASH=null;
+  const fx=flashHtml();
   const opp = M.home.isUser ? M.away : M.home;
   const home = M.home.isUser;
   $("#main").innerHTML=fx+`
@@ -57369,7 +57631,10 @@ function liveLayout(M, tag){
         <span class="t" style="background:${M.away.col};color:${inkOn(M.away.col)}">${M.away.short||M.away.name}</span>
         <span id="lvMin">0'</span><span id="lvRed"></span>
         <span id="lvCtrl" style="display:flex;gap:5px;align-items:center"></span>
-        ${(M.home.isUser||M.away.isUser)?`<button class="mini" onclick="openLiveTactics()">📋 전술</button>`:""}
+        ${(M.opts&&M.opts.pvp)
+          ? `<button class="mini sel" onclick="pvpTacOpen()" title="경기를 멈추고 교체·세부 전술을 수정합니다 — 경기당 ${PVP_TAC_USES}회">📋 전술${(typeof PVP!=="undefined"&&PVP&&PVP.tacMe!=null)?` (${PVP.tacMe})`:""}</button>
+             <button class="mini" onclick="pvpLeave()" title="경기 중 이탈은 0:3 몰수패입니다">🚪 기권</button>`
+          : (M.home.isUser||M.away.isUser)?`<button class="mini" onclick="openLiveTactics()">📋 전술</button>`:""}
         <span id="pitchMode" class="pitchMode" style="margin-left:auto">○ 경기 진행 중</span>
       </div>
       <div class="pitchWrap">
@@ -57392,7 +57657,7 @@ function liveLayout(M, tag){
       <div class="card hidden" id="lvOffCard" style="border-color:#e5484d">
         <h3 style="color:#e5484d">🟥 퇴장</h3><div id="lvOff"></div></div>
       <div class="card"><h3>📊 경기 통계</h3><div id="lvStats"></div></div>
-      <div class="card"><h3>📋 수석코치의 조언</h3><div id="lvPanel"></div></div>
+      <div class="card"><h3>${(M.opts&&M.opts.pvp)?"📋 전술 · 💬 채팅":"📋 수석코치의 조언"}</h3><div id="lvPanel"></div></div>
     </div>
   </div>`;
 }
@@ -57463,6 +57728,17 @@ function liveSentOffHtml(){
         <span style="opacity:.7">(퇴장 ${cnt.h+cnt.a}명${(gh.length+ga.length)?` · 부상 공백 ${gh.length+ga.length}명`:""})</span></div>`;
 }
 function syncSentOffPanel(){
+  /* ⚔️ 퇴장 명단 중계 — 화면 공개 시점 기준 목록을 게스트에도 (제보: 카드 동기화) */
+  try{
+    if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && PVP.role==="host" && liveSim){
+      let cut=liveSim.t;
+      if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) cut=liveHL.frames[liveHL.i].t;
+      const list=(liveSim.sentOff||[]).filter(x=>x.t<=cut+1e-6).slice(0,8).map(x=>({
+        s:x.side, m:(x.min!=null?x.min:Math.round((x.t||0)/60)), n:String(x.name||"").slice(0,12), p:String(x.slot||x.pos||"").slice(0,4)}));
+      const j=JSON.stringify(list);
+      if(PVP._offJ!==j){ PVP._offJ=j; if(list.length) pvpSend({t:"offl", list}); }
+    }
+  }catch(e){}
   const box=document.getElementById("lvOff"), card=document.getElementById("lvOffCard");
   if(!box||!card) return;
   const h=liveSentOffHtml();
@@ -57471,10 +57747,13 @@ function syncSentOffPanel(){
   if(box.innerHTML!==h) box.innerHTML=h;
 }
 function toggleSpdPanel(){
+  if(liveM && liveM.opts && liveM.opts.pvp) return;   // ⚔️ 제보 — 온라인 대전은 배속 고정
   const p=document.getElementById("lvSpdPanel");
   if(p) p.classList.toggle("hidden");
 }
-function replayMulUI(){ return clamp((G.opt&&G.opt.replay)||1, 0.5, 2); }
+function replayMulUI(){
+  try{ if(liveM && liveM.opts && liveM.opts.pvp) return 2; }catch(e){}   // ⚔️ 제보 — 다시보기 2배 고정
+  return clamp((G.opt&&G.opt.replay)||1, 0.5, 2); }
 function setReplayMul(v){
   if(!G.opt) G.opt={};
   G.opt.replay=clamp(Math.round(+v*10)/10, 0.5, 2);
@@ -57486,7 +57765,18 @@ function liveTick(){
   if(!liveM||livePaused) return;
   // HIGHLIGHT_MODE(2D 연출 중)에는 경기 시계를 멈춘다 — 장면이 다 끝나고 TEXT_MODE로 돌아와야 다음 분으로
   // 넘어간다. 그래야 "전반 종료·후반전 시작"같은 경기 상태가 화면에 나오는 장면보다 앞서가지 않는다.
-  if(matchMode===MATCH_MODE.HIGHLIGHT || revealQueue.length || revealTimer || current2DScene) return;
+  if(matchMode===MATCH_MODE.HIGHLIGHT || revealQueue.length || revealTimer || current2DScene){
+    /* ⚠ PvP — 호스트 탭이 백그라운드면 rAF 가 죽어 하이라이트가 영영 안 끝난다.
+       상대가 실시간으로 기다린다 — 여기서 장면을 밀어 준다 (stepLiveSim 안전망과 동일 수법). */
+    if(liveM.opts && liveM.opts.pvp && document.hidden && typeof liveHL!=="undefined" && liveHL){
+      try{
+        const t=nowMs();
+        if(liveHL.lastAdv && t-liveHL.lastAdv>400) advanceHighlight((t-liveHL.lastAdv)/1000);
+        else if(!liveHL.lastAdv) liveHL.lastAdv=t;
+      }catch(e){}
+    }
+    return;
+  }
   // 이전 틱에서 하프타임이 우선 처리되어 미뤄진 부상/퇴장 알림이 있으면, 다음 분으로 넘어가기 전에 먼저 처리
   // (재생 중인 장면이 있으면 그게 끝난 뒤에 — 퇴장 장면보다 전술창이 먼저 뜨지 않게)
   if(liveM.needsSubPause && !liveHL){ liveM.needsSubPause=false;
@@ -57549,7 +57839,10 @@ function stepLiveSim(){
   //   ⚠ "몇 분치"로 끊으면 안 된다. 1분 = 300틱이고 틱마다 22명을 굴리므로,
   //      3분치를 한 번에 돌리면 메인 스레드가 수백 ms 멈춰 화면이 뚝뚝 끊긴다.
   //      대신 "이번 호출에 쓸 시간"을 정해 두고 그만큼만 굴린다 — 기기가 느려도 화면은 부드럽다.
-  const t0=nowMs(), budget=Math.min(22, 6*liveMul());
+  /* ⚠ PvP — 백그라운드 탭은 타이머가 초당 1회로 묶인다(크롬 스로틀). 호출 횟수가 30분의 1로
+     줄어든 만큼 호출당 예산을 키워, 호스트가 탭을 벗어나도 상대의 경기가 실시간으로 흐르게 한다. */
+  const _pvpBg = !!(liveM && liveM.opts && liveM.opts.pvp && document.hidden);
+  const t0=nowMs(), budget=_pvpBg ? 180 : Math.min(22, 6*liveMul());
   let guard=0;
   /* ⚠ 제보 — 전반 45분에 PK를 얻으면 휘슬이 울리고 후반에 차는 버그.
      실제 규정처럼, 진행 중인 반칙 장면·PK·날아가는 슛·세리머니가 있으면 그게 끝날 때까지
@@ -57916,6 +58209,9 @@ function liveFinishUI(){
 /* 해설 자막 — 피치 아래 캡션 바에 쓴다.
    예전에는 피치 위에 반투명 바를 얹었는데(commBar.inPitch), 골문 앞 상황이 그 바에 가렸다. */
 function showComm(c){
+  /* ⚠ 제보(풀 동기화) — 호스트의 해설 자막을 게스트에 그대로 중계한다 */
+  try{ if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && PVP.role==="host")
+    pvpSend({t:"cap", x:String((c&&c.txt)||"").slice(0,220), s:(c&&c.side)||""}); }catch(e){}
   const bar=document.getElementById("pitchCaption");
   if(!bar||!liveM) return;
   bar.textContent=c.txt;
@@ -57930,6 +58226,9 @@ function setCssVar(el, k, v){
   if(el.style.setProperty) el.style.setProperty(k, v); else el.style[k]=v;
 }
 function resetComm(txt){
+  /* ⚠ 제보(풀 동기화) — 장면 전환 문구도 게스트와 같이 본다 */
+  try{ if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && PVP.role==="host" && txt!=="")
+    pvpSend({t:"cap", x:String(txt||"다음 장면을 기다리는 중...").slice(0,220), s:""}); }catch(e){}
   const bar=document.getElementById("pitchCaption");
   if(!bar) return;
   if(txt!=="") bar.textContent=txt||"다음 장면을 기다리는 중...";
@@ -57957,6 +58256,8 @@ function setLiveSpeed(ms){ liveSpeed=ms; livePaused=false; if(liveTimer) clearIn
 /* 표시 1× = 실제 2× (2배속이 기본이자 표준 시청 속도). 슬라이더는 표시값 1~5를 다루고,
    엔진·재생은 liveMul()=표시×2 를 쓴다. 구버전 저장(실제값 1~4 저장)은 1회 1×로 리셋. */
 function liveMulUI(){
+  /* ⚔️ 제보 — 온라인 대전은 2.5배속 고정 (양쪽이 같은 속도의 중계를 본다) */
+  try{ if(liveM && liveM.opts && liveM.opts.pvp) return 2.5; }catch(e){}
   if(G.opt && !G.opt._spd2){ G.opt._spd2=1; G.opt.speed=1; }
   return clamp((G.opt&&G.opt.speed)||1, 1, 5);
 }
@@ -57977,6 +58278,8 @@ function pauseLive(){
   if(liveM && liveM.opts && liveM.opts.pvp){ try{ flash("⚔️ 온라인 대전 중에는 경기를 멈출 수 없습니다.","warn"); }catch(e){} return; }
   livePaused=true; updLiveCtrl(); }
 function resumeLive(){
+  /* ⏸ 자리 비움·전술 수정 일시정지 중에는 수동 재개 불가 — 각 시스템이 푼다 (제보) */
+  if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && (PVP.awayMe||PVP.awayOpp||PVP.tacEdit)) return;
   /* 멈춰 있던 시간만큼 한꺼번에 건너뛰지 않도록 재생 기준 시각을 지금으로 다시 잡는다 */
   try{ if(liveHL) liveHL.lastAdv=nowMs(); lastHLTick=null; }catch(e){}
   livePaused=false; updLiveCtrl();
@@ -58002,9 +58305,24 @@ function skipLive(){
   if(liveTimer){clearInterval(liveTimer); liveTimer=null;} syncLive(false, true); updLiveCtrl("ft"); // 스킵은 결과를 즉시 몰아서 보여준다(줄별 텀 없음)
 }
 function updLiveCtrl(state){
+  /* ⚔️ 제보 — 게스트의 「결과 확인」도 이 순간에 함께 떠야 한다 (버튼 유무와 무관하게 먼저 알린다) */
+  if(state==="ft"){ try{ pvpAnnounceEnd(); }catch(e){} }
   const el=document.getElementById("lvCtrl"); if(!el) return;
   if(state==="ft"){ el.innerHTML=`<button class="mini sel" onclick="finishLiveSafe()">📋 결과 확인 ▶</button>`; return; }
-  if(state==="ht"){ el.innerHTML=`<button class="mini sel" onclick="resumeLive()">후반전 시작 ▶</button>`; return; }
+  if(state==="ht"){
+    /* ⚔️ 온라인 대전 — 양쪽 준비 시스템 (제보) */
+    if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP){
+      el.innerHTML = PVP.htMe
+        ? `<span class="small" style="color:var(--gold);font-weight:700">⏳ 상대 감독 준비 대기…</span>`
+        : `<button class="mini sel" onclick="pvpHtReady()">✅ 후반전 준비 완료</button>`;
+      return;
+    }
+    el.innerHTML=`<button class="mini sel" onclick="resumeLive()">후반전 시작 ▶</button>`; return; }
+  /* ⚔️ 제보 — 온라인 대전: 일시정지·둘러보기·배속 전부 잠긴 기능이라 버튼 자체를 걷어낸다 */
+  if(liveM && liveM.opts && liveM.opts.pvp){
+    el.innerHTML=`<span class="small" style="opacity:.6" title="온라인 대전은 배속이 고정됩니다 (다시보기 2.0×)">2.5× 고정</span>`;
+    return;
+  }
   el.innerHTML=`
     <button class="mini ${livePaused?'sel':''}" onclick="${livePaused?'resumeLive()':'pauseLive()'}" title="${livePaused?'재개':'일시정지'}">${livePaused?"▶":"⏸"}</button>
     <button class="mini" onclick="peekLive()" title="경기를 세워 두고 순위표·기록 같은 다른 탭을 봅니다 (보기 전용)">🔍 둘러보기</button>
@@ -58048,7 +58366,12 @@ function announceSub(sx){
   const react = !sx.isUser && prev && prev.user && (sx.min-prev.min)<=8;
   if(liveM) hist.push({user:!!sx.isUser, min:sx.min||0});
   let pool;
+  /* ⚔️ 제보 — 「실시간 대전에서 해설자가 교체를 언급하지 않는다」.
+     온라인 대전에서는 상대 벤치가 AI 가 아니라 사람이다 — 「몸 상태가 안 좋아 보였다」처럼
+     AI 감독을 짐작하는 문장은 걸러 내고, 우리/상대 두 갈래만 쓴다. */
+  const _pvp=!!(liveM && liveM.opts && liveM.opts.pvp);
   if(more) pool=COMM.subMore;
+  else if(_pvp) pool = sx.isUser ? COMM.subOur : (react ? COMM.subOppReact : COMM.subOpp);
   else if(sx.min<=30 && !sx.isUser) pool=COMM.subEarly;
   else if(sx.min>=78) pool=COMM.subLate;
   else if(sx.isUser) pool=COMM.subOur;
@@ -58063,6 +58386,13 @@ function announceSub(sx){
   }
   const el=document.getElementById("lvCtrl");
   if(el && !el.querySelector(".tacApply")) el.dataset.subFlash="1";
+  /* ⚔️ 제보 — 교체 해설은 announceSub 가 자막 바에 직접 쓰기 때문에 showComm 중계망을 타지 않아
+     게스트 화면에서는 한 줄도 나오지 않았다. 같은 문장을 그대로 보낸다.
+     (이 사이 호스트 엔진은 SUB_PAUSE_MS 동안 멈춰 있어 다음 해설이 덮어쓰지 않는다) */
+  try{
+    if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && PVP.role==="host")
+      pvpSend({t:"cap", x:(`${sx.min}' `+txt).slice(0,220), s:sx.side||""});
+  }catch(e){}
 }
 function pumpReveal(instant){
   const cv=document.getElementById("pitch2d"); if(!cv) return;
@@ -58292,7 +58622,17 @@ function shownRedCount(M, key){
 function renderCoachAdvice(){
   const M=liveM; const el=document.getElementById("lvPanel"); if(!el||!M) return;
   /* ⚔️ 온라인 대전 — 조언 대신 실시간 전술 지시 패널 (게스트와 완전히 같은 조작권) */
-  if(M.opts && M.opts.pvp){ el.innerHTML=(typeof pvpHostPanel==="function")?pvpHostPanel():""; return; }
+  if(M.opts && M.opts.pvp){
+    /* ⚠ 제보(실시간 채팅) — 매번 다시 그리면 채팅 입력이 날아간다. 한 번만 그리고,
+       슬라이더·채팅 로그는 각자 자기 조각만 갱신한다. */
+    if(el.getAttribute && el.getAttribute("data-pvppanel")==="1") return;
+    el.innerHTML=(typeof pvpHostPanel==="function")?pvpHostPanel():"";
+    try{ el.setAttribute("data-pvppanel","1"); }catch(e){}
+    try{ chatBoxSync(); }catch(e){}      // 💬 제보 — 경기 중 채팅창도 크기 조절
+    try{ const _cl=document.getElementById("pvpChatLog"); if(_cl) _cl.scrollTop=_cl.scrollHeight||9e6; }catch(e){}
+    return;
+  }
+  try{ if(el.getAttribute && el.getAttribute("data-pvppanel")) el.removeAttribute("data-pvppanel"); }catch(e){}
   const user=userTeam();
   if(M.home.id!==user.id && M.away.id!==user.id){ el.innerHTML='<span class="small">내 팀 경기가 아닙니다.</span>'; return; }
   const isHome=M.home.isUser;
@@ -58564,6 +58904,13 @@ function finishLive(){
     completeRound(M);
   }
   }catch(e){ try{ console.warn("경기 결과 반영 실패:", e); }catch(_){} }
+  /* ⚔️ 제보 — 「경기 끝나면 라커룸 토크는 하지 마」. 온라인 친선전은 클론 경기라
+     SNS 반응·팬 간담회·라커룸 토크·기자회견이 전부 어울리지 않는다 — 결과 화면 직행. */
+  if(M.opts && M.opts.pvp){
+    try{ restoreTactic(); }catch(e){}
+    try{ show("pvp"); window.scrollTo(0,0); }catch(e){}
+    return;
+  }
   try{ socialOnResult(M); }catch(e){}  // 팬들은 휘슬이 울리는 순간 이미 떠들기 시작한다
   try{ restoreTactic(); }catch(e){}   // 경기 중 만진 전술은 여기서 원상 복구 (경기 결과 반영이 끝난 뒤)
   try{ pruneUserLineup(); }catch(e){} // 이 경기에서 다치거나 퇴장당한 선수를 선발·배치도에서 정리한다
@@ -59500,6 +59847,8 @@ function runDelegatedFriendly(M){
   window.scrollTo(0,0);
 }
 function startProgress(){
+  /* ⚔️ 제보 — 온라인 대전 진행 중에는 날짜를 진행할 수 없다 */
+  try{ if(typeof pvpBusy==="function" && pvpBusy()){ flash("⚔️ 온라인 대전 진행 중에는 진행할 수 없습니다.","warn"); return; } }catch(e){}
   /* 기자회견이 끝나 있으면 — 진행 버튼이 그 회견을 마무리한다 (progBusy가 IV를 포함하므로 먼저 본다)
      · 부임 회견 → 선수단 만나러 가기   · 경기 전 회견 → ⚽ 킥오프   · 그 밖 → 오피스로 */
   if(typeof IV!=="undefined" && IV && IV.idx>=IV.qs.length){
@@ -59684,15 +60033,119 @@ function pickDayPlan(i){
 /* 🔧 제작자 설정 — Firebase Realtime Database URL.
    예: "https://klm-pvp-default-rtdb.asia-southeast1.firebasedatabase.app"
    비워 두면 ⚔️ 온라인 대전 메뉴가 숨는다. 설정 방법은 「온라인대전_설정가이드.md」 참고. */
-const PVP_FB="";
-const PVP_VER=1;                 // 프로토콜 버전 — 다르면 매칭을 거절한다 (파일 버전 불일치 보호)
+const PVP_FB="https://kleagueonline-default-rtdb.asia-southeast1.firebasedatabase.app/";
+const PVP_VER=4;                 // 프로토콜 버전 — 다르면 매칭을 거절한다 (v4: 주심 좌표 탑재)
 const PVP_STUN=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-const PVP_SNAP_MS=50;            // 상태 스냅샷 전송 간격 (20Hz)
+const PVP_SNAP_MS=33;            // 상태 스냅샷 전송 간격 (30Hz — 제보: 프레임 동일화)
+const PVP_PLAYOUT=120;           // 게스트 재생 지연 기준(ms) — 적응형 재생 시계의 목표 리드 (제보: 뚝뚝 끊김)
 const PVP_QUEUE_TTL=90;          // 대기열 항목 유효 시간(초)
 const PVP_STAR_GAP=10;           // 빠른 대전 허용 전력차 (별점×10 기준 — 1.0성)
 let PVP=null;                    // 진행 중인 대전 상태
+/* ⏸ 탭 숨김 감지 — 경기 중이면 상대에게 알리고 양쪽 다 멈춘다 (제보: 백그라운드 일시정지) */
+try{ if(typeof document!=="undefined" && document.addEventListener)
+  document.addEventListener("visibilitychange", ()=>{ try{ if(typeof pvpVisChange==="function") pvpVisChange(!!document.hidden); }catch(e){} });
+}catch(e){}
 function pvpOn(){ return !!PVP_FB; }
-function pvpId(){ if(!G._pvpId) G._pvpId="p"+Math.random().toString(36).slice(2,10); return G._pvpId; }
+/* 🎫 닉네임 — 브라우저에 저장된다 (세이브와 무관, 매칭·스코어보드·상대 전적에 표시) */
+function pvpNick(){
+  let n="";
+  try{ n=localStorage.getItem("klm2026_pvpNick")||""; }catch(e){}
+  n=String(n).replace(/[<>&"'`]/g,"").trim().slice(0,8);
+  if(!n){ try{ n=String((G.me&&G.me.name)||"").replace(/[<>&"'`]/g,"").trim().slice(0,8); }catch(e){} }
+  return n||"감독";
+}
+/* ⚠ 제보 — 「닉네임도 중복되면 안되야해」. 저장할 때 서버 장부(nicks)를 확인하고 등록한다. */
+async function pvpSetNick(v){
+  const n=String(v||"").replace(/[<>&"'`]/g,"").trim().slice(0,8);
+  const oldKey=(typeof pvpNickKey==="function")?pvpNickKey():"";
+  if(!n){
+    try{ localStorage.removeItem("klm2026_pvpNick"); localStorage.removeItem("klm2026_pvpNickKey"); }catch(e){}
+    if(oldKey){ try{ fbDel("nicks/"+oldKey); }catch(e){} }
+    try{ flash("⚔️ 닉네임을 비웠습니다 — 감독 이름을 씁니다. (채팅은 닉네임이 있어야 합니다)","info"); }catch(e){}
+    try{ if(VIEW==="pvp") show("pvp"); }catch(e){}
+    return;
+  }
+  const key=pvpNickKeyOf(n);
+  if(!key){ try{ flash("쓸 수 없는 닉네임입니다 — 한글·영문·숫자를 넣어 주세요.","warn"); }catch(e){} return; }
+  /* 이름은 이 브라우저에 먼저 담는다(오프라인에서도 매칭 표시에 쓰인다).
+     장부 등록은 그다음이고, 등록되기 전까지는 채팅이 잠긴다. */
+  let prev=null; try{ prev=localStorage.getItem("klm2026_pvpNick"); }catch(e){}
+  const restore=()=>{ try{
+    if(prev) localStorage.setItem("klm2026_pvpNick", prev); else localStorage.removeItem("klm2026_pvpNick");
+    if(oldKey) localStorage.setItem("klm2026_pvpNickKey", oldKey); else localStorage.removeItem("klm2026_pvpNickKey");
+  }catch(e){} };
+  try{ localStorage.setItem("klm2026_pvpNick", n); localStorage.removeItem("klm2026_pvpNickKey"); }catch(e){}
+  /* 서버가 없거나 연결이 끊겨 있으면 장부를 볼 수 없다 — 연결되면 그때 확인한다 */
+  if(!pvpOn() || PVP_NET===false){
+    try{ flash("⚔️ 닉네임 저장 — "+n+" · 연결되면 중복 확인을 합니다","info"); }catch(e){}
+    try{ if(VIEW==="pvp") show("pvp"); }catch(e){}
+    return;
+  }
+  const cur=await fbGet("nicks/"+key);
+  const mine=pvpId();
+  if(cur && cur.id && cur.id!==mine && (Date.now()-(cur.t||0))<PVP_NICK_TTL){
+    restore();                                   // ⚠ 제보 — 중복이면 쓰던 이름 그대로 되돌린다
+    gameAlert("🎫 「"+n+"」은 이미 다른 감독이 쓰고 있는 닉네임입니다.\n\n다른 이름으로 지어 주세요.");
+    try{ if(VIEW==="pvp") show("pvp"); }catch(e){}
+    return;
+  }
+  const ok=await fbSet("nicks/"+key, {id:mine, n, t:Date.now()});
+  if(!ok){
+    /* 장부에 못 올렸다 — 이름은 이 브라우저에 남기되 채팅은 잠긴 상태로 둔다 */
+    try{ flash("닉네임을 장부에 올리지 못했습니다 — 연결을 확인해 주세요. (이 브라우저에는 저장됐습니다)","warn"); }catch(e){}
+    try{ pvpNetCheck(); }catch(e){}
+    try{ if(VIEW==="pvp") show("pvp"); }catch(e){}
+    return;
+  }
+  if(oldKey && oldKey!==key){ try{ fbDel("nicks/"+oldKey); }catch(e){} }
+  try{ localStorage.setItem("klm2026_pvpNickKey", key); }catch(e){}
+  try{ flash("⚔️ 닉네임 저장 — "+n,"info"); }catch(e){}
+  try{ pvpLiveBeat(); }catch(e){}
+  try{ if(VIEW==="pvp") show("pvp"); }catch(e){}
+}
+/* 원격 문자열 소독 — 상대 팩·이벤트는 남의 브라우저가 만든 데이터다. 표시 전에 씻는다. */
+function pvpClean(s, n){ return String(s==null?"":s).replace(/<[^>]*>/g,"").replace(/[<>&"'`]/g,"").slice(0, n||20); }
+/* ⚔️ 대전 진행 중인가 — 대기열·연결·로비·경기. done 은 끝난 상태라 풀린다. */
+function pvpBusy(){ return !!(PVP && ["queue","room","connecting","lobby","match"].indexOf(PVP.stage)>=0); }
+let PVP_NAVLOCK=false;
+/* ⚠ 제보 — 「온라인 매칭을 할 때는 다른 메뉴들은 비활성화」. 상태가 바뀔 때만 건드려서
+   부임 절차 잠금(applyNavLock) 등 다른 잠금 체계와 싸우지 않는다. */
+function pvpNavSync(){
+  try{
+    const on=pvpBusy();
+    if(on===PVP_NAVLOCK) return;
+    PVP_NAVLOCK=on;
+    document.querySelectorAll(".navbtn").forEach(b=>{
+      if(b.dataset && b.dataset.v==="pvp") return;   // ⚔️ 메뉴는 살려 둔다
+      b.classList.toggle("navLocked", on);
+      b.disabled=on;
+    });
+    const a=document.getElementById("advBtn");
+    if(a){
+      if(on){ if(!a._pvpLock){ a._pvpLock=1; a.disabled=true; a.classList.add("navLocked"); } }
+      else if(a._pvpLock){ a._pvpLock=0; a.disabled=false; a.classList.remove("navLocked"); }
+    }
+  }catch(e){}
+}
+/* 🎫 대전 신분증 — ⚠ 제보 원문 — 「온라인 대전메뉴에서 닉네임을 저장한뒤에 메뉴에서 나가기 누르고
+   새 팀 선택해서 다시 들어오면, 온라인 대전에 한 명 더 추가되서 닉네임이 중복해서 뜨거든?」
+   원인 — 이 id 를 세이브(G)에 담아 뒀다. 새 팀으로 시작하면 G 가 새로 만들어지니 id 도 새로
+      생기고, 서버에는 「같은 닉네임의 다른 사람」이 한 명 더 앉아 있는 꼴이 됐다.
+      닉네임과 마찬가지로 신분증은 세이브가 아니라 브라우저에 매여야 한다. */
+function pvpId(){
+  let id="";
+  try{ id=localStorage.getItem("klm2026_pvpId")||""; }catch(e){}
+  let old=""; try{ old=(typeof G!=="undefined" && G && G._pvpId)||""; }catch(e){}
+  if(!id){
+    id = old || ("p"+Math.random().toString(36).slice(2,10));   // 옛 세이브의 id 를 이어받는다
+    try{ localStorage.setItem("klm2026_pvpId", id); }catch(e){}
+  } else if(old && old!==id){
+    /* 세이브마다 따로 만들어져 서버에 남아 있는 옛 신분증 — 그 자리를 치운다 */
+    try{ if(typeof PVP_FB!=="undefined" && PVP_FB) fbDel("live/"+old); }catch(e){}
+  }
+  try{ if(typeof G!=="undefined" && G) G._pvpId=id; }catch(e){}
+  return id;
+}
 
 /* ── Firebase RTDB REST — SDK 없이 fetch/EventSource 로만 쓴다 ───────────── */
 function fbU(path){ return PVP_FB.replace(/\/+$/,"")+"/pvp/"+path+".json"; }
@@ -59726,10 +60179,13 @@ function pvpPack(){
   const t=userTeam(); if(!t) return null;
   let xi=[]; try{ xi=bestXI(t)||[]; }catch(e){ xi=[]; }
   let bench=[]; try{ bench=matchBench(t)||[]; }catch(e){ bench=[]; }
+  /* 🗺️ 선발 배치 자리 — 로비 포메이션 그림용 (제보) */
+  let _slots={}; try{ _slots=computeRenderSlots(t, xi)||{}; }catch(e){}
   const list=[...xi, ...bench.filter(p=>!xi.includes(p))].slice(0,20)
     .filter(p=>p && p.pos);
   const pl=list.map(p=>({
     n:String(p.name||"").slice(0,12), pos:p.pos, pref:p.prefPos||p.pos,
+    sl:(_slots[p.id]&&SLOT_XY[_slots[p.id]])?_slots[p.id]:null,
     by:p.by||2000, no:p.no||0, h:p.h||178, w:p.w||74, frn:p.frn?1:0,
     ovr:clamp(Math.round(p.ovr||60),40,92),
     attr:p.attr?Object.fromEntries(Object.entries(p.attr).filter(([k,v])=>typeof v==="number").map(([k,v])=>[k,clamp(Math.round(v),15,99)])):null,
@@ -59740,7 +60196,7 @@ function pvpPack(){
   const tac={}; try{ for(const k of ["formation","mentality","pass","tempo","press","line","width","counter","crossFq","longShot"]) tac[k]=t.tactic[k]; }catch(e){}
   let st=3; try{ st=Math.round(teamStarVal(t)*10)/10; }catch(e){}
   return {ver:PVP_VER, name:String(t.name||"").slice(0,16), short:String(t.short||"").slice(0,8),
-          col:t.col||"#2a6ee8", mgr:String((G.me&&G.me.name)||"감독").slice(0,10),
+          col:t.col||"#2a6ee8", mgr:pvpNick(),   // 🎫 제보 — 닉네임으로 매칭·표시
           stars:st, tac, pl};
 }
 /* 패키지 → 클론 팀 (모든 값을 소독한다 — 상대가 보낸 데이터다) */
@@ -59794,18 +60250,83 @@ function pvpPackCheck(pk){
 
 /* ── 상태 스냅샷 — 호스트 → 게스트, 바이너리 (초당 20회) ─────────────────── */
 function pvpEncodeSnap(sim, M){
-  const ags=sim.agents||[];
-  const buf=new ArrayBuffer(10+ags.length*7);
+  /* 기본 = 라이브 시뮬 상태 */
+  let list=(sim.agents||[]).map(a=>({side:a.side, no:(a.p&&a.p.no)||0, x:a.x, y:a.y, face:a.face||0}));
+  let b=sim.ball||{x:.5,y:.5,z:0};
+  let hg=M.hg||0, ag=M.ag||0;
+  /* ⚠ 제보(풀 동기화) — 「서로 매치엔진 화면이 다르게 나와」. 호스트가 하이라이트를 재생 중이면
+     라이브 좌표 대신 「지금 화면에 재생 중인 그 프레임」을 보낸다 — 게스트도 같은 장면을
+     같은 타이밍에 본다. 점수는 장면이 끝날 때까지 직전 값으로 잠근다 — 골 장면이 재생되기
+     전에 스코어가 먼저 바뀌면 스포일러다 (호스트 UI와 같은 규칙). */
+  try{
+    if(PVP && typeof liveHL!=="undefined" && liveHL && liveHL.frames && liveHL.frames[liveHL.i]){
+      if(!PVP._inHL){ PVP._inHL=1; PVP._hlHg=(PVP._lastHg!=null?PVP._lastHg:hg); PVP._hlAg=(PVP._lastAg!=null?PVP._lastAg:ag); }
+      const f=liveHL.frames[liveHL.i];
+      const map={};
+      for(const pr of [[M.h,"h"],[M.a,"a"]]){ const sd=pr[0]; for(const e of ((sd&&sd.list)||[])) if(e.p) map[e.p.id]={side:pr[1], no:e.p.no||0}; }
+      const fl=[];
+      for(const q of (f.a||[])){ const inf=map[q.id]; if(!inf) continue; fl.push({side:inf.side, no:inf.no, x:q.x, y:q.y, face:q.face||0}); }
+      if(fl.length){ list=fl; b={x:f.bx, y:f.by, z:f.bz||0}; }
+      hg=PVP._hlHg; ag=PVP._hlAg;
+      /* 🟨🟥 카드 연출 — 프레임에 새 카드가 새겨진 순간 게스트에 통지 (제보: 카드 동기화) */
+      try{
+        if(f.cd){
+          const ck=String(f.cd.id)+"|"+String(f.cd.min||"");
+          if(PVP._cdKey!==ck){
+            PVP._cdKey=ck;
+            const ci=map[f.cd.id]||null;
+            pvpSend({t:"cd", k:(f.cd.k==="R"?"R":"Y"), nm:String(f.cd.nm||"").slice(0,12),
+                     ps:String(f.cd.ps||"").slice(0,4), tm:String(f.cd.tm||"").slice(0,18),
+                     side:ci?ci.side:"", no:ci?ci.no:0});
+          }
+        }
+      }catch(e){}
+    } else if(PVP){ PVP._inHL=0; PVP._lastHg=hg; PVP._lastAg=ag; }
+  }catch(e){}
+  /* 볼 소유자 — 라이브면 sim.ball.ownerId, 하이라이트 재생 중이면 그 프레임의 oi */
+  let ownByte=255;
+  try{
+    let oid=null;
+    if(typeof liveHL!=="undefined" && liveHL && liveHL.frames && liveHL.frames[liveHL.i]) oid=liveHL.frames[liveHL.i].oi||null;
+    else oid=(sim.ball&&sim.ball.ownerId)||null;
+    if(oid){
+      let inf=null;
+      for(const pr of [[M.h,"h"],[M.a,"a"]]){ const sd=pr[0]; for(const e of ((sd&&sd.list)||[])) if(e.p&&e.p.id===oid){ inf={side:pr[1], no:e.p.no||0}; break; } if(inf) break; }
+      if(!inf){ const g=(sim.agents||[]).find(x=>x.id===oid||(x.p&&x.p.id===oid)); if(g) inf={side:g.side, no:(g.p&&g.p.no)||0}; }
+      if(inf) ownByte=(inf.side==="h"?128:0)|clamp(inf.no,0,99);
+    }
+  }catch(e){}
+  /* 상태 플래그 — 전후반·연장·하이라이트 (게스트 전광판·연출 동기화용) */
+  let flags=0;
+  try{
+    if(M.half===2) flags|=1;
+    if(typeof liveHL!=="undefined" && liveHL) flags|=2;
+    if(M.etOn) flags|=4;
+  }catch(e){}
+  const buf=new ArrayBuffer(18+list.length*7);
   const dv=new DataView(buf);
   dv.setUint16(0, Math.min(65535, Math.round(sim.clock||0)));
-  dv.setUint8(2, clamp(M.hg||0,0,255)); dv.setUint8(3, clamp(M.ag||0,0,255));
-  dv.setUint8(4, ags.length);
-  const b=sim.ball||{x:.5,y:.5,z:0};
+  dv.setUint8(2, clamp(hg,0,255)); dv.setUint8(3, clamp(ag,0,255));
+  dv.setUint8(4, list.length);
   dv.setUint16(5, Math.round(clamp(b.x,0,1)*65535)); dv.setUint16(7, Math.round(clamp(b.y,0,1)*65535));
   dv.setUint8(9, clamp(Math.round((b.z||0)*10),0,255));
-  let o=10;
-  for(const a of ags){
-    dv.setUint8(o, (a.side==="h"?128:0) | clamp((a.p&&a.p.no)||0,0,99)); o++;
+  dv.setUint8(10, ownByte);
+  dv.setUint8(11, flags);
+  dv.setUint16(12, Date.now()&65535);   // 송신 시각 (16비트 순환 — 게스트가 풀어서 잇는다)
+  /* 주심 — 라이브면 sim.ref, 하이라이트 재생 중이면 그 프레임의 rx/ry (제보: 화면 완전 동일화) */
+  let rfx=65535, rfy=65535;
+  try{
+    let rp=null;
+    if(typeof liveHL!=="undefined" && liveHL && liveHL.frames && liveHL.frames[liveHL.i]){
+      const f=liveHL.frames[liveHL.i];
+      if(f.rx!=null) rp={x:f.rx, y:f.ry};
+    } else if(sim.ref) rp={x:sim.ref.x, y:sim.ref.y};
+    if(rp){ rfx=Math.round(clamp(rp.x,0,1)*65534); rfy=Math.round(clamp(rp.y,0,1)*65534); }
+  }catch(e){}
+  dv.setUint16(14, rfx); dv.setUint16(16, rfy);
+  let o=18;
+  for(const a of list){
+    dv.setUint8(o, (a.side==="h"?128:0) | clamp(a.no,0,99)); o++;
     dv.setUint16(o, Math.round(clamp(a.x,0,1)*65535)); o+=2;
     dv.setUint16(o, Math.round(clamp(a.y,0,1)*65535)); o+=2;
     dv.setUint16(o, Math.round((((a.face||0)%(Math.PI*2))+Math.PI*2)%(Math.PI*2)/(Math.PI*2)*65535)); o+=2;
@@ -59815,10 +60336,16 @@ function pvpEncodeSnap(sim, M){
 function pvpDecodeSnap(buf){
   const dv=new DataView(buf);
   const n=dv.getUint8(4);
+  const ob=dv.getUint8(10), fl=dv.getUint8(11);
   const s={clock:dv.getUint16(0), hg:dv.getUint8(2), ag:dv.getUint8(3),
     ball:{x:dv.getUint16(5)/65535, y:dv.getUint16(7)/65535, z:dv.getUint8(9)/10},
+    own: ob===255?null:{side:(ob&128)?"h":"a", no:ob&127},
+    half2:!!(fl&1), hl:!!(fl&2), et:!!(fl&4),
+    sTag:dv.getUint16(12),
     ags:[]};
-  let o=10;
+  { const rx=dv.getUint16(14), ry=dv.getUint16(16);
+    s.ref=(rx===65535)?null:{x:rx/65534, y:ry/65534}; }
+  let o=18;
   for(let i=0;i<n;i++){
     const f=dv.getUint8(o);
     s.ags.push({side:(f&128)?"h":"a", no:f&127,
@@ -59835,26 +60362,311 @@ function pvpReset(keepLog){
   try{ if(PVP&&PVP.esQ) PVP.esQ.close(); }catch(e){}
   try{ if(PVP&&PVP.pc) PVP.pc.close(); }catch(e){}
   try{ if(PVP&&PVP.snapT) clearInterval(PVP.snapT); }catch(e){}
+  try{ if(PVP&&PVP.helloT) clearInterval(PVP.helloT); }catch(e){}
+  try{ if(PVP&&PVP.awayIv) clearInterval(PVP.awayIv); }catch(e){}
+  try{ const ov=document.getElementById("pvpAwayOv"); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }catch(e){}
+  try{ const ov2=document.getElementById("pvpHtOv"); if(ov2&&ov2.parentNode) ov2.parentNode.removeChild(ov2); }catch(e){}
+  try{ if(PVP&&PVP.tacIv) clearInterval(PVP.tacIv); }catch(e){}
+  try{ if(PVP&&PVP.tacBlIv) clearInterval(PVP.tacBlIv); }catch(e){}
+  try{ if(PVP&&PVP.tacTO) clearTimeout(PVP.tacTO); }catch(e){}
+  try{ if(PVP&&PVP.tacTO2) clearTimeout(PVP.tacTO2); }catch(e){}
+  for(const _id of ["pvpTacOv","pvpTacBl"]){ try{ const o=document.getElementById(_id); if(o&&o.parentNode) o.parentNode.removeChild(o); }catch(e){} }
   try{ if(PVP&&PVP.qEntry) fbDel("queue/"+PVP.qEntry); }catch(e){}
   try{ if(PVP&&PVP.room&&PVP.role==="host"&&PVP.stage!=="match") fbDel("rooms/"+PVP.room); }catch(e){}
   PVP=null;
+  try{ pvpNavSync(); }catch(e){}   // ⚔️ 메뉴 잠금 해제 (제보 — 매칭 중 메뉴 비활성화)
 }
 function pvpCode(){ const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let s=""; for(let i=0;i<6;i++) s+=A[Math.floor(Math.random()*A.length)]; return s; }
 function pvpSt(msg){ if(PVP) PVP.msg=msg; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
 
 /* 방 만들기 (친구 초대) — 나 = 호스트 */
-async function pvpMakeRoom(){
+async function pvpMakeRoom(pub){
   if(!pvpOn()||PVP) return;
+  if(!pvpNetGate()) return;          // 🌐 제보 — 연결이 끊겨 있으면 방을 열 수 없다
   const code=pvpCode();
   PVP={stage:"room", role:"host", room:code, myId:pvpId(), msg:"방을 만드는 중…"};
-  const ok=await fbSet("rooms/"+code, {h:{id:PVP.myId, n:(userTeam()||{}).short||"?", ver:PVP_VER}, st:"wait", t:Date.now()});
+  const t=userTeam()||{};
+  let st10=30; try{ st10=Math.round(teamStarVal(t)*10); }catch(e){}
+  const ok=await fbSet("rooms/"+code, {h:{id:PVP.myId, n:t.short||"?", nick:pvpNick(), tn:String(t.name||"").slice(0,16), sv:st10, ver:PVP_VER},
+                                       pub:pub?1:0, st:"wait", t:Date.now()});
   if(!ok){ pvpReset(); PVP=null; flash("⚔️ 서버에 연결하지 못했습니다.","warn"); show("pvp"); return; }
-  pvpSt("방 코드: "+code+" — 상대가 입장하면 자동으로 연결됩니다");
+  pvpSt("방 코드: "+code+(pub?" — 공개 방입니다. 목록에서 상대가 들어올 수 있습니다":" — 상대가 입장하면 자동으로 연결됩니다"));
   pvpWatchRoom();
+}
+/* ═══ 🌐 온라인 대전 라운지 — 연결 상태 · 접속 인원 · 로비 채팅 · 닉네임 장부 ═══════
+   ⚠ 제보 원문 — 「온라인 대전에서 인터넷 연결이 안되어있으면 인터넷 연결이 되어있지않습니다
+      같은 팝업이 나오고 못들어가게 해야겠지? 그리고 실시간으로 온라인 대전 메뉴에 접속하고
+      있는 인원도 표시되게 할 수 있니? 그리고 온라인 대전 메뉴에서도 채팅을 할 수 있게 하면
+      좋겠네. (물론 닉네임을 먼저 정해야 채팅할 수 있고, 닉네임도 중복되면 안되야해)」
+   Firebase 에 세 갈래가 새로 생긴다 — live(접속 표시) · talk(라운지 채팅) · nicks(닉네임 장부).
+   ⚠ 배포 전에 보안 규칙을 새 판으로 바꿔야 한다 (온라인대전_설정가이드.md 2번). */
+const PVP_LIVE_MS=20000;              // 접속 표시 갱신 주기
+const PVP_LIVE_TTL=70000;             // 이보다 오래된 표시는 나간 것으로 본다
+const PVP_LIVE_PURGE=10*60*1000;      // 이보다 오래된 유령 표시는 지운다 (창을 강제로 닫은 잔재)
+const PVP_NICK_TTL=30*24*60*60*1000;  // 30일 동안 안 오면 닉네임 점유가 풀린다
+const PVP_TALK_SHOW=40;               // 화면에 남기는 줄 수
+const PVP_TALK_TTL=3*60*60*1000;      // 이보다 오래된 줄은 지운다
+const PVP_TALK_GAP=2500;              // 도배 방지 간격
+/* 🌐 ⚠ 제보 원문 — 「온라인 대전 메뉴에서 다른 유저의 실시간 전적도 볼 수 있게 해줄래?
+   다른 유저들이 경기 마치면 그 결과도 기록이되어 나오는거지」.
+   경기가 끝나면 호스트가 결과를 한 줄 올리고, ⚔️ 메뉴를 보고 있는 모두가 실시간으로 본다. */
+const PVP_RES_SHOW=25;                // 화면에 남기는 경기 수
+const PVP_RES_TTL=3*24*60*60*1000;    // 사흘이 지난 결과는 지운다
+let PVP_NET=null;                     // null=아직 확인 전 · true=연결됨 · false=끊김
+let PVP_LIVE=null;                    // {es, esT, iv, list, n}
+let PVP_TALK=null;                    // {rows, at}
+let PVP_RES=null;                     // {rows}
+
+/* ── 🌐 연결 확인 ─────────────────────────────────────────────────────────
+   navigator.onLine 은 「랜선이 꽂혀 있다」만 알려 준다(공유기만 붙어도 true).
+   실제로 대전 서버까지 닿는지 한 번 두드려 봐야 한다. */
+function pvpNetOnline(){ try{ return navigator.onLine!==false; }catch(e){ return true; } }
+async function pvpNetCheck(quiet){
+  if(!pvpOn()){ PVP_NET=false; return false; }
+  let ok=false;
+  if(pvpNetOnline()){
+    try{
+      let sig=null, to=null;
+      if(typeof AbortController!=="undefined"){ const c=new AbortController(); sig=c.signal; to=setTimeout(()=>{ try{ c.abort(); }catch(e){} }, 7000); }
+      const r=await fetch(fbU("queue"), sig?{signal:sig}:{});
+      if(to) clearTimeout(to);
+      ok=!!(r && (r.ok || r.status===401));   // 401 도 「서버까지는 닿았다」는 뜻이다
+    }catch(e){ ok=false; }
+  }
+  const changed=(PVP_NET!==ok);
+  PVP_NET=ok;
+  if(changed && !quiet){ try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
+  if(ok && changed){ try{ pvpLiveBeat(); }catch(e){} }
+  return ok;
+}
+/* 매칭·채팅 버튼의 문지기 — 끊겨 있으면 팝업을 띄우고 막는다 */
+function pvpNetGate(){
+  if(PVP_NET!==false) return true;
+  gameAlert("🌐 인터넷에 연결되어 있지 않습니다.\n\n온라인 대전은 인터넷 연결이 있어야 이용할 수 있습니다.\n연결을 확인한 뒤 다시 시도해 주세요.");
+  try{ pvpNetCheck(); }catch(e){}
+  return false;
+}
+try{ if(typeof window!=="undefined" && window.addEventListener){
+  window.addEventListener("online",  ()=>{ try{ pvpNetCheck(); }catch(e){} });
+  window.addEventListener("offline", ()=>{ PVP_NET=false; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} });
+  window.addEventListener("pagehide", ()=>{ try{ if(PVP_LIVE) fbDel("live/"+pvpId()); }catch(e){} });
+} }catch(e){}
+
+/* ── 🟢 접속 인원 ─────────────────────────────────────────────────────────
+   ⚔️ 메뉴를 보고 있는 동안만 live/{내 id} 에 심장박동을 남긴다. 화면을 떠나면 지운다. */
+function pvpPresenceSync(v){
+  try{ if(v==="pvp" && pvpOn()) pvpLiveStart(); else pvpLiveStop(); }catch(e){}
+}
+function pvpLiveStart(){
+  if(PVP_LIVE){ pvpLiveBeat(); return; }
+  PVP_LIVE={es:null, esT:null, esR:null, iv:null, list:null, n:0};
+  PVP_TALK=PVP_TALK||{rows:null, at:0};
+  PVP_RES=PVP_RES||{rows:null};
+  pvpLiveBeat();
+  try{ PVP_LIVE.es =fbStream("live", (tree)=>{ try{ pvpLiveApply(tree); }catch(e){} }); }catch(e){}
+  try{ PVP_LIVE.esT=fbStream("talk", (tree)=>{ try{ pvpTalkApply(tree); }catch(e){} }); }catch(e){}
+  try{ PVP_LIVE.esR=fbStream("results", (tree)=>{ try{ pvpResApply(tree); }catch(e){} }); }catch(e){}
+  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); }catch(e){} }, PVP_LIVE_MS);
+}
+function pvpLiveStop(){
+  if(!PVP_LIVE) return;
+  try{ if(PVP_LIVE.es)  PVP_LIVE.es.close(); }catch(e){}
+  try{ if(PVP_LIVE.esT) PVP_LIVE.esT.close(); }catch(e){}
+  try{ if(PVP_LIVE.esR) PVP_LIVE.esR.close(); }catch(e){}
+  try{ if(PVP_LIVE.iv)  clearInterval(PVP_LIVE.iv); }catch(e){}
+  PVP_LIVE=null;
+  try{ fbDel("live/"+pvpId()); }catch(e){}
+}
+async function pvpLiveBeat(){
+  if(!pvpOn() || !PVP_LIVE) return;
+  const ok=await fbSet("live/"+pvpId(), {n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER});
+  if(!ok){ if(PVP_NET!==false){ PVP_NET=false; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} } return; }
+  if(PVP_NET!==true){ PVP_NET=true; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
+  /* 닉네임 점유도 함께 갱신한다 — 계속 쓰는 사람의 이름은 풀리지 않는다 */
+  try{ const k=pvpNickKey(); if(k) fbPatch("nicks/"+k, {t:Date.now()}); }catch(e){}
+}
+function pvpLiveApply(tree){
+  if(!PVP_LIVE) return;
+  const now=Date.now(), rows=[], mine=pvpId();
+  for(const id in (tree||{})){
+    const e=tree[id]; if(!e || typeof e!=="object") continue;
+    const age=now-(e.t||0);
+    if(age>PVP_LIVE_PURGE){ try{ fbDel("live/"+id); }catch(_){} continue; }
+    if(age>PVP_LIVE_TTL) continue;
+    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine});
+  }
+  rows.sort((a,b)=> a.me? -1 : b.me? 1 : String(a.n).localeCompare(String(b.n),"ko"));
+  PVP_LIVE.list=rows; PVP_LIVE.n=rows.length;
+  const el=document.getElementById("pvpLive");
+  if(el) el.innerHTML=pvpLiveHtml();
+}
+function pvpLiveHtml(){
+  if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 확인할 수 없습니다.</p>`;
+  const L=PVP_LIVE;
+  if(!L || !L.list) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
+  const chips=L.list.slice(0,80).map(r=>
+    `<span style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:${r.me?800:600};background:${r.me?"var(--gold)":"#1b222b"};color:${r.me?"#0d1117":"var(--fg)"}">${r.n}${r.me?" (나)":""}</span>`).join("");
+  return `<div><b style="color:var(--green)">🟢 지금 ${L.n}명 접속 중</b>`
+    + (L.n>80?` <span class="small" style="opacity:.7">(80명까지 표시)</span>`:"")
+    + `</div><div style="margin-top:5px;line-height:1.9">${chips||`<span class="small" style="opacity:.6">아직 아무도 없습니다.</span>`}</div>`;
+}
+
+/* ── 💬 라운지 채팅 ───────────────────────────────────────────────────────
+   경기 중 채팅은 상대와 P2P 직통이고, 이쪽은 메뉴에 있는 모두가 함께 보는 자리다.
+   닉네임을 장부에 등록해야 말할 수 있다 — 이름 없는 사람이 떠들면 누가 누군지 모른다. */
+function pvpTalkApply(tree){
+  PVP_TALK=PVP_TALK||{rows:null, at:0};
+  const now=Date.now(), rows=[], mine=pvpId();
+  for(const k in (tree||{})){
+    const e=tree[k]; if(!e || typeof e!=="object") continue;
+    const age=now-(e.t||0);
+    if(age>PVP_TALK_TTL){ try{ fbDel("talk/"+k); }catch(_){} continue; }
+    rows.push({k, n:pvpClean(e.n,8)||"감독", m:pvpClean(e.m,90), t:e.t||0, me:e.id===mine});
+  }
+  rows.sort((a,b)=>a.t-b.t);
+  PVP_TALK.rows=rows.slice(-PVP_TALK_SHOW);
+  const el=document.getElementById("pvpTalk");
+  if(el){ el.innerHTML=pvpTalkHtml(); try{ chatBoxSync(); }catch(e){} try{ el.scrollTop=el.scrollHeight; }catch(e){} }
+}
+function pvpTalkHtml(){
+  if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있습니다.</p>`;
+  const T=PVP_TALK;
+  if(!T || !T.rows) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
+  if(!T.rows.length) return `<p class="small" style="opacity:.6">아직 아무 말도 없습니다 — 먼저 인사해 보세요.</p>`;
+  return T.rows.map(r=>{
+    const d=new Date(r.t||0);
+    const hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+    return `<div style="padding:2px 0;line-height:1.55"><span class="small" style="opacity:.45;font-family:monospace">${hh}:${mm}</span>
+      <b style="color:${r.me?"var(--gold)":"var(--acc2, #58a6ff)"}">${r.n}</b>
+      <span style="opacity:.55">·</span> ${r.m}</div>`;
+  }).join("");
+}
+async function pvpTalkSend(){
+  if(!pvpNetGate()) return;
+  if(!pvpNickClaimed()){
+    gameAlert("💬 채팅을 하려면 먼저 닉네임을 정해야 합니다.\n\n위 「내 닉네임」 칸에 이름을 적고 저장해 주세요.");
+    return;
+  }
+  const inp=document.getElementById("pvpTalkIn"); if(!inp) return;
+  const m=String(inp.value||"").replace(/[<>&"'`]/g,"").replace(/\s+/g," ").trim().slice(0,90);
+  if(!m) return;
+  const now=Date.now();
+  PVP_TALK=PVP_TALK||{rows:null, at:0};
+  if(now-(PVP_TALK.at||0)<PVP_TALK_GAP){ try{ flash("잠깐만요 — 조금 뒤에 다시 보내 주세요.","warn"); }catch(e){} return; }
+  PVP_TALK.at=now;
+  inp.value="";
+  const id=await fbPush("talk", {n:String(pvpNick()).slice(0,8), m, t:now, id:pvpId()});
+  if(!id){ try{ flash("메시지를 보내지 못했습니다 — 연결을 확인해 주세요.","warn"); }catch(e){} pvpNetCheck(); }
+}
+function pvpTalkKey(ev){ try{ if(ev && (ev.key==="Enter"||ev.keyCode===13)) pvpTalkSend(); }catch(e){} }
+
+/* ── 🌐 모두의 전적 ───────────────────────────────────────────────────────
+   경기가 끝나면 호스트가 결과 한 줄을 올린다(양쪽이 올리면 같은 경기가 두 번 뜬다).
+   몰수도 그대로 남긴다 — 무슨 일이 있었는지가 기록이다. */
+function pvpResPost(hg, ag, ff){
+  try{
+    if(!pvpOn() || !PVP || PVP.role!=="host" || PVP._resSent) return;
+    PVP._resSent=1;
+    const my=PVP.myPack||{}, op=PVP.oppPack||{};
+    fbPush("results", {
+      hn:String(my.mgr||pvpNick()||"감독").slice(0,8), an:String(op.mgr||"상대").slice(0,8),
+      ht:String(my.short||my.name||"?").slice(0,10), at:String(op.short||op.name||"?").slice(0,10),
+      hc:/^#[0-9a-fA-F]{3,8}$/.test(my.col||"")?my.col:"#2a6ee8",
+      ac:/^#[0-9a-fA-F]{3,8}$/.test(op.col||"")?op.col:"#f85149",
+      hg:clamp(hg|0,0,99), ag:clamp(ag|0,0,99), ff:ff?1:0, t:Date.now(), id:pvpId()});
+  }catch(e){}
+}
+function pvpResApply(tree){
+  PVP_RES=PVP_RES||{rows:null};
+  const now=Date.now(), rows=[], mine=pvpId();
+  for(const k in (tree||{})){
+    const e=tree[k]; if(!e || typeof e!=="object") continue;
+    if(now-(e.t||0)>PVP_RES_TTL){ try{ fbDel("results/"+k); }catch(_){} continue; }
+    rows.push({k, hn:pvpClean(e.hn,8)||"감독", an:pvpClean(e.an,8)||"감독",
+      ht:pvpClean(e.ht,10)||"?", at:pvpClean(e.at,10)||"?",
+      hc:/^#[0-9a-fA-F]{3,8}$/.test(e.hc||"")?e.hc:"#2a6ee8",
+      ac:/^#[0-9a-fA-F]{3,8}$/.test(e.ac||"")?e.ac:"#f85149",
+      hg:clamp(e.hg|0,0,99), ag:clamp(e.ag|0,0,99), ff:e.ff?1:0, t:e.t||0, me:e.id===mine});
+  }
+  rows.sort((a,b)=>b.t-a.t);
+  PVP_RES.rows=rows.slice(0, PVP_RES_SHOW);
+  const el=document.getElementById("pvpRes");
+  if(el) el.innerHTML=pvpResHtml();
+}
+function pvpResHtml(){
+  if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
+  const R=PVP_RES;
+  if(!R || !R.rows) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
+  if(!R.rows.length) return `<p class="small" style="opacity:.6">최근 사흘 안에 끝난 경기가 아직 없습니다 — 첫 경기의 주인공이 되어 보세요.</p>`;
+  const ago=(t)=>{ const m=Math.floor((Date.now()-t)/60000);
+    return m<1?"방금":m<60?(m+"분 전"):(m<1440?(Math.floor(m/60)+"시간 전"):(Math.floor(m/1440)+"일 전")); };
+  const pill=(nick,team,col)=>`<span class="prNick">${nick}</span>`
+    + `<span class="prTeam" style="background:${col};color:${(typeof inkOn==="function")?inkOn(col):"#fff"}">${team}</span>`;
+  return `<div class="prList">${R.rows.map(r=>{
+    const win=r.hg>r.ag?"h":(r.ag>r.hg?"a":"");
+    return `<div class="prRow${r.me?" prMine":""}">
+      <span class="prSide prL${win==="h"?" prWin":""}">${pill(r.hn,r.ht,r.hc)}</span>
+      <span class="prScore">${r.hg} <span style="opacity:.45">:</span> ${r.ag}</span>
+      <span class="prSide prR${win==="a"?" prWin":""}">${pill(r.an,r.at,r.ac)}</span>
+      <span class="prMeta">${r.ff?`<b style="color:#ff9d5c">몰수</b> · `:""}${ago(r.t)}${r.me?` · <b style="color:var(--gold)">내 경기</b>`:""}</span>
+    </div>`;
+  }).join("")}</div>`;
+}
+/* ── 🎫 닉네임 장부 ───────────────────────────────────────────────────────
+   ⚠ 제보 — 「닉네임도 중복되면 안되야해」. nicks/{키} 에 「누가 쓰고 있는가」를 적어 둔다.
+   30일 동안 접속이 없으면 점유가 풀려 다른 사람이 쓸 수 있다(버려진 이름이 영영 잠기지 않게). */
+function pvpNickKeyOf(n){
+  return String(n||"").toLowerCase().replace(/[^0-9a-z가-힣ㄱ-ㅎㅏ-ㅣ]/g,"").slice(0,8);
+}
+function pvpNickKey(){ try{ return localStorage.getItem("klm2026_pvpNickKey")||""; }catch(e){ return ""; } }
+/* 지금 쓰는 닉네임이 「내 이름으로 장부에 등록된」 상태인가 — 채팅 자격 */
+function pvpNickClaimed(){
+  try{
+    const k=pvpNickKey();
+    return !!(k && k===pvpNickKeyOf(pvpNick()));
+  }catch(e){ return false; }
+}
+/* ── 🌐 공개 방 목록 — 대기 중(wait·pub)인 방을 닉네임·구단·전력과 함께 보여준다 ── */
+const PVP_ROOM_HIDE=20*60*1000;    // 이보다 오래된 방은 목록에서 숨긴다
+const PVP_ROOM_PURGE=2*60*60*1000; // 이보다 오래된 유령 방은 지운다 (브라우저 강제 종료 잔재)
+let PVP_ROOMS_AT=0;
+async function pvpRoomsRefresh(force){
+  if(!pvpOn()||PVP) return;
+  if(PVP_NET===false){                       // 🌐 제보 — 연결이 끊겨 있으면 목록도 의미가 없다
+    const e0=document.getElementById("pvpRooms");
+    if(e0) e0.innerHTML=`<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
+    return;
+  }
+  const now=Date.now();
+  if(!force && now-PVP_ROOMS_AT<5000) return;    // 자동 새로고침 과호출 방지
+  PVP_ROOMS_AT=now;
+  const el0=document.getElementById("pvpRooms");
+  if(el0 && force) el0.innerHTML=`<p class="small" style="opacity:.6">불러오는 중…</p>`;
+  const rooms=await fbGet("rooms")||{};
+  const rows=[];
+  for(const code in rooms){
+    const r=rooms[code]; if(!r||!r.h) continue;
+    const age=now-(r.t||0);
+    if(age>PVP_ROOM_PURGE){ fbDel("rooms/"+code); continue; }   // 유령 방 청소
+    if(!r.pub || r.st!=="wait" || r.g) continue;                 // 비공개·진행 중 제외
+    if(age>PVP_ROOM_HIDE) continue;
+    if((r.h.ver||0)!==PVP_VER) continue;
+    rows.push({code, nick:pvpClean(r.h.nick,8)||"감독", tn:pvpClean(r.h.tn||r.h.n,16)||"?", sv:r.h.sv||30, age});
+  }
+  rows.sort((a,b)=>a.age-b.age);
+  const el=document.getElementById("pvpRooms"); if(!el) return;
+  el.innerHTML = rows.length ? rows.slice(0,12).map(r=>{
+    const m=Math.floor(r.age/60000);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1b222b">
+      <b style="color:var(--gold)">${r.nick}</b><span class="small">${r.tn} · ${(r.sv/10).toFixed(1)}★ · ${m<1?"방금":m+"분 전"}</span>
+      <button class="mini" style="margin-left:auto;padding:5px 14px" onclick="pvpJoinRoom('${r.code}')">⚔️ 입장</button></div>`;
+  }).join("")
+  : `<p class="small" style="opacity:.6">지금 대기 중인 공개 방이 없습니다 — 직접 하나 열어 보세요.</p>`;
 }
 /* 코드로 입장 — 나 = 게스트 */
 async function pvpJoinRoom(code){
   if(!pvpOn()||PVP) return;
+  if(!pvpNetGate()) return;          // 🌐 제보 — 연결이 끊겨 있으면 들어가지 못한다
   code=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
   if(code.length<6){ flash("방 코드 6자리를 입력하세요.","warn"); return; }
   const room=await fbGet("rooms/"+code);
@@ -59869,6 +60681,7 @@ async function pvpJoinRoom(code){
 /* 빠른 대전 — 대기열 */
 async function pvpQuick(){
   if(!pvpOn()||PVP) return;
+  if(!pvpNetGate()) return;          // 🌐 제보 — 연결이 끊겨 있으면 들어가지 못한다
   const me={id:pvpId(), n:(userTeam()||{}).short||"?", st:Math.round((function(){try{return teamStarVal(userTeam())*10}catch(e){return 30}})()), t:Date.now(), ver:PVP_VER};
   PVP={stage:"queue", role:null, myId:me.id, msg:"상대를 찾는 중…"};
   /* ① 기존 대기자 중 전력이 맞는 상대가 있으면 내가 매처(게스트)가 된다 */
@@ -59941,15 +60754,39 @@ function pvpRtcBase(){
   pc.onconnectionstatechange=()=>{
     if(!PVP) return;
     const s=pc.connectionState;
-    if(s==="connected" && PVP.stage!=="match"){ PVP.stage="lobby"; pvpSt("연결됐습니다 — 스쿼드를 교환하는 중…"); pvpSendHello(); }
-    if(s==="failed"||s==="disconnected"||s==="closed") pvpDropped();
+    if(s==="connected" && PVP.stage!=="match"){ PVP.stage="lobby"; pvpSt("연결됐습니다 — 스쿼드를 교환하는 중…"); pvpHelloSync(); }
+    if(s==="failed"||s==="closed"){ pvpDropped(); }
+    else if(s==="disconnected"){
+      /* ⚠ 몰수 도입으로 순단 오판이 뼈아파졌다 — 8초 안에 살아나면 없던 일로 한다 */
+      if(!PVP._dcT) PVP._dcT=setTimeout(()=>{ try{
+        if(PVP && PVP.pc && PVP.pc.connectionState!=="connected") pvpDropped();
+        if(PVP) PVP._dcT=null;
+      }catch(e){} }, 8000);
+    }
+    else if(s==="connected" && PVP._dcT){ try{ clearTimeout(PVP._dcT); }catch(e){} PVP._dcT=null; }
   };
   return pc;
 }
 function pvpBindCh(ch, kind){
   ch.binaryType="arraybuffer";
-  if(kind==="r"){ PVP.chR=ch; ch.onmessage=(e)=>pvpOnMsg(e.data); }
+  if(kind==="r"){ PVP.chR=ch; ch.onmessage=(e)=>pvpOnMsg(e.data);
+    /* ⚠ 제보(스쿼드 교환 멈춤) — 전송은 채널이 「열린 뒤」에. 이미 열려 있으면 즉시. */
+    ch.onopen=()=>{ try{ pvpHelloSync(); }catch(e){} };
+    if(ch.readyState==="open"){ try{ pvpHelloSync(); }catch(e){} }
+  }
   else { PVP.chU=ch; ch.onmessage=(e)=>pvpOnSnap(e.data); }
+}
+/* hello 재전송 — 상대 스쿼드가 도착할 때까지 0.9초 간격, 12회 넘으면 포기 안내 */
+function pvpHelloSync(){
+  if(!PVP || PVP.helloT) return;
+  pvpSendHello();
+  PVP.helloTries=0;
+  PVP.helloT=setInterval(()=>{
+    if(!PVP){ return; }
+    if(PVP.oppPack || PVP.stage==="match" || PVP.stage==="done"){ clearInterval(PVP.helloT); PVP.helloT=null; return; }
+    if(++PVP.helloTries>12){ clearInterval(PVP.helloT); PVP.helloT=null; pvpAbort("스쿼드 교환에 실패했습니다 — 다시 시도해 주세요."); return; }
+    pvpSendHello();
+  }, 900);
 }
 async function pvpRtcStart(){       // 게스트: 채널 생성 + offer
   const pc=pvpRtcBase();
@@ -59971,24 +60808,166 @@ async function pvpRtcAnswer(offerStr){   // 호스트: 응답
 function pvpSend(o){ try{ if(PVP&&PVP.chR&&PVP.chR.readyState==="open") PVP.chR.send(JSON.stringify(o)); }catch(e){} }
 function pvpSendHello(){
   PVP.myPack=pvpPack();
+  try{ PVP._myPackJ=JSON.stringify(PVP.myPack); }catch(e){}
   pvpSend({t:"hello", ver:PVP_VER, pack:PVP.myPack});
+}
+/* 🎽 로비 스쿼드 동기화 — 전술 탭에서 수정하고 돌아오면 바뀐 스쿼드를 상대에게 재전송한다.
+   양쪽 수락은 초기화 — 옛 스쿼드를 보고 한 수락은 무효다. (제보: 로비에서 스쿼드 수정) */
+function pvpLobbySquadSync(){
+  try{
+    if(!PVP || PVP.stage!=="lobby" || !PVP.chR || PVP.chR.readyState!=="open") return;
+    let pk=null; try{ pk=pvpPack(); }catch(e){}
+    if(!pk) return;
+    const j=JSON.stringify(pk);
+    if(!PVP._myPackJ){ PVP._myPackJ=j; PVP.myPack=pk; return; }
+    if(PVP._myPackJ===j) return;
+    PVP._myPackJ=j; PVP.myPack=pk;
+    pvpSend({t:"hello", ver:PVP_VER, pack:pk});
+    if(PVP.meReady||PVP.oppReady){ PVP.meReady=false; PVP.oppReady=false; pvpSend({t:"unready"}); }
+    try{ flash("📤 수정한 스쿼드를 상대에게 보냈습니다 — 양쪽 수락이 초기화됐습니다","info"); }catch(e){}
+    try{ if(VIEW==="pvp") show("pvp"); }catch(e){}   // 🗺️ 내 포메이션 그림 즉시 갱신 (제보)
+  }catch(e){}
 }
 function pvpOnMsg(raw){
   let m=null; try{ m=JSON.parse(raw); }catch(e){ return; }
   if(!PVP||!m||!m.t) return;
   if(m.t==="hello"){
     if((m.ver||0)!==PVP_VER){ pvpSend({t:"bye", why:"ver"}); pvpAbort("상대와 게임 버전이 다릅니다."); return; }
+    const first=!PVP.oppPack;
+    /* 🧼 원격 팩 소독 — 화면에 그대로 들어가는 문자열을 수신 시점에 씻는다 */
+    try{ if(m.pack){
+      m.pack.name=pvpClean(m.pack.name,16)||"상대 팀"; m.pack.short=pvpClean(m.pack.short,8)||"상대";
+      m.pack.mgr=pvpClean(m.pack.mgr,8)||"감독";
+      if(Array.isArray(m.pack.pl)) for(const q of m.pack.pl){ q.n=pvpClean(q.n,12)||"선수";
+        q.sl=(typeof q.sl==="string" && SLOT_XY[q.sl])?q.sl:null; }
+    } }catch(e){}
     PVP.oppPack=m.pack; PVP.oppCheck=pvpPackCheck(m.pack||{});
-    PVP.stage="lobby";
+    if(PVP.helloT){ try{ clearInterval(PVP.helloT); }catch(e){} PVP.helloT=null; }
+    /* 재전송으로 뒤늦게 온 hello 가 경기 중 화면을 로비로 되돌리지 않게 한다 */
+    if(PVP.stage!=="match" && PVP.stage!=="done") PVP.stage="lobby";
+    if(first) pvpSendHello();   // 상대가 내 것을 못 받았을 수 있다 — 한 번 되보낸다 (서로 1회로 수렴)
+    else if(PVP.stage==="lobby"){
+      /* 🎽 스쿼드 갱신 — 옛 스쿼드에 대한 수락은 무효 (제보: 로비 스쿼드 수정) */
+      PVP.meReady=false; PVP.oppReady=false;
+      try{ flash("📥 상대가 스쿼드를 수정했습니다 — 새 스쿼드를 확인해 주세요","warn"); }catch(e){}
+    }
     pvpSt(null);
     return;
   }
   if(m.t==="ready"){ PVP.oppReady=1; pvpMaybeStart(); try{ if(VIEW==="pvp") show("pvp"); }catch(e){} return; }
+  if(m.t==="unready"){ PVP.meReady=false; PVP.oppReady=false; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} return; }
   if(m.t==="kickoff" && PVP.role==="guest"){ pvpGuestMatchStart(m.info||{}); return; }
   if(m.t==="tac" && PVP.role==="host"){ pvpApplyGuestTac(m); return; }
   if(m.t==="ev" && PVP.role==="guest"){ pvpGuestEv(m); return; }
   if(m.t==="end" && PVP.role==="guest"){ pvpGuestEnd(m); return; }
-  if(m.t==="bye"){ pvpAbort("상대가 대전을 종료했습니다."); return; }
+  if(m.t==="st" && PVP.role==="guest"){ try{ if(PVP.watch){ PVP.watch.st=m.st;
+    const el=document.getElementById("pvpStats"); if(el) el.innerHTML=pvpStatsHtml(); } }catch(e){} return; }
+  if(m.t==="chat"){ pvpChatPush("opp", pvpClean(m.x,120)); return; }
+  if(m.t==="gp" && PVP.role==="guest"){ pvpShowGoal(m); return; }
+  if(m.t==="tacp"){
+    if(m.on){
+      /* 상대가 수정 시작 — 호스트면 기회 검증·엔진 정지, 화면 블라인드 */
+      if(PVP.role==="host"){
+        if((PVP.tacOppLeft|0)<=0){ pvpSend({t:"tacst", ok:0, why:"교체·수정 기회를 모두 사용했습니다 ("+PVP_TAC_USES+"회)"}); return; }
+        PVP.tacOppLeft--;
+        PVP.tacEdit="opp"; livePaused=true; try{ updLiveCtrl(); }catch(e){}
+        pvpSend(Object.assign({t:"tacst", ok:1, left:PVP.tacOppLeft}, pvpSideState("a")));
+        pvpTacBlind(true);
+        /* 상대 편집 60초 강제 마감 */
+        if(PVP.tacTO2) clearTimeout(PVP.tacTO2);
+        PVP.tacTO2=setTimeout(()=>{ try{
+          if(PVP && PVP.tacEdit==="opp"){ pvpSend({t:"tace"}); PVP.tacEdit=null; pvpTacBlind(false); pvpTacResume(); }
+        }catch(e){} }, PVP_TAC_SEC*1000+3000);
+      } else { PVP.tacEdit="opp"; pvpTacBlind(true); }
+    } else {
+      /* 상대 수정 종료 */
+      if(PVP.tacEdit==="opp"){ PVP.tacEdit=null; pvpTacBlind(false);
+        try{ if(PVP.tacTO2){ clearTimeout(PVP.tacTO2); PVP.tacTO2=null; } }catch(e){}
+        if(PVP.role==="host") pvpTacResume();
+        try{ flash("📋 상대의 전술 수정이 끝났습니다 — 경기 재개","info"); }catch(e){} }
+    }
+    return;
+  }
+  if(m.t==="tacst"){
+    if(PVP.tacEdit!=="me") return;
+    if(!m.ok){ PVP.tacEdit=null; PVP.tacMe=Math.min(PVP_TAC_USES,(PVP.tacMe|0)+1); pvpTacWait(false);
+      try{ flash("🔁 "+pvpClean(m.why,40),"warn"); }catch(e){} return; }
+    PVP.tacState={xi:(m.xi||[]).slice(0,11).map(q=>({no:clamp(q.no|0,0,99), n:pvpClean(q.n,12), ps:pvpClean(q.ps,4), cond:clamp(q.cond|0,0,100)})),
+                  bench:(m.bench||[]).slice(0,12).map(q=>({no:clamp(q.no|0,0,99), n:pvpClean(q.n,12), ps:pvpClean(q.ps,4), cond:clamp(q.cond|0,0,100)})),
+                  subs:m.subs|0, max:m.max|0||5,
+                  tac:(function(){ const o={}, s=m.tac||{}; for(const k of PVP_TAC_KEYS) o[k]=clamp(s[k]|0,0,4); return o; })(),
+                  form:pvpClean(m.form,10)};
+    if(m.why){ try{ flash("🔁 "+pvpClean(m.why,40),"warn"); }catch(e){} }
+    /* ⚔️ 제보 — 리그와 똑같은 「경기 중 전술 수정」 화면을 연다 (그림자 경기를 만들어 그린다) */
+    if(!PVP.tacM && !inLiveTactics){
+      if(!pvpGuestTacOpen(PVP.tacState)){
+        try{ flash("전술창을 열지 못했습니다 — 잠시 후 다시 시도해 주세요.","warn"); }catch(e){}
+        pvpTacWait(false); PVP.tacEdit=null; PVP.tacMe=Math.min(PVP_TAC_USES,(PVP.tacMe|0)+1);
+        pvpSend({t:"tacp", on:0});
+      }
+    }
+    return;
+  }
+  if((m.t==="tacsl"||m.t==="tacrl") && PVP.role==="host"){
+    if(PVP.tacEdit!=="opp") return;
+    pvpApplySlots(PVP.awayT, m.t==="tacsl"?m.sl:null, m.t==="tacrl"?m.rl:null);
+    return;
+  }
+  if(m.t==="tacf" && PVP.role==="host"){
+    if(PVP.tacEdit!=="opp") return;                       // 전술창을 연 동안에만 바꿀 수 있다
+    pvpApplyForm(PVP.awayT, String(m.f||""));
+    pvpSend(Object.assign({t:"tacst", ok:1}, pvpSideState("a")));
+    return;
+  }
+  if(m.t==="sub" && PVP.role==="host"){
+    if(PVP.tacEdit!=="opp") return;
+    const r=pvpApplySub("a", clamp(m.out|0,0,99), clamp(m.in|0,0,99));
+    pvpSend(Object.assign({t:"tacst", ok:1, why:r.ok?"":(r.why||"교체 실패")}, pvpSideState("a")));
+    return;
+  }
+  if(m.t==="tace"){
+    if(PVP.tacEdit==="me"){
+      try{ if(PVP.tacTO){ clearTimeout(PVP.tacTO); PVP.tacTO=null; } }catch(e){}
+      try{ flash("⏱ 시간 초과 — 호스트가 경기를 재개했습니다","warn"); }catch(e){}
+      /* 열려 있던 전술창은 지금까지 만진 대로 저장하고 닫는다 */
+      if(inLiveTactics){ try{ saveLiveTactics(); }catch(e){} }
+      else { PVP.tacEdit=null; try{ pvpTacWait(false); }catch(e){} }
+    }
+    return;
+  }
+  if(m.t==="cd" && PVP.role==="guest"){ try{ if(PVP.watch){
+    PVP.watch.cd={k:m.k==="R"?"R":"Y", nm:pvpClean(m.nm,12), ps:pvpClean(m.ps,4), tm:pvpClean(m.tm,18),
+                  side:m.side==="h"?"h":"a", no:clamp(Math.round(m.no||0),0,99), at:Date.now()};
+  } }catch(e){} return; }
+  if(m.t==="offl" && PVP.role==="guest"){ try{ if(PVP.watch){
+    PVP.watch.off=(Array.isArray(m.list)?m.list:[]).slice(0,8).map(x=>({
+      s:x.s==="h"?"h":"a", m:clamp(Math.round(x.m||0),0,130), n:pvpClean(x.n,12), p:pvpClean(x.p,4)}));
+    const el=document.getElementById("pvpOff"), cd2=document.getElementById("pvpOffCard");
+    if(el&&cd2){ if(PVP.watch.off.length){ cd2.classList.remove("hidden"); el.innerHTML=pvpOffHtml(); }
+                 else cd2.classList.add("hidden"); }
+  } }catch(e){} return; }
+  if(m.t==="away"){ PVP.awayOpp=!!m.on; try{ pvpAwaySync(); }catch(e){} return; }
+  if(m.t==="ht" && PVP.role==="guest"){ PVP._htWait=true; PVP.htMe=false; PVP.htOpp=false; try{ pvpHtOverlaySync(); }catch(e){} return; }
+  if(m.t==="htr"){ PVP.htOpp=true;
+    try{ flash("💪 상대 감독이 준비되었습니다!","info"); }catch(e){}
+    try{ if(PVP.role==="host" && !PVP.htMe) updLiveCtrl("ht"); }catch(e){}
+    try{ pvpHtOverlaySync(); }catch(e){}
+    pvpHtTryStart(); return; }
+  if(m.t==="ht2" && PVP.role==="guest"){ PVP._htWait=false;
+    try{ pvpHtOverlaySync(); }catch(e){}
+    try{ flash("⚽ 후반전 시작!","good"); }catch(e){} return; }
+  if(m.t==="cap" && PVP.role==="guest"){ try{ if(PVP.watch){ PVP.watch.cap=m;
+    const el=document.getElementById("pvpCap");
+    if(el){ el.textContent=m.x||"";
+      const i=PVP.watch.info||{};
+      const col = m.s==="h" ? (i.hc||"#2ea8ff") : m.s==="a" ? (i.ac||"#f85149") : "#1b2129";
+      try{ setCssVar(el, "--cbar", col); }catch(e){ el.style.borderLeftColor=col; } } } }catch(e){} return; }
+  if(m.t==="bye"){
+    /* ⚠ 제보(몰수) — 경기 중 기권 통보면 3:0 몰수승으로 받는다 */
+    if(PVP.stage==="match" && pvpForfeitWin("상대가 기권했습니다")) return;
+    if(PVP.ended) return;                       // ⚔️ 종료 후 상대 퇴장 — 결과 확인 화면 유지
+    pvpAbort("상대가 대전을 종료했습니다."); return;
+  }
 }
 function pvpReady(){
   if(!PVP||PVP.stage!=="lobby"||PVP.meReady) return;
@@ -60009,13 +60988,30 @@ function pvpHostStart(){
   away.pvpRemote=true;                          // 게스트가 원격 조종한다
   /* 교체는 양 팀 모두 엔진의 자동 교체(수석코치)가 맡는다 — 완전 대칭 (v1) */
   PVP.homeT=home; PVP.awayT=away;
+  /* 🎫 제보 — 스코어보드에 「팀이름(닉네임)」. 클론 팀의 표기 이름에 닉네임을 붙인다
+     (해설·전광판이 함께 따라간다 — 중계 방송 느낌). */
+  try{ const p=document.getElementById("lvPanel"); if(p&&p.removeAttribute) p.removeAttribute("data-pvppanel"); }catch(e){}
+  const hNick=(PVP.myPack&&PVP.myPack.mgr)||pvpNick(), aNick=(PVP.oppPack&&PVP.oppPack.mgr)||"상대";
+  home.short=(home.short+"("+hNick+")").slice(0,18); away.short=(away.short+"("+aNick+")").slice(0,18);
+  home.name=(home.name+" ("+hNick+")").slice(0,26);  away.name=(away.name+" ("+aNick+")").slice(0,26);
+  PVP.tacMe=PVP_TAC_USES; PVP.tacOppLeft=PVP_TAC_USES; PVP.tacEdit=null;   // 🔁 교체 기회 (제보)
   const M=createMatch(home, away, {noTable:true, pvp:true, neutral:true});
-  pvpSend({t:"kickoff", info:{hn:home.name, an:away.name, hs:home.short, as:away.short, hc:home.col, ac:away.col}});
+  pvpSend({t:"kickoff", info:{hn:home.name, an:away.name, hs:home.short, as:away.short, hc:home.col, ac:away.col, hm:hNick, am:aNick}});
   /* 스냅샷 송신 루프 */
   PVP.snapT=setInterval(()=>{
     try{
       if(!liveSim||!liveM||!liveM.opts||!liveM.opts.pvp){ return; }
       if(PVP.chU&&PVP.chU.readyState==="open") PVP.chU.send(pvpEncodeSnap(liveSim, liveM));
+      /* 하이라이트가 끝난 뒤에야 미뤄 둔 이벤트 자막을 내보낸다 — 골 텍스트가 장면보다 먼저 가면 스포일러 */
+      const inHL=(typeof liveHL!=="undefined") && !!liveHL;
+      if(!inHL && PVP._evQ && PVP._evQ.length){ const q=PVP._evQ; PVP._evQ=[]; for(const m of q) pvpSend(m); }
+      /* 경기 통계 — 3초마다 (제보: 게스트에도 호스트와 같은 통계) */
+      PVP._stN=(PVP._stN||0)+1;
+      if(PVP._stN>=Math.max(1,Math.round(3000/PVP_SNAP_MS))){ PVP._stN=0;
+        const st=liveM.st||{};
+        pvpSend({t:"st", st:{hS:st.hS||0,aS:st.aS||0,hT:st.hT||0,aT:st.aT||0,hP:st.hP||0,aP:st.aP||0,
+                             hC:st.hC||0,aC:st.aC||0,hF:st.hF||0,aF:st.aF||0,hY:st.hY||0,aY:st.aY||0,hR:st.hR||0,aR:st.aR||0}});
+      }
     }catch(e){}
   }, PVP_SNAP_MS);
   startLive(M, "⚔️ 온라인 친선전");
@@ -60032,13 +61028,17 @@ function pvpFwdEv(M){
   try{
     if(!PVP||PVP.role!=="host"||!M.events.length) return;
     const e=M.events[M.events.length-1];
-    pvpSend({t:"ev", min:e.min, tm:e.t||"", txt:String(e.txt||"").slice(0,300), ty:e.type||"txt",
-             hg:M.hg, ag:M.ag});
+    const msg={t:"ev", min:e.min, tm:e.t||"", txt:String(e.txt||"").slice(0,300), ty:e.type||"txt",
+             hg:M.hg, ag:M.ag};
+    /* ⚠ 풀 동기화 — 하이라이트 재생 중에 생긴 이벤트(그 장면의 골 등)는 장면이 끝난 뒤 내보낸다 */
+    if((typeof liveHL!=="undefined") && liveHL){ (PVP._evQ=PVP._evQ||[]).push(msg); return; }
+    pvpSend(msg);
   }catch(e){}
 }
 /* ── 경기 (게스트 관전 + 원격 지시) ──────────────────────────────────── */
 function pvpGuestMatchStart(info){
   PVP.stage="match";
+  PVP.tacMe=PVP_TAC_USES; PVP.tacEdit=null;   // 🔁 교체 기회 (제보)
   PVP.watch={info, evs:[], snap:null, prev:null, at:0, hg:0, ag:0, clock:0};
   show("pvp");
   if(PVP.watchT) cancelAnimationFrame(PVP.watchT);
@@ -60051,14 +61051,77 @@ function pvpOnSnap(buf){
     const s=pvpDecodeSnap(buf);
     PVP.watch.prev=PVP.watch.snap; PVP.watch.snap=s; PVP.watch.at=Date.now();
     PVP.watch.hg=s.hg; PVP.watch.ag=s.ag; PVP.watch.clock=s.clock;
+    /* 재생 지연 버퍼 — 「송신 시각」 타임라인으로 쌓는다 (도착이 몰려도 표본 간격은 송신 간격 그대로) */
+    const W=PVP.watch;
+    if(W._smsPrev==null){ W._smsBase=0; W._smsPrev=s.sTag; }
+    else{
+      const d=s.sTag-W._smsPrev;
+      if(d<-32768) W._smsBase+=65536;          // 16비트 순환을 풀어 잇는다
+      W._smsPrev=s.sTag;
+    }
+    s.sms=W._smsBase+s.sTag;
+    const wb=(W.buf=W.buf||[]);
+    if(wb.length && s.sms<=wb[wb.length-1].at){ /* 순서 뒤집힌 늦은 프레임 — 버린다 */ }
+    else{
+      wb.push({s, at:s.sms});
+      if(wb.length>60) wb.splice(0, wb.length-60);
+    }
+    /* 전광판 — 매 스냅샷마다 DOM 을 만지면 아깝다. 0.25초에 한 번 (호스트 lvHead 와 같은 구성) */
+    const now=Date.now();
+    if(!PVP.watch._sbAt || now-PVP.watch._sbAt>250){
+      PVP.watch._sbAt=now;
+      try{
+        const sc=document.getElementById("pvpScoreN");
+        if(sc){ const t=(s.hg||0)+" : "+(s.ag||0); if(sc.textContent!==t) sc.textContent=t; }
+        const mn=document.getElementById("pvpMin");
+        if(mn){ const mm=Math.floor((s.clock||0)/60);
+          const t=mm+"'"+(s.et?(mm>105?" 연장 후반":" 연장 전반"):(s.half2?" 후반":" 전반"));
+          if(mn.textContent!==t) mn.textContent=t; }
+        const md=document.getElementById("pvpMode");
+        if(md){ const t=s.hl?"● HIGHLIGHT":"○ 경기 진행 중";
+          if(md.textContent!==t){ md.textContent=t; md.style.color=s.hl?"#f85149":""; } }
+      }catch(e){}
+    }
   }catch(e){}
 }
 function pvpGuestEv(m){
   const W=PVP&&PVP.watch; if(!W) return;
+  try{ m.txt=String(m.txt||"").replace(/<[^>]*>/g,"").slice(0,300); }catch(e){}   // 🧼 원격 텍스트 소독
   W.evs.unshift(m); if(W.evs.length>60) W.evs.length=60;
   W.hg=m.hg; W.ag=m.ag;
   try{ const el=document.getElementById("pvpEvs"); if(el) el.innerHTML=pvpEvHtml(); }catch(e){}
-  try{ const sc=document.getElementById("pvpScore"); if(sc) sc.textContent=pvpScoreTxt(); }catch(e){}
+  try{ const sc=document.getElementById("pvpScoreN"); if(sc) sc.textContent=(W.hg||0)+" : "+(W.ag||0); }catch(e){}
+}
+function pvpOffHtml(){
+  const W=PVP&&PVP.watch; const list=(W&&W.off)||[]; const i=(W&&W.info)||{};
+  return list.map(x=>`<div style="display:flex;gap:7px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+    <span style="font-size:15px">🟥</span>
+    <b>${x.m}'</b>
+    <span class="small">${x.s==="h"?(i.hs||"홈"):(i.as||"원정")}</span>
+    ${x.p?`<span class="small" style="opacity:.8">${x.p}</span>`:""}
+    <b>${x.n}</b></div>`).join("");
+}
+function pvpStatsHtml(){
+  /* ⚠ 제보 — 「게이지바도 표시 안 되고 그냥 숫자만」. 호스트 통계와 같은 statbar 문법으로. */
+  const W=PVP&&PVP.watch; const st=(W&&W.st)||null; const i=(W&&W.info)||{};
+  if(!st) return `<p class="small" style="opacity:.6">집계 중…</p>`;
+  const _hC=i.hc||"#2ea8ff";
+  const _aC=(typeof awayDiscCol==="function")?awayDiscCol(_hC, i.ac||"#f85149"):(i.ac||"#f85149");
+  const _hT=(typeof uiInk==="function")?uiInk(_hC):_hC, _aT=(typeof uiInk==="function")?uiInk(_aC):_aC;
+  const pTot=(st.hP||0)+(st.aP||0);
+  const poss=pTot>40?clamp(Math.round(st.hP/pTot*100),12,88):50;
+  const bar=(l,hv,av)=>{const tot=hv+av||1; return `<div class="statbar">`
+    +`<span style="width:26px;text-align:right;color:${_hT};font-weight:800">${hv}</span>`
+    +`<div class="bg"><div class="fh" style="width:${hv/tot*100}%;background:${_hC}"></div>`
+    +`<div class="fa" style="width:${av/tot*100}%;background:${_aC}"></div></div>`
+    +`<span style="width:26px;color:${_aT};font-weight:800">${av}</span>`
+    +`<span style="width:52px" class="small">${l}</span></div>`;};
+  const _lg=`<div class="statLg">`
+    +`<span><i style="background:${_hC}"></i><b style="color:${_hT}">${i.hs||"홈"}</b> <span class="small">홈</span></span>`
+    +`<span class="small" style="opacity:.6">vs</span>`
+    +`<span><i style="background:${_aC}"></i><b style="color:${_aT}">${i.as||"원정"}</b> <span class="small">원정</span></span></div>`;
+  return _lg + bar("점유율",poss,100-poss)+bar("슈팅",st.hS||0,st.aS||0)+bar("유효슈팅",st.hT||0,st.aT||0)
+    + bar("코너킥",st.hC||0,st.aC||0)+bar("파울",st.hF||0,st.aF||0)+bar("경고",st.hY||0,st.aY||0)+bar("퇴장",st.hR||0,st.aR||0);
 }
 function pvpScoreTxt(){
   const W=PVP&&PVP.watch; if(!W) return "";
@@ -60072,77 +61135,610 @@ function pvpEvHtml(){
     <span style="color:var(--sub)">${e.min}'</span> ${e.txt}</div>`).join("");
 }
 function pvpDrawWatch(){
+  /* ⚠ 제보 — 「왼쪽은 형편없는 화면, 오른쪽은 진짜 매치엔진 — 같은 화면을 볼 순 없어?」
+     약식 캔버스를 버리고, 스냅샷으로 「가짜 sim」을 만들어 호스트와 동일한 렌더러
+     (drawSimWatch: 골망·방향 삼각형·등번호·GK 킷·볼 소유 링)를 그대로 부른다. */
   const cv=document.getElementById("pvpCv"); if(!cv) return;
-  const W=PVP.watch; const ctx=cv.getContext("2d");
-  const w=cv.width, h=cv.height;
-  ctx.fillStyle="#0c5c2e"; ctx.fillRect(0,0,w,h);
-  ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=1.5;
-  ctx.strokeRect(w*0.02,h*0.03,w*0.96,h*0.94);
-  ctx.beginPath(); ctx.moveTo(w/2,h*0.03); ctx.lineTo(w/2,h*0.97); ctx.stroke();
-  ctx.beginPath(); ctx.arc(w/2,h/2,h*0.14,0,Math.PI*2); ctx.stroke();
-  ctx.strokeRect(w*0.02,h*0.30,w*0.13,h*0.40); ctx.strokeRect(w*0.85,h*0.30,w*0.13,h*0.40);
-  const s=W.snap; if(!s) return;
-  /* 스냅샷 보간 — 20Hz 를 60fps 로 부드럽게 */
-  const p=W.prev, k=p?clamp((Date.now()-W.at)/PVP_SNAP_MS,0,1):1;
+  const W=PVP.watch;
+  const s=W.snap;
+  if(!s){ try{ drawPitchBase(cv.getContext("2d"), cv); }catch(e){} return; }
+  const i=W.info||{};
+  /* GK 판별 — 킥오프 전에 받아 둔 양 팀 스쿼드 팩에서 등번호→포지션 표를 만든다 */
+  if(!W.gkNos){
+    W.gkNos={h:{}, a:{}};
+    try{ for(const q of ((PVP.oppPack&&PVP.oppPack.pl)||[])) if(q.pos==="GK") W.gkNos.h[q.no||0]=1; }catch(e){}
+    try{ for(const q of ((PVP.myPack&&PVP.myPack.pl)||[])) if(q.pos==="GK") W.gkNos.a[q.no||0]=1; }catch(e){}
+  }
+  if(!W.fakeSim){
+    W.fakeSim={ M:{home:{col:i.hc||"#2ea8ff", id:"pvp_h", short:i.hs||"홈"},
+                   away:{col:i.ac||"#f85149", id:"pvp_a", short:i.as||"원정"}},
+                agents:[], ball:{x:.5,y:.5,z:0,ownerId:null},
+                /* drawSimWatch 가 곁가지로 읽을 수 있는 필드 — 안전 스텁 */
+                clock:0, endSec:5400, matchState:"OPEN_PLAY", sentOff:[], lastEvent:null, t:0,
+                report:()=>({h:{possPct:50,acc:0}, a:{possPct:50,acc:0}, totalPass:0, thirds:{def:33,mid:34,att:33}}) };
+  }
+  const fs=W.fakeSim;
+  fs.clock=W.clock||0;
+  /* ⚠ 제보(뚝뚝 끊김 → 잠깐 멈췄다 확확) — 적응형 재생 시계.
+     고정 「지금-지연」은 스냅샷이 몰려 도착하면(호스트 부하·전송 버스트) 재생 시점이
+     버퍼 끝을 추월해 얼었다가, 밀린 표본이 쏟아지면 확 따라잡았다.
+     이제 재생 시각(playT)이 프레임마다 스스로 흐른다 — 버퍼가 두꺼우면 1.1배속으로
+     살살 따라잡고, 얇으면 0.9배속으로 벌린다. 급정지·순간이동이 속도 미세 변화로 바뀐다. */
+  /* ⏩ 컷 전환 — 최신 스냅샷이 빨리 감기(비하이라이트)면 마지막 장면 그림에서 정지한다.
+     (첫 장면 전 킥오프 대기 화면은 한 번은 그려 준다) */
+  try{
+    const newest=W.buf&&W.buf.length?W.buf[W.buf.length-1].s:null;
+    if(newest && !newest.hl){
+      if(W._ffHeld && W._drawnOnce){
+        try{ if(cv.classList&&cv.classList.toggle) cv.classList.toggle("dim", true); }catch(e){}
+        return;                                   // 정지 화면 유지 — 혼란한 고속 구간을 그리지 않는다
+      }
+      W._ffHeld=true;                             // 이번 프레임(정지 컷)만 그리고 다음부터 멈춘다
+    } else if(newest && newest.hl){
+      if(W._ffHeld){
+        /* 새 장면 — 재생 시계를 「이 장면의 첫 프레임」에 앵커링한다.
+           (기준 지연으로 되감으면 방금 끝난 컷 구간에 떨어져 어두운 채 머문다) */
+        let i=W.buf.length-1;
+        while(i>0 && W.buf[i-1].s && W.buf[i-1].s.hl) i--;
+        W.playT=W.buf[i].at;
+      }
+      W._ffHeld=false;
+    }
+  }catch(e){}
+  const buf=W.buf||[];
+  const nowR=Date.now();
+  const newestAt=buf.length?buf[buf.length-1].at:0;
+  const dt=W._raf?clamp(nowR-W._raf,0,120):16; W._raf=nowR;
+  if(W.playT==null) W.playT=newestAt-PVP_PLAYOUT;
+  const lead=newestAt-W.playT;
+  const rate = lead>PVP_PLAYOUT*1.6 ? 1.10 : lead<PVP_PLAYOUT*0.5 ? 0.90 : 1.0;
+  W.playT=Math.min(newestAt, Math.max(newestAt-1000, W.playT+dt*rate));
+  const T=W.playT;
+  let s0=null, s1=null;
+  for(let i=buf.length-1;i>=1;i--){
+    if(buf[i-1].at<=T && T<=buf[i].at){ s0=buf[i-1]; s1=buf[i]; break; }
+  }
+  let A0, A1, k;
+  if(s0){ A0=s0.s; A1=s1.s; k=clamp((T-s0.at)/Math.max(1, s1.at-s0.at), 0, 1); }
+  else { A0=W.prev||s; A1=s; k=1; }              // 버퍼가 아직 얕다 — 최신 장을 그대로
   const lerpA=(a,b)=>a+(b-a)*k;
   const find=(pr,ag)=> pr&&pr.ags.find(x=>x.no===ag.no&&x.side===ag.side);
-  for(const a of s.ags){
-    const q=find(p,a);
-    const x=(q?lerpA(q.x,a.x):a.x)*w, y=(q?lerpA(q.y,a.y):a.y)*h;
-    const home=a.side==="h";
-    const i=W.info||{};
-    ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2);
-    ctx.fillStyle=home?(i.hc||"#d33"):(i.ac||"#36c"); ctx.fill();
-    ctx.strokeStyle="#fff"; ctx.lineWidth=1; ctx.stroke();
-    ctx.fillStyle="#fff"; ctx.font="bold 8px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(String(a.no||""), x, y);
+  const JUMP=0.26;                                // 장면 전환 순간이동 — 호스트와 같은 기준으로 끊는다
+  fs.agents.length=0;
+  for(const a of A1.ags){
+    const q=find(A0,a);
+    const key=a.side+String(a.no);
+    const jump=q && Math.hypot(a.x-q.x, a.y-q.y)>JUMP;
+    /* 방향 삼각형도 보간 — 표본 리듬 그대로 두면 화살표가 틱틱 돈다 (lerpAngle: 각도 순환 처리) */
+    const fc=(q&&!jump&&typeof lerpAngle==="function")?lerpAngle(q.face, a.face, k):a.face;
+    fs.agents.push({ id:key, side:a.side, slot:(W.gkNos[a.side]&&W.gkNos[a.side][a.no])?"GK":"",
+      x:(q&&!jump?lerpA(q.x,a.x):a.x), y:(q&&!jump?lerpA(q.y,a.y):a.y),
+      face:fc, _rf:fc, p:{no:a.no} });
   }
-  const q0=p?p:s;
-  const bx=lerpA(q0.ball.x,s.ball.x)*w, by=lerpA(q0.ball.y,s.ball.y)*h;
-  ctx.beginPath(); ctx.arc(bx,by-(s.ball.z||0)*4,3.4,0,Math.PI*2); ctx.fillStyle="#fff"; ctx.fill(); ctx.strokeStyle="#333"; ctx.stroke();
+  const bJump=Math.hypot(A1.ball.x-A0.ball.x, A1.ball.y-A0.ball.y)>JUMP;
+  fs.ball.x=bJump?A1.ball.x:lerpA(A0.ball.x,A1.ball.x);
+  fs.ball.y=bJump?A1.ball.y:lerpA(A0.ball.y,A1.ball.y);
+  fs.ball.z=bJump?(A1.ball.z||0):lerpA(A0.ball.z||0, A1.ball.z||0);   // 공중볼 궤적도 매끈하게
+  /* 주심 — 호스트와 같은 검은 점 (제보: 화면 완전 동일화) */
+  if(A1.ref){
+    const r0=A0.ref||A1.ref;
+    const rJump=Math.hypot(A1.ref.x-r0.x, A1.ref.y-r0.y)>JUMP;
+    fs.ref={x:rJump?A1.ref.x:lerpA(r0.x,A1.ref.x), y:rJump?A1.ref.y:lerpA(r0.y,A1.ref.y)};
+  } else fs.ref=null;
+  fs.ball.ownerId = A1.own ? (A1.own.side+String(A1.own.no)) : null;
+  try{ drawSimWatch(cv, fs); W._drawnOnce=true; }catch(e){}
+  /* 🟨🟥 카드 연출 — 호스트와 같은 drawCardFx (선수 머리 위 카드 + 이름표) */
+  try{
+    const cd=W.cd;
+    if(cd){
+      const el=(Date.now()-cd.at)/1000;
+      if(el<CARD_FX_SEC){
+        const byId={}; for(const g of fs.agents) byId[g.id]=g;
+        drawCardFx(cv, fs, {k:cd.k, t:el, id:cd.side+String(cd.no), nm:cd.nm, ps:cd.ps, tm:cd.tm}, byId);
+      } else W.cd=null;
+    }
+  }catch(e){}
+  /* 디밍 — 장면 중엔 밝게, 컷(빨리 감기) 정지 화면은 어둡게 (호스트와 같은 .dim) */
+  try{ if(cv.classList && cv.classList.toggle) cv.classList.toggle("dim", !!W._ffHeld || !A1.hl); }catch(e){}
 }
-function pvpGuestTac(k, v){ pvpSend({t:"tac", k, v}); try{ (PVP.watch.myTac=PVP.watch.myTac||{})[k]=v; show("pvp"); }catch(e){} }
-/* ── 종료·전적·끊김 ──────────────────────────────────────────────────── */
-function pvpHalftime(){
-  livePaused=true; try{ updLiveCtrl("ht"); }catch(e){}
-  try{ pvpSend({t:"ev", min:"HT", txt:"⏸ 하프타임 — 잠시 후 후반전이 자동으로 시작됩니다", ty:"info", hg:liveM?liveM.hg:0, ag:liveM?liveM.ag:0}); }catch(e){}
-  setTimeout(()=>{ try{ if(liveM && liveM.opts && liveM.opts.pvp && livePaused) resumeLive(); }catch(e){} }, 12000);
-}
-function pvpHostTac(k, v){
-  try{ const t=PVP&&PVP.homeT; if(!t) return;
-    const K=["mentality","pass","tempo","press","line","width","counter","crossFq","longShot"];
-    if(K.indexOf(k)>=0){ t.tactic[k]=clamp(Math.round(v),0,4); (PVP.hostTac=PVP.hostTac||{})[k]=t.tactic[k]; }
-    try{ renderCoachAdvice(); }catch(e){}
+/* 게스트 전광판 — 호스트 스코어버그와 같은 문법 (팀 필 + 스코어 + 시계 + HIGHLIGHT) */
+let pvpGoalT=null;
+function pvpShowGoal(m){
+  try{
+    const el=document.getElementById("pvpGoalOv"); if(!el) return;
+    /* ⚔️ 제보 — 호스트가 패널을 걷는 순간 게스트도 함께 걷는다 (같은 호흡) */
+    if(m.hide){ if(pvpGoalT){ clearTimeout(pvpGoalT); pvpGoalT=null; } el.classList.add("hidden"); el.innerHTML=""; return; }
+    const posTag=(m.slot||m.pos)?`<span class="gpPos pos-${pvpClean(m.pos,3)||"MF"}">${pvpClean(m.slot||m.pos,4)}</span>`:"";
+    const nm=pvpClean(m.nm,14)||"득점", min=pvpClean(m.min,8), sub=pvpClean(m.sub,40), tm=pvpClean(m.tm,18);
+    el.style.setProperty("--gpCol", /^#[0-9a-fA-F]{3,8}$/.test(m.col||"")?m.col:"#2ea8ff");
+    el.innerHTML = m.off
+      ? `<div class="gpBox gpOff">
+           <div class="gpTag">NO GOAL</div>
+           <div class="gpName">${posTag}<span class="gpStrike">${nm}</span></div>
+           <div class="gpMeta"><b>${min}'</b> · 🚩 오프사이드로 <b style="color:#ff7b72">득점 취소</b></div>
+         </div>`
+      : `<div class="gpBox">
+           <div class="gpTag">GOAL!</div>
+           <div class="gpName">${posTag}${nm}</div>
+           <div class="gpMeta"><b>${min}'</b> · ${tm}${sub?` <span class="gpSub">${sub}</span>`:""}</div>
+         </div>`;
+    el.classList.remove("hidden");
+    if(pvpGoalT) clearTimeout(pvpGoalT);
+    pvpGoalT=setTimeout(()=>{ try{ el.classList.add("hidden"); }catch(e){} }, m.off?5200:6200);
   }catch(e){}
 }
+function pvpScoreHtml(){
+  const W=PVP&&PVP.watch; if(!W) return "";
+  const i=W.info||{}; const s=W.snap||{};
+  const mm=Math.floor((W.clock||0)/60);
+  const per = s.et ? (mm>105?"연장 후반":"연장 전반") : (s.half2?"후반":"전반");
+  const pill=(txt,col)=>`<span style="display:inline-block;padding:3px 10px;border-radius:6px;background:${col};color:${(typeof isLightColor==="function"&&isLightColor(col))?"#0d1117":"#fff"};font-weight:800;font-size:14px">${txt}</span>`;
+  return `${pill(i.hs||"홈", i.hc||"#c22")} <b style="font-size:19px;margin:0 6px">${W.hg||0} : ${W.ag||0}</b> ${pill(i.as||"원정", i.ac||"#26c")}
+    <span style="color:var(--gold);font-weight:800;margin-left:8px">${mm}' ${per}</span>
+    ${s.hl?`<span style="color:#f85149;font-weight:800;margin-left:10px;font-size:12px">● HIGHLIGHT</span>`:""}`;
+}
+/* ⚔️ 제보 — 상시 「실시간 지시」 슬라이더는 걷어냈다(전술창으로 합침).
+   전술 지시는 이제 리그와 같은 전술 화면에서 만지고, 닫을 때 pvpTacRelay 가 한 번에 보낸다. */
+/* ── 종료·전적·끊김 ──────────────────────────────────────────────────── */
+/* ── 🔁 경기 중 전술 수정 (제보) — 각자 3회, 60초 제한, 반대편은 블라인드 ── */
+const PVP_TAC_USES=3, PVP_TAC_SEC=60;
+/* 전술창에서 만질 수 있는 지시 — pvpApplyGuestTac 의 허용 목록과 같아야 한다 */
+const PVP_TAC_KEYS=["mentality","press","line","tempo","width","counter","pass","crossFq","longShot"];
+const PVP_TAC_LAB={mentality:"멘탈리티", press:"압박", line:"수비라인", tempo:"템포",
+                   width:"폭", counter:"역습", pass:"패스", crossFq:"크로스", longShot:"중거리"};
+function pvpSideState(key){
+  try{
+    const sd = key==="h" ? liveM.h : liveM.a;
+    const xi=onPitch(sd).filter(e=>!e.red).map(e=>({no:(e.p&&e.p.no)||0, n:String((e.p&&e.p.name)||"").slice(0,12),
+      ps:String(e.slot||(e.p&&e.p.pos)||"").slice(0,4), cond:Math.round((e.p&&e.p.cond)||0)}));
+    const used=new Set(sd.list.map(e=>e.p&&e.p.id));
+    const bench=(sd.bench||[]).filter(p=>p&&!xi.some(x=>x.no===p.no)).map(p=>({no:p.no||0, n:String(p.name||"").slice(0,12),
+      ps:String(p.prefPos||p.pos||"").slice(0,4), cond:Math.round(p.cond||0)}));
+    /* ⚔️ 제보 — 「실시간 지시를 없애고 전술창에서 교체랑 세부전술을 같이」.
+       패널에서 슬라이더를 그리려면 지금 값이 있어야 한다 — 상태에 함께 담는다. */
+    const T=(sd.team&&sd.team.tactic)||{};
+    const tac={}; for(const k of PVP_TAC_KEYS) tac[k]=clamp(T[k]|0,0,4);
+    return {xi, bench, subs:sd.subs||0, max:subMax(liveM), tac, form:String(T.formation||"")};
+  }catch(e){ return {xi:[], bench:[], subs:0, max:5, tac:{}, form:""}; }
+}
+function pvpApplySub(key, outNo, inNo){
+  try{
+    const sd = key==="h" ? liveM.h : liveM.a;
+    if((sd.subs||0)>=subMax(liveM)) return {ok:0, why:"교체 한도(5명)를 모두 썼습니다"};
+    const outX=onPitch(sd).find(e=>!e.red && e.p && e.p.no===outNo);
+    if(!outX) return {ok:0, why:"그 선수는 그라운드에 없습니다"};
+    const inP=(sd.bench||[]).find(p=>p && p.no===inNo);
+    if(!inP) return {ok:0, why:"그 선수는 벤치에 없습니다"};
+    if(inP.pos==="GK" && onPitch(sd).some(x=>x!==outX && x.p.pos==="GK")) return {ok:0, why:"골키퍼가 이미 있습니다 — 키퍼끼리 교체하세요"};
+    const done=subIn(liveM, sd, key, outX, inP);
+    if(done===null || done===false) return {ok:0, why:"교체할 수 없습니다"};
+    return {ok:1};
+  }catch(e){ return {ok:0, why:"교체 실패"}; }
+}
+function pvpTacOpen(){
+  if(!PVP || PVP.stage!=="match" || PVP.tacEdit || PVP.ended) return;
+  if(PVP._htWait || PVP.awayMe || PVP.awayOpp){ try{ flash("지금은 수정할 수 없습니다 — 하프타임/자리 비움 중","warn"); }catch(e){} return; }
+  if((PVP.tacMe|0)<=0){ try{ flash("🔁 교체·수정 기회를 모두 사용했습니다 (경기당 "+PVP_TAC_USES+"회)","warn"); }catch(e){} return; }
+  PVP.tacMe--;
+  PVP.tacEdit="me"; PVP.tacSel={}; PVP.tacT0=Date.now();
+  pvpSend({t:"tacp", on:1});
+  if(PVP.role==="host"){
+    livePaused=true; try{ updLiveCtrl(); }catch(e){}
+    PVP.tacState=pvpSideState("h");
+    /* ⚔️ 제보 — 리그와 똑같은 「경기 중 전술 수정」 화면을 그대로 연다 */
+    PVP_TAC_TEAM=PVP.homeT || (liveM && liveM.h && liveM.h.team) || null;
+    try{ openLiveTactics(); }catch(e){ PVP_TAC_TEAM=null; }
+  } else {
+    PVP.tacState=null;                  // 호스트가 지금 스쿼드 상태를 보내 줄 때까지 기다린다
+    pvpTacWait(true);
+  }
+  /* 60초 제한 — 편집자 쪽 자동 종료 (호스트는 상대 편집도 따로 감시한다) */
+  if(PVP.tacTO) clearTimeout(PVP.tacTO);
+  PVP.tacTO=setTimeout(()=>{ try{ pvpTacTimeUp(); }catch(e){} }, PVP_TAC_SEC*1000);
+}
+function pvpTacDone(){
+  if(!PVP || PVP.tacEdit!=="me") return;
+  PVP.tacEdit=null;
+  try{ if(PVP.tacTO){ clearTimeout(PVP.tacTO); PVP.tacTO=null; } }catch(e){}
+  try{ pvpTacWait(false); }catch(e){}
+  pvpSend({t:"tacp", on:0});
+  if(PVP.role==="host") pvpTacResume();
+}
+/* ⏱ 60초 마감 — 전술 화면을 열어 둔 채로 시간이 다 되면 저장하고 나온다 */
+function pvpTacTimeUp(){
+  try{
+    if(!PVP || PVP.tacEdit!=="me") return;
+    try{ flash("⏱ 60초 경과 — 수정을 마감합니다","warn"); }catch(e){}
+    if(inLiveTactics){ saveLiveTactics(); return; }
+    pvpTacDone();
+  }catch(e){}
+}
+function pvpTacResume(){
+  try{
+    if(!liveM || !liveM.opts || !liveM.opts.pvp) return;
+    if(PVP && (PVP.tacEdit || PVP._htWait || PVP.awayMe || PVP.awayOpp)) return;
+    if(livePaused){ try{ if(liveHL) liveHL.lastAdv=nowMs(); lastHLTick=null; }catch(e){}
+      livePaused=false; try{ updLiveCtrl(); }catch(e){} }
+  }catch(e){}
+}
+/* ⚔️ 제보 — 옛 전용 오버레이 패널(교체 목록 + 슬라이더)은 걷어냈다.
+   경기 중 전술 수정은 리그와 완전히 같은 화면(openLiveTactics)을 쓴다. */
+/* 게스트 — 호스트가 스쿼드 상태를 보내 줄 때까지의 짧은 대기 화면 */
+function pvpTacWait(on){
+  try{
+    let ov=document.getElementById("pvpTacOv");
+    if(!on){ if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); return; }
+    const cv=document.getElementById("pitch2d")||document.getElementById("pvpCv");
+    const wrap=cv&&cv.parentNode; if(!wrap) return;
+    if(!ov){
+      ov=document.createElement("div"); ov.id="pvpTacOv";
+      ov.style.cssText="position:absolute;inset:0;background:rgba(5,8,12,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:6;border-radius:8px;text-align:center;padding:14px";
+      wrap.appendChild(ov);
+    }
+    ov.innerHTML=`<div style="font-size:28px">📋</div><div style="font-weight:800">전술창을 여는 중…</div>
+      <div class="small" style="opacity:.75">스쿼드 상태를 받아오고 있습니다</div>`;
+  }catch(e){}
+}
+/* ⚔️ 게스트의 그림자 경기 — 리그 전술판은 「경기(M)」가 있어야 그려진다.
+   게스트에게는 엔진이 없으므로, 호스트가 알려 준 지금 상태로 똑같은 모양의 경기를 하나 만든다.
+   이 경기는 화면을 그리기 위한 것일 뿐 아무것도 굴리지 않는다 — 결과는 등번호로 호스트에 전달된다. */
+function pvpGuestTacOpen(st){
+  try{
+    if(!PVP || !PVP.myPack || !PVP.oppPack) return false;
+    const me=pvpBuildTeam(PVP.myPack, "h"), op=pvpBuildTeam(PVP.oppPack, "a");
+    if(st.form && FORMATIONS[st.form]) me.tactic.formation=st.form;
+    for(const k of PVP_TAC_KEYS) if(st.tac && st.tac[k]!=null) me.tactic[k]=clamp(st.tac[k]|0,0,4);
+    const M=createMatch(me, op, {noTable:true, pvp:true, neutral:true});
+    const byNo=(no)=>me.players.find(p=>p.no===no);
+    const xi=(st.xi||[]).map(q=>byNo(q.no)).filter(Boolean);
+    const bench=(st.bench||[]).map(q=>byNo(q.no)).filter(Boolean);
+    if(xi.length<7) return false;                       // 상태가 성치 않다 — 옛 방식으로 물러난다
+    M.h.list=xi.map(p=>({p, fit:(p.cond||90), y:0, red:false, goals:0, assists:0, on:0, off:null}));
+    M.h.bench=bench; M.h.subs=st.subs|0; M.h.red=0;
+    M.min=(PVP.watch && PVP.watch.clock) ? Math.floor(PVP.watch.clock/60) : 0;
+    M.hg=(PVP.watch&&PVP.watch.hg)|0; M.ag=(PVP.watch&&PVP.watch.ag)|0;
+    /* 되돌아갈 때 무엇이 바뀌었는지 재기 위한 출발선 */
+    PVP.tacBase={subs:M.h.subs, xi:xi.map(p=>p.no), pairs:[]};
+    PVP.tacM=M; PVP_TAC_TEAM=me;
+    liveM=M; liveSim=null; liveTag="⚔️ 온라인 친선전";
+    pvpTacWait(false);
+    openLiveTactics();
+    return true;
+  }catch(e){ try{ console.warn("전술창 준비 실패:", e); }catch(_){} return false; }
+}
+/* 전술창을 닫는다 — 리그의 저장/취소가 여기로 들어온다 */
+function pvpTacClose(save){
+  try{
+    const guest=(PVP && PVP.role==="guest");
+    if(guest && save) pvpTacRelay();
+    PVP_TAC_TEAM=null;
+    if(guest){
+      liveM=null; liveSim=null;
+      if(PVP) PVP.tacM=null;
+      try{ pvpTacDone(); }catch(e){}
+      try{ show("pvp"); }catch(e){}
+      return;
+    }
+    /* 호스트 — 바뀐 스쿼드를 굴러가는 엔진에 반영하고 경기 화면으로 돌아간다 */
+    if(save && liveSim) try{ liveSim.resyncSquads(); }catch(e){}
+    try{ $("#main").innerHTML=liveLayout(liveM, liveTag); }catch(e){}
+    livePanelKey="";
+    try{ redrawLiveLog(); }catch(e){}
+    try{ resumeStashedHL(); }catch(e){}
+    try{ syncLive(); }catch(e){}
+    try{ pvpTacDone(); }catch(e){}
+  }catch(e){}
+}
+/* 게스트가 바꾼 것을 호스트에 전달한다 — 두 클론은 선수 id 가 다르므로 등번호로 말한다 */
+function pvpTacRelay(){
+  try{
+    const M=PVP&&PVP.tacM; if(!M) return;
+    const t=M.h.team, B=PVP.tacBase||{};
+    /* ① 교체 — 화면에서 확정한 순서 그대로 (자리 물려받기가 어긋나지 않게) */
+    for(const pr of (B.pairs||[])) pvpSend({t:"sub", out:pr.out, in:pr.in});
+    /* ② 지시 */
+    for(const k of PVP_TAC_KEYS) pvpSend({t:"tac", k, v:clamp(t.tactic[k]|0,0,4)});
+    /* ③ 포메이션 */
+    if(t.tactic.formation) pvpSend({t:"tacf", f:String(t.tactic.formation)});
+    /* ④ 자리 배치·역할 — 등번호로 옮겨 담는다 */
+    const sl={}, rl={};
+    for(const p of (t.players||[])){
+      if(!p || p.no==null) continue;
+      const s=t.tactic.slot && t.tactic.slot[p.id];
+      if(s) sl[p.no]=String(s).slice(0,4);
+      const r=t.tactic.role && t.tactic.role[p.id];
+      if(r && r.r) rl[p.no]={r:String(r.r).slice(0,12), d:r.d|0};
+    }
+    if(Object.keys(sl).length) pvpSend({t:"tacsl", sl});
+    if(Object.keys(rl).length) pvpSend({t:"tacrl", rl});
+  }catch(e){}
+}
+/* 호스트 — 게스트가 보낸 자리 배치·역할을 상대 팀에 옮겨 담는다 */
+function pvpApplySlots(t, sl, rl){
+  try{
+    if(!t || !t.tactic) return;
+    const byNo={}; for(const p of (t.players||[])) if(p && p.no!=null) byNo[p.no]=p;
+    if(sl && typeof sl==="object"){
+      t.tactic.slot=t.tactic.slot||{};
+      for(const no in sl){ const p=byNo[no]; if(p && SLOT_XY[sl[no]]) t.tactic.slot[p.id]=sl[no]; }
+    }
+    if(rl && typeof rl==="object"){
+      t.tactic.role=t.tactic.role||{};
+      for(const no in rl){ const p=byNo[no], r=rl[no];
+        if(p && r && typeof ROLE_BY_KEY!=="undefined" && ROLE_BY_KEY[r.r]) t.tactic.role[p.id]={r:r.r, d:clamp(r.d|0,0,4)}; }
+    }
+    if(liveM) liveM.xiDirty=true;
+    if(typeof liveSim!=="undefined" && liveSim) liveSim.resyncSquads();
+  }catch(e){}
+}
+/* 반대편 블라인드 — 「상대방이 전술을 수정중입니다」 */
+function pvpTacBlind(on){
+  try{
+    let ov=document.getElementById("pvpTacBl");
+    if(!on){
+      if(ov&&ov.parentNode) ov.parentNode.removeChild(ov);
+      if(PVP&&PVP.tacBlIv){ clearInterval(PVP.tacBlIv); PVP.tacBlIv=null; }
+      if(PVP) PVP.tacBlT0=null;
+      return;
+    }
+    const cv=document.getElementById("pitch2d")||document.getElementById("pvpCv");
+    const wrap=cv&&cv.parentNode; if(!wrap) return;
+    if(!ov){
+      ov=document.createElement("div"); ov.id="pvpTacBl";
+      ov.style.cssText="position:absolute;inset:0;background:rgba(5,8,12,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:6;border-radius:8px;text-align:center;padding:14px";
+      wrap.appendChild(ov);
+    }
+    if(!PVP.tacBlT0) PVP.tacBlT0=Date.now();
+    const draw=()=>{ try{
+      if(!PVP || PVP.tacEdit!=="opp"){ return; }
+      let el=document.getElementById("pvpTacBl");
+      if(!el){ pvpTacBlind(true); return; }
+      const sec=Math.floor((Date.now()-PVP.tacBlT0)/1000);
+      el.innerHTML=`<div style="font-size:28px">📋</div>
+        <div style="font-weight:800;font-size:16px">상대 감독이 전술을 수정 중입니다…</div>
+        <div class="small" style="opacity:.8">수정이 끝나면 경기가 자동으로 재개됩니다 <b>(${sec}초 / 최대 ${PVP_TAC_SEC}초)</b></div>
+        <div class="small" style="opacity:.6">💬 채팅은 계속 보낼 수 있습니다</div>`;
+    }catch(e){} };
+    draw();
+    if(PVP.tacBlIv) clearInterval(PVP.tacBlIv);
+    PVP.tacBlIv=setInterval(draw, 1000);
+  }catch(e){}
+}
+/* ── ⏸ 자리 비움(백그라운드) 일시정지 ─────────────────────────────────── */
+function pvpVisChange(hidden){
+  if(!PVP || PVP.stage!=="match" || PVP.ended) return;   // ⚔️ 끝난 경기는 자리 비움을 알리지 않는다
+  PVP.awayMe=!!hidden;
+  pvpSend({t:"away", on:hidden?1:0});
+  pvpAwaySync();
+}
+function pvpAwaySync(){
+  if(!PVP || PVP.stage!=="match" || PVP.ended){ pvpAwayOverlay(false); return; }
+  const hold=!!(PVP.awayMe||PVP.awayOpp);
+  if(PVP.role==="host" && liveM && liveM.opts && liveM.opts.pvp){
+    if(hold && !PVP.awayHold){
+      PVP.awayHold=true;
+      if(!livePaused){ livePaused=true; try{ updLiveCtrl(); }catch(e){} }
+    } else if(!hold && PVP.awayHold){
+      PVP.awayHold=false;
+      if(livePaused && !PVP._htWait){
+        try{ if(liveHL) liveHL.lastAdv=nowMs(); lastHLTick=null; }catch(e){}
+        livePaused=false; try{ updLiveCtrl(); }catch(e){}
+      }
+    }
+  }
+  pvpAwayOverlay(!!PVP.awayOpp);
+}
+function pvpAwayOverlay(on){
+  try{
+    let ov=document.getElementById("pvpAwayOv");
+    if(!on){
+      if(ov&&ov.parentNode) ov.parentNode.removeChild(ov);
+      if(PVP&&PVP.awayIv){ clearInterval(PVP.awayIv); PVP.awayIv=null; }
+      if(PVP) PVP.awayT0=null;
+      return;
+    }
+    const cv=document.getElementById("pitch2d")||document.getElementById("pvpCv");
+    const wrap=cv&&cv.parentNode; if(!wrap) return;
+    if(!ov){
+      ov=document.createElement("div");
+      ov.id="pvpAwayOv";
+      ov.style.cssText="position:absolute;inset:0;background:rgba(5,8,12,.80);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:5;border-radius:8px;text-align:center;padding:14px";
+      wrap.appendChild(ov);
+    }
+    if(!PVP.awayT0) PVP.awayT0=Date.now();
+    const draw=()=>{
+      if(!PVP || !PVP.awayOpp) return;
+      let el=document.getElementById("pvpAwayOv");
+      if(!el){ pvpAwayOverlay(true); return; }   // 화면 재렌더로 지워졌으면 다시 붙인다
+      const sec=Math.floor((Date.now()-PVP.awayT0)/1000);
+      el.innerHTML=`<div style="font-size:28px">⏸</div>
+        <div style="font-weight:800;font-size:16px">상대 감독이 잠시 자리를 비웠습니다</div>
+        <div class="small" style="opacity:.85">경기가 일시정지됐습니다 — 돌아오면 자동으로 재개됩니다 <b>(${sec}초)</b></div>
+        <div class="small" style="opacity:.6">💬 채팅은 계속 보낼 수 있습니다</div>
+        ${sec>=120?`<button class="mini" style="margin-top:6px;border-color:var(--red)" onclick="pvpForfeitWin('상대가 돌아오지 않습니다')">상대 이탈로 종료 — 3 : 0 몰수승</button>`:""}`;
+    };
+    draw();
+    if(PVP.awayIv) clearInterval(PVP.awayIv);
+    PVP.awayIv=setInterval(draw, 1000);
+  }catch(e){}
+}
+function pvpHalftime(){
+  /* ⚠ 제보 — 「후반전 시작을 양쪽 준비 버튼으로. 서로 준비되면 시작」. 12초 자동 재개 폐지. */
+  if(PVP){ PVP._htWait=true; PVP.htMe=false; PVP.htOpp=false; }
+  livePaused=true; try{ updLiveCtrl("ht"); }catch(e){}
+  try{ pvpSend({t:"ht"}); }catch(e){}
+  try{ pvpSend({t:"ev", min:"HT", txt:"⏸ 하프타임 — 양쪽 감독이 준비되면 후반전이 시작됩니다", ty:"info", hg:liveM?liveM.hg:0, ag:liveM?liveM.ag:0}); }catch(e){}
+}
+function pvpHtReady(){
+  if(!PVP || !PVP._htWait || PVP.htMe) return;
+  PVP.htMe=true;
+  pvpSend({t:"htr"});
+  try{ flash("✅ 후반전 준비 완료 — 상대 감독을 기다립니다","info"); }catch(e){}
+  try{ if(PVP.role==="host") updLiveCtrl("ht"); }catch(e){}
+  try{ pvpHtOverlaySync(); }catch(e){}
+  pvpHtTryStart();
+}
+function pvpHtTryStart(){
+  if(!PVP || !PVP.htMe || !PVP.htOpp) return;
+  PVP._htWait=false;
+  if(PVP.role==="host"){
+    pvpSend({t:"ht2"});
+    try{ flash("⚽ 후반전 시작!","good"); }catch(e){}
+    if(liveM && liveM.opts && liveM.opts.pvp && livePaused && !(PVP.awayMe||PVP.awayOpp)) resumeLive();
+  }
+  try{ pvpHtOverlaySync(); }catch(e){}
+}
+/* 게스트 하프타임 오버레이 — 준비 버튼 · 「상대가 준비되었습니다」 상태 표시 */
+function pvpHtOverlaySync(){
+  try{
+    const need=!!(PVP && PVP.stage==="match" && PVP.role==="guest" && PVP._htWait);
+    let ov=document.getElementById("pvpHtOv");
+    if(!need){ if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); return; }
+    const cv=document.getElementById("pvpCv"); const wrap=cv&&cv.parentNode; if(!wrap) return;
+    if(!ov){
+      ov=document.createElement("div"); ov.id="pvpHtOv";
+      ov.style.cssText="position:absolute;inset:0;background:rgba(5,8,12,.80);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;z-index:5;border-radius:8px;text-align:center;padding:14px";
+      wrap.appendChild(ov);
+    }
+    ov.innerHTML=`<div style="font-size:26px">⏸</div>
+      <div style="font-weight:800;font-size:16px">하프타임</div>
+      ${PVP.htOpp?`<div class="small" style="color:var(--green)">💪 상대 감독이 준비되었습니다!</div>`
+                 :`<div class="small" style="opacity:.75">상대 감독이 준비 중입니다…</div>`}
+      ${PVP.htMe?`<div class="small" style="opacity:.85">⏳ 후반전 시작 대기 — 상대가 준비되면 바로 시작됩니다</div>`
+                :`<button class="bigbtn" style="max-width:260px" onclick="pvpHtReady()">✅ 후반전 준비 완료</button>`}`;
+  }catch(e){}
+}
+/* ── 💬 실시간 채팅 (제보) — 신뢰 채널로 오간다. 로비·경기 어디서든. ── */
+function pvpChatHtml(){
+  const list=(PVP&&PVP.chat)||[];
+  if(!list.length) return `<div class="small" style="opacity:.5">첫 인사를 건네 보세요 🙂</div>`;
+  return list.slice(-40).map(c=>`<div class="small" style="padding:2px 0"><b style="color:${c.who==="me"?"var(--green)":"var(--gold)"}">${c.who==="me"?pvpNick():pvpClean((PVP.oppPack&&PVP.oppPack.mgr)||"상대",8)}</b> ${c.x}</div>`).join("");
+}
+/* 💬 채팅창 높이 기억 — ⚠ 제보(크기 조절). 화면을 다시 그려도 감독이 맞춰 둔 높이를 지킨다.
+   .chatBox 를 단 상자면 무엇이든 여기서 한꺼번에 돌본다. */
+function chatBoxSync(){
+  try{
+    const list=document.querySelectorAll ? document.querySelectorAll(".chatBox") : [];
+    for(let i=0;i<list.length;i++){
+      const el=list[i]; if(!el || el._cbBound) continue;
+      el._cbBound=1;
+      const id=el.id || el.getAttribute("data-cbk") || "";
+      const def=parseInt(el.getAttribute("data-cbdef"),10)||150;
+      let h=0;
+      if(id){ try{ h=parseInt(localStorage.getItem("klm2026_cbH_"+id),10)||0; }catch(e){} }
+      el.style.height=((h>60&&h<2000)?h:def)+"px";
+      if(id && typeof ResizeObserver!=="undefined"){
+        try{
+          const ro=new ResizeObserver(()=>{ try{
+            const v=Math.round(el.clientHeight);
+            if(v>60 && v<2000) localStorage.setItem("klm2026_cbH_"+id, String(v));
+          }catch(e){} });
+          ro.observe(el); el._cbRo=ro;
+        }catch(e){}
+      }
+    }
+  }catch(e){}
+}
+function pvpChatBox(compact){
+  return `${compact?`<div class="small" style="margin:8px 0 4px;border-top:1px solid #1b222b;padding-top:8px"><b>💬 채팅</b> <span style="opacity:.55">— 모서리를 끌어 크기 조절</span></div>`:""}
+    <div id="pvpChatLog" class="chatBox" data-cbdef="${compact?130:190}">${pvpChatHtml()}</div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <input id="pvpChatIn" type="text" maxlength="120" placeholder="메시지 입력 (Enter 전송)"
+        style="flex:1;min-width:0;padding:8px;background:var(--bg);border:1px solid var(--acc);border-radius:6px;color:var(--fg);font-size:13px"
+        onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();pvpChatSend();}">
+      <button class="mini" style="padding:8px 14px" onclick="pvpChatSend()">전송</button>
+    </div>`;
+}
+function pvpChatPush(who, x){
+  if(!PVP || !x) return;
+  (PVP.chat=PVP.chat||[]).push({who, x, at:Date.now()});
+  if(PVP.chat.length>60) PVP.chat.splice(0, PVP.chat.length-60);
+  try{ const el=document.getElementById("pvpChatLog"); if(el){ el.innerHTML=pvpChatHtml(); el.scrollTop=el.scrollHeight||9e6; } }catch(e){}
+}
+function pvpChatSend(){
+  const inp=document.getElementById("pvpChatIn"); if(!inp||!PVP) return;
+  const x=pvpClean(inp.value,120).trim(); if(!x) return;
+  const now=Date.now();
+  if(PVP._chatAt && now-PVP._chatAt<500) return;   // 도배 방지
+  PVP._chatAt=now;
+  inp.value="";
+  pvpChatPush("me", x);
+  pvpSend({t:"chat", x});
+}
+/* ⚔️ 제보 — 「실시간 지시를 없애고, 전술 버튼 눌러서 전술창에서 교체랑 세부전술 수정」.
+   상시 슬라이더를 걷어내고 전술창 하나로 모은다 — 교체도 지시도 같은 자리에서, 같은 대가로. */
 function pvpHostPanel(){
   const t=PVP&&PVP.homeT; if(!t) return "";
-  const cur=(k)=> (PVP.hostTac&&PVP.hostTac[k]!=null)?PVP.hostTac[k]:(t.tactic[k]!=null?t.tactic[k]:2);
-  const slider=(k,lab)=>`<div style="display:flex;align-items:center;gap:5px;margin:3px 0">
-    <span class="small" style="width:58px">${lab}</span>
-    ${[0,1,2,3,4].map(v=>`<button class="mini ${cur(k)===v?"sel":""}" style="padding:2px 7px" onclick="pvpHostTac('${k}',${v})">${v}</button>`).join("")}</div>`;
-  return `<div class="small" style="margin-bottom:6px">⚔️ <b>실시간 지시</b> — 즉시 반영 · 교체는 수석코치 자동 (양 팀 동일)</div>
-    ${slider("mentality","멘탈리티")}${slider("press","압박")}${slider("line","수비라인")}
-    ${slider("tempo","템포")}${slider("width","폭")}${slider("counter","역습")}`;
+  return `<button class="bigbtn" style="max-width:none;padding:11px;margin-bottom:8px" onclick="pvpTacOpen()">📋 전술
+      <span class="small" style="color:inherit;opacity:.85">— 교체 · 세부 전술 (남은 ${(PVP.tacMe!=null?PVP.tacMe:PVP_TAC_USES)}회)</span></button>
+    <p class="small" style="opacity:.7;margin:0 0 8px">전술창을 여는 동안 경기가 멈추고 상대 화면은 가려집니다.</p>
+    ${pvpChatBox(1)}`;
+}
+/* ⚔️ ⚠ 제보 원문 — 「게스트일때 경기 종료후에 결과 확인버튼이 호스트가 결과확인 버튼 눌러야지
+   뜨던데... 이건 좀 그렇잖아」.
+   원인 — 종료 신호(end)를 pvpFinish 안에서 보냈는데, pvpFinish 는 호스트가 「📋 결과 확인」을
+      누른 뒤 finishLive 가 부르는 함수였다. 그래서 게스트는 호스트가 버튼을 누를 때까지
+      경기 화면에 묶여 있었다.
+   ─ 경기가 끝나 「📋 결과 확인」 버튼이 뜨는 그 순간(updLiveCtrl("ft"))에 곧바로 알린다.
+      양쪽 버튼이 같이 뜨고, 누구든 먼저 나가도 상관없다. */
+function pvpAnnounceEnd(){
+  try{
+    if(!PVP || PVP.role!=="host" || PVP._endSent || PVP.forfeited) return;
+    if(!liveM || !liveM.opts || !liveM.opts.pvp) return;
+    PVP._endSent=1;
+    PVP.ended=1;                  // 이 뒤의 이탈은 몰수가 아니다 — 호스트 쪽도 함께 잠근다
+    try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
+    pvpSend({t:"end", hg:liveM.hg||0, ag:liveM.ag||0});
+    try{ pvpResPost(liveM.hg||0, liveM.ag||0, 0); }catch(e){}   // 🌐 제보 — 모두의 전적에 남긴다
+  }catch(e){}
 }
 function pvpFinish(M){
   if(!PVP) return;
   try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
+  if(PVP.forfeited){ return; }   // ⚠ 몰수 확정 — 전적·결과는 이미 적혔다
   const hg=M.hg||0, ag=M.ag||0;
   const iAmHome=PVP.role==="host";
   const my=iAmHome?hg:ag, op=iAmHome?ag:hg;
   pvpLogAdd({opp:(PVP.oppPack&&PVP.oppPack.name)||"상대", oppMgr:(PVP.oppPack&&PVP.oppPack.mgr)||"", my, op, host:iAmHome?1:0});
-  if(PVP.role==="host") pvpSend({t:"end", hg, ag});
+  if(PVP.role==="host" && !PVP._endSent){ PVP._endSent=1; pvpSend({t:"end", hg, ag}); }   // 안전망 — 이미 보냈으면 넘어간다
   PVP.stage="done"; PVP.result={hg,ag};
   try{ saveGame(); }catch(e){}
 }
+/* ⚔️ 제보 — 「경기 끝나고 나오는 결과 확인 버튼을 호스트만 누를 수 있다. 게스트도 결과 확인
+   버튼을 누르고 나갈 수 있게 하자」. 예전에는 종료 신호를 받자마자 화면을 넘겨 버려서,
+   게스트는 마지막 장면·통계를 볼 새도 없이 로비로 튕겼다.
+   ─ 전적은 이 순간 그대로 기록한다(버튼을 눌러야 남는 것이 아니다). 화면만 붙잡아 둔다. */
 function pvpGuestEnd(m){
   if(!PVP) return;
+  if(PVP.ended) return;
   const my=m.ag||0, op=m.hg||0;      // 게스트 = 원정
   pvpLogAdd({opp:(PVP.oppPack&&PVP.oppPack.name)||"상대", oppMgr:(PVP.oppPack&&PVP.oppPack.mgr)||"", my, op, host:0});
-  PVP.stage="done"; PVP.result={hg:m.hg,ag:m.ag};
-  try{ if(PVP.watchT) cancelAnimationFrame(PVP.watchT); }catch(e){}
+  PVP.ended=1; PVP.result={hg:m.hg,ag:m.ag};
+  try{ if(PVP.watchT){ cancelAnimationFrame(PVP.watchT); PVP.watchT=null; } }catch(e){}
+  try{ if(inLiveTactics && liveM && liveM.opts && liveM.opts.pvp) cancelLiveTactics(); }catch(e){}
+  try{ if(PVP.tacEdit){ PVP.tacEdit=null; pvpTacWait(false); } }catch(e){}
+  try{ pvpTacBlind(false); }catch(e){}
+  try{ pvpAwayOverlay(false); }catch(e){}
   try{ saveGame(); }catch(e){}
+  /* 화면은 그대로 두고 머리말 버튼과 자막만 바꾼다 — 다시 그리면 마지막 장면이 지워진다 */
+  let has=false;
+  try{
+    const bt=document.getElementById("pvpMatchBtns");
+    if(bt){ has=true; bt.innerHTML=`<button class="mini sel" onclick="pvpGuestResult()">📋 결과 확인 ▶</button>`; }
+    const cap=document.getElementById("pvpCap");
+    if(cap) cap.textContent="🏁 경기 종료 — 결과 확인을 눌러 주세요.";
+    const cv=document.getElementById("pvpCv");
+    if(cv && cv.classList) cv.classList.remove("dim");
+    const md=document.getElementById("pvpMode");
+    if(md) md.textContent="🏁 종료";
+  }catch(e){}
+  if(!has) pvpGuestResult();          // 경기 화면이 없으면 붙잡을 것도 없다
+}
+/* 게스트의 「결과 확인」 — 여기서야 결과 화면으로 넘어간다 */
+function pvpGuestResult(){
+  if(!PVP) return;
+  PVP.ended=0; PVP.stage="done";
+  try{ document.body.classList.remove("matchFS"); }catch(e){}
   show("pvp");
 }
 function pvpLogAdd(r){
@@ -60152,8 +61748,12 @@ function pvpLogAdd(r){
 }
 function pvpDropped(){
   if(!PVP||PVP.stage==="done") return;
+  /* ⚔️ 경기가 이미 끝났다면 상대가 먼저 나가도 정상이다 — 결과 확인 화면을 지킨다 */
+  if(PVP.ended) return;
   if(PVP.stage==="match"){
-    pvpAbort("연결이 끊겼습니다 — 경기는 무효 처리됐습니다.");
+    /* ⚠ 제보(몰수) — 무효가 아니라 남은 쪽 3:0 몰수승이다 */
+    if(pvpForfeitWin("상대의 접속이 끊겼습니다")) return;
+    pvpAbort("연결이 끊겼습니다.");
   } else pvpAbort("연결이 끊겼습니다.");
 }
 function pvpAbort(msg){
@@ -60168,37 +61768,180 @@ function pvpAbort(msg){
   }catch(e){}
   try{ if(VIEW==="pvp") show("pvp"); }catch(e){}
 }
-function pvpLeave(){ pvpSend({t:"bye"}); pvpAbort("대전을 종료했습니다."); }
+/* 몰수승 — 상대가 나갔다 (경기 중 한정). 내 쪽 전적에 3:0 승을 적고 경기를 끝낸다. */
+function pvpForfeitWin(why){
+  if(!PVP || PVP.stage!=="match" || PVP.forfeited || PVP.ended) return false;   // ⚔️ 종료 뒤 이탈은 몰수가 아니다
+  PVP.forfeited=1;
+  const iH=PVP.role==="host";
+  try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
+  try{ if(PVP.watchT) cancelAnimationFrame(PVP.watchT); }catch(e){}
+  pvpLogAdd({opp:(PVP.oppPack&&PVP.oppPack.name)||"상대", oppMgr:(PVP.oppPack&&PVP.oppPack.mgr)||"", my:3, op:0, host:iH?1:0, ff:1});
+  try{ if(iH) pvpResPost(3, 0, 1); }catch(e){}          // 🌐 몰수도 기록으로 남긴다
+  PVP.stage="done"; PVP.result=iH?{hg:3,ag:0}:{hg:0,ag:3}; PVP.forfeit="opp";
+  try{ saveGame(); }catch(e){}
+  try{ flash("⚔️ "+(why||"상대가 경기를 떠났습니다")+" — 3:0 몰수승","good"); }catch(e){}
+  /* 호스트면 돌아가던 경기 엔진을 세운다 — pvpFinish 가 실제 스코어를 덮어쓰지 않게 forfeited 로 막는다 */
+  try{
+    if(iH && liveM && liveM.opts && liveM.opts.pvp){ liveM.done=true; finishLiveSafe(); return true; }
+  }catch(e){}
+  try{ if(VIEW==="pvp") show("pvp"); else show("pvp"); }catch(e){}
+  return true;
+}
+/* 몰수패 — 내가 나간다 (경기 중 한정). 내 전적에 0:3 패를 적고 접속을 정리한다. */
+function pvpForfeitLose(){
+  if(!PVP || PVP.stage!=="match" || PVP.forfeited || PVP.ended) return false;   // ⚔️ 종료 뒤에는 몰수가 없다
+  PVP.forfeited=1;
+  const iH=PVP.role==="host";
+  pvpSend({t:"bye"});
+  try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
+  try{ if(PVP.watchT) cancelAnimationFrame(PVP.watchT); }catch(e){}
+  try{ if(PVP.es) PVP.es.close(); }catch(e){}
+  try{ if(PVP.esQ) PVP.esQ.close(); }catch(e){}
+  try{ if(PVP.pc) PVP.pc.close(); }catch(e){}
+  try{ if(iH) pvpResPost(0, 3, 1); }catch(e){}          // 🌐 몰수도 기록으로 남긴다 (연결을 끊기 전에)
+  pvpLogAdd({opp:(PVP.oppPack&&PVP.oppPack.name)||"상대", oppMgr:(PVP.oppPack&&PVP.oppPack.mgr)||"", my:0, op:3, host:iH?1:0, ff:1});
+  PVP.stage="done"; PVP.result=iH?{hg:0,ag:3}:{hg:3,ag:0}; PVP.forfeit="me";
+  try{ saveGame(); }catch(e){}
+  /* 호스트가 기권하면 돌아가던 경기도 접는다 */
+  try{
+    if(iH && liveM && liveM.opts && liveM.opts.pvp){ liveM.done=true; finishLiveSafe(); return true; }
+  }catch(e){}
+  try{ show("pvp"); }catch(e){}
+  return true;
+}
+function pvpLeave(){
+  /* ⚠ 제보(몰수) — 경기 중 나가기 = 0:3 몰수패. 로비·대기열 취소는 종전대로 벌점 없음. */
+  if(PVP && PVP.stage==="match" && PVP.ended){                              // ⚔️ 이미 끝난 경기
+    if(PVP.role==="guest"){ pvpGuestResult(); return; }
+    try{ finishLiveSafe(); }catch(e){}
+    return;
+  }
+  const go=()=>{ try{ if(pvpForfeitLose()) return; }catch(e){}
+                 pvpSend({t:"bye"}); pvpAbort("대전을 종료했습니다."); };
+  if(PVP && PVP.stage==="match"){
+    /* ⚠ 제보 원문 — 「기권 버튼처리도 인게임 팝업창으로 처리되게 해줄래? 그게 더 좋은거같아」.
+       브라우저 기본 confirm 은 전체화면 경기 화면 위에 생뚱맞게 뜨고, 모바일에서는
+       주소창까지 끌어내린다. 게임 안의 확인창으로 바꾼다. */
+    showConfirm(`<b>🚪 경기 중 기권</b>\n\n지금 나가면 <b style="color:var(--red)">0 : 3 몰수패</b>로 기록됩니다.\n`+
+      `상대에게는 <b>3 : 0 몰수승</b>이 남습니다.\n\n<span class="small">잠깐 자리를 비우는 것이라면 탭을 옮겨도 됩니다 — 경기는 자동으로 멈춥니다.</span>`,
+      go, {okLabel:"기권한다", cancelLabel:"계속한다", danger:true});
+    return;
+  }
+  go();
+}
 /* ── 화면 ────────────────────────────────────────────────────────────── */
 function pvpStars10(v){ return (Math.round(v)/10).toFixed(1); }
+/* 🗺️ 로비 포메이션 그림 — 팩의 선발 11명을 전술판 좌표(SLOT_XY)에 세운다 (제보) */
+function pvpFormPitch(pk, col, label){
+  try{
+    if(!pk || !Array.isArray(pk.pl) || !pk.pl.length) return "";
+    if(!/^#[0-9a-fA-F]{3,8}$/.test(col||"")) col="#2a6ee8";
+    const xi=pk.pl.slice(0,11);
+    const used={};
+    const ink=(typeof isLightColor==="function"&&isLightColor(col))?"#0d1117":"#fff";
+    const chips=xi.map(q=>{
+      let sl=(q.sl&&SLOT_XY[q.sl])?q.sl:((q.pref&&SLOT_XY[q.pref])?q.pref:(q.pos==="GK"?"GK":q.pos==="DF"?"CB":q.pos==="FW"?"ST":"CM"));
+      const nth=(used[sl]=(used[sl]||0)+1);
+      const b=SLOT_XY[sl]||SLOT_XY.CM;
+      let y=b.y + (nth>1 ? ((nth%2)?1:-1)*0.11*Math.ceil((nth-1)/2) : 0);
+      y=clamp(y, 0.07, 0.93);
+      const left=(y*100).toFixed(1), top=((1-b.x)*84+6).toFixed(1);   // GK 가 아래
+      return `<div style="position:absolute;left:${left}%;top:${top}%;transform:translate(-50%,-50%);text-align:center;width:54px;pointer-events:none">
+        <div style="width:23px;height:23px;line-height:23px;border-radius:50%;background:${col};color:${ink};font-weight:800;font-size:10.5px;margin:0 auto;border:1.5px solid rgba(0,0,0,.55)">${q.no||""}</div>
+        <div style="font-size:9.5px;margin-top:1px;color:#f2f6fa;text-shadow:0 1px 2px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.n||""}</div></div>`;
+    }).join("");
+    return `<div style="flex:1;min-width:215px;max-width:290px">
+      <div class="small" style="margin-bottom:4px;text-align:center"><b>${label}</b> <span style="opacity:.75">· ${(pk.tac&&pk.tac.formation)||""}</span></div>
+      <div style="position:relative;width:100%;aspect-ratio:3/3.8;background:linear-gradient(#155d31,#123f24);border:1px solid var(--line);border-radius:8px;overflow:hidden">
+        <div style="position:absolute;left:4%;right:4%;top:3%;bottom:3%;border:1px solid rgba(255,255,255,.28);border-radius:2px"></div>
+        <div style="position:absolute;left:4%;right:4%;top:50%;border-top:1px solid rgba(255,255,255,.28)"></div>
+        <div style="position:absolute;left:50%;top:50%;width:26%;aspect-ratio:1;border:1px solid rgba(255,255,255,.28);border-radius:50%;transform:translate(-50%,-50%)"></div>
+        <div style="position:absolute;left:29%;right:29%;bottom:3%;height:13%;border:1px solid rgba(255,255,255,.28);border-bottom:none"></div>
+        <div style="position:absolute;left:29%;right:29%;top:3%;height:13%;border:1px solid rgba(255,255,255,.28);border-top:none"></div>
+        ${chips}
+      </div></div>`;
+  }catch(e){ return ""; }
+}
 function pvpView(){
+  try{ if(!(PVP && PVP.stage==="match" && PVP.role==="guest")) document.body.classList.remove("matchFS"); }catch(e){}
   const logHtml=(function(){
     const L=G.pvpLog||[];
     const w=L.filter(x=>x.my>x.op).length, d=L.filter(x=>x.my===x.op).length, l=L.filter(x=>x.my<x.op).length;
     return `<div class="card"><h3>📜 대전 전적 <span class="small">— ${L.length}전 ${w}승 ${d}무 ${l}패</span></h3>
       ${L.length?`<div class="tblScroll" style="max-height:34vh;overflow-y:auto"><table>
-        <tr><th>상대</th><th>감독</th><th>결과</th><th>홈/원정</th><th>시즌</th></tr>
+        <tr><th>상대</th><th>닉네임</th><th>결과</th><th>홈/원정</th><th>시즌</th></tr>
         ${L.slice(0,40).map(x=>`<tr><td>${x.opp}</td><td class="small">${x.oppMgr||"-"}</td>
-          <td><b style="color:${x.my>x.op?"var(--green)":x.my<x.op?"var(--red)":"var(--gold)"}">${x.my} : ${x.op}</b></td>
+          <td><b style="color:${x.my>x.op?"var(--green)":x.my<x.op?"var(--red)":"var(--gold)"}">${x.my} : ${x.op}</b>${x.ff?`<span class="small" style="opacity:.7"> 몰수</span>`:""}</td>
           <td class="small">${x.host?"홈":"원정"}</td><td class="small">${x.s}</td></tr>`).join("")}
       </table></div>`:`<p class="small">아직 온라인 대전 기록이 없습니다.</p>`}</div>`;
   })();
   if(!PVP){
     /* 서버 미설정 빌드: 시작 버튼 대신 안내만 (전적은 그대로 보인다) */
     if(!pvpOn()) return `<h2>⚔️ 온라인 대전</h2><div class="msg warn">이 빌드에는 온라인 서버가 설정되어 있지 않습니다.</div>${logHtml}`;
+    if(PVP_NET===null){ try{ setTimeout(()=>{ try{ pvpNetCheck(); }catch(e){} }, 30); }catch(e){} }
     return `<h2>⚔️ 온라인 대전 <span class="small">— 실시간 P2P 친선전 (베타)</span></h2>
     <div class="msg info">내 스쿼드로 다른 감독과 실시간으로 붙습니다. <b>순수 친선</b> — 컨디션·부상·성장에 영향이 없고 전적만 남습니다.<br>
-      <span class="small">경기 중에는 일시정지가 없습니다. 전술 성향은 실시간으로 바꿀 수 있고, 교체는 자동(수석코치)입니다.</span></div>
-    <div class="card"><h3>대전 시작</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="bigbtn" style="max-width:220px" onclick="pvpQuick()">⚔️ 빠른 대전 <span class="small">전력 비슷한 상대</span></button>
-        <button class="bigbtn" style="max-width:220px" onclick="pvpMakeRoom()">🏠 방 만들기 <span class="small">코드로 친구 초대</span></button>
+      <span class="small">경기 중 <b>📋 전술</b> 버튼을 누르면 <b>리그와 똑같은 전술 화면</b>이 열립니다 — 교체·포메이션·역할·세부 지시를 그대로 다룹니다.
+      여는 동안 경기가 멈추고 상대 화면은 가려지며, <b>경기당 3회</b>까지 쓸 수 있습니다.<br>
+      하프타임은 <b>양쪽이 준비를 누르면</b> 시작하고, 한쪽이 다른 탭으로 가면 경기가 <b>자동으로 일시정지</b>됩니다.
+      경기 중 이탈은 <b style="color:#ff9d5c">0 : 3 몰수패</b>입니다. 경기 중에도 상대와 채팅할 수 있습니다.</span></div>
+    ${PVP_NET===false?`<div class="msg warn" style="border-width:2px">🌐 <b>인터넷에 연결되어 있지 않습니다.</b><br>
+      <span class="small">연결이 돌아오면 자동으로 풀립니다. 그때까지 매칭·채팅은 잠깁니다 — 지난 전적은 아래에서 그대로 보실 수 있습니다.</span>
+      <div style="margin-top:7px"><button class="mini" onclick="pvpNetCheck()">🔄 다시 확인</button></div></div>`:""}
+    <div class="card"><h3>🎫 내 닉네임 <span class="small">— 매칭·스코어보드·채팅에 표시</span></h3>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="pvpNickIn" type="text" maxlength="8" value="${pvpNick()}" placeholder="닉네임 (8자)"
+          style="width:170px;padding:9px;font-size:15px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg)">
+        <button class="mini" style="padding:9px 14px" onclick="pvpSetNick(document.getElementById('pvpNickIn').value)">저장</button>
+        ${pvpNickClaimed()?`<span class="small" style="color:var(--green);font-weight:700">✅ 등록됨</span>`
+          :`<span class="small" style="color:#ff9d5c;font-weight:700">미등록 — 저장하면 등록됩니다</span>`}
       </div>
-      <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
-        <input id="pvpCodeIn" type="text" maxlength="6" placeholder="방 코드 6자리" style="width:140px;padding:9px;font-size:15px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg);text-transform:uppercase">
-        <button class="mini" style="padding:9px 14px" onclick="pvpJoinRoom(document.getElementById('pvpCodeIn').value)">입장</button>
+      <p class="small" style="margin-top:6px;opacity:.7">비우면 감독 이름을 씁니다. 이 브라우저에 저장돼 어느 세이브로 접속해도 같은 이름입니다.<br>
+        <b>같은 닉네임은 한 사람만</b> 쓸 수 있습니다 — 30일 동안 접속이 없으면 그 이름은 다시 풀립니다.</p>
+    </div>
+    <div class="card"><h3>🟢 지금 접속 중 <span class="small">— ⚔️ 메뉴를 보고 있는 감독들</span></h3>
+      <div id="pvpLive">${pvpLiveHtml()}</div>
+    </div>
+    <div class="card"><h3>대전 시작${PVP_NET===false?` <span class="small" style="color:#ff9d5c">— 연결이 끊겨 잠겨 있습니다</span>`:""}</h3>
+      ${(function(){ const D=(PVP_NET===false)?" disabled":""; return `
+      <div class="pvpStart">
+        <button class="pvpBtn" style="--pbC:var(--gold)"${D} onclick="pvpQuick()">
+          <span class="pvpBtnH"><span class="pvpBtnIc">⚔️</span><span class="pvpBtnT">빠른 대전</span></span>
+          <span class="pvpBtnS">전력이 비슷한 상대를 자동으로 찾습니다</span>
+        </button>
+        <button class="pvpBtn" style="--pbC:var(--acc)"${D} onclick="pvpMakeRoom(1)">
+          <span class="pvpBtnH"><span class="pvpBtnIc">🌐</span><span class="pvpBtnT">공개 방 만들기</span></span>
+          <span class="pvpBtnS">아래 목록에 올라가 누구나 입장합니다</span>
+        </button>
+        <button class="pvpBtn" style="--pbC:var(--green)"${D} onclick="pvpMakeRoom(0)">
+          <span class="pvpBtnH"><span class="pvpBtnIc">🔒</span><span class="pvpBtnT">비공개 방</span></span>
+          <span class="pvpBtnS">6자리 코드로 친구만 초대합니다</span>
+        </button>
       </div>
+      <div class="pvpCode">
+        <input id="pvpCodeIn" type="text" maxlength="6"${D} placeholder="방 코드">
+        <button class="mini"${D} onclick="pvpJoinRoom(document.getElementById('pvpCodeIn').value)">🔑 코드로 입장</button>
+        <span class="small pvpCodeHint" style="opacity:.6">친구에게 받은 6자리 코드</span>
+      </div>`; })()}
       <p class="small" style="margin-top:8px;opacity:.75">⚠ 일부 통신망(LTE 테더링 등)에서는 P2P 연결이 안 될 수 있습니다. 상대 스쿼드는 경기 전에 미리 보고 수락/거절할 수 있습니다.</p>
+    </div>
+    <div class="card"><h3>🌐 공개 방 목록 <button class="mini" style="margin-left:8px;padding:4px 12px" onclick="pvpRoomsRefresh(1)">🔄 새로고침</button></h3>
+      <div id="pvpRooms"><p class="small" style="opacity:.6">불러오는 중…</p></div>
+      ${(function(){ try{ setTimeout(()=>{ try{ pvpRoomsRefresh(); }catch(e){} }, 50); }catch(e){} return ""; })()}
+    </div>
+    <div class="card"><h3>🌐 실시간 전적 <span class="small">— 방금 끝난 다른 감독들의 경기</span></h3>
+      <div id="pvpRes">${pvpResHtml()}</div>
+      <p class="small" style="margin-top:7px;opacity:.65">경기가 끝나는 즉시 올라옵니다 · 최근 사흘·${PVP_RES_SHOW}경기까지 보관합니다.</p>
+    </div>
+    <div class="card"><h3>💬 라운지 채팅 <span class="small">— 여기 있는 모두가 함께 봅니다 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다</span></h3>
+      <div id="pvpTalk" class="chatBox" data-cbdef="230">${pvpTalkHtml()}</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:7px">
+        <input id="pvpTalkIn" type="text" maxlength="90" placeholder="${PVP_NET===false?"연결이 끊겨 있습니다":pvpNickClaimed()?"메시지 (90자)":"닉네임을 먼저 저장해 주세요"}"
+          ${(PVP_NET===false||!pvpNickClaimed())?"disabled":""} onkeydown="pvpTalkKey(event)"
+          style="flex:1;min-width:120px;padding:9px;font-size:14px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg)${(PVP_NET===false||!pvpNickClaimed())?";opacity:.5":""}">
+        <button class="mini" style="padding:9px 16px" ${(PVP_NET===false||!pvpNickClaimed())?"disabled":""} onclick="pvpTalkSend()">보내기</button>
+      </div>
+      <p class="small" style="margin-top:6px;opacity:.7">${pvpNickClaimed()?"최근 40줄만 남고, 3시간이 지난 줄은 사라집니다. 서로 예의를 지켜 주세요.":"🎫 위에서 <b>닉네임을 저장</b>하면 채팅을 쓸 수 있습니다 — 누가 한 말인지 알 수 있어야 하니까요."}</p>
     </div>
     ${logHtml}`;
   }
@@ -60213,44 +61956,74 @@ function pvpView(){
   if(PVP.stage==="lobby"){
     const pk=PVP.oppPack, ck=PVP.oppCheck||{ok:true,notes:[]};
     return `<h2>⚔️ 온라인 대전 — 매치 로비</h2>
-    ${pk?`<div class="card"><h3>상대: ${pk.name} <span class="small">— ${pk.mgr} 감독 · 전력 ${(pk.stars||3).toFixed(1)}★</span></h3>
+    ${pk?`<div class="card"><h3>상대: <span style="color:var(--gold)">${pk.mgr}</span>의 ${pk.name} <span class="small">— 전력 ${(pk.stars||3).toFixed(1)}★</span></h3>
       ${ck.notes.length?`<div class="msg warn">⚠ ${ck.notes.join(" · ")}</div>`:""}
-      <div class="tblScroll" style="max-height:38vh;overflow-y:auto"><table><tr><th>#</th><th>이름</th><th>포지션</th><th>나이</th><th>능력</th></tr>
-        ${(pk.pl||[]).map(q=>`<tr><td class="small">${q.no||"-"}</td><td>${q.n}</td><td class="pos-${q.pos}">${q.pref||q.pos}</td>
-          <td>${G.season-(q.by||2000)}</td><td>${q.ovr}</td></tr>`).join("")}
-      </table></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
+      ${(function(){
+        /* ⚠ 제보 — 선수 표 대신 「내 선발 vs 상대 선발」 포메이션 그림. 전술 수정 후 돌아오면
+           pvpLobbySquadSync 가 재렌더해 실시간으로 갱신된다. */
+        const my=PVP.myPack || (function(){ try{ return pvpPack(); }catch(e){ return null; } })();
+        const myCol=(function(){ try{ return userTeam().col||"#2a6ee8"; }catch(e){ return "#2a6ee8"; } })();
+        return `<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px">
+          ${pvpFormPitch(my, myCol, "🎽 내 선발")}
+          ${pvpFormPitch(pk, pk.col, "⚔️ 상대 선발")}
+        </div>`;
+      })()}
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="bigbtn" style="max-width:220px;${PVP.meReady?"opacity:.5":""}" onclick="pvpReady()">${PVP.meReady?"⏳ 상대 수락 대기…":"✅ 수락하고 킥오프"}</button>
+        <button class="mini" style="padding:9px 14px" onclick="show('tactics')" title="리그에서 쓰는 그 전술 화면입니다. 수정하고 ⚔️ 메뉴로 돌아오면 자동으로 상대에게 전송됩니다">🎽 스쿼드·전술 수정</button>
         <button class="mini" onclick="pvpLeave()">🚫 거절하고 나가기</button>
       </div>
+      <p class="small" style="margin-top:6px;opacity:.7">🎽 상대 스쿼드를 보고 선발·전술을 바꿀 수 있습니다 — 수정하고 돌아오면 상대에게 자동 전송되고, 양쪽 수락이 초기화됩니다.</p>
+      ${(function(){ try{ setTimeout(()=>{ try{ pvpLobbySquadSync(); }catch(e){} }, 50); }catch(e){} return ""; })()}
       ${PVP.oppReady?`<p class="small" style="color:var(--green)">상대는 수락했습니다.</p>`:""}
-    </div>`:`<div class="card"><p>스쿼드 교환 중…</p><button class="mini" onclick="pvpLeave()">취소</button></div>`}`;
+    </div>
+    <div class="card"><h3>💬 채팅 <span class="small">— 상대와 P2P 직통입니다 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다</span></h3>${pvpChatBox(0)}</div>`:`<div class="card"><p>스쿼드 교환 중…</p><button class="mini" onclick="pvpLeave()">취소</button></div>`}`;
   }
   if(PVP.stage==="match" && PVP.role==="guest"){
     const W=PVP.watch||{}, i=W.info||{};
-    const tac=(PVP.myPack&&PVP.myPack.tac)||{};
-    const cur=(k)=> (W.myTac&&W.myTac[k]!=null)?W.myTac[k]:(tac[k]!=null?tac[k]:2);
-    const slider=(k,lab)=>`<div style="display:flex;align-items:center;gap:6px;margin:3px 0">
-      <span class="small" style="width:64px">${lab}</span>
-      ${[0,1,2,3,4].map(v=>`<button class="mini ${cur(k)===v?"sel":""}" style="padding:2px 8px" onclick="pvpGuestTac('${k}',${v})">${v}</button>`).join("")}</div>`;
-    return `<h2>⚔️ ${i.hn||"홈"} vs ${i.an||"원정"} <span class="small">— 원격 관전 (원정)</span></h2>
-    <div class="card"><div id="pvpScore" style="font-size:19px;font-weight:800;margin-bottom:6px">${pvpScoreTxt()}</div>
-      <canvas id="pvpCv" width="680" height="440" style="width:100%;max-width:680px;border-radius:8px"></canvas></div>
-    <div class="row">
-      <div class="card" style="flex:1;min-width:260px"><h3>🎛️ 실시간 지시 <span class="small">— 즉시 반영</span></h3>
-        ${slider("mentality","멘탈리티")}${slider("press","압박")}${slider("line","수비라인")}
-        ${slider("tempo","템포")}${slider("width","폭")}${slider("counter","역습")}
-        <p class="small" style="opacity:.7;margin-top:6px">교체는 양 팀 모두 수석코치가 자동으로 합니다 (v1)</p></div>
-      <div class="card" style="flex:1;min-width:260px"><h3>📻 중계</h3><div id="pvpEvs" style="max-height:38vh;overflow-y:auto">${pvpEvHtml()}</div></div>
+    const sN=W.snap||{};
+    const hc=i.hc||"#2ea8ff", ac=i.ac||"#f85149";
+    try{ document.body.classList.add("matchFS"); }catch(e){}
+    return `<div class="lvGrid">
+    <div class="lvCenter card">
+      <div class="lvHead">
+        <span class="t" style="background:${hc};color:${inkOn(hc)}">${i.hs||"홈"}</span>
+        <span id="pvpScoreN">${W.hg||0} : ${W.ag||0}</span>
+        <span class="t" style="background:${ac};color:${inkOn(ac)}">${i.as||"원정"}</span>
+        <span id="pvpMin">${Math.floor((W.clock||0)/60)}'${sN.et?" 연장":(sN.half2?" 후반":" 전반")}</span>
+        <span id="pvpMatchBtns" style="display:flex;gap:5px;align-items:center">${PVP.ended
+          ? `<button class="mini sel" onclick="pvpGuestResult()">📋 결과 확인 ▶</button>`
+          : `<button class="mini sel" onclick="pvpTacOpen()" title="경기를 멈추고 교체·세부 전술을 수정합니다 — 경기당 ${PVP_TAC_USES}회">📋 전술 (${PVP.tacMe!=null?PVP.tacMe:PVP_TAC_USES})</button>
+          <button class="mini" onclick="pvpLeave()" title="경기 중 이탈은 0:3 몰수패입니다">🚪 기권</button>`}</span>
+        <span id="pvpMode" class="pitchMode" style="margin-left:auto${sN.hl?";color:#f85149":""}">${sN.hl?"● HIGHLIGHT":"○ 경기 진행 중"}</span>
+      </div>
+      <div class="pitchWrap">
+        <canvas id="pvpCv" class="dim" width="960" height="630" style="width:100%;height:auto;display:block"></canvas>
+        <div id="pvpGoalOv" class="goalPanel hidden"></div>
+      </div>
+      <div id="pvpCap" class="pitchCaption">${(W.cap&&W.cap.x)||"📡 중계 연결됨 — 해설이 곧 시작됩니다"}</div>
+      <div class="small" style="text-align:left; margin-top:6px; color:var(--sub)">2D 매치엔진 2.0 by 청백적시메오네 — ⚔️ 원격 관전 (원정)</div>
     </div>
-    <button class="mini" style="margin-top:8px" onclick="pvpLeave()">🚪 기권하고 나가기</button>`;
+    <div class="lvSide">
+      <div class="card ${(W.off&&W.off.length)?"":"hidden"}" id="pvpOffCard" style="border-color:#e5484d">
+        <h3 style="color:#e5484d">🟥 퇴장</h3><div id="pvpOff">${pvpOffHtml()}</div></div>
+      <div class="card"><h3>📊 경기 통계</h3><div id="pvpStats">${pvpStatsHtml()}</div></div>
+      <div class="card"><h3>📋 전술</h3>
+        <button class="bigbtn" style="max-width:none;padding:11px" onclick="pvpTacOpen()">📋 전술창 열기
+          <span class="small" style="color:inherit;opacity:.85">— 교체 · 세부 전술 (남은 ${PVP.tacMe!=null?PVP.tacMe:PVP_TAC_USES}회)</span></button>
+        <p class="small" style="opacity:.7;margin-top:6px">전술창을 여는 동안 경기가 멈추고 상대 화면은 가려집니다.</p>
+        ${pvpChatBox(1)}</div>
+      <div class="card"><h3>📻 중계</h3><div id="pvpEvs" style="max-height:26vh;overflow-y:auto">${pvpEvHtml()}</div></div>
+    </div>
+  </div>`;
   }
   if(PVP.stage==="done"){
     const r=PVP.result||{hg:0,ag:0};
     const iH=PVP.role==="host";
     const my=iH?r.hg:r.ag, op=iH?r.ag:r.hg;
     return `<h2>⚔️ 경기 종료</h2>
-    <div class="card"><h3 style="font-size:22px">${my} : ${op} <span class="small">— ${my>op?"승리! 🎉":my<op?"패배":"무승부"}</span></h3>
+    <div class="card"><h3 style="font-size:22px">${my} : ${op} <span class="small">— ${PVP.forfeit?(PVP.forfeit==="me"?"몰수패 ⚠️":"몰수승 🎉"):(my>op?"승리! 🎉":my<op?"패배":"무승부")}</span></h3>
+      ${PVP.forfeit?`<p class="small" style="color:${PVP.forfeit==="me"?"var(--red)":"var(--green)"}">${PVP.forfeit==="me"?"경기 중 이탈 — 0 : 3 몰수패로 기록됐습니다.":"상대가 경기를 떠나 3 : 0 몰수승으로 기록됐습니다."}</p>`:""}
       <p class="small">순수 친선전 — 선수단에는 아무 영향이 없습니다. 전적에 기록됐습니다.</p>
       <button class="mini" onclick="pvpReset();show('pvp')">로비로</button></div>
     ${logHtml}`;
