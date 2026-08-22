@@ -33,9 +33,26 @@ body{background:var(--bg); color:var(--txt); font-family:'Segoe UI','Malgun Goth
 #dateBox{margin-top:14px; padding:10px; background:var(--bg3); border-radius:8px; font-size:12px; color:var(--sub); line-height:1.7;}
 #dateBox b{color:var(--txt);}
 #dateBox .dbDate{color:var(--gold); font-size:14px;}
-.bigbtn{display:block; width:100%; padding:12px; margin-top:12px; background:var(--green); color:#04260e; border:none; border-radius:8px; font-size:15px; font-weight:800; cursor:pointer;}
-.bigbtn:hover{filter:brightness(1.1);}
-.bigbtn:disabled{background:var(--bg3); color:var(--sub); cursor:default;}
+/* 🎨 사용자 요청 — 「좌측 메인화면 녹색 진행 버튼들도 다 고급스럽게」.
+   팀 선택의 「이어하기」와 같은 계열 — 깊은 초록 유리 + 안쪽 하이라이트 + 지나가는 빛 */
+.bigbtn{display:block; width:100%; padding:13px 12px; margin-top:12px; position:relative; overflow:hidden;
+  background:linear-gradient(160deg,#1f7c37 0%,#166529 46%,#0e4d1e 100%);
+  color:#eafff0; border:1px solid #3fae5c66; border-radius:11px;
+  font-size:15px; font-weight:800; letter-spacing:-.2px; cursor:pointer;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.13) inset, 0 -10px 22px rgba(0,0,0,.20) inset,
+             0 4px 14px rgba(46,160,67,.24), 0 2px 5px rgba(0,0,0,.30);
+  transition:filter .16s, box-shadow .16s, border-color .16s, transform .08s;}
+.bigbtn::after{content:""; position:absolute; top:-40%; bottom:-40%; width:42px; left:-64px;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.14), transparent);
+  transform:skewX(-18deg); animation:pkSheen 5.2s ease-in-out infinite; pointer-events:none;}
+.bigbtn:hover:not(:disabled){filter:brightness(1.12); border-color:#4ec96299;
+  box-shadow:0 1px 0 rgba(255,255,255,.17) inset, 0 -10px 22px rgba(0,0,0,.16) inset,
+             0 7px 22px rgba(46,160,67,.38), 0 2px 5px rgba(0,0,0,.30);}
+.bigbtn:active:not(:disabled){transform:translateY(1px);}
+.bigbtn:disabled{background:var(--bg3); color:var(--sub); cursor:default;
+  border-color:var(--line); text-shadow:none; box-shadow:none;}
+.bigbtn:disabled::after{display:none;}
 /* ---------- main ---------- */
 #mainWrap{flex:1; min-width:0; display:flex; flex-direction:column;}
 #main{padding:20px 24px; max-width:1100px;}
@@ -86,8 +103,41 @@ button.mini:hover{border-color:var(--acc); color:var(--acc);}
 button.mini.sel{background:var(--acc); color:#fff; border-color:var(--acc);}
 select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px solid var(--line); border-radius:5px; padding:5px 8px; font-size:13px;}
 /* team select screen */
-#teamPick{padding:30px; max-width:1100px; margin:0 auto;}
-#teamPick h1{color:var(--gold); margin-bottom:4px;}
+/* ── 팀 선택 화면 — 🎨 사용자 요청: 「팀선택 화면을 좀 더 고급스럽게, 이어하기 버튼도 고급스럽게」 ── */
+#teamPick{padding:34px 30px 30px; max-width:1100px; margin:0 auto; position:relative;}
+/* 상단을 은은한 경기장 조명처럼 — 금빛 광원 두 개 + 아래로 갈수록 어둡게 */
+#teamPick::before{content:""; position:absolute; left:0; right:0; top:0; height:340px; pointer-events:none;
+  background:
+    radial-gradient(520px 200px at 18% -40px, rgba(227,179,65,.13), transparent 70%),
+    radial-gradient(680px 240px at 82% -70px, rgba(47,129,247,.10), transparent 70%);}
+/* ⚠ 제보 — 「팀 정보 패널이 자리를 차지하면서 뜬다」. #teamPick > * 가 ID 특이도로
+   .pkOverlay 의 position:fixed 를 덮어써 팝업이 문서 흐름에 끼어 있었다 — 오버레이는 제외한다. */
+#teamPick > *:not(.pkOverlay){position:relative;}
+#teamPick > .pkOverlay{position:fixed;}
+#teamPick h1{margin-bottom:6px; font-size:34px; letter-spacing:-.5px; line-height:1.15;}
+/* ⚠ 그라데이션을 h1 전체에 걸면 ⚽ 이모지가 투명 처리되어 금색 원판으로 뭉개진다 — 글자에만 건다 */
+#teamPick h1 .pkTitle{
+  background:linear-gradient(115deg,#f6d47c 0%,#e3b341 34%,#fff2cd 52%,#d99c20 74%,#f6d47c 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:#e3b341;
+  filter:drop-shadow(0 2px 10px rgba(227,179,65,.18));}
+.pkSeason{display:inline-block; font-size:11px; font-weight:800; letter-spacing:2.5px; color:#e3b341cc;
+  border:1px solid #e3b34144; border-radius:20px; padding:3px 12px; margin-bottom:10px;
+  background:linear-gradient(180deg,#e3b3411a,#e3b34108); text-transform:uppercase;}
+/* 특징 칩 — 밋밋한 한 줄 설명 대신 */
+.pkFeats{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 20px; max-width:760px;}
+.pkFeats span{font-size:11.5px; color:#c9d4e0; background:#11161d; border:1px solid #232c37;
+  border-radius:20px; padding:3.5px 11px; white-space:nowrap;}
+/* 리그 구분 머리말 — 배지 + 가는 금선 */
+.pkDivHead{display:flex; align-items:center; gap:10px; margin:26px 0 0;}
+.pkDivHead .pkDivBadge{font-size:12.5px; font-weight:900; letter-spacing:.5px; padding:4px 13px;
+  border-radius:8px; white-space:nowrap;}
+.pkDivHead.k1 .pkDivBadge{color:#0d1117; background:linear-gradient(180deg,#f0c860,#d99c20); box-shadow:0 2px 8px rgba(227,179,65,.25);}
+.pkDivHead.k2 .pkDivBadge{color:#dbe6f2; background:linear-gradient(180deg,#3b4654,#2a333f); border:1px solid #46525f;}
+.pkDivHead .pkDivNm{font-weight:800; font-size:15.5px; color:#f0f6fc; white-space:nowrap;}
+.pkDivHead .pkDivSub{font-size:12px; color:var(--sub); white-space:nowrap;}
+.pkDivHead::after{content:""; flex:1; height:1px;
+  background:linear-gradient(90deg, rgba(227,179,65,.35), rgba(227,179,65,.06) 60%, transparent);}
+.pkDivHead.k2::after{background:linear-gradient(90deg, rgba(139,148,158,.35), rgba(139,148,158,.06) 60%, transparent);}
 /* ── 예산 증액 요청 ── */
 .reqBtn{display:block; width:100%; margin-top:10px; padding:11px 12px; text-align:left;
   border-color:var(--gold); color:var(--gold);}
@@ -119,18 +169,46 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
 .teamcard.sel{outline:2px solid var(--gold); outline-offset:1px;}
 .pkOverlay{position:fixed; inset:0; background:rgba(4,7,11,.78); z-index:120;
   display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto;}
-.pkPanel{background:#0d1117; border:1px solid #30363d; border-radius:14px; padding:20px 22px;
-  width:100%; max-width:440px; box-shadow:0 18px 60px rgba(0,0,0,.6); text-align:left;}
-.pkHead{padding-left:12px; margin-bottom:10px;}
-.pkName{font-size:23px; font-weight:800; line-height:1.25;}
+/* 🎨 구단 상세 팝업 — 사용자 요청 「팀 선택하면 나오는 팝업창도 고급스럽게」.
+   구단색이 스며드는 머리 그림 + 유리질 패널 + 부드러운 등장 애니메이션 */
+.pkPanel{position:relative; overflow:hidden;
+  background:linear-gradient(180deg,#131922,#0d1117 46%);
+  border:1px solid #2c3644; border-radius:16px; padding:0 0 20px;
+  width:100%; max-width:450px; text-align:left;
+  box-shadow:0 24px 80px rgba(0,0,0,.66), 0 1px 0 rgba(255,255,255,.05) inset;
+  animation:pkPop .22s cubic-bezier(.2,.9,.3,1.15);}
+@keyframes pkPop{ from{transform:translateY(14px) scale(.97); opacity:0;} to{transform:none; opacity:1;} }
+.pkPanel > *:not(.pkHero){margin-left:22px; margin-right:22px;}
+/* 머리 그림 — 구단색 투톤 광원 + 큰 엠블럼 (색은 인라인 --tc/--tc2 로 받는다) */
+.pkHero{position:relative; padding:22px 22px 14px; margin-bottom:12px;
+  background:
+    radial-gradient(150% 130% at 12% -30%, var(--tcGlow,rgba(47,129,247,.30)), transparent 58%),
+    radial-gradient(130% 120% at 95% -40%, var(--tc2Glow,rgba(139,148,158,.20)), transparent 55%),
+    linear-gradient(180deg,#161d27,#131922 80%,transparent);
+  border-bottom:1px solid #232c37;}
+.pkHero::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:2.5px;
+  background:linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e) 60%, transparent);}
+.pkCrest{width:52px; height:52px; border-radius:50%; float:right; margin:-2px 0 0 12px;
+  display:flex; align-items:center; justify-content:center; font-weight:900; font-size:17px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,.30), rgba(255,255,255,0) 46%),
+    linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%);
+  box-shadow:0 0 0 2.5px #0d1117, 0 0 0 4px var(--tcLine,#2a3441), 0 6px 16px rgba(0,0,0,.5);}
+.pkHead{padding-left:0; margin-bottom:0;}
+.pkName{font-size:24px; font-weight:900; line-height:1.22; letter-spacing:-.4px;
+  text-shadow:0 2px 12px rgba(0,0,0,.45);}
+.pkTier{display:inline-block; font-size:11px; font-weight:800; letter-spacing:1.6px; color:#a9b4c0;
+  text-transform:uppercase; margin-bottom:5px;}
 .pkBadge{display:inline-block; border:1px solid; border-radius:14px; padding:3px 12px;
-  font-size:13px; font-weight:700; margin-bottom:6px;}
-.pkDesc{color:#c9d4e0; line-height:1.55; margin:0 0 12px;}
+  font-size:12.5px; font-weight:700; margin:9px 0 0; background:rgba(255,255,255,.03);}
+.pkDesc{color:#c9d4e0; line-height:1.55; margin:0 0 12px; font-size:12.5px;}
 .pkRow{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
-  padding:7px 2px; border-bottom:1px solid #1b2129; font-size:13.5px;}
-.pkK{color:#a9b4c0; flex:0 0 auto;}
+  padding:7.5px 2px; border-bottom:1px solid #1a212b; font-size:13.5px;}
+.pkRow:last-of-type{border-bottom:none;}
+.pkRow:hover{background:linear-gradient(90deg,transparent,rgba(255,255,255,.025),transparent);}
+.pkK{color:#8f9bab; flex:0 0 auto; font-size:12.5px;}
 .pkV{color:#f0f6fc; font-weight:700; text-align:right;}
-.pkAsk{margin:16px 0 10px; font-size:15px; font-weight:700; text-align:center; color:#f0f6fc;}
+.pkAsk{margin:16px 0 10px; font-size:15px; font-weight:800; text-align:center; color:#f0f6fc;}
 /* ⚠ 예전에는 "예" 버튼이 .bigbtn 이었다. 모바일에서 .bigbtn 은 화면 하단 고정(진행 ▶ 전용)이라
    확인 창 안에 있어야 할 버튼이 화면 맨 아래로 떨어져 나갔다 — "아니오"와 완전히 떨어져 보였다.
    전용 클래스를 줘서 항상 나란히 붙어 있게 한다. */
@@ -161,14 +239,25 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
   padding:13px 16px; border-radius:11px; font-size:14.5px; font-weight:700; letter-spacing:-.2px;
   cursor:pointer; white-space:nowrap; border:1px solid transparent;
   transition:background .14s, border-color .14s, color .14s, transform .08s;}
-/* 이어하기 — 원래의 연두색. 두 줄로 쌓아 「이어하기 / 저장된 게임」이 겹쳐 보이지 않게 한다 */
+/* 이어하기 — 🎨 사용자 요청 「고급스럽게」. 깊은 초록 유리 + 금테 하이라이트 + 지나가는 빛 */
 .pkGo.pkMain{
-  flex-direction:column; gap:1px; line-height:1.2;
-  background:linear-gradient(180deg,#4ec962,#37a747);
-  color:#04260e; border-color:#2f8f3d; font-weight:800;
-  box-shadow:0 1px 0 rgba(255,255,255,.22) inset, 0 3px 10px rgba(63,185,80,.16);}
-.pkGo.pkMain:hover{background:linear-gradient(180deg,#5cd870,#3fb950);}
-.pkGo.pkMain .pkSub{font-size:11px; font-weight:600; color:#04260e; opacity:.72;}
+  flex-direction:column; gap:2px; line-height:1.22; position:relative; overflow:hidden;
+  padding:15px 18px; font-size:15.5px; font-weight:900; letter-spacing:-.2px;
+  background:linear-gradient(160deg,#1f7c37 0%,#166529 46%,#0e4d1e 100%);
+  color:#eafff0; border:1px solid #3fae5c66; border-radius:12px;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 -12px 26px rgba(0,0,0,.22) inset,
+             0 6px 20px rgba(46,160,67,.28), 0 2px 6px rgba(0,0,0,.35);
+  transition:box-shadow .18s, border-color .18s, filter .18s, transform .08s;}
+/* 지나가는 빛 — 가만히 있어도 은은하게 한 번씩 훑는다 */
+.pkGo.pkMain::after{content:""; position:absolute; top:-40%; bottom:-40%; width:46px; left:-70px;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.16), transparent);
+  transform:skewX(-18deg); animation:pkSheen 4.6s ease-in-out infinite;}
+@keyframes pkSheen{ 0%,62%{left:-70px; opacity:0;} 68%{opacity:1;} 84%,100%{left:calc(100% + 40px); opacity:0;} }
+.pkGo.pkMain:hover{filter:brightness(1.12); border-color:#4ec96299;
+  box-shadow:0 1px 0 rgba(255,255,255,.18) inset, 0 -12px 26px rgba(0,0,0,.18) inset,
+             0 9px 28px rgba(46,160,67,.40), 0 2px 6px rgba(0,0,0,.35);}
+.pkGo.pkMain .pkSub{font-size:11px; font-weight:700; color:#bff3cd; opacity:.85; letter-spacing:.2px;}
 /* 불러오기 — 조용한 보조 동작 */
 .pkGo.pkLoad{flex:0 1 auto; background:transparent; color:var(--sub); border-color:var(--line);}
 .pkGo.pkLoad:hover{background:var(--bg2); color:var(--txt); border-color:#4a545f;}
@@ -178,22 +267,50 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
 .pkGo.pkCog:hover{background:var(--bg2); color:var(--gold); border-color:#4a545f; transform:rotate(35deg);}
 .pkGo:active{transform:translateY(1px);}
 .pkGo.pkCog:active{transform:translateY(1px) rotate(35deg);}
-.pkYes,.pkNo{flex:1 1 0; min-width:0; padding:13px 10px; border:none; border-radius:9px;
-  font-size:15px; font-weight:800; cursor:pointer; white-space:nowrap;}
-.pkYes{background:var(--green); color:#04260e;}
-.pkNo{background:var(--bg3); color:var(--txt); border:1px solid var(--line);}
-.pkYes:hover{filter:brightness(1.1);} .pkNo:hover{background:#2d333b;}
+.pkYes,.pkNo{flex:1 1 0; min-width:0; padding:13px 10px; border:none; border-radius:10px;
+  font-size:15px; font-weight:800; cursor:pointer; white-space:nowrap;
+  transition:filter .14s, box-shadow .14s;}
+.pkYes{background:linear-gradient(160deg,#2ea043,#1d7c33 60%,#156327); color:#eafff0;
+  text-shadow:0 1px 2px rgba(0,0,0,.3); border:1px solid #3fae5c55;
+  box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 4px 14px rgba(46,160,67,.26);}
+.pkNo{background:linear-gradient(180deg,#1c232d,#161c24); color:#c9d4e0; border:1px solid #2c3644;}
+.pkYes:hover{filter:brightness(1.12); box-shadow:0 1px 0 rgba(255,255,255,.16) inset, 0 6px 18px rgba(46,160,67,.36);}
+.pkNo:hover{background:linear-gradient(180deg,#232b36,#1b222b); color:#f0f6fc;}
 .pkYes:active,.pkNo:active{transform:translateY(1px);}
 @media (max-width:520px){ .pkPanel{padding:16px} .pkName{font-size:20px} }
-.teamgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin:14px 0 26px;}
-.teamcard{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:12px; cursor:pointer; text-align:center;}
-.teamcard:hover{border-color:var(--acc); transform:translateY(-2px); transition:.12s;}
-.teamcard .nm{font-weight:800; font-size:14px;}
-.teamcard .st{font-size:12px; color:var(--sub); margin-top:5px;}
+.teamgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:11px; margin:14px 0 30px;}
+/* 구단 명함 — 유리질 카드. 위쪽에 구단색 띠, 호버 시 구단색으로 은은하게 빛난다 */
+.teamcard{position:relative; overflow:hidden; text-align:center; cursor:pointer;
+  background:linear-gradient(180deg,#151b23,#10151c 60%,#0e131a);
+  border:1px solid #232c37; border-radius:13px; padding:15px 12px 13px;
+  transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 2px 10px rgba(0,0,0,.28);}
+/* 구단색 상단 띠 + 배경으로 스미는 빛 — 인라인 CSS 변수(--tc, --tc2)로 칠한다 */
+.teamcard::before{content:""; position:absolute; left:0; right:0; top:0; height:3.5px;
+  background:linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e));}
+.teamcard::after{content:""; position:absolute; left:0; right:0; top:0; height:74px; pointer-events:none;
+  background:radial-gradient(120% 100% at 50% -35%, var(--tcGlow,rgba(47,129,247,.14)), transparent 72%);
+  opacity:.8; transition:opacity .16s;}
+.teamcard:hover{transform:translateY(-3px); border-color:#3a4654;
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 26px rgba(0,0,0,.42), 0 4px 18px var(--tcGlow,rgba(47,129,247,.16));}
+.teamcard:hover::after{opacity:1;}
+.teamcard.sel{outline:none; border-color:var(--gold);
+  box-shadow:0 0 0 1px var(--gold), 0 6px 22px rgba(227,179,65,.22);}
+.teamcard .crest{width:38px; height:38px; border-radius:50%; margin:1px auto 8px; position:relative;
+  display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13.5px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,.28), rgba(255,255,255,0) 46%),
+    linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%);
+  box-shadow:0 0 0 2px #0d1117, 0 0 0 3.5px var(--tcLine,#2a3441), 0 3px 9px rgba(0,0,0,.45);}
+.teamcard .nm{font-weight:800; font-size:14px; letter-spacing:-.2px;}
+.teamcard .st{font-size:11.5px; color:var(--sub); margin-top:6px; line-height:1.55;}
 /* 팀 선택 화면에서는 별점이 곧 전력 표시라 조금 키운다 */
 .teamcard .stars{font-size:13px; margin-left:0; vertical-align:-1px;}
 .pkV .stars{font-size:15px; margin-left:0; vertical-align:-1px;}
-.teamcard .bar{height:5px; border-radius:3px; margin-top:8px;}
+.teamcard .bar{height:4px; border-radius:3px; margin-top:10px; background:#1b222b; overflow:hidden;}
+.teamcard .bar i{display:block; height:100%; border-radius:3px;
+  background:linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e));
+  box-shadow:0 0 7px var(--tcGlow,rgba(47,129,247,.35));}
 /* match sim */
 #matchLog{background:#0a0f14; border:1px solid var(--line); border-radius:8px; padding:12px; height:300px; overflow-y:auto; font-size:13px; line-height:1.8;}
 #matchLog .goal{color:var(--gold); font-weight:700;}
@@ -442,6 +559,14 @@ body.matchFS .fmPitchPane{max-width:none;}
    초록 덩어리 셋에 부제를 한 줄에 욱여넣어 「전력 비슷한 상 / 대」처럼 단어가 잘렸다.
    제목과 부제를 각자 줄에 놓고, 폭이 좁아지면 칸이 줄바꿈되게 격자로 세운다. */
 .pvpStart{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:10px; margin-top:4px;}
+/* ⏳ 매칭 대기 배너 — 돌아가는 스피너 (제보 — 메뉴 위에서 큐가 돌아가게) */
+.pvpWait{border-color:var(--gold)!important; background:linear-gradient(180deg,#1d1a10,#15130c)!important;
+  animation:pvpWaitIn .25s ease;}
+@keyframes pvpWaitIn{ from{transform:translateY(-6px); opacity:0;} to{transform:none; opacity:1;} }
+.pvpSpin{width:26px; height:26px; flex:0 0 auto; border-radius:50%;
+  border:3px solid rgba(227,179,65,.22); border-top-color:var(--gold);
+  animation:pvpSpin 0.9s linear infinite;}
+@keyframes pvpSpin{ to{transform:rotate(360deg);} }
 .pvpBtn{position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:4px;
   width:100%; padding:14px 16px 13px 19px; border-radius:12px; cursor:pointer; text-align:left;
   background:linear-gradient(158deg,#1a2432 0%,#121926 100%); border:1px solid #2a3646; color:var(--txt);
@@ -6569,7 +6694,7 @@ function procMinute(M, me, opp, atk, key){
     { const _a=G.season-x.p.by; injRisk *= 0.75+clamp((_a-24)/16,0,1)*0.7; }
     if(Math.random()<injRisk){
       freezeLiveSlots(me);             // ⚠ 아직 11명일 때 굳혀야 남은 선수들이 옆으로 밀리지 않는다
-      x.p.inj=1+R(4);
+      try{ setInjury(x.p, 1+R(4)); }catch(e){ x.p.inj=1+R(4); }   // 🚑 예정일 동시 기록 (제보)
       x.injGap=true;                   // 부상으로 비운 자리 — 채우기 전까지 교체 후보로 계속 남는다
       ev(M,me,F_(COMM.inj,{p:x.p.name})+` (약 ${x.p.inj}주 결장)`,"bad",false,{kind:"injury",atkSide:key,playerId:x.p.id});
       x.off=M.min; M.xiDirty=true;
@@ -8243,7 +8368,14 @@ function tickInjuryDays(){
     for(const p of arr){
       if(!p || !(p.inj>0)) continue;
       if(p.injUntil==null) p.injUntil=(G.day||0)+p.inj*7;   // 옛 세이브 백필
-      const left=injWeeksLeft(p);
+      let left=injWeeksLeft(p);
+      /* 🚑 어긋남 복구 (제보 — 1주 → 38주) — 예정일이 잔여 주와 크게 다르면(묵은 예정일이
+         남았거나, 부상 중 재부상으로 주수가 직접 커진 경우) 잔여 주 기준으로 다시 잡는다. */
+      if(Math.abs(left-(p.inj||0))>1){
+        p.injUntil=(G.day||0)+(p.inj||0)*7;
+        p.injW0=Math.max(p.injW0||0, p.inj||0);
+        left=p.inj||0;
+      }
       if(left<=0){
         const w0=p.injW0||p.inj||0;
         p.inj=0; p.injUntil=null; delete p.injW0;
@@ -12917,7 +13049,8 @@ function applyDayToTeam(t, pl){
                     * (age<=21?1.45:age<=24?1.22:age<=28?1:age<=31?0.82:0.62)); }catch(e){} }
     // 강하게 굴리면 훈련장에서 다친다. 이미 지쳐 있을수록, 나이가 많을수록 위험하다.
     if(Math.random() < k.inj*trainInjMul(t, p)){
-      p.inj=1+R(3); p.cond=Math.round(clamp(p.cond-6,55,100));
+      try{ setInjury(p, 1+R(3)); }catch(e){ p.inj=1+R(3); }   // 🚑 예정일 동시 기록 (제보)
+      p.cond=Math.round(clamp(p.cond-6,55,100));
       if(!hurt) hurt=p;
     }
   }
@@ -13879,7 +14012,13 @@ function startNewSeason(){
         p.ovrF=clamp(p.ovrF-1, 38, 96); p.ovr=Math.round(p.ovrF);
         ageDecline(p, 1);
       }
-      p.ovr=clamp(p.ovr,40,96); p.ovrF=p.ovr; p.cond=95; p.inj=0; p.mn=0;
+      p.ovr=clamp(p.ovr,40,96); p.ovrF=p.ovr; p.cond=95; p.mn=0;
+      /* 🚑 ⚠ 제보 원문 — 「경기 중 부상당했던 선수가 처음에는 1주라고 써있었는데 일정 진행해서
+         며칠 지나니까 갑자기 38주로 늘어나 있다」.
+         ─ 원인: 시즌 전환이 p.inj=0 으로 몸만 고치고 「회복 예정일(injUntil)」은 지우지 않았다.
+           새 시즌은 달력이 0일부터 다시 시작하는데, 지난 시즌 막바지(260일께)의 예정일이
+           남아 있으면 새 부상(1주)이 하루 뒤 일일 정산에서 (260-0)/7 ≈ 38주로 둔갑했다. */
+      p.inj=0; p.injUntil=null; delete p.injW0;
       /* 🟨 대회(EACL·CWC) 징계는 그 시즌 에디션과 함께 끝난다 — 새 대회로 이월되지 않는다.
          (리그 잔여 징계는 실제 규정처럼 이월 유지 · 제보 — CWC발 유령 EACL 정지 차단의 이중 안전망) */
       delete p.banE; delete p.banENew; delete p.banC; delete p.banCNew;
@@ -15127,8 +15266,28 @@ function tickLoanOffer(){
     sub:`${G.season-p.by}세 ${POS_KO[p.pos]||p.pos}. ${c.short}는 출전 기회를 주지 못한 유망주의 성장을 맡길 팀을 찾고 있다.`});
   return {p, c};
 }
+/* 🔁 유망주 위탁 제안 정리 — ⚠ 제보(스크린샷) — 「임대 센터에서 받은 제안이 있다고 알람이
+   뜨는데 정작 받은 제안이 없는 상황」.
+   ─ 원인: 배지는 G.loanOffers 의 「개수」를 그대로 세는데, 카드는 선수·구단이 아직 유효한지
+     확인하고 무효면 조용히 건너뛰었다(return ""). 제안한 선수가 그새 이적·임대·입대로
+     그 구단 명단에서 사라지면 — 배지 1, 목록 0 인 유령이 남았다. 하루 정리(exp--)는
+     날짜가 흘러야만 돌아서 그날 안에는 못 지웠다.
+     loanAsks 처럼 「셀 때마다」 정리하는 프루너를 두고, 배지·카드가 같은 목록을 본다. */
+function loanOffersPrune(){
+  if(!Array.isArray(G.loanOffers)){ G.loanOffers=[]; return G.loanOffers; }
+  G.loanOffers=G.loanOffers.filter(o=>{
+    if(!o || o.pid==null) return false;
+    if(!(o.exp>0)) return false;                              // 기한 만료
+    const c=G.teams[o.tid]; if(!c) return false;
+    const p=c.players.find(x=>x.id===o.pid);
+    if(!p) return false;                                      // 이미 그 구단 선수가 아니다
+    if(p.loan || p.army) return false;                        // 그새 딴 데로 갔다
+    return true;
+  });
+  return G.loanOffers;
+}
 function loanOfferCard(){
-  const t=userTeam(); const L=(G.loanOffers||[]);
+  const t=userTeam(); const L=loanOffersPrune();
   if(!L.length) return "";
   return L.map((o,i)=>{
     const c=G.teams[o.tid], p=c&&c.players.find(x=>x.id===o.pid);
@@ -19272,7 +19431,7 @@ function edSetPlayerQ(p, field, v){
   else if(field==="cond"){ const n=edNum(v,55,100,0); if(n!=null) p.cond=n; }
   else if(field==="morale"){ const n=edNum(v,30,99,0); if(n!=null) p.morale=n; }
   else if(field==="aff"){ const n=edNum(v,0,100,0); if(n!=null) affSet(p,n); }
-  else if(field==="inj"){ const n=edNum(v,0,30,0); if(n!=null) p.inj=n; }
+  else if(field==="inj"){ const n=edNum(v,0,30,0); if(n!=null){ try{ setInjury(p, n); }catch(e){ p.inj=n; } } }
   else if(field==="ban"){ const n=edNum(v,0,10,0); if(n!=null) p.ban=n; }
   else if(field==="tpt"){ const n=edNum(v,0,99,0); if(n!=null) p.tpt=n; }
 }
@@ -19816,7 +19975,7 @@ function edOverwritePlayer(p, o){
   if(typeof o.cond==="number") p.cond=clamp(o.cond,55,100);
   if(typeof o.morale==="number") p.morale=clamp(o.morale,30,99);
   if(typeof o.aff==="number") affSet(p, clamp(o.aff,0,100));
-  if(typeof o.inj==="number") p.inj=clamp(Math.round(o.inj),0,30);
+  if(typeof o.inj==="number"){ const _iw=clamp(Math.round(o.inj),0,30); try{ setInjury(p,_iw); }catch(e){ p.inj=_iw; } }
   if(typeof o.ban==="number") p.ban=clamp(Math.round(o.ban),0,10);
   if(typeof o.tpt==="number") p.tpt=clamp(Math.round(o.tpt),0,99);
   if(o.attr){ p.attr=p.attr||{}; for(const k in o.attr) if(typeof o.attr[k]==="number") p.attr[k]=clamp(o.attr[k],12,99); syncLegacyAttrs(p.attr); }
@@ -21392,16 +21551,24 @@ const YOUTH_LV_BASE={
   jeonbuk:4, seoul:4, suwon:4, incheon:4, gwangju:4,   // 1군 배출이 꾸준한 아카데미
   daejeon:3, busan:3, jeju:3, gangwon:3, seoule:3, jeonnam:3, anyang:3
 };
+/* 🔧 기본값 재조정 — 개발 노트: 「기업구단과 시민구단의 훈련시설과 유스 아카데미 레벨 기본값이
+   높은 편이네? 시민구단은 별 1~3개, 기업구단은 2~4개로 기본값을 정하자. 그게 난이도가 맞지」.
+   ─ 10단계 눈금에서 시작 등급을 시민(·컨소시엄) 1~3단계 · 기업 2~4단계 밴드로 눌러 놓는다.
+     명문(YOUTH_LV_BASE 표의 5)은 제 밴드의 꼭대기, 그 아래는 밴드 안에서 사상한다.
+     10단계까지는 예산 증액 요청으로 감독이 직접 올려 가는 길이다 — 그게 게임의 난이도다. */
+function facBandOf(id){
+  const k=(typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k;
+  if(k==="army") return {lo:1, hi:1};
+  if(k==="corp") return {lo:2, hi:4};
+  return {lo:1, hi:3};                       // 시민·도민·컨소시엄
+}
 function baseYouthLv(id, div){
-  /* 표는 예전 1~5 눈금 그대로 두고, 여기서 10단계로 환산한다 (성능 보존 — 예전 5 = 지금 10) */
-  const raw = YOUTH_LV_BASE[id] || (function(){
-    const corp = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="corp";
-    const army = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="army";
-    if(army) return 1;                                   // 군경구단은 아카데미가 없다
-    if(corp) return 2;
-    return div===1 ? 2 : 1;
-  })();
-  return lv10From5(raw);
+  const B=facBandOf(id);
+  if(B.hi<=1) return 1;                                  // 군경구단은 아카데미가 없다
+  let v = (div===1 ? B.lo+1 : B.lo);                     // 1부가 반 걸음 앞선다
+  const p=YOUTH_LV_BASE[id];                             // 예전 명성표(1~5) — 밴드 안으로 사상
+  if(p) v = B.lo + Math.round((p-1)/4*(B.hi-B.lo));
+  return clamp(v, B.lo, B.hi);
 }
 /* ═══ 🔟 시설 10단계 ═══════════════════════════════════════════════════════
    ⚠ 제보 원문 — 「유스 아카데미와 훈련시설을 10단계로 만들자. 지금 현재는 5단계가 최대치고
@@ -21436,12 +21603,12 @@ const YOUTH_LABEL=[null,
   {n:"정상급",   c:"var(--green)", d:"리그 정상급 유스. 해마다 1군감이 올라옵니다."},
   {n:"최고",     c:"var(--green)", d:"리그를 대표하는 유스. 매년 한 명쯤은 리그를 놀라게 합니다."}];
 function baseTrainLv(id, div){
-  const raw = TRAIN_LV_BASE[id] || (function(){
-    const corp = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="corp";
-    if(corp) return 3;                               // 기업구단 하한
-    return div===1 ? 2 : 1;
-  })();
-  return lv10From5(raw);
+  /* 🔧 개발 노트 — 시민 1~3 · 기업 2~4 밴드 (baseYouthLv 와 같은 원칙) */
+  const B=facBandOf(id);
+  let v = (div===1 ? B.lo+1 : B.lo);
+  const p=TRAIN_LV_BASE[id];
+  if(p) v = B.lo + Math.round((p-1)/4*(B.hi-B.lo));
+  return clamp(v, B.lo, B.hi);
 }
 const TRAIN_LABEL=[null,
   {n:"열악",     c:"var(--red)",   d:"낡은 훈련장. 성장은 더디고 훈련 중 부상이 잦습니다."},
@@ -21506,14 +21673,18 @@ function pickPanel(d, div){
   const tier = ovr>=74?"우승 후보" : ovr>=71?"상위권" : ovr>=68?"중위권" : ovr>=65?"하위권" : "생존 경쟁";
   const nameCol = (d.col==='#1d1d1b'||d.col==='#101010') ? '#eee' : d.col;
   const row=(k,v)=>`<div class="pkRow"><span class="pkK">${k}</span><span class="pkV">${v}</span></div>`;
-  return `<div class="pkPanel">
-    <div class="pkHead" style="border-left:6px solid ${d.col}">
-      <div class="pkName" style="color:${nameCol}">${d.name}</div>
-      <div class="small">${divName(div)} · ${tier}</div>
+  /* 🎨 사용자 요청 — 「팀 선택하면 나오는 팝업창도 고급스럽게」. 구단색 투톤 머리 그림 + 엠블럼 */
+  const c2=d.col2||"#8b949e";
+  return `<div class="pkPanel" style="--tc:${d.col};--tc2:${c2};--tcGlow:${d.col}40;--tc2Glow:${c2}2a;--tcLine:${d.col}55">
+    <div class="pkHero">
+      <div class="pkCrest" style="color:${(typeof isLightColor==="function"&&isLightColor(d.col))?"#0d1117":"#fff"}">${(d.short||d.name).slice(0,2)}</div>
+      <div class="pkHead">
+        <div class="pkTier">${divName(div)} · ${tier}</div>
+        <div class="pkName" style="color:${nameCol}">${d.name}</div>
+        <div class="pkBadge" style="color:${ct.c};border-color:${ct.c}66">${ct.ic} ${ct.n} <span class="small" style="opacity:.75">· ${ct.o}</span></div>
+      </div>
     </div>
-    <div class="pkBadge" style="color:${ct.c};border-color:${ct.c}">${ct.ic} ${ct.n}</div>
     <p class="small pkDesc">${ct.d}</p>
-    ${row("운영 주체", ct.o)}
     ${row("홈구장", `${s.n}`)}
     ${row("수용 인원", `${s.cap.toLocaleString()}석`)}
     ${row("평균 관중", `${s.avg.toLocaleString()}명 <span class="small">(좌석 점유율 ${Math.round(s.avg/s.cap*100)}%)</span>`)}
@@ -21692,10 +21863,19 @@ function renderTeamPick(){
   const card=(d,div)=>{
     const avg = d.players? Math.round(d.players.reduce((s,p)=>s+p[3],0)/d.players.length) : d.base;
     const ct=clubType({id:d.id, name:d.name});
-    return `<div class="teamcard ${pickSel===d.id?'sel':''}" onclick="pickTeam('${d.id}')">
-      <div class="nm" style="color:${d.col==='#1d1d1b'||d.col==='#101010'?'#eee':d.col}">${d.name}</div>
-      <div class="st">${teamStars(avg, d.short||d.name)} · 예산 ${d.budget}억 · <span style="color:${ct.c}">${ct.ic} ${ct.n}</span></div>
-      <div class="bar" style="background:linear-gradient(90deg,${d.col} ${avg-40}%,var(--bg3) 0)"></div></div>`;
+    /* 🎨 사용자 요청 — 「팀선택 화면을 좀 더 고급스럽게」. 구단색 두 가지를 CSS 변수로 넘겨
+       상단 띠·엠블럼·전력 바를 한 벌로 칠한다. 어두운 구단색은 이름만 밝게 바꾼다. */
+    const dark = d.col==='#1d1d1b'||d.col==='#101010'||d.col==='#111111';
+    const c2=d.col2||"#8b949e";
+    const glow=`${d.col}2e`, lineC=`${d.col}55`;
+    const initial=(d.short||d.name).slice(0,2);
+    const crestInk=(typeof isLightColor==="function"&&isLightColor(d.col))?"#0d1117":"#fff";
+    return `<div class="teamcard ${pickSel===d.id?'sel':''}" onclick="pickTeam('${d.id}')"
+      style="--tc:${d.col};--tc2:${c2};--tcGlow:${glow};--tcLine:${lineC}">
+      <div class="crest" style="color:${crestInk}">${initial}</div>
+      <div class="nm" style="color:${dark?'#e8eef6':d.col}">${d.name}</div>
+      <div class="st">${teamStars(avg, d.short||d.name)}<br>예산 <b style="color:#dbe6f2">${d.budget}억</b> · <span style="color:${ct.c}">${ct.ic} ${ct.n}</span></div>
+      <div class="bar"><i style="width:${clamp((avg-52)*3.2,8,100)}%"></i></div></div>`;
   };
   /* 이어하기 + 세이브파일 불러오기.
      불러오기는 저장된 게임이 없어도 항상 띄운다 — 기기를 바꿨거나 브라우저가 저장을 지웠을 때
@@ -21708,13 +21888,20 @@ function renderTeamPick(){
     <button class="pkGo pkCog" onclick="togglePickOpt()" title="설정 — 폰트·전체화면·게임 옵션" aria-label="설정">⚙</button>
   </div>`;
   const sel = pickSel ? [...D1.map(d=>[d,1]),...D2.map(d=>[d,2])].find(x=>x[0].id===pickSel) : null;
-  el.innerHTML=`<h1>⚽ 개리그 매니저 2026</h1>
-  <p class="small">2026 시즌 실제 로스터 기반 · 파이널 라운드 스플릿 · 승강 플레이오프 · 외국인 무제한 등록(동시 출전 K1 5명/K2 4명) · 실시간 매치엔진 · 기자회견 · 유스 아카데미</p>
+  el.innerHTML=`<div class="pkSeason">SEASON 2026 · K LEAGUE</div>
+  <h1>⚽ <span class="pkTitle">개리그 매니저 2026</span></h1>
+  <div class="pkFeats">
+    <span>2026 실제 로스터</span><span>실시간 매치엔진</span><span>파이널 라운드 스플릿</span>
+    <span>승강 플레이오프</span><span>EACL · 클럽 월드컵</span><span>온라인 대전</span>
+    <span>기자회견</span><span>유스 아카데미</span><span>외국인 무제한 등록 (동시 출전 K1 5 · K2 4)</span>
+  </div>
   ${saved}
   ${pickOpt ? `<div class="pkOverlay" onclick="if(event.target===this)togglePickOpt()">${pickOptPanel()}</div>` : ""}
   ${sel ? `<div class="pkOverlay" onclick="if(event.target===this)pickCancel()">${pickPanel(sel[0], sel[1])}</div>` : ""}
-  <h3>${compShort("k1")} — ${compName("k1")}</h3><div class="teamgrid">${D1.map(d=>card(d,1)).join("")}</div>
-  <h3>${compShort("k2")} — ${compName("k2")} (17팀 체제)</h3><div class="teamgrid">${D2.map(d=>card(d,2)).join("")}</div>
+  <div class="pkDivHead k1"><span class="pkDivBadge">${compShort("k1")}</span><span class="pkDivNm">${compName("k1")}</span><span class="pkDivSub">12개 구단</span></div>
+  <div class="teamgrid">${D1.map(d=>card(d,1)).join("")}</div>
+  <div class="pkDivHead k2"><span class="pkDivBadge">${compShort("k2")}</span><span class="pkDivNm">${compName("k2")}</span><span class="pkDivSub">17팀 체제</span></div>
+  <div class="teamgrid">${D2.map(d=>card(d,2)).join("")}</div>
   <p class="small">※ 능력치는 실제 기록·활약을 바탕으로 한 추정치입니다.</p>
   <p class="pkNote">이 게임에 등장하는 모든 인물·구단·사건은 <b>가상</b>이며, 실존 인물 및 단체와 아무런 관련이 없습니다.<br>
     선수·감독·심판의 이름과 능력치는 게임 진행을 위한 창작물이고, 게임 안에서 벌어지는 모든 언행은 실제 인물의 발언이나 성향과 무관합니다.<br>
@@ -21963,7 +22150,7 @@ function hmlRepay(amt){
   const M=me();
   const a=Math.min(hmlLoan(), Math.round((parseFloat(amt)||0)*100)/100);
   if(a<=0){ flash("상환할 금액이 없습니다.","warn"); return; }
-  if(a>M.cash){ flash(`현금이 부족합니다 (보유 ${M.cash.toFixed(2)}억).`,"warn"); return; }
+  if(a>M.cash){ flash(`현금이 부족합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   M.hml=Math.round((hmlLoan()-a)*100)/100;
   mePay(-a, `주택담보대출 상환 (잔액 ${M.hml.toFixed(2)}억)`);
   if(!M.hml) flash("🏦 주택담보대출을 모두 갚았습니다.","good");
@@ -22662,7 +22849,7 @@ function bankOpen(bk, pk, amt){
   if(P.max && a>P.max){ flash(`${P.n}은(는) ${P.kind==="sav"?"월 납입":"가입 금액"} 한도가 ${P.max}억입니다.`,"warn"); return; }
   if(P.spec && (!B.spec || B.spec.bk!==bk || (G.day||0)>B.spec.until)){ flash("지금은 특판이 열려 있지 않습니다.","warn"); return; }
   const first = P.kind==="sav" ? a : a;            // 적금은 첫 회차 납입
-  if(first>M.cash){ flash(`${first}억이 부족합니다 (보유 ${M.cash.toFixed(2)}억).`,"warn"); return; }
+  if(first>M.cash){ flash(`${first}억이 부족합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   const rate=bankRate(bk, pk);
   mePay(-first, `${BK.n} ${P.n} ${P.kind==="sav"?"1회차 납입":"가입"}`);
   const id=++B.sid;
@@ -22740,7 +22927,7 @@ function bankRepay(id){
   /* 중도상환수수료 — 남은 기간에 비례 */
   const fee=Math.round(L.bal*0.012*(L.left/Math.max(1,L.m))*100)/100;
   const need=Math.round((L.bal+fee)*100)/100;
-  if(need>M.cash){ flash(`전액 상환에 ${need}억이 필요합니다 (보유 ${M.cash.toFixed(2)}억).`,"warn"); return; }
+  if(need>M.cash){ flash(`전액 상환에 ${need}억이 필요합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   showConfirm(`<b>${BK.ic} ${BK.n} 대출 전액 상환</b>\n\n· 잔액 ${L.bal.toFixed(2)}억\n· 중도상환수수료 ${fee}억\n\n합계 <b class="money">${need}억</b>`,
     ()=>{
       mePay(-need, `${BK.n} 대출 전액 상환`);
@@ -23219,7 +23406,7 @@ function mgrQuitOpen(){
   if(mgrQuitCtx().kind==="instant") repHit=Math.round(repHit*1.8)+4;   // 부임하자마자 던지는 건 이력서에 오래 남는다
   showConfirm(`<b style="font-size:17px">🚪 ${t.name} 감독직에서 물러납니다</b>\n\n`+
     `· 남은 계약 <b>${mgrCtLeft()}년</b>${mgrCtFinal()?" (올 시즌이 마지막)":""}\n`+
-    `· 위약금 <b class="money">${fee}억</b> — 개인 현금에서 나갑니다 (보유 ${M.cash.toFixed(2)}억)\n`+
+    `· 위약금 <b class="money">${fee}억</b> — 개인 현금에서 나갑니다 (보유 ${moneyEok(M.cash)})\n`+
     (M.cash<fee?`  <span style="color:#ff9d5c">모자란 <b>${Math.round((fee-M.cash)*100)/100}억</b>은 <b>미납</b>으로 남아 다음 구단 월급에서 공제됩니다</span>\n`:"")+
     `· 평판 <b>−${repHit}</b> · 다음 구단 제의가 줄어듭니다\n`+
     (inSeason?`\n<span style="color:#ff9d5c">⚠ <b>시즌 중 이탈</b>입니다 — 위약금 1.5배, 평판 타격도 더 큽니다.</span>\n`:"")+
@@ -23446,7 +23633,7 @@ function tickMoney(){
   try{ bankMonthTick(); }catch(e){}
   const tax=Math.round((gotPay+rent)*0.14*100)/100;
   if(tax>0) mePay(-tax, "소득세");
-  if(M.cash<0) addMood(`💸 통장이 비었습니다. (${M.cash.toFixed(2)}억) — 집을 줄이거나 부동산을 파세요.`);
+  if(M.cash<0) addMood(`💸 통장이 비었습니다. (${moneyEok(M.cash)}) — 집을 줄이거나 부동산을 파세요.`);
 }
 /* 감독이 큰 걸 샀을 때 — 팬들은 감독의 통장을 본다.
    성적이 좋으면 "그럴 만하다", 나쁘면 "저럴 시간에 전술이나". */
@@ -23489,7 +23676,7 @@ function meMoveHome(k){
     if(hmlLoan()>0){ const L=hmlLoan(); mePay(-L, `주택담보대출 상환 (매각)`); M.hml=0; }
     M.homeOwn=false;
   };
-  showConfirm(`<b>${h.ic} ${h.n}</b>${sameRent?" — 지금 월세로 사는 집입니다":""}\n\n${h.d}\n\n· 현재 시세 <b>${px}억</b> <span class="small">(기준가 ${h.buy}억 · 시장 ${Math.round(homeMkt(h.k)*100)}%)</span>\n· 월세 <b>${homeRent(h)}억</b>\n· 취득세·중개료 <b>${buyFee}억</b>\n· 위신 ${h.pres>=0?"+":""}${h.pres}${h.party?` · 집들이 가능 (거실 ${h.party}등급)`:""}${saleNote}\n\n어떻게 하시겠습니까? <span class="small">(보유 ${M.cash.toFixed(2)}억)</span>`,
+  showConfirm(`<b>${h.ic} ${h.n}</b>${sameRent?" — 지금 월세로 사는 집입니다":""}\n\n${h.d}\n\n· 현재 시세 <b>${px}억</b> <span class="small">(기준가 ${h.buy}억 · 시장 ${Math.round(homeMkt(h.k)*100)}%)</span>\n· 월세 <b>${homeRent(h)}억</b>\n· 취득세·중개료 <b>${buyFee}억</b>\n· 위신 ${h.pres>=0?"+":""}${h.pres}${h.party?` · 집들이 가능 (거실 ${h.party}등급)`:""}${saleNote}\n\n어떻게 하시겠습니까? <span class="small">(보유 ${moneyEok(M.cash)})</span>`,
     ()=>{ // 매입
       if(px+buyFee>M.cash+ownSale){ notify(`매입가와 세금을 합쳐 ${(px+buyFee).toFixed(2)}억이 필요합니다.`,"warn"); return; }
       sellOld();
@@ -23508,7 +23695,7 @@ function meMoveHome(k){
 function meBuyProp(k){
   const M=me(); const P=PROPS.find(x=>x.k===k); if(!P) return;
   const fee=Math.round(P.price*PROP_FEE*100)/100;
-  if(P.price+fee>M.cash){ notify(`매입가와 세금을 합쳐 ${(P.price+fee).toFixed(2)}억이 필요합니다. (보유 ${M.cash.toFixed(2)}억)`,"warn"); return; }
+  if(P.price+fee>M.cash){ notify(`매입가와 세금을 합쳐 ${(P.price+fee).toFixed(2)}억이 필요합니다. (보유 ${moneyEok(M.cash)})`,"warn"); return; }
   const netY=Math.round((P.yield*(1-P.vac)-PROP_TAX)*1000)/10;
   showConfirm(`<b>${P.ic} ${P.n}</b> <span class="small">${P.reg}</span>\n\n`+
     `· 매입가 <b>${P.price}억</b> + 취득세·중개료 ${fee}억\n`+
@@ -23560,7 +23747,7 @@ function plnRepay(amt){
   const M=me();
   const a=Math.min(propLoan(), Math.round((parseFloat(amt)||0)*100)/100);
   if(a<=0){ flash("상환할 금액이 없습니다.","warn"); return; }
-  if(a>M.cash){ flash(`현금이 부족합니다 (보유 ${M.cash.toFixed(2)}억).`,"warn"); return; }
+  if(a>M.cash){ flash(`현금이 부족합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   M.pln=Math.round((propLoan()-a)*100)/100;
   mePay(-a, `부동산 담보대출 상환 (잔액 ${M.pln.toFixed(2)}억)`);
   saveGame(); show("mylife");
@@ -23596,7 +23783,7 @@ function meBuyGift(k){
   const M=me(); const G2=GIFTS.find(x=>x.k===k); if(!G2) return;
   /* 몇 개 살지 먼저 묻는다 — 스무 명에게 돌리려면 한 번에 사야 한다 */
   const canMax=Math.max(1, Math.floor(M.cash/G2.price));
-  showConfirm(`<b>${G2.ic} ${G2.n}</b>\n\n${G2.d}\n\n· 개당 <b class="money">${G2.price}억</b> · 보유 현금 ${M.cash.toFixed(2)}억\n· 최대 <b>${canMax}개</b>까지 살 수 있습니다\n\n몇 개를 사시겠습니까?\n<input id="buyQty" type="number" min="1" max="${canMax}" value="1" style="width:110px;font-size:17px;font-weight:800;text-align:center;background:var(--bg3);color:var(--txt);border:1px solid var(--gold);border-radius:8px;padding:9px">`,
+  showConfirm(`<b>${G2.ic} ${G2.n}</b>\n\n${G2.d}\n\n· 개당 <b class="money">${G2.price}억</b> · 보유 현금 ${moneyEok(M.cash)}\n· 최대 <b>${canMax}개</b>까지 살 수 있습니다\n\n몇 개를 사시겠습니까?\n<input id="buyQty" type="number" min="1" max="${canMax}" value="1" style="width:110px;font-size:17px;font-weight:800;text-align:center;background:var(--bg3);color:var(--txt);border:1px solid var(--gold);border-radius:8px;padding:9px">`,
     (vals)=>{
       let n=parseInt(String((vals&&vals.buyQty)||"1"),10);
       if(!isFinite(n)||n<1) n=1;
@@ -23605,9 +23792,9 @@ function meBuyGift(k){
 }
 function meBuyGiftN(k, n){
   const M=me(); const G2=GIFTS.find(x=>x.k===k); if(!G2) return;
-  if(G2.price>M.cash){ flash(`${G2.price}억이 필요합니다. (보유 ${M.cash.toFixed(2)}억)`,"warn"); show("mylife"); return; }
+  if(G2.price>M.cash){ flash(`${G2.price}억이 필요합니다. (보유 ${moneyEok(M.cash)})`,"warn"); show("mylife"); return; }
   const cost=Math.round(G2.price*n*100)/100;
-  if(cost>M.cash){ flash(`${cost}억이 필요합니다. (보유 ${M.cash.toFixed(2)}억)`,"warn"); show("mylife"); return; }
+  if(cost>M.cash){ flash(`${cost}억이 필요합니다. (보유 ${moneyEok(M.cash)})`,"warn"); show("mylife"); return; }
   mePay(-cost, `${G2.n} ${n}개 구매`);
   M.inv[k]=(M.inv[k]||0)+n;
   meGiftSel=k;                     // 방금 산 물건을 바로 보낼 수 있게 골라 둔다
@@ -24101,6 +24288,14 @@ function stkMoney(w){                                                           
   if(a>=1e4)  return Math.round(w/1e4).toLocaleString()+"만";
   return Math.round(w).toLocaleString();
 }
+/* 💰 억 단위 값 → 조 단위까지 — ⚠ 제보 원문 — 「'내 자산' 탭의 보유 현금량이 조 단위를
+   넘어가게 되더라도 억 단위로 표시되는데, 순자산 항목처럼 조 단위로 표현 가능하게 해주시면
+   감사하겠습니다」. 현금(M.cash)은 억 단위로 들고 있어서 stkMoney(원 단위)를 못 쓴다. */
+function moneyEok(a){
+  a=+a||0;
+  if(Math.abs(a)>=10000) return (a/10000).toFixed(2)+"조";
+  return a.toFixed(2)+"억";
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    📰 공시·뉴스·실적 — 주가가 「그냥 흔들리는 것」이 아니라 이유를 갖게 한다
@@ -24402,7 +24597,7 @@ function stkRepay(amtWon){
   const M=me();
   const a=Math.min(stkLoan(), Math.max(0, Math.round(amtWon||0)));
   if(a<=0){ flash("상환할 금액이 없습니다.","warn"); return; }
-  if(a > M.cash*1e8){ flash(`현금이 부족합니다 (보유 ${M.cash.toFixed(2)}억).`,"warn"); return; }
+  if(a > M.cash*1e8){ flash(`현금이 부족합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   M.stkLoan=stkLoan()-a;
   M.cash=Math.round((M.cash - a/1e8)*1e4)/1e4;
   stkTxAdd({k:"repay", amt:a});
@@ -24859,7 +25054,7 @@ function stkDebtRepay(amtWon){
   const M=me();
   const a=Math.min(stkDebt(), Math.max(0, Math.round(amtWon||0)));
   if(a<=0){ flash("상환할 금액이 없습니다.","warn"); return; }
-  if(a > M.cash*1e8){ flash(`현금이 부족합니다 (보유 ${M.cash.toFixed(2)}억).`,"warn"); return; }
+  if(a > M.cash*1e8){ flash(`현금이 부족합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   M.stkDebt=stkDebt()-a;
   M.cash=Math.round((M.cash - a/1e8)*1e4)/1e4;
   stkTxAdd({k:"sharkpay", amt:a});
@@ -25012,7 +25207,7 @@ function stkDunView(){
     <div class="stkSum" style="margin-top:8px">
       <div><span>사채 잔액</span><b style="color:#f85149">${D.toFixed(2)}억</b></div>
       <div><span>한 달 이자</span><b>${part.toFixed(2)}억</b></div>
-      <div><span>보유 현금</span><b class="money">${M.cash.toFixed(2)}억</b></div>
+      <div><span>보유 현금</span><b class="money">${moneyEok(M.cash)}</b></div>
       <div><span>순자산</span><b style="color:${net>=0?"var(--green)":"#f85149"}">${net.toFixed(2)}억</b></div>
     </div>
     <p class="small" style="margin-top:9px;color:var(--sub)">방문 ${n}회차 · 무직이라 월급 압류가 불가능한 상태입니다.</p>
@@ -25355,7 +25550,7 @@ function stkFutOpen(side){
   const idx=stkIndex();
   const notion=idx*q*STK_FUT_MULT;
   const need=Math.round(notion*STK_FUT_MARGIN + notion*STK_FUT_FEE);
-  if(need > M.cash*1e8){ flash(`증거금이 부족합니다 — ${stkMoney(need)} 필요 (보유 ${M.cash.toFixed(2)}억)`,"warn"); return; }
+  if(need > M.cash*1e8){ flash(`증거금이 부족합니다 — ${stkMoney(need)} 필요 (보유 ${moneyEok(M.cash)})`,"warn"); return; }
   M.cash=Math.round((M.cash - need/1e8)*1e4)/1e4;
   /* 만기 — 분기(90일) 경계 */
   const d=G.day||0, due=Math.ceil((d+1)/90)*90;
@@ -25560,7 +25755,7 @@ function stkQtyEchoHtml(s){
   const M=me();
   const q=parseInt(STK_QTY,10)||0;
   const h=(M.stkInv&&M.stkInv[s.id])||null;
-  if(q<=0) return `보유 현금 <b class="money">${M.cash.toFixed(2)}억</b>${h?` · 보유 <b>${h.q.toLocaleString()}주</b>`:""}`;
+  if(q<=0) return `보유 현금 <b class="money">${moneyEok(M.cash)}</b>${h?` · 보유 <b>${h.q.toLocaleString()}주</b>`:""}`;
   const _fb=stkFillPx(s, q, +1), _fs=stkFillPx(s, q, -1);
   const cost=q*_fb.px*(1+STK_FEE);
   const net =q*_fs.px*(1-STK_FEE-STK_TAX);
@@ -25607,7 +25802,7 @@ function stkBuy(){
   const M=me();
   const F=stkFillPx(s, q, +1);                  // 💥 큰 주문일수록 비싸게 체결된다
   const cost=q*F.px*(1+STK_FEE);
-  if(cost > M.cash*1e8){ flash(`현금이 부족합니다 — ${stkMoney(cost)} 필요 (보유 ${M.cash.toFixed(2)}억)`,"warn"); return; }
+  if(cost > M.cash*1e8){ flash(`현금이 부족합니다 — ${stkMoney(cost)} 필요 (보유 ${moneyEok(M.cash)})`,"warn"); return; }
   M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
   if(!M.stkInv) M.stkInv={};
   const h=M.stkInv[s.id]||{q:0, avg:0};
@@ -26180,7 +26375,7 @@ function stkFutCard(){
       <button class="mini" onclick="STK_FQ=String(Math.max(0,Math.floor(me().cash*1e8/(stkIndex()*STK_FUT_MULT*(STK_FUT_MARGIN+STK_FUT_FEE)))));show('mylife')">최대</button>
     </div>
     <div class="small" style="margin:6px 0;color:var(--sub)">${q>0?`증거금 <b class="money">${stkMoney(need)}</b> · 계약금액 ${stkMoney(idx*q*STK_FUT_MULT)}
-      <span style="opacity:.75">— 지수 1% 변동 시 손익 ${stkMoney(idx*q*STK_FUT_MULT*0.01)}</span>`:`보유 현금 <b class="money">${M.cash.toFixed(2)}억</b>`}</div>
+      <span style="opacity:.75">— 지수 1% 변동 시 손익 ${stkMoney(idx*q*STK_FUT_MULT*0.01)}</span>`:`보유 현금 <b class="money">${moneyEok(M.cash)}</b>`}</div>
     <div style="display:flex;gap:6px">
       <button class="mini" style="flex:1;padding:10px;background:#3a1414;border-color:#f85149;color:#ff8080;font-weight:700" onclick="stkFutOpen('long')">📈 매수(롱) — 오른다에 건다</button>
       <button class="mini" style="flex:1;padding:10px;background:#0f2233;border-color:#58a6ff;color:#9ecbff;font-weight:700" onclick="stkFutOpen('short')">📉 매도(숏) — 내린다에 건다</button>
@@ -26216,7 +26411,7 @@ function stkIpoCard(){
       <button class="mini" onclick="STK_IQ=String((parseInt(STK_IQ,10)||0)+1000);show('mylife')">+1,000</button>
       <button class="mini" onclick="STK_IQ=String(Math.max(0,Math.floor(me().cash*1e8/stkIpo().px)));show('mylife')">최대</button>
     </div>
-    <div class="small" style="margin:6px 0;color:var(--sub)">${q>0?`증거금 <b class="money">${stkMoney(q*P.px)}</b> 필요`:`보유 현금 <b class="money">${M.cash.toFixed(2)}억</b>`}</div>
+    <div class="small" style="margin:6px 0;color:var(--sub)">${q>0?`증거금 <b class="money">${stkMoney(q*P.px)}</b> 필요`:`보유 현금 <b class="money">${moneyEok(M.cash)}</b>`}</div>
     <button class="mini" style="width:100%;padding:10px;border-color:var(--green);color:var(--green);font-weight:700" onclick="stkIpoApply()">🆕 청약 신청</button>`}
   </div>`;
 }
@@ -26307,7 +26502,7 @@ function mgrDebtCard(){
     <h3>⚖️ 미납금 <span class="small">— 사임 위약금 · 징계금</span></h3>
     <div class="stkSum">
       <div><span>남은 미납금</span><b style="color:#f85149">${due.toFixed(2)}억</b></div>
-      <div><span>보유 현금</span><b class="money">${M.cash.toFixed(2)}억</b></div>
+      <div><span>보유 현금</span><b class="money">${moneyEok(M.cash)}</b></div>
       <div><span>지금 갚을 수 있는 금액</span><b>${canNow.toFixed(2)}억</b></div>
       <div><span>월급 공제</span><b>${G.jobless?"없음 (무직)":"월급의 절반"}</b></div>
     </div>
@@ -26343,7 +26538,7 @@ function donCard(){
   return `<div class="card">
     <h3>💝 구단 기부 <span class="small">— 감독 사비를 ${t.short} 시설에 넣습니다</span></h3>
     <div class="stkSum">
-      <div><span>보유 현금</span><b class="money">${M.cash.toFixed(2)}억</b></div>
+      <div><span>보유 현금</span><b class="money">${moneyEok(M.cash)}</b></div>
       <div><span>누적 기부</span><b>${(d.total||0).toFixed(2)}억</b></div>
       <div><span>올 시즌</span><b>${(d.sAmt||0).toFixed(2)}억</b></div>
       <div><span>늘린 좌석</span><b>${(d.seats||0).toLocaleString()}석</b></div>
@@ -26620,7 +26815,7 @@ function mylifeView(){
     ${nw<0?`<div class="msg warn" style="margin-top:8px">⚠️ 빚이 자산을 넘어섰습니다. 사채가 있다면 넉 달 안에 정리하지 못하면 <b>파산</b>합니다.</div>`:""}
   </div>
   <div class="row">
-    <div class="card"><h3>💰 보유 현금</h3><div style="font-size:26px" class="money">${M.cash.toFixed(2)}억</div>
+    <div class="card"><h3>💰 보유 현금</h3><div style="font-size:26px" class="money">${moneyEok(M.cash)}</div>
       ${M.debt>0?`<p class="small" style="margin:4px 0 0;color:var(--red)">⚖️ 미납금 <b>${M.debt.toFixed(2)}억</b> — ${G.jobless?"무직이라 월급 공제가 없습니다. 직접 갚아야 줄어듭니다.":"매달 월급의 절반이 공제됩니다."}
         <button class="mini" style="padding:1px 7px;font-size:11px;margin-left:5px;border-color:var(--gold);color:var(--gold)" onclick="show('mylife')">💼 자산에서 갚기</button></p>`:""}
       <p class="small" style="margin-top:6px">연봉 <b>${sal}억</b> (월 ${(sal/12).toFixed(2)}억) · 세후 월 순수입 <b style="color:${monthly>=0?"var(--green)":"var(--red)"}">${monthly>=0?"+":""}${(monthly*0.86).toFixed(2)}억</b></p></div>
@@ -26757,6 +26952,7 @@ function show(v){
   try{ chatBoxSync(); }catch(e){}        // 💬 제보 — 채팅창 스크롤바·높이 복원
   try{ pvpPresenceSync(v); }catch(e){}   // 🌐 제보 — ⚔️ 메뉴에 있는 동안만 접속 인원에 잡힌다
   navPush(v);              // 🖱️ 트랙패드 뒤로가기 제스처를 위해 방문 기록을 남긴다
+  try{ boardFlush(); }catch(e){}   // 🪑 미뤄 둔 구단주 경고·통첩 — 한가해졌으면 지금 띄운다 (제보)
   saveGame();
 }
 /* ═══════════════════════════════════════════════════════════════
@@ -26832,7 +27028,8 @@ function notifCount(tab){
     case "transfer": return (G.transferBids||[]).filter(b=>b.offer).length;               // 들어온 입찰
     case "contract": return expiringSoon().filter(p=>(p.ct||1)<=1).length;                 // 올해 안에 잡아야 할 계약
     case "loancenter": { let n=0; try{ n=loanAsksPrune().length; }catch(e){ n=(G.loanAsks||[]).length; }
-      return n+((G.loanOffers||[]).length); }                                              // 들어온 임대 제안
+      let f=0; try{ f=loanOffersPrune().length; }catch(e){ f=(G.loanOffers||[]).length; }
+      return n+f; }                                              // 들어온 임대 제안 (유령 정리 후 — 제보)
     case "tactics": {
       const xi=bestXI(ut);
       let c=0;
@@ -28480,7 +28677,7 @@ function tickArmy(){
     const own=p.army.own && G.teams[p.army.own];
     const nm=p.name;
     p.army=null; p.armyDone=1;   // 병역은 한 번뿐 — 다시 뽑히지 않는다
-    p.morale=clamp((p.morale||70)+6,25,99); p.inj=0; p.ban=0; p.sulk=0;
+    p.morale=clamp((p.morale||70)+6,25,99); p.inj=0; p.injUntil=null; delete p.injW0; p.ban=0; p.sulk=0;
     if(own){
       own.players.push(p); joinClub(own, p, false);   // 전역 복귀 — 재계약 잠금 없음
       p.ct=Math.max(p.ct||1, 1);
@@ -28654,7 +28851,7 @@ function sueFirmPick(kind, fid){
     const afford=(M.cash>=f.cost)||(t.budget>=f.cost);
     return `${f.ic} <b>${f.n}</b> — ${f.cost}억 · 승소 ${Math.round(eff*100)}% · ${f.days[0]}~${f.days[1]}일${afford?"":" <span style=\"color:var(--red)\">(잔고 부족)</span>"}\n<span class="small">${f.d}</span>`;
   });
-  showChoice(`<b>⚖️ 변호를 누구에게 맡기시겠습니까?</b>\n<span class="small">비용은 감독 사비에서 나갑니다 (보유 ${M.cash.toFixed(2)}억)</span>`,
+  showChoice(`<b>⚖️ 변호를 누구에게 맡기시겠습니까?</b>\n<span class="small">비용은 감독 사비에서 나갑니다 (보유 ${moneyEok(M.cash)})</span>`,
     rows, (i)=>sueFile(kind, fid, SUE_FIRMS[i].k));
 }
 /* ── 소송 제기 — 이제 결과는 며칠 뒤에 나온다 ── */
@@ -29062,11 +29259,53 @@ function trustCard(){
   <p class="small" style="margin-top:6px">연패, 핵심 선수 방출·이적 시 하락하고, 핵심 선수 영입·좋은 성적 시 상승합니다. 신뢰가 바닥나면 경질·서포터 시위 등 후폭풍이 있을 수 있습니다.</p>
   </div>`;
 }
+/* 🏆 오피스 「다음 경기」에 올릴 대회(EACL·CWC) 경기 — 둘 중 빠른 것
+   ⚠ 제보 원문 — 「EACL 8강부터 오피스탭의 다음 경기 박에 8강·4강·결승 경기 정보가 보이는 것이
+      아니라 '승강 플레이오프가 진행 중입니다'라고 뜬다」 + 「CWC가 진행 중인데 다음 CWC 경기
+      정보가 아니라 다음 친선 경기의 정보가 뜨고 있다」.
+   ─ 원인: nextOpponent()가 phase 로 문을 먼저 닫았다. EACL 8강~결승은 승강PO 기간(phase="po")에,
+     CWC 는 프리시즌(phase="pre")에 열리는데, po 는 고정 문구를, pre 는 친선경기만 돌려줬다.
+     이제 어느 국면이든 대회 일정을 먼저 보고, 있으면 그 경기를 올린다. */
+function cupNextBest(){
+  const today=G.day||0;
+  const rank=(d)=>(d>=today ? d : d+100000);
+  let best=null;
+  try{ const ex=eaclNextForUser(); if(ex && ex.opp) best={kind:"eacl", x:ex}; }catch(e){}
+  try{ const cx=cwcNextForUser(); if(cx && cx.opp && (!best || rank(cx.day)<rank(best.x.day))) best={kind:"cwc", x:cx}; }catch(e){}
+  return best;
+}
+function cupNextHtml(best, tail){
+  const t=userTeam(), ex=best.x, opp=ex.opp;
+  const today=G.day||0, d=Math.max(0, ex.day-today);
+  const dt=(G.cal?dateOfDay(ex.day):null);
+  const dow=dt?DOW_KR[dt.getDay()]:"";
+  const isC=best.kind==="cwc";
+  let stN="중립 구장";
+  try{ stN = isC ? `${(G.cwc&&G.cwc.host)||"중립"} · 중립 구장` : (stadOf(ex.home?t:opp)||{}).n||"중립 구장"; }catch(e){}
+  let stars="-", styleN="-", form="-";
+  try{ stars=teamStars(opp, opp.short||opp.name); }catch(e){}
+  try{ styleN=styleName(opp); }catch(e){}
+  try{ form=(opp.form||[]).slice(-5).map(f=>f==="W"?"🟢":f==="D"?"🟡":"🔴").join("")||"-"; }catch(e){}
+  const tag=isC?`<span class="tag" style="background:#a371f733;color:#c9a7ff">🌍 ${ex.label}</span>`
+               :`<span class="tag" style="background:#1f6feb33;color:#58a6ff">🌏 ${ex.label}</span>`;
+  return `${tag}<br>
+  <b>${opp.name}</b> ${isC?`<span class="small">(중립)</span>`:(ex.home?"(홈)":"(원정)")}${opp.nat?` <span class="small">${opp.nat}</span>`:""}<br>
+  🏟️ ${stN} · ${dt?dateLabel(ex.day):""} <span class="small">${dow?"("+dow+")":""} ${d>0?`D-${d}`:"오늘"}</span><br>
+  상대 전력: ${stars} · 스타일: <b>${styleN}</b><br>
+  최근: ${form}${tail?`<br><span class="small">${tail}</span>`:""}`;
+}
 function nextOpponent(){
   const t=userTeam();
   if(G.phase==="pre"){
     const f=nextFriendly();
     const openOff=(G.cal&&G.cal.openOff)||0, left=Math.max(0, openOff-(G.day||0));
+    /* 🌍 프리시즌에 세계 대회가 열려 있으면 그쪽이 먼저다 (제보 — CWC 대신 친선경기가 떴다) */
+    {
+      const cb=cupNextBest();
+      const today=G.day||0, rank=(d)=>(d>=today?d:d+100000);
+      if(cb && (!f || rank(cb.x.day)<=rank(f.d)))
+        return cupNextHtml(cb, `개막까지 ${left}일${f?` · 다음 연습경기는 ${dateLabel(f.d)}`:""}`);
+    }
     if(f){
       const opp=G.teams[f.oppId];
       const d=Math.max(0, f.d-(G.day||0));
@@ -29081,8 +29320,17 @@ function nextOpponent(){
       <span class="small">개막까지 ${left}일 · 남은 기간은 훈련과 이적시장에 집중하세요.</span>`;
   }
   if(G.phase==="sacked") return "경질되어 지휘할 경기가 없습니다.";
-  if(G.phase==="po") return "⚔️ 승강 플레이오프가 진행 중입니다.";
-  if(G.phase!=="league") return "시즌 일정이 종료되었습니다.";
+  if(G.phase==="po"){
+    /* 🌏 승강PO 기간에도 EACL 8강~결승은 그대로 열린다 (제보 — 고정 문구가 대회 경기를 가렸다) */
+    const cb=cupNextBest();
+    if(cb) return cupNextHtml(cb, "⚔️ 승강 플레이오프 기간 — 우리에게는 대회 일정이 먼저 잡혀 있습니다");
+    return "⚔️ 승강 플레이오프가 진행 중입니다.";
+  }
+  if(G.phase!=="league"){
+    const cb=cupNextBest();
+    if(cb) return cupNextHtml(cb, "");
+    return "시즌 일정이 종료되었습니다.";
+  }
   const fix=t.div===1?G.k1Fix:G.k2Fix, r=t.div===1?G.r1:G.r2;
   /* ⚠ 제보 — 「다음 경기가 EACL 인데 오피스에는 리그 경기가 뜬다」.
      여기는 리그 fixture 만 훑고 있었다. 시즌 중에 끼어드는 경기(대회·친선)를 먼저 본다. */
@@ -29091,10 +29339,10 @@ function nextOpponent(){
     const rank=(d)=>(d>=today ? d : d+100000);      // 이미 지난 날짜는 뒤로
     const lgDay=(r<fix.length) ? matchDayOf(r) : 1e9;
     let best=null;
-    /* 🌏 대회 */
+    /* 🌏 대회 — EACL·CWC 중 빠른 것 (제보 — CWC 도 여기 서야 한다) */
     try{
-      const ex=eaclNextForUser();
-      if(ex && ex.opp && rank(ex.day)<rank(lgDay)) best={kind:"eacl", x:ex};
+      const cb=cupNextBest();
+      if(cb && rank(cb.x.day)<rank(lgDay)) best=cb;
     }catch(e){}
     /* 🌱 시즌 중 친선경기 */
     try{
@@ -29102,18 +29350,8 @@ function nextOpponent(){
                 && (!best || rank(y.d)<rank(best.x.day!=null?best.x.day:best.x.d)));
       if(f) best={kind:"fr", x:f};
     }catch(e){}
-    if(best && best.kind==="eacl"){
-      const ex=best.x, opp=ex.opp;
-      const d=Math.max(0, ex.day-today);
-      const dt=(G.cal?dateOfDay(ex.day):null);
-      const dow=dt?DOW_KR[dt.getDay()]:"";
-      const st=stadOf(ex.home?t:opp);
-      return `<span class="tag" style="background:#1f6feb33;color:#58a6ff">🌏 ${ex.label}</span><br>
-      <b>${opp.name}</b> ${ex.home?"(홈)":"(원정)"}${opp.nat?` <span class="small">${opp.nat}</span>`:""}<br>
-      🏟️ ${st?st.n:"중립 구장"} · ${dt?dateLabel(ex.day):""} <span class="small">${dow?"("+dow+")":""} ${d>0?`D-${d}`:"오늘"}</span><br>
-      상대 전력: ${teamStars(opp, opp.short||opp.name)} · 스타일: <b>${styleName(opp)}</b><br>
-      최근: ${(opp.form||[]).slice(-5).map(f=>f==="W"?"🟢":f==="D"?"🟡":"🔴").join("")||"-"}
-      <br><span class="small">리그 ${r+1}R 은 ${lgDay<1e9?dateLabel(lgDay):"-"}에 있습니다 — 전술 탭에서 정찰 정보 확인</span>`;
+    if(best && (best.kind==="eacl"||best.kind==="cwc")){
+      return cupNextHtml(best, `리그 ${r+1}R 은 ${lgDay<1e9?dateLabel(lgDay):"-"}에 있습니다 — 전술 탭에서 정찰 정보 확인`);
     }
     if(best && best.kind==="fr"){
       const f=best.x, opp=G.teams[f.oppId];
@@ -33838,7 +34076,8 @@ function negoView(){
      카드를 먼저 만들어 보고, 정말 아무것도 없을 때만 안내문을 띄운다. */
   const cards = negoCard() + snegoCard();
   let _lnA=0; try{ _lnA=loanAsksPrune().length; }catch(e){ _lnA=(G.loanAsks||[]).length; }
-  const loanN = _lnA+((G.loanOffers||[]).length);
+  let _lnO=0; try{ _lnO=loanOffersPrune().length; }catch(e){ _lnO=(G.loanOffers||[]).length; }
+  const loanN = _lnA+_lnO;
   const loanLink = loanN
     ? `<div class="msg warn" style="border-width:2px">🔁 <b>임대 제안 ${loanN}건</b>이 도착해 있습니다 —
         <button class="mini" style="margin-left:6px" onclick="lcTab='offer';show('loancenter')">🔁 임대 센터에서 확인</button></div>`
@@ -35159,7 +35398,7 @@ function armyEnlist(p, from, gc){
   const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   from.players.splice(from.players.indexOf(p),1);
   p.army={own:from.id, in:fmt(now), out:fmt(out)};
-  p.morale=clamp((p.morale||70)-3,25,99); p.inj=0; p.ban=0; p.sulk=0; p.unhappy=0;
+  p.morale=clamp((p.morale||70)-3,25,99); p.inj=0; p.injUntil=null; delete p.injW0; p.ban=0; p.sulk=0; p.unhappy=0;
   gc.players.push(p); joinClub(gc, p);
   return p;
 }
@@ -35892,7 +36131,9 @@ function loanBuyNow(pid){
 function loanCenterView(){
   const t=userTeam(), wi=windowInfo();
   const sentOut=loanedOut(t).concat(armySentOut(t)), came=loanedInFrom(t), cands=loanCandidates(t);
-  const asks=(G.loanAsks||[]).length, offers=(G.loanOffers||[]).length;
+  let asks=0, offers=0;
+  try{ asks=loanAsksPrune().length; }catch(e){ asks=(G.loanAsks||[]).length; }
+  try{ offers=loanOffersPrune().length; }catch(e){ offers=(G.loanOffers||[]).length; }
   const tab=(k,l)=>`<button class="mini ${lcTab===k?'sel':''}" style="padding:8px 16px;font-size:14px" onclick="setLcTab('${k}')">${l}</button>`;
   let body="";
   if(lcTab==="status"){
@@ -36568,7 +36809,7 @@ function stadDonateOpen(){
   const S=G.stad; if(!S) return;
   const M=me(), left=Math.round((S.cost-S.paid)*10)/10;
   showConfirm(`<b>💝 감독 사비 기부</b>\n\n`+
-    `· 보유 현금 <b class="money">${M.cash.toFixed(2)}억</b>\n· 남은 사업비 <b>${left}억</b>\n\n`+
+    `· 보유 현금 <b class="money">${moneyEok(M.cash)}</b>\n· 남은 사업비 <b>${left}억</b>\n\n`+
     `얼마를 내시겠습니까?\n`+
     `<input id="donAmt" type="number" min="0.1" step="1" value="1" style="width:130px;font-size:17px;font-weight:800;text-align:center;background:var(--bg3);color:var(--txt);border:1px solid var(--gold);border-radius:8px;padding:9px">\n\n`+
     `<span class="small">감독이 자기 돈을 낸 구장은 팬이 오래 기억합니다. 서포터 신뢰가 크게 오릅니다.</span>`,
@@ -36912,7 +37153,7 @@ function donOpen(){
   let a=Math.round((parseFloat(DON_AMT)||0)*100)/100;
   if(!(a>0)){ flash("기부할 금액을 입력하세요.","warn"); return; }
   if(a<0.1){ flash("최소 0.1억부터 기부할 수 있습니다.","warn"); return; }
-  if(a>M.cash){ flash(`보유 현금이 부족합니다 (${M.cash.toFixed(2)}억).`,"warn"); return; }
+  if(a>M.cash){ flash(`보유 현금이 부족합니다 (${moneyEok(M.cash)}).`,"warn"); return; }
   const left=Math.round((M.cash-a)*100)/100;
   const keep=Math.round(Math.max(1, donRef()/12*2)*100)/100;    // 두 달 치 생활비
   let sadae=0; try{ sadae=(typeof stkDebt==="function")?stkDebt()/1e8:0; }catch(e){}
@@ -36925,7 +37166,7 @@ function donOpen(){
   const d=donOf(t), cost=donSeatCost(t);
   const after=(S&&S.phase!=="done") ? "" : `\n· 기금 <b>${d.fund.toFixed(1)}억 → ${(d.fund+a).toFixed(1)}억</b> <span class="small">(다음 ${DON_STEP.toLocaleString()}석까지 ${cost}억)</span>`;
   showConfirm(`<b style="font-size:17px">💝 ${t.name}에 ${a.toFixed(2)}억을 기부합니다</b>\n\n`+
-    `· 보유 현금 <b class="money">${M.cash.toFixed(2)}억</b> → <b>${left.toFixed(2)}억</b>\n`+
+    `· 보유 현금 <b class="money">${moneyEok(M.cash)}</b> → <b>${left.toFixed(2)}억</b>\n`+
     `· 쓰이는 곳 <b>${dest}</b>${after}\n`+
     `· 공개 여부 <b>${DON_ANON?"🤫 익명":"📣 공개"}</b>\n\n`+
     (DON_ANON
@@ -41782,6 +42023,24 @@ function sackCheck(){
   return false;
 }
 function boardModal(title, body, cls){
+  /* 🪑 ⚠ 제보 — 「구단한테 짤리기 직전이라고 경고는 받았지만 짤리진 않았는데 진행이 안 됨」
+     (파주 2031 세이브 분석 — 세이브 자체는 멀쩡했다).
+     ─ 원인: 이 모달과 진행 상자·확인창이 전부 #gcModal 한 칸을 나눠 쓰고, 「알겠습니다」가
+       show(VIEW) 로 화면을 통째로 다시 그린다. 경기 직후 라커룸 토크·기자회견이 아직 진행
+       중일 때 경고 모달이 뜨면 — 닫는 순간 그 화면이 지워지는데 진행 표식(inLockerTalk·IV…)은
+       남는다 → progBusy() 가 영원히 참 → 진행 버튼이 눌러도 조용히 무시된다.
+     ─ 바쁜 동안(경기·회견·라커룸·진행 상자)에는 모달을 미뤄 두고(G._boardMsg), 알림만 남긴다.
+       한가해지면 show() 끝의 boardFlush() 가 띄운다. 닫을 때도 바쁘면 화면을 다시 그리지 않는다. */
+  try{
+    const busy = (typeof progBusy==="function" && progBusy())
+              || (typeof liveM!=="undefined" && liveM)
+              || (typeof PROG!=="undefined" && PROG);
+    if(busy){
+      G._boardMsg={t:String(title), b:String(body), c:cls||""};
+      try{ notify(`${title} — 구단주실에서 연락이 왔습니다. 하던 일이 끝나면 안내가 뜹니다.`,"warn"); }catch(e){}
+      return;
+    }
+  }catch(e){}
   const box=$("#gcModal"); if(!box) return;
   box.className="";
   box.innerHTML=`<div class="gcOverlay"><div class="gcBox">
@@ -41790,8 +42049,21 @@ function boardModal(title, body, cls){
   </div></div>`;
   // 모달을 닫으면 지금 보고 있는 화면을 다시 그린다. 이게 없으면 예산 증액 요청 뒤에
   // "2/3회" 같은 숫자가 그대로 남아 있다가, 다른 탭에 다녀와야 갱신됐다.
+  // ⚠ 단, 회견·라커룸이 돌고 있으면 다시 그리지 않는다 — 그 화면을 부수면 진행이 멈춘다 (제보).
   box.querySelector(".gcOk").onclick=()=>{ box.className="hidden"; box.innerHTML="";
-    if(typeof VIEW!=="undefined" && VIEW && !liveM){ try{ show(VIEW); }catch(e){} } };
+    const busy2=(typeof progBusy==="function" && progBusy());
+    if(typeof VIEW!=="undefined" && VIEW && !liveM && !busy2){ try{ show(VIEW); }catch(e){} } };
+}
+/* 미뤄 둔 구단주 모달 — 한가해진 순간에 띄운다 (show() 끝에서 부른다) */
+function boardFlush(){
+  try{
+    if(!G || !G._boardMsg) return;
+    if(typeof progBusy==="function" && progBusy()) return;
+    if(typeof liveM!=="undefined" && liveM) return;
+    if(typeof PROG!=="undefined" && PROG) return;
+    const m=G._boardMsg; G._boardMsg=null;
+    boardModal(m.t, m.b, m.c);
+  }catch(e){}
 }
 /* 경질 확정 */
 /* ═══ 🕊️ 무직 감독 — 경질 뒤의 삶 ═══
@@ -50079,7 +50351,7 @@ class MatchSim{
       x.off=this.M.min;
       x.injGap=true;                   // 부상으로 비운 자리 — 채우기 전까지 교체 후보로 남긴다
       const wks=1+R(4)+(it.hard?R(3):0);                   // 결장 주수
-      if(a.p) a.p.inj=Math.max(a.p.inj||0, wks);
+      if(a.p){ try{ setInjury(a.p, Math.max(injWeeksLeft(a.p), wks)); }catch(e){ a.p.inj=Math.max(a.p.inj||0, wks); } }   // 🚑 예정일 동시 기록 (제보)
       if(b.ownerId===a.id){                                // 공을 들고 쓰러졌다면 공은 흘러나간다
         b.ownerId=null;
         this.launchLoose(b.x, b.y, Math.random()*Math.PI*2, 4+Math.random()*6, this.opp(a.side), false);
@@ -55894,7 +56166,7 @@ function fanTownhallBangeo(){
   okP=clamp(okP, 0.08, 0.72);
   const M=me();
   if(M.cash<0.6){
-    showConfirm(`<b>🐟 방어회를 쏘려면 돈이 필요합니다.</b>\n\n서포터즈 수십 명분 방어회면 최소 0.6억은 듭니다.\n(보유 ${M.cash.toFixed(2)}억 — 감독 사비)`,
+    showConfirm(`<b>🐟 방어회를 쏘려면 돈이 필요합니다.</b>\n\n서포터즈 수십 명분 방어회면 최소 0.6억은 듭니다.\n(보유 ${moneyEok(M.cash)} — 감독 사비)`,
       ()=>{}, {okLabel:"알겠습니다", cancelLabel:""});
     return;
   }
@@ -57383,7 +57655,7 @@ function awayTargetReact(p, kind, ctx){
   affAdd(p, d, why);
   // 물병에 맞으면 다칠 수도 있다 — 감독이 상대 선수를 결장시키는 최악의 방법
   let hurt=0;
-  if(kind==="bottle" && Math.random()<0.15){ hurt=1; p.inj=Math.max(p.inj||0, 1); }
+  if(kind==="bottle" && Math.random()<0.15){ hurt=1; try{ setInjury(p, Math.max(injWeeksLeft(p), 1)); }catch(e){ p.inj=Math.max(p.inj||0, 1); } }
   return {p, cat, line, delta:d, kind, hurt};
 }
 function awaySkip(){
@@ -58990,9 +59262,10 @@ function updLiveCtrl(state){
   if(state==="ht"){
     /* ⚔️ 온라인 대전 — 양쪽 준비 시스템 (제보) */
     if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP){
-      el.innerHTML = PVP.htMe
+      el.innerHTML = (PVP.htMe
         ? `<span class="small" style="color:var(--gold);font-weight:700">⏳ 상대 감독 준비 대기…</span>`
-        : `<button class="mini sel" onclick="pvpHtReady()">✅ 후반전 준비 완료</button>`;
+        : `<button class="mini sel" onclick="pvpHtReady()">✅ 후반전 준비 완료</button>`)
+        + ` <button class="mini" onclick="pvpTacOpen()" title="하프타임 교체는 수정 기회를 소모하지 않습니다">📋 교체</button>`;
       return;
     }
     el.innerHTML=`<button class="mini sel" onclick="resumeLive()">후반전 시작 ▶</button>`; return; }
@@ -60596,7 +60869,18 @@ function startProgress(){
   if(typeof inPreTactics!=="undefined" && inPreTactics){ confirmPreMatchTactics(); return; }
   /* 라인업 프리뷰 — 진행 = 라커룸/기자회견으로 */
   if(typeof inLineupPreview!=="undefined" && inLineupPreview){ proceedToPreInterview(); return; }
-  if(progBusy()) return;
+  if(progBusy()){
+    /* ⚠ 제보 — 「진행이 안 됨」. 조용히 무시하면 게임이 멈춘 것처럼 보인다.
+       무엇이 잡고 있는지, 어디서 마무리하면 되는지 알려 준다 — 그 흐름들은 경기 탭에 보존된다. */
+    try{
+      const why = liveM ? "경기가 진행 중입니다 — 경기 탭에서 마무리해 주세요"
+        : (typeof IV!=="undefined" && IV) ? "기자회견이 진행 중입니다 — 경기 탭에서 마저 답해 주세요"
+        : ((typeof inLockerTalk!=="undefined"&&inLockerTalk)||(typeof inGreeting!=="undefined"&&inGreeting)) ? "라커룸 대화가 진행 중입니다 — 경기 탭에서 마무리해 주세요"
+        : "진행 중인 화면을 먼저 마무리해 주세요 — 경기 탭을 확인해 보세요";
+      flash("⏳ "+why,"warn");
+    }catch(e){}
+    return;
+  }
   if(G.phase==="sacked"){ showSackScreen(); return; }
   /* 주장단이 비어 있으면 진행 화면을 열지 않고 바로 스태프 회의로 데려간다.
      여기서 막지 않으면 진행 → 경고 → 다시 메뉴 찾기까지 클릭이 세 번이 된다. */
@@ -60755,7 +61039,10 @@ const PVP_STUN=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google
 const PVP_SNAP_MS=33;            // 상태 스냅샷 전송 간격 (30Hz — 제보: 프레임 동일화)
 const PVP_PLAYOUT=120;           // 게스트 재생 지연 기준(ms) — 적응형 재생 시계의 목표 리드 (제보: 뚝뚝 끊김)
 const PVP_QUEUE_TTL=90;          // 대기열 항목 유효 시간(초)
-const PVP_STAR_GAP=10;           // 빠른 대전 허용 전력차 (별점×10 기준 — 1.0성)
+/* ⚔️ 빠른 대전 전력차 제한 — 개발 노트: 「제한 해제해. 어차피 인원이 없거든」.
+   ±1.0성 제한은 대기 인원이 두 명뿐이어도 전력차가 크면 서로 영영 못 만나게 했다.
+   이제 선착순이다 — 여럿이 대기 중이면 그중 전력이 가장 가까운 상대를 고른다(정렬은 유지). */
+const PVP_STAR_GAP=999;          // 사실상 무제한 — 전력차와 무관하게 매칭
 let PVP=null;                    // 진행 중인 대전 상태
 /* ⏸ 탭 숨김 감지 — 경기 중이면 상대에게 알리고 양쪽 다 멈춘다 (제보: 백그라운드 일시정지) */
 try{ if(typeof document!=="undefined" && document.addEventListener)
@@ -61100,7 +61387,7 @@ async function pvpMakeRoom(pub){
   if(!pvpOn()||PVP) return;
   if(!pvpNetGate()) return;          // 🌐 제보 — 연결이 끊겨 있으면 방을 열 수 없다
   const code=pvpCode();
-  PVP={stage:"room", role:"host", room:code, myId:pvpId(), msg:"방을 만드는 중…"};
+  PVP={stage:"room", role:"host", room:code, myId:pvpId(), pub:pub?1:0, msg:"방을 만드는 중…"};
   const t=userTeam()||{};
   let st10=30; try{ st10=Math.round(teamStarVal(t)*10); }catch(e){}
   const ok=await fbSet("rooms/"+code, {h:{id:PVP.myId, n:t.short||"?", nick:pvpNick(), tn:String(t.name||"").slice(0,16), sv:st10, ver:PVP_VER},
@@ -61171,7 +61458,12 @@ try{ if(typeof window!=="undefined" && window.addEventListener){
 /* ── 🟢 접속 인원 ─────────────────────────────────────────────────────────
    ⚔️ 메뉴를 보고 있는 동안만 live/{내 id} 에 심장박동을 남긴다. 화면을 떠나면 지운다. */
 function pvpPresenceSync(v){
-  try{ if(v==="pvp" && pvpOn()) pvpLiveStart(); else pvpLiveStop(); }catch(e){}
+  /* ⚔️ 개발 노트 — 「유저가 대전중이면 대전중이라고 표시」. 경기·로비 중에도 접속 표시를
+     끄지 않고 유지한다 — 심장박동에 m(대전 중) 표식이 실린다. */
+  try{
+    const busy=(typeof pvpBusy==="function") && pvpBusy();
+    if((v==="pvp" || busy) && pvpOn()) pvpLiveStart(); else pvpLiveStop();
+  }catch(e){}
 }
 function pvpLiveStart(){
   if(PVP_LIVE){ pvpLiveBeat(); return; }
@@ -61195,7 +61487,8 @@ function pvpLiveStop(){
 }
 async function pvpLiveBeat(){
   if(!pvpOn() || !PVP_LIVE) return;
-  const ok=await fbSet("live/"+pvpId(), {n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER});
+  const inMatch=(typeof PVP!=="undefined") && PVP && (PVP.stage==="match"||PVP.stage==="lobby") ? 1 : 0;   // ⚔️ 대전 중 표식
+  const ok=await fbSet("live/"+pvpId(), {n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER, m:inMatch});
   if(!ok){ if(PVP_NET!==false){ PVP_NET=false; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} } return; }
   if(PVP_NET!==true){ PVP_NET=true; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
   /* 닉네임 점유도 함께 갱신한다 — 계속 쓰는 사람의 이름은 풀리지 않는다 */
@@ -61209,22 +61502,77 @@ function pvpLiveApply(tree){
     const age=now-(e.t||0);
     if(age>PVP_LIVE_PURGE){ try{ fbDel("live/"+id); }catch(_){} continue; }
     if(age>PVP_LIVE_TTL) continue;
-    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine});
+    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m});
   }
   rows.sort((a,b)=> a.me? -1 : b.me? 1 : String(a.n).localeCompare(String(b.n),"ko"));
   PVP_LIVE.list=rows; PVP_LIVE.n=rows.length;
   const el=document.getElementById("pvpLive");
   if(el) el.innerHTML=pvpLiveHtml();
+  /* ⚔️ 내 접속 표시에 초대장(inv)이 얹혀 있으면 — 1:1 대전 신청이 온 것이다 (개발 노트) */
+  try{
+    const meE=(tree||{})[mine], inv=meE && meE.inv;
+    if(inv && inv.room && inv.from && inv.from!==mine
+       && PVP_LIVE.invSeen!==inv.room
+       && (Date.now()-(inv.t||0) < 90000)
+       && !PVP && (typeof liveM==="undefined" || !liveM)){
+      PVP_LIVE.invSeen=inv.room;
+      try{ fbSet("live/"+mine+"/inv", null); }catch(e){}   // 초대장은 한 번만 — 바로 지운다
+      const nm=pvpClean(inv.n,8)||"감독", rm=String(inv.room).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+      showConfirm(`<b>⚔️ 1:1 대전 신청이 왔습니다!</b>\n\n<b>${nm}</b> 감독이 지금 대전을 원합니다.\n받아들이시겠습니까?`,
+        ()=>{ try{ pvpJoinRoom(rm); }catch(e){} },
+        {okLabel:"⚔️ 받아들인다", cancelLabel:"거절한다",
+         onCancel:()=>{ try{ fbPatch("rooms/"+rm, {dec:1}); }catch(e){} }});
+    }
+  }catch(e){}
 }
 function pvpLiveHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 확인할 수 없습니다.</p>`;
   const L=PVP_LIVE;
   if(!L || !L.list) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
+  /* ⚔️ 개발 노트 — 「접속중에 나오는 유저들 닉네임 클릭해서 1대1 대전 신청 박스 나오게」 */
   const chips=L.list.slice(0,80).map(r=>
-    `<span style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:${r.me?800:600};background:${r.me?"var(--gold)":"#1b222b"};color:${r.me?"#0d1117":"var(--fg)"}">${r.n}${r.me?" (나)":""}</span>`).join("");
+    r.me
+    ? `<span style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--gold);color:#0d1117">${r.n} (나)</span>`
+    : r.m
+    /* 🔴 대전 중 — 신청을 받을 수 없으니 클릭도 걸지 않는다 (개발 노트) */
+    ? `<span title="${r.n} 감독은 지금 경기 중입니다" style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#26161a;color:#ff9d95;border:1px solid #6e2a30;opacity:.9">${r.n} <b style="font-size:10px">🔴 대전중</b></span>`
+    : `<span class="clickable" title="클릭하면 ${r.n} 감독에게 1:1 대전을 신청합니다" onclick="pvpChallenge('${String(r.id).replace(/[^\w-]/g,"")}','${r.n.replace(/'/g,"")}')"
+        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#1b222b;color:var(--fg);border:1px solid #2a3441;cursor:pointer">⚔️ ${r.n}</span>`).join("");
   return `<div><b style="color:var(--green)">🟢 지금 ${L.n}명 접속 중</b>`
     + (L.n>80?` <span class="small" style="opacity:.7">(80명까지 표시)</span>`:"")
-    + `</div><div style="margin-top:5px;line-height:1.9">${chips||`<span class="small" style="opacity:.6">아직 아무도 없습니다.</span>`}</div>`;
+    + `</div><div style="margin-top:5px;line-height:1.9">${chips||`<span class="small" style="opacity:.6">아직 아무도 없습니다.</span>`}</div>`
+    + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임을 클릭하면 그 감독에게 <b>1:1 대전 신청</b>이 갑니다.</p>`:"");
+}
+/* ═══ ⚔️ 1:1 대전 신청 — 개발 노트: 「접속중 유저 닉네임 클릭 → 대전 신청 박스 → 대전」 ═══
+   비공개 방을 만들어 두고, 상대의 접속 표시(live/{id})에 초대장(inv)을 얹는다.
+   상대 화면은 live 스트림으로 초대장을 받아 수락/거절 팝업을 띄운다 —
+   수락하면 그 방 코드로 입장(pvpJoinRoom), 거절하면 방에 dec 표식을 남겨 신청자에게 알린다. */
+function pvpChallenge(id, nick){
+  if(!pvpOn()) return;
+  if(!pvpNetGate()) return;
+  if(PVP){ try{ flash("이미 매칭이 진행 중입니다 — 먼저 취소해 주세요.","warn"); }catch(e){} return; }
+  if(!id || id===pvpId()) return;
+  nick=pvpClean(nick,8)||"상대";
+  showConfirm(`<b>⚔️ 1:1 대전 신청</b>\n\n<b>${nick}</b> 감독에게 대전을 신청할까요?\n<span class="small">상대가 수락하면 바로 매치 로비로 이동합니다 · 90초 안에 응답이 없으면 자동으로 거둡니다.</span>`,
+    ()=>{ pvpChallengeGo(id, nick); }, {okLabel:"⚔️ 신청한다", cancelLabel:"그만둔다"});
+}
+async function pvpChallengeGo(id, nick){
+  if(PVP) return;
+  const code=pvpCode();
+  PVP={stage:"room", role:"host", room:code, myId:pvpId(), pub:0, duel:nick, msg:`⚔️ ${nick} 감독의 수락을 기다리는 중…`};
+  const t=userTeam()||{};
+  let st10=30; try{ st10=Math.round(teamStarVal(t)*10); }catch(e){}
+  const ok=await fbSet("rooms/"+code, {h:{id:PVP.myId, n:t.short||"?", nick:pvpNick(), tn:String(t.name||"").slice(0,16), sv:st10, ver:PVP_VER},
+                                       pub:0, duel:1, st:"wait", t:Date.now()});
+  if(!ok){ PVP=null; try{ flash("⚔️ 서버에 연결하지 못했습니다.","warn"); }catch(e){} show("pvp"); return; }
+  await fbPatch("live/"+id, {inv:{room:code, from:pvpId(), n:String(pvpNick()||"감독").slice(0,8), t:Date.now()}});
+  pvpSt(`⚔️ ${nick} 감독에게 대전 신청을 보냈습니다 — 수락을 기다립니다`);
+  pvpWatchRoom();
+  /* 90초 무응답이면 거둔다 */
+  if(PVP.invTO) clearTimeout(PVP.invTO);
+  PVP.invTO=setTimeout(()=>{ try{
+    if(PVP && PVP.stage==="room" && PVP.duel && !PVP.pc) pvpAbort(`⚔️ ${nick} 감독의 응답이 없습니다 — 신청을 거뒀습니다.`);
+  }catch(e){} }, 90000);
 }
 
 /* ── 💬 라운지 채팅 ───────────────────────────────────────────────────────
@@ -61308,6 +61656,12 @@ function pvpResApply(tree){
   PVP_RES.rows=rows.slice(0, PVP_RES_SHOW);
   const el=document.getElementById("pvpRes");
   if(el) el.innerHTML=pvpResHtml();
+}
+/* 🌐 실시간 전적 접기 — 개발 노트: 「실시간 전적에 스크롤바도 추가해주고, 접었다 펼수 있게도 해줘」 */
+function pvpResFolded(){ try{ return localStorage.getItem("klm2026_resFold")==="1"; }catch(e){ return false; } }
+function pvpResFoldToggle(){
+  try{ localStorage.setItem("klm2026_resFold", pvpResFolded()?"0":"1"); }catch(e){}
+  try{ show("pvp"); }catch(e){}
 }
 function pvpResHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
@@ -61410,7 +61764,7 @@ async function pvpQuick(){
     if(now-(e.t||0) > PVP_QUEUE_TTL*1000){ fbDel("queue/"+k); continue; }   // 상한 지난 항목 청소
     if(e.room) continue;                                    // 이미 매칭됨
     const d=Math.abs((e.st||30)-me.st);
-    if(d<=PVP_STAR_GAP && d<bestD){ bestD=d; bestK=k; }
+    if(d<=PVP_STAR_GAP && d<bestD){ bestD=d; bestK=k; }   // 제한 해제 — 그래도 가장 가까운 상대 우선
   }
   if(bestK){
     const code=pvpCode();
@@ -61427,7 +61781,7 @@ async function pvpQuick(){
   const key=await fbPush("queue", me);
   if(!key){ pvpReset(); flash("⚔️ 서버에 연결하지 못했습니다.","warn"); show("pvp"); return; }
   PVP.qEntry=key;
-  pvpSt("대기열에 등록했습니다 — 전력이 비슷한 상대를 기다립니다 (전력 "+(me.st/10).toFixed(1)+"성 ±1.0)");
+  pvpSt("대기열에 등록했습니다 — 다음 감독이 들어오면 바로 붙습니다 (내 전력 "+(me.st/10).toFixed(1)+"성 · 전력 제한 없음)");
   PVP.esQ=fbStream("queue/"+key, (st)=>{
     if(st && st.room && PVP && PVP.stage==="queue"){
       PVP.role="host"; PVP.room=st.room; PVP.stage="room"; PVP.qEntry=null;
@@ -61445,6 +61799,12 @@ function pvpWatchRoom(){
   PVP.es=fbStream("rooms/"+PVP.room, async (room)=>{
     if(!PVP) return;
     try{
+      /* ⚔️ 1:1 대전 신청 거절 — 상대가 팝업에서 「거절한다」를 눌렀다 (개발 노트) */
+      if(room && room.dec && PVP.role==="host" && PVP.duel && !PVP.pc){
+        try{ if(PVP.invTO){ clearTimeout(PVP.invTO); PVP.invTO=null; } }catch(e){}
+        pvpAbort(`⚔️ ${PVP.duel} 감독이 대전 신청을 거절했습니다.`);
+        return;
+      }
       if(PVP.role==="host"){
         if(room.g && !PVP.pc && PVP.stage==="room"){ pvpSt("상대 입장 — 연결 중…"); }
         if(room.sdpOffer && !PVP.answered){
@@ -61584,8 +61944,11 @@ function pvpOnMsg(raw){
     if(m.on){
       /* 상대가 수정 시작 — 호스트면 기회 검증·엔진 정지, 화면 블라인드 */
       if(PVP.role==="host"){
-        if((PVP.tacOppLeft|0)<=0){ pvpSend({t:"tacst", ok:0, why:"교체·수정 기회를 모두 사용했습니다 ("+PVP_TAC_USES+"회)"}); return; }
-        PVP.tacOppLeft--;
+        /* ⚔️ 하프타임 수정은 무료 (제보 — 하프타임 교체) */
+        if(!PVP._htWait){
+          if((PVP.tacOppLeft|0)<=0){ pvpSend({t:"tacst", ok:0, why:"교체·수정 기회를 모두 사용했습니다 ("+PVP_TAC_USES+"회)"}); return; }
+          PVP.tacOppLeft--;
+        }
         PVP.tacEdit="opp"; livePaused=true; try{ updLiveCtrl(); }catch(e){}
         pvpSend(Object.assign({t:"tacst", ok:1, left:PVP.tacOppLeft}, pvpSideState("a")));
         pvpTacBlind(true);
@@ -61599,8 +61962,14 @@ function pvpOnMsg(raw){
       /* 상대 수정 종료 */
       if(PVP.tacEdit==="opp"){ PVP.tacEdit=null; pvpTacBlind(false);
         try{ if(PVP.tacTO2){ clearTimeout(PVP.tacTO2); PVP.tacTO2=null; } }catch(e){}
-        if(PVP.role==="host") pvpTacResume();
-        try{ flash("📋 상대의 전술 수정이 끝났습니다 — 경기 재개","info"); }catch(e){} }
+        if(PVP._htWait){
+          try{ if(PVP.role==="host") updLiveCtrl("ht"); }catch(e){}
+          try{ pvpHtTryStart(); }catch(e){}   // ⚔️ 하프타임 교체 종료 — 양쪽 준비면 후반전 (제보)
+          try{ flash("📋 상대의 하프타임 교체가 끝났습니다","info"); }catch(e){}
+        } else {
+          if(PVP.role==="host") pvpTacResume();
+          try{ flash("📋 상대의 전술 수정이 끝났습니다 — 경기 재개","info"); }catch(e){}
+        } }
     }
     return;
   }
@@ -62033,9 +62402,18 @@ function pvpApplySub(key, outNo, inNo){
 }
 function pvpTacOpen(){
   if(!PVP || PVP.stage!=="match" || PVP.tacEdit || PVP.ended) return;
-  if(PVP._htWait || PVP.awayMe || PVP.awayOpp){ try{ flash("지금은 수정할 수 없습니다 — 하프타임/자리 비움 중","warn"); }catch(e){} return; }
-  if((PVP.tacMe|0)<=0){ try{ flash("🔁 교체·수정 기회를 모두 사용했습니다 (경기당 "+PVP_TAC_USES+"회)","warn"); }catch(e){} return; }
-  PVP.tacMe--;
+  if(PVP.awayMe || PVP.awayOpp){ try{ flash("지금은 수정할 수 없습니다 — 자리 비움 중","warn"); }catch(e){} return; }
+  /* ⚔️ ⚠ 제보 원문 — 「온라인 매칭에서 하프타임때 전술 버튼이 안눌러져서 교체를 할 수 없거든?
+     하프타임, 즉 후반전 시작할때 교체 할 수 있게 수정해줘」.
+     ─ 예전에는 _htWait(하프타임 대기)를 자리 비움과 같은 잠금으로 묶어 버튼을 통째로 막았다.
+       실제 축구의 하프타임 교체가 가장 흔한 교체다 — 이제 하프타임에는 전술창이 열리고,
+       경기가 이미 멈춰 있는 시간이므로 수정 기회(경기당 3회)도 소모하지 않는다.
+       후반전은 양쪽 준비 완료 + 열려 있는 전술창이 없어야 시작된다(pvpHtTryStart). */
+  const htFree = !!PVP._htWait;
+  if(!htFree){
+    if((PVP.tacMe|0)<=0){ try{ flash("🔁 교체·수정 기회를 모두 사용했습니다 (경기당 "+PVP_TAC_USES+"회)","warn"); }catch(e){} return; }
+    PVP.tacMe--;
+  }
   PVP.tacEdit="me"; PVP.tacSel={}; PVP.tacT0=Date.now();
   pvpSend({t:"tacp", on:1});
   if(PVP.role==="host"){
@@ -62058,7 +62436,12 @@ function pvpTacDone(){
   try{ if(PVP.tacTO){ clearTimeout(PVP.tacTO); PVP.tacTO=null; } }catch(e){}
   try{ pvpTacWait(false); }catch(e){}
   pvpSend({t:"tacp", on:0});
-  if(PVP.role==="host") pvpTacResume();
+  if(PVP._htWait){
+    /* ⚔️ 하프타임 교체가 끝났다 — 준비 버튼을 되살리고, 양쪽이 이미 준비됐다면 후반전을 연다 (제보) */
+    try{ if(PVP.role==="host") updLiveCtrl("ht"); }catch(e){}
+    try{ pvpHtOverlaySync(); }catch(e){}
+    try{ pvpHtTryStart(); }catch(e){}
+  } else if(PVP.role==="host") pvpTacResume();
 }
 /* ⏱ 60초 마감 — 전술 화면을 열어 둔 채로 시간이 다 되면 저장하고 나온다 */
 function pvpTacTimeUp(){
@@ -62133,6 +62516,7 @@ function pvpTacClose(save){
       if(PVP) PVP.tacM=null;
       try{ pvpTacDone(); }catch(e){}
       try{ show("pvp"); }catch(e){}
+      try{ pvpHtOverlaySync(); }catch(e){}   // ⚔️ 하프타임이면 준비 오버레이를 다시 씌운다 (제보)
       return;
     }
     /* 호스트 — 바뀐 스쿼드를 굴러가는 엔진에 반영하고 경기 화면으로 돌아간다 */
@@ -62296,6 +62680,7 @@ function pvpHtReady(){
 }
 function pvpHtTryStart(){
   if(!PVP || !PVP.htMe || !PVP.htOpp) return;
+  if(PVP.tacEdit) return;   // ⚔️ 하프타임 교체 중 — 전술창이 닫히면 다시 불린다 (제보)
   PVP._htWait=false;
   if(PVP.role==="host"){
     pvpSend({t:"ht2"});
@@ -62321,7 +62706,8 @@ function pvpHtOverlaySync(){
       ${PVP.htOpp?`<div class="small" style="color:var(--green)">💪 상대 감독이 준비되었습니다!</div>`
                  :`<div class="small" style="opacity:.75">상대 감독이 준비 중입니다…</div>`}
       ${PVP.htMe?`<div class="small" style="opacity:.85">⏳ 후반전 시작 대기 — 상대가 준비되면 바로 시작됩니다</div>`
-                :`<button class="bigbtn" style="max-width:260px" onclick="pvpHtReady()">✅ 후반전 준비 완료</button>`}`;
+                :`<button class="bigbtn" style="max-width:260px" onclick="pvpHtReady()">✅ 후반전 준비 완료</button>`}
+      <button class="mini" onclick="pvpTacOpen()" title="하프타임 교체는 수정 기회를 소모하지 않습니다">📋 교체 · 전술 수정 <span class="small" style="opacity:.8">(기회 소모 없음)</span></button>`;
   }catch(e){}
 }
 /* ── 💬 실시간 채팅 (제보) — 신뢰 채널로 오간다. 로비·경기 어디서든. ── */
@@ -62461,6 +62847,70 @@ function pvpLogAdd(r){
   G.pvpLog=Array.isArray(G.pvpLog)?G.pvpLog:[];
   G.pvpLog.unshift(Object.assign({s:G.season, d:G.day||0, at:Date.now()}, r));
   if(G.pvpLog.length>200) G.pvpLog.length=200;
+  try{ pvpRankPost(r); }catch(e){}   // 🏆 주간 랭킹 — 내 결과를 장부에 얹는다 (개발 노트)
+}
+/* ═══ 🏆 유저 주간 랭킹 — 개발 노트: 「유저간 실시간 랭킹. 일주일간의 포인트로 랭킹을 매기는거지」 ═══
+   rank/{주차}/{닉네임키} 에 각자 자기 성적을 쌓는다 — 승 3점 · 무 1점 · 패 0점.
+   주차는 절대 시각 기준 7일 단위(월요일 개념 없이 굴러가는 주)라 모두에게 같은 잣대다.
+   닉네임을 등록한 감독만 랭킹에 오른다 — 이름 없는 성적은 세울 자리가 없다.
+   ⚠ 배포 전에 Firebase 규칙에 rank 갈래를 추가해야 한다 (온라인대전_설정가이드.md). */
+const PVP_RANK_WEEK=7*24*60*60*1000;
+function pvpRankWk(off){ return "w"+(Math.floor(Date.now()/PVP_RANK_WEEK)+(off|0)); }
+function pvpRankPost(r){
+  try{
+    if(!pvpOn() || !r) return;
+    if(!pvpNickClaimed()) return;
+    const key=pvpNickKey(); if(!key) return;
+    const wk=pvpRankWk(0);
+    const pts = r.my>r.op ? 3 : r.my===r.op ? 1 : 0;
+    fbGet("rank/"+wk+"/"+key).then(cur=>{
+      const c=(cur&&typeof cur==="object")?cur:{};
+      return fbSet("rank/"+wk+"/"+key, {
+        n:String(pvpNick()||"감독").slice(0,8),
+        p:(c.p|0)+pts,
+        w:(c.w|0)+(r.my>r.op?1:0), d:(c.d|0)+(r.my===r.op?1:0), l:(c.l|0)+(r.my<r.op?1:0),
+        t:Date.now()});
+    }).catch(()=>{});
+  }catch(e){}
+}
+let PVP_RANK={rows:null, at:0};
+async function pvpRankRefresh(force){
+  if(!pvpOn() || PVP_NET===false) return;
+  const now=Date.now();
+  if(!force && now-PVP_RANK.at<15000) return;
+  PVP_RANK.at=now;
+  const all=await fbGet("rank")||{};
+  const wk=pvpRankWk(0), prev=pvpRankWk(-1);
+  /* 지난주보다 오래된 주차는 청소한다 — 장부가 무한히 자라지 않게 */
+  for(const k in all){ if(k!==wk && k!==prev){ try{ fbDel("rank/"+k); }catch(e){} } }
+  const cur=all[wk]||{}, mineKey=pvpNickKey();
+  const rows=[];
+  for(const k in cur){
+    const e=cur[k]; if(!e || typeof e!=="object") continue;
+    rows.push({k, n:pvpClean(e.n,8)||"감독", p:e.p|0, w:e.w|0, d:e.d|0, l:e.l|0, me:k===mineKey});
+  }
+  rows.sort((a,b)=> b.p-a.p || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
+  PVP_RANK.rows=rows;
+  const el=document.getElementById("pvpRank");
+  if(el) el.innerHTML=pvpRankHtml();
+}
+function pvpRankHtml(){
+  if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
+  const R=PVP_RANK;
+  if(!R.rows) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
+  if(!R.rows.length) return `<p class="small" style="opacity:.6">이번 주에 아직 경기를 마친 감독이 없습니다 — 1위 자리가 비어 있습니다.</p>`;
+  const leftMs=(Math.floor(Date.now()/PVP_RANK_WEEK)+1)*PVP_RANK_WEEK - Date.now();
+  const leftD=Math.max(0, Math.ceil(leftMs/86400000));
+  const medal=(i)=> i===0?"🥇" : i===1?"🥈" : i===2?"🥉" : `<span style="opacity:.6">${i+1}</span>`;
+  return `<div class="tblScroll"><table>
+    <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>포인트</th><th>전적</th></tr>
+    ${R.rows.slice(0,15).map((r,i)=>`<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
+      <td style="font-weight:800">${medal(i)}</td>
+      <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
+      <td><b style="color:var(--green)">${r.p}</b></td>
+      <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`).join("")}
+  </table></div>
+  <p class="small" style="margin-top:6px;opacity:.65">승 3점 · 무 1점 · 패 0점 — <b>${leftD}일 뒤</b> 초기화됩니다. 닉네임을 등록한 감독만 오릅니다.</p>`;
 }
 function pvpDropped(){
   if(!PVP||PVP.stage==="done") return;
@@ -62578,6 +63028,34 @@ function pvpFormPitch(pk, col, label){
       </div></div>`;
   }catch(e){ return ""; }
 }
+/* ⏳ 대기 배너 — ⚠ 제보 원문 — 「빠른 대전을 눌렀을때 온라인 대전 메뉴 화면에서 상단에 큐가
+   돌아가게 하고, 취소도 할 수 있게 해줄래? 지금은 빠른 대전 누르면 따로 화면이 전환되어서
+   채팅창도 못보잖아. 마찬가지로 공개방을 만들었을때도 현재 인원이 누구 있는지랑, 채팅창을
+   볼 수 있게 하면 좋을거같고」.
+   ─ 예전에는 queue/room/connecting 단계에서 메뉴를 통째로 갈아치운 별도 화면을 그렸다.
+     이제 메뉴는 그대로 두고 맨 위에 「돌아가는」 배너만 얹는다 — 접속 인원·공개 방 목록·
+     라운지 채팅이 대기 중에도 전부 살아 있다. */
+function pvpWaitBanner(){
+  if(!PVP) return "";
+  const st=PVP.stage;
+  const title = st==="queue" ? "🔍 상대 찾는 중"
+             : st==="connecting" ? "🔗 상대와 연결 중"
+             : PVP.duel ? `⚔️ ${PVP.duel} 감독에게 대전 신청 중`
+             : (PVP.pub ? "🌐 공개 방 — 상대를 기다리는 중" : "🔒 비공개 방 — 친구를 기다리는 중");
+  return `<div class="card pvpWait">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="pvpSpin" aria-hidden="true"></span>
+      <div style="flex:1;min-width:180px">
+        <b style="font-size:15.5px">${title}</b>
+        <div class="small" style="opacity:.8;margin-top:2px">${PVP.msg||"..."}</div>
+        ${PVP.role==="host"&&PVP.room&&st==="room"&&!PVP.duel?`<div style="margin-top:4px">방 코드 <b style="font-size:20px;letter-spacing:3px;color:var(--gold)">${PVP.room}</b>
+          <button class="mini" style="padding:3px 9px;font-size:11.5px" onclick="try{navigator.clipboard.writeText('${PVP.room}');flash('📋 방 코드를 복사했습니다','info');}catch(e){}">복사</button></div>`:""}
+      </div>
+      <button class="mini" style="border-color:var(--red);color:#ff9d95;padding:9px 16px" onclick="pvpLeave()">🚫 취소</button>
+    </div>
+    <p class="small" style="margin:7px 0 0;opacity:.65">기다리는 동안 아래에서 접속 인원·공개 방·라운지 채팅을 그대로 쓸 수 있습니다.</p>
+  </div>`;
+}
 function pvpView(){
   try{ if(!(PVP && PVP.stage==="match" && PVP.role==="guest")) document.body.classList.remove("matchFS"); }catch(e){}
   const logHtml=(function(){
@@ -62591,11 +63069,13 @@ function pvpView(){
           <td class="small">${x.host?"홈":"원정"}</td><td class="small">${x.s}</td></tr>`).join("")}
       </table></div>`:`<p class="small">아직 온라인 대전 기록이 없습니다.</p>`}</div>`;
   })();
-  if(!PVP){
+  const WAITING = !!(PVP && (PVP.stage==="queue"||PVP.stage==="room"||PVP.stage==="connecting"));
+  if(!PVP || WAITING){
     /* 서버 미설정 빌드: 시작 버튼 대신 안내만 (전적은 그대로 보인다) */
     if(!pvpOn()) return `<h2>⚔️ 온라인 대전</h2><div class="msg warn">이 빌드에는 온라인 서버가 설정되어 있지 않습니다.</div>${logHtml}`;
     if(PVP_NET===null){ try{ setTimeout(()=>{ try{ pvpNetCheck(); }catch(e){} }, 30); }catch(e){} }
     return `<h2>⚔️ 온라인 대전 <span class="small">— 실시간 P2P 친선전 (베타)</span></h2>
+    ${WAITING?pvpWaitBanner():""}
     <div class="msg info">내 스쿼드로 다른 감독과 실시간으로 붙습니다. <b>순수 친선</b> — 컨디션·부상·성장에 영향이 없고 전적만 남습니다.<br>
       <span class="small">경기 중 <b>📋 전술</b> 버튼을 누르면 <b>리그와 똑같은 전술 화면</b>이 열립니다 — 교체·포메이션·역할·세부 지시를 그대로 다룹니다.
       여는 동안 경기가 멈추고 상대 화면은 가려지며, <b>경기당 3회</b>까지 쓸 수 있습니다.<br>
@@ -62619,11 +63099,11 @@ function pvpView(){
       <div id="pvpLive">${pvpLiveHtml()}</div>
     </div>
     <div class="card"><h3>대전 시작${PVP_NET===false?` <span class="small" style="color:#ff9d5c">— 연결이 끊겨 잠겨 있습니다</span>`:""}</h3>
-      ${(function(){ const D=(PVP_NET===false)?" disabled":""; return `
+      ${(function(){ const D=(PVP_NET===false||WAITING)?" disabled":""; return `
       <div class="pvpStart">
         <button class="pvpBtn" style="--pbC:var(--gold)"${D} onclick="pvpQuick()">
           <span class="pvpBtnH"><span class="pvpBtnIc">⚔️</span><span class="pvpBtnT">빠른 대전</span></span>
-          <span class="pvpBtnS">전력이 비슷한 상대를 자동으로 찾습니다</span>
+          <span class="pvpBtnS">대기 중인 상대와 바로 붙습니다 — 전력 제한 없음</span>
         </button>
         <button class="pvpBtn" style="--pbC:var(--acc)"${D} onclick="pvpMakeRoom(1)">
           <span class="pvpBtnH"><span class="pvpBtnIc">🌐</span><span class="pvpBtnT">공개 방 만들기</span></span>
@@ -62645,9 +63125,16 @@ function pvpView(){
       <div id="pvpRooms"><p class="small" style="opacity:.6">불러오는 중…</p></div>
       ${(function(){ try{ setTimeout(()=>{ try{ pvpRoomsRefresh(); }catch(e){} }, 50); }catch(e){} return ""; })()}
     </div>
+    <div class="card"><h3>🏆 주간 랭킹 <span class="small">— 이번 주 포인트 순 · 승 3 무 1 패 0</span></h3>
+      <div id="pvpRank">${pvpRankHtml()}</div>
+      ${(function(){ try{ setTimeout(()=>{ try{ pvpRankRefresh(); }catch(e){} }, 80); }catch(e){} return ""; })()}
+    </div>
     <div class="card"><h3>🌐 실시간 전적 <span class="small">— 방금 끝난 다른 감독들의 경기</span></h3>
-      <div id="pvpRes">${pvpResHtml()}</div>
-      <p class="small" style="margin-top:7px;opacity:.65">경기가 끝나는 즉시 올라옵니다 · 최근 사흘·${PVP_RES_SHOW}경기까지 보관합니다.</p>
+      <button class="mini" style="float:right;margin-top:-26px;padding:4px 12px" onclick="pvpResFoldToggle()">${pvpResFolded()?"▼ 펴기":"▲ 접기"}</button>
+      ${pvpResFolded()
+        ? `<p class="small" style="opacity:.55;margin:4px 0 0">접혀 있습니다 — 「▼ 펴기」를 누르면 최근 경기들이 보입니다.</p>`
+        : `<div id="pvpRes" class="chatBox" data-cbdef="220">${pvpResHtml()}</div>
+      <p class="small" style="margin-top:7px;opacity:.65">경기가 끝나는 즉시 올라옵니다 · 최근 사흘·${PVP_RES_SHOW}경기까지 보관 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다.</p>`}
     </div>
     <div class="card"><h3>💬 라운지 채팅 <span class="small">— 여기 있는 모두가 함께 봅니다 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다</span></h3>
       <div id="pvpTalk" class="chatBox" data-cbdef="230">${pvpTalkHtml()}</div>
@@ -62661,14 +63148,7 @@ function pvpView(){
     </div>
     ${logHtml}`;
   }
-  /* 진행 중 상태별 화면 */
-  if(PVP.stage==="queue"||PVP.stage==="room"||PVP.stage==="connecting"){
-    return `<h2>⚔️ 온라인 대전</h2>
-    <div class="card"><h3>${PVP.stage==="queue"?"🔍 상대 찾는 중":"🔗 연결 중"}</h3>
-      <p>${PVP.msg||"..."}</p>
-      ${PVP.role==="host"&&PVP.room&&PVP.stage==="room"?`<p>방 코드: <b style="font-size:22px;letter-spacing:3px;color:var(--gold)">${PVP.room}</b></p>`:""}
-      <button class="mini" onclick="pvpLeave()">취소</button></div>${logHtml}`;
-  }
+  /* (queue·room·connecting 은 위의 메뉴+대기 배너가 담당한다 — 제보) */
   if(PVP.stage==="lobby"){
     const pk=PVP.oppPack, ck=PVP.oppCheck||{ok:true,notes:[]};
     return `<h2>⚔️ 온라인 대전 — 매치 로비</h2>
