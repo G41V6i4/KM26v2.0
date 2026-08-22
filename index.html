@@ -10409,7 +10409,7 @@ function eaclResolveUser(P, hg, ag, pk){
 function eaclGate(M){
   try{
     const t=userTeam(); if(!M.home.isUser) return;
-    const inc=Math.round((M.att||0)*(TICKET_UNIT+MD_UNIT)*10)/10;
+    const inc=Math.round(((M.att||0)*(TICKET_UNIT+MD_UNIT) + facMatchIncome(t, M.att||0))*10)/10;   // 🏪 시설 수입 포함
     if(inc>0){
       const fin=finLedger(t);
       fin.gate=Math.round(((fin.gate||0)+inc)*100)/100;
@@ -10780,6 +10780,9 @@ function completeRound(M){
       const gate=gateRevenue(ut, att);
       inc+=gate;
       fin.gate=Math.round((fin.gate+gate)*100)/100;
+      /* 🏪 편의시설 순수익 — 관중 수에 비례해 홈경기마다 (제보 — 시설이 구단 수익으로) */
+      const facInc=facMatchIncome(ut, att);
+      if(facInc>0){ inc+=facInc; fin.fac=Math.round(((fin.fac||0)+facInc)*100)/100; }
       fin.att.push(att);
       if(att>(fin.best||0)){ fin.best=att; fin.bestOpp=(M.away.short||""); }
       logHomeGate(ut, M, att, gate);
@@ -11354,8 +11357,11 @@ function attFloorOf(t){
 }
 function attCeilOf(t){
   const sd=stadOf(t);
-  /* 아무리 잘해도 자료값의 1.6배·수용 인원의 92%를 넘지 않는다 */
-  return Math.min(Math.round((sd.cap||30000)*0.92), Math.round(attBase0(t)*1.6));
+  /* 아무리 잘해도 자료값의 1.6배·수용 인원의 92%를 넘지 않는다.
+     🛠️ 리모델링·패밀리존은 이 천장 자체를 밀어 올린다 (제보 — 점유율을 높이는 시스템) */
+  let capK=0.92, baseK=1.6;
+  if(t && t.fac){ capK += clamp(t.fac.remod||0,0,3)*0.02; baseK += clamp(t.fac.remod||0,0,3)*0.05 + clamp(t.fac.family||0,0,3)*0.03; }
+  return Math.min(Math.round((sd.cap||30000)*Math.min(capK,0.98)), Math.round(attBase0(t)*baseK));
 }
 /* 시즌 종료 시 — 성적을 보고 기준 관중을 옮긴다 (전 구단 공통).
    ⚠ 「지난 시즌 실제 관중」쪽으로 수렴시키는 방식은 쓰지 않는다 — 개막 특수(1.52배)·더비(1.24배)가
@@ -11495,6 +11501,10 @@ function attendanceFor(home, away, opts){
   /* 감독을 향한 팬 신뢰 — 시즌권에만 반영하고 당일권에는 전혀 안 쓰고 있었다.
      성적이 같아도 팬이 등을 돌린 감독의 경기는 표가 덜 나간다. (유저 팀 한정) */
   if(home.isUser && G.trust) n *= clamp(1 + (G.trust.fans-70)/100*0.36, 0.87, 1.13);
+  /* 🛠️ 리모델링·패밀리존 — 관람 환경이 좋아지면 같은 성적에도 자리가 더 찬다 (제보 — 점유율) */
+  if(home.isUser && home.fac){
+    n *= 1 + (clamp(home.fac.remod||0,0,3))*0.025 + (clamp(home.fac.family||0,0,3))*0.008;
+  }
   // 계절 — 개막 직후 추위, 한여름 더위, 막바지 추위
   const mo=dt.getMonth()+1;
   if(mo<=3) n*=0.93; else if(mo===7||mo===8) n*=0.95; else if(mo>=11) n*=0.90;
@@ -11611,7 +11621,8 @@ function gateRevenue(t, att){
 }
 /* 시즌 회계 장부 — 재정 탭에서 어디서 얼마가 들어왔는지 보여준다 */
 function finLedger(t){
-  if(!t.fin || t.fin.s!==G.season) t.fin={s:G.season, st:0, gate:0, tv:0, prize:0, spon:0, transfer:0, att:[], best:0, bestOpp:"", log:[]};
+  if(!t.fin || t.fin.s!==G.season) t.fin={s:G.season, st:0, gate:0, tv:0, prize:0, spon:0, transfer:0, fac:0, att:[], best:0, bestOpp:"", log:[]};
+  if(t.fin.fac==null) t.fin.fac=0;
   if(t.fin.spon==null) t.fin.spon=0;
   if(!t.fin.att) t.fin.att=[];
   if(!t.fin.log) t.fin.log=[];
@@ -11779,8 +11790,11 @@ function sponAppealDetail(t){
 
   /* ⑫ 구장 시설 — 전용구장·돔은 광고주가 먼저 알아본다 */
   {
-    let v=clamp((cap-12000)/9000, 0, 3.5);
+    let v=clamp((cap-12000)/9000, 0, 6);   // 🏟️ 한도 해제 — 5만 석 이상 대형 구장은 그 자체가 광고판이다
     let tip=`${cap.toLocaleString()}석`;
+    /* 🛠️ 리모델링·메가스토어 — 관람 환경과 상업 시설도 광고주가 본다 (제보) */
+    try{ if(mine && t.fac){ const r=clamp(t.fac.remod||0,0,3); if(r){ v+=r*1.2; tip+=` · 리모델링 ${r}차`; }
+      if((t.fac.shop||0)>0){ v+=0.8; } } }catch(e){}
     try{
       const S=G.stad;
       if(mine && S && S.phase==="done"){
@@ -26325,7 +26339,7 @@ function donCard(){
   const prog=clamp(d.fund/Math.max(0.1,cost),0,1);
   const a=Math.round((parseFloat(DON_AMT)||0)*100)/100;
   const g=a>0?donGain(a, d.sAmt||0, d):null;
-  const maxSeat=((d.seats||0)+(d.pend||0))>=DON_SEAT_MAX;
+  const maxSeat=stadRoom(t)<DON_STEP;   // 🏟️ 구장이 100,000석에 닿았을 때만 (제보 — 한도 해제)
   return `<div class="card">
     <h3>💝 구단 기부 <span class="small">— 감독 사비를 ${t.short} 시설에 넣습니다</span></h3>
     <div class="stkSum">
@@ -26340,8 +26354,7 @@ function donCard(){
     ${building?`<div class="msg" style="margin-top:9px;background:#1f6feb22;border-color:#1f6feb66">
       🏗️ <b>${stadPlan(S.k).n}</b> 사업이 진행 중입니다 — 기부금은 <b>공사비</b>로 먼저 들어갑니다.
       <span class="small">(${S.paid}/${S.cost}억)</span></div>`
-    :maxSeat?`<div class="msg warn" style="margin-top:9px">🏟️ 이 구장에서 감독 기부로 개선할 수 있는 한도(${DON_SEAT_MAX.toLocaleString()}석)를 다 채웠습니다.
-      더 키우려면 <b>구장 신축 사업</b>이 필요합니다.</div>`
+    :maxSeat?`<div class="msg warn" style="margin-top:9px">🏟️ 구장이 최대 규모(${STAD_CAP_MAX.toLocaleString()}석)에 도달했습니다 — 세계 최대급 축구 전용 구장입니다.</div>`
     :`<div style="margin-top:10px">
       <div class="small" style="display:flex;justify-content:space-between;color:var(--sub)">
         <span>🪑 구장 개선 기금 <span style="color:var(--sub)">— 좌석 ${DON_STEP.toLocaleString()}석 · 시야 · 편의시설 · 원정석</span></span>
@@ -36616,7 +36629,14 @@ function stadSkim(t, toBudget){
    ═══════════════════════════════════════════════════════════════════════════ */
 const DON_SEAT=0.021;     // 좌석 1석 증설 비용(억) — 약 210만원/석
 const DON_STEP=800;       // 증축 한 단위
-const DON_SEAT_MAX=12000; // 감독 기부로 늘릴 수 있는 좌석 총량
+/* 🏟️ ⚠ 제보 원문 — 「증설로 늘릴 수 있는 좌석 한도(12,000석)를 풀어주셔서 더 증축할 수 있게
+   만들어 주시면 감사하겠습니다!! … 구장 최대 좌석 크기를 100,000석으로 늘려주시고 리모델링,
+   편의 시설 개설 및 증축 등도 선택할 수 있게 만들어 주셔서 관객 점유율을 더 높일 수 있는
+   시스템을 구현해주시면 감사하겠습니다!!」.
+   ─ 예전의 「기부 누적 12,000석」 한도를 없애고, 한도를 구장 수용 인원 자체(100,000석)로 바꾼다.
+     대신 클수록 비싸진다 — 5만 석부터는 상층 스탠드 공사라 단가가 한 번 더 뛴다. */
+const STAD_CAP_MAX=100000;   // 구장 최대 수용 인원 — 세계 최대급 축구 전용 구장 규모
+const DON_WINTER_MAX=12000;  // 한 겨울에 완공할 수 있는 최대 석수 — 그 이상은 이듬해로 이어진다
 function donOf(t){
   t=t||userTeam(); if(!t) return null;
   if(!t.don) t.don={fund:0, seats:0, pend:0, total:0, sY:G.season, sAmt:0, anon:0, sOwn:0, sFans:0};
@@ -36627,12 +36647,19 @@ function donOf(t){
   if(d.sY!==G.season){ d.sY=G.season; d.sAmt=0; d.sOwn=0; d.sFans=0; }
   return d;
 }
-/* 다음 한 단위(800석)를 놓는 데 드는 돈 — 놓을수록 비싸진다 */
+/* 다음 한 단위(800석)를 놓는 데 드는 돈 — 구장이 클수록 비싸진다.
+   (예전에는 「기부로 놓은 누적 석수」 기준이라 12,000석 한도 안에서만 말이 됐다.
+    이제 기준은 구장 자체의 크기다: 12,000석 구장 16.8억 → 5만 석부터 상층 공사 ×1.6 → 10만 석 86억) */
 function donSeatCost(t){
   t=t||userTeam(); const d=donOf(t); if(!d) return 9999;
-  const done=(d.seats||0)+(d.pend||0);
-  return Math.round(DON_STEP*DON_SEAT*(1+(done/DON_STEP)*0.22)*10)/10;
+  const sd=stadOf(t);
+  const cap=(sd.cap||12000)+(d.pend||0);
+  let mult = 1 + Math.max(0, cap-12000)/88000*2.2;
+  if(cap>=50000) mult *= 1.6;                     // 상층 스탠드 — 골조부터 다시 올린다
+  return Math.round(DON_STEP*DON_SEAT*mult*10)/10;
 }
+/* 지금 구장이 더 커질 수 있는가 */
+function stadRoom(t){ const sd=stadOf(t), d=donOf(t); return Math.max(0, STAD_CAP_MAX-((sd.cap||12000)+((d&&d.pend)||0))); }
 function donBlockWhy(){
   if(G.jobless || !userTeam()) return "지금은 맡고 있는 구단이 없습니다 — 부임한 뒤에 기부할 수 있습니다.";
   if(!G.introDone) return "부임 절차를 먼저 마쳐 주세요.";
@@ -36663,7 +36690,7 @@ function donGain(a, prev, d){
 function donTryBuild(t){
   const d=donOf(t); if(!d) return 0;
   let n=0;
-  while(d.fund >= donSeatCost(t) && ((d.seats||0)+(d.pend||0)) < DON_SEAT_MAX && n<8){
+  while(d.fund >= donSeatCost(t) && stadRoom(t) >= DON_STEP && n<24){
     d.fund=Math.round((d.fund-donSeatCost(t))*10)/10;
     d.pend=(d.pend||0)+DON_STEP; n++;
   }
@@ -36716,6 +36743,125 @@ function donCommit(a, anon){
   try{ saveGame(); }catch(e){}
   show("mylife");
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   🏪 구장 편의시설 — 이적 예산으로 수익 시설을 짓는다
+   ⚠ 제보 원문 — 「리모델링, 편의 시설 개설 및 증축 등도 선택할 수 있게 만들어 주셔서 관객
+      점유율을 더 높일 수 있는 시스템을 구현해주시면 감사하겠습니다」 + 개발 노트 — 「편의시설도
+      현실적이게 다양하게 추가할 수 있게 하자. 이게 구단 수익으로 이어지게끔, 푸드트럭,
+      구장내 편의점, 굿즈샵 등등」.
+   ─ 시설마다 1~3레벨. 홈경기마다 「관중 수 × 시설별 객단가(관리비 뺀 순수익)」가 구단 예산으로
+     들어오고, 재정 장부에 「🏪 시설 수입」으로 잡힌다. 박물관은 경기가 없는 날도 번다.
+     패밀리존·리모델링은 돈보다 관중 점유율을 올리는 시설이다. AI 구단은 짓지 않는다. */
+const STAD_FACS=[
+  {k:"truck",  ic:"🚚", n:"푸드트럭 존",        cost:[10,8,10],  per:[0.000015,0.000025,0.000035],
+   d:"경기일마다 구장 앞 광장에 푸드트럭이 줄지어 선다. 관중 1인당 매출은 작지만 개설비가 싸다."},
+  {k:"store",  ic:"🏪", n:"구장 내 편의점",     cost:[25,15,20], per:[0.000025,0.000042,0.000058],
+   d:"콩코스에 편의점을 들인다. 하프타임마다 계산대에 줄이 늘어선다."},
+  {k:"shop",   ic:"👕", n:"굿즈샵 (메가스토어)", cost:[45,30,40], per:[0.000035,0.000060,0.000085],
+   d:"유니폼·머플러·굿즈 상설 매장. 팀이 잘 나갈수록(흥행) 매출이 함께 뛴다."},
+  {k:"pub",    ic:"🍺", n:"스카이 펍",          cost:[40,25,35], per:[0.00025,0.00025,0.00025], cap:1500,
+   d:"경기장을 내려다보는 프리미엄 좌석·펍. 자리가 한정돼 있어 레벨을 올려야 손님을 더 받는다."},
+  {k:"family", ic:"👨‍👩‍👧", n:"패밀리존 · 키즈존",  cost:[18,12,15], per:[0.000008,0.000013,0.000018],
+   d:"매출은 작지만 가족 단위 관중이 늘어 <b>기준 관중 자체</b>가 올라간다."},
+  {k:"museum", ic:"🏛️", n:"구단 박물관 · 투어",  cost:[35,25,30], per:[0,0,0], daily:0.009,
+   d:"경기가 없는 날에도 관람·스타디움 투어 수입이 매일 들어온다. 구단 위상이 높을수록 잘 팔린다."}
+];
+const FAC_BY_K={}; for(const f of STAD_FACS) FAC_BY_K[f.k]=f;
+function facOf(t){ t=t||userTeam(); if(!t) return null; if(!t.fac || typeof t.fac!=="object") t.fac={}; return t.fac; }
+function facLv(t,k){ const F=facOf(t); return clamp((F&&F[k])||0, 0, 3); }
+/* 홈경기 한 판의 시설 순수익 */
+function facMatchIncome(t, att){
+  const F=facOf(t); if(!F || !att) return 0;
+  let inc=0;
+  for(const f of STAD_FACS){
+    const lv=clamp(F[f.k]||0, 0, 3); if(!lv) continue;
+    if(f.k==="pub"){ inc += Math.min(att, (f.cap||1500)*lv) * f.per[lv-1]; continue; }
+    if(f.daily) continue;                        // 박물관은 매일 정산
+    let v = att * f.per[lv-1];
+    if(f.k==="shop"){ try{ v *= clamp(hypeOf(t), 0.80, 1.35); }catch(e){} }   // 굿즈는 흥행을 탄다
+    inc += v;
+  }
+  return Math.round(inc*100)/100;
+}
+/* 박물관 — 매일 정산 (유저 팀만) */
+function facDailyTick(){
+  const t=userTeam(); if(!t || G.jobless) return;
+  const lv=facLv(t,"museum"); if(!lv) return;
+  const sd=stadOf(t);
+  const inc=Math.round(FAC_BY_K.museum.daily * lv * clamp((sd.avg||3000)/9000, 0.4, 1.8) * 100)/100;
+  if(!(inc>0)) return;
+  t.budget=Math.round((t.budget+inc)*100)/100;
+  const fin=finLedger(t); fin.fac=Math.round(((fin.fac||0)+inc)*100)/100;
+}
+/* 개설·증축 */
+function facBuy(k){
+  const t=userTeam(); if(!t || G.jobless) return;
+  const f=FAC_BY_K[k]; if(!f) return;
+  const F=facOf(t);
+  const lv=clamp(F[k]||0, 0, 3);
+  if(lv>=3){ flash("이미 최고 레벨입니다.","warn"); return; }
+  const cost=f.cost[lv];
+  if(t.budget<cost){ flash(`이적 예산이 부족합니다 (${cost}억 필요).`,"warn"); return; }
+  showConfirm(`<b>${f.ic} ${f.n} ${lv?`레벨 ${lv} → ${lv+1} 증축`:"개설"}</b>\n\n비용 <b>${cost}억</b> (이적 예산 ${t.budget}억)\n\n${f.d.replace(/<[^>]+>/g,"")}`, ()=>{
+    t.budget=Math.round((t.budget-cost)*10)/10;
+    F[k]=lv+1;
+    addNews(`${f.ic} <b>${t.name}</b>, ${f.n} ${lv?`레벨 ${lv+1} 증축`:"개설"} — ${cost}억 투자. 홈경기 수익이 늘어납니다.`, "good", "club");
+    try{ adjustTrust("fans", lv?1:2, `${f.n} ${lv?"증축":"개설"}`); }catch(e){}
+    flash(`${f.ic} ${f.n} ${lv?`레벨 ${lv+1}`:"개설"} 완료!`,"good");
+    saveGame(); show("finance");
+  }, {okLabel:"투자한다", cancelLabel:"그만둔다"});
+}
+/* 🛠️ 리모델링 — 노후 좌석·시야 개선. 돈이 아니라 점유율로 돌아온다 */
+const REMOD_COST=[40,70,110];
+function remodBuy(){
+  const t=userTeam(); if(!t || G.jobless) return;
+  const F=facOf(t);
+  const lv=clamp(F.remod||0, 0, 3);
+  if(lv>=3){ flash("더 손볼 곳이 없습니다 — 리그 최고 수준의 관람 환경입니다.","warn"); return; }
+  const cost=REMOD_COST[lv];
+  if(t.budget<cost){ flash(`이적 예산이 부족합니다 (${cost}억 필요).`,"warn"); return; }
+  showConfirm(`<b>🛠️ 구장 리모델링 ${lv+1}차</b>\n\n비용 <b>${cost}억</b> (이적 예산 ${t.budget}억)\n\n노후 좌석 교체·시야 개선·콩코스 확장. 같은 성적에도 자리가 더 차고, 스폰서도 알아봅니다.`, ()=>{
+    t.budget=Math.round((t.budget-cost)*10)/10;
+    F.remod=lv+1;
+    addNews(`🛠️ <b>${t.name}</b>, 구장 리모델링 ${lv+1}차 완료 — ${cost}억 투자. 관람 환경이 눈에 띄게 좋아졌습니다.`, "good", "club");
+    try{ adjustTrust("fans", 2+lv, `구장 리모델링 ${lv+1}차`); }catch(e){}
+    flash(`🛠️ 리모델링 ${lv+1}차 완료!`,"good");
+    saveGame(); show("finance");
+  }, {okLabel:"공사한다", cancelLabel:"그만둔다"});
+}
+/* 재정 탭 카드 */
+function facCard(t){
+  if(!t) return "";
+  const F=facOf(t), sd=stadOf(t);
+  const fin=finLedger(t);
+  const dots=(lv)=>`<span style="letter-spacing:1px">${'<b style="color:var(--green)">◆</b>'.repeat(lv)}${'<span style="opacity:.35">◇</span>'.repeat(3-lv)}</span>`;
+  const est=(f,lv)=>{
+    if(!lv) return 0;
+    if(f.k==="museum") return Math.round(f.daily*lv*clamp((sd.avg||3000)/9000,0.4,1.8)*100)/100;
+    if(f.k==="pub") return Math.round(Math.min(sd.avg||3000,(f.cap||1500)*lv)*f.per[lv-1]*100)/100;
+    return Math.round((sd.avg||3000)*f.per[lv-1]*100)/100;
+  };
+  const rows=STAD_FACS.map(f=>{
+    const lv=clamp(F[f.k]||0,0,3);
+    const e=est(f,lv);
+    return `<tr><td style="text-align:left"><b>${f.ic} ${f.n}</b><div class="small" style="opacity:.7">${f.d}</div></td>
+      <td>${dots(lv)}</td>
+      <td class="small" style="white-space:nowrap">${lv?`<b class="money">${e}억</b>/${f.k==="museum"?"일":"홈경기"}`:"<span style='opacity:.5'>—</span>"}</td>
+      <td>${lv>=3?`<span class="tag" style="color:var(--green)">MAX</span>`
+        :`<button class="mini" ${t.budget>=f.cost[lv]?"":"disabled"} onclick="facBuy('${f.k}')">${lv?"증축":"개설"} ${f.cost[lv]}억</button>`}</td></tr>`;
+  }).join("");
+  const rl=clamp(F.remod||0,0,3);
+  return `<div class="card"><h3>🏪 구장 편의시설 <span class="small">— 관중이 곧 매출입니다 · 올 시즌 시설 수입 <b class="money">${(fin.fac||0).toFixed(1)}억</b></span></h3>
+    <div class="tblScroll"><table><tr><th style="text-align:left">시설</th><th>레벨</th><th>예상 수입</th><th></th></tr>${rows}</table></div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)">
+      <b>🛠️ 구장 리모델링</b> ${dots(rl)}
+      ${rl>=3?`<span class="tag" style="color:var(--green)">MAX</span>`
+        :`<button class="mini" ${t.budget>=REMOD_COST[rl]?"":"disabled"} onclick="remodBuy()">${rl+1}차 공사 ${REMOD_COST[rl]}억</button>`}
+      <div class="small" style="opacity:.7;margin-top:3px">노후 좌석·시야·콩코스 개선 — 같은 성적에도 관중 점유율이 오르고(차수당 +2.5%), 관중 천장과 스폰서 매력도가 함께 올라갑니다.</div>
+    </div>
+    <p class="small" style="margin-top:6px;opacity:.75">개설·증축 비용은 이적 예산 <b class="money">${t.budget}억</b>에서 나갑니다. 수입은 관리비를 뺀 순수익으로 홈경기마다(박물관은 매일) 이적 예산에 들어옵니다.</p>
+  </div>`;
+}
 /* 🏗️ 구단 예산 투자 — ⚠ 제보: 「이적 예산을 감독 기부처럼 좌석 증축·리모델링에 쓸 수
    있으면 쌓인 예산 소모처로 좋겠다」. 감독 사비 기부와 같은 파이프라인(신축 공사비 우선,
    남으면 좌석 기금)을 타되, 구단 돈이므로 신뢰 보상은 없다 — 보상은 시설 그 자체다. */
@@ -36741,7 +36887,7 @@ function clubBuildCommit(a){
 function clubBuildCard(t){
   const d=donOf(t); if(!d) return "";
   const S=stadProj(), sd=stadOf(t);
-  const maxed=((d.seats||0)+(d.pend||0))>=DON_SEAT_MAX;
+  const maxed=stadRoom(t)<DON_STEP;
   const next=donSeatCost(t);
   const need=Math.max(0, Math.round((next-(d.fund||0))*10)/10);
   const btn=(a,lab)=>`<button class="mini" ${t.budget>=a&&a>0?"":"disabled"} onclick="clubBuildCommit(${a})">${lab||a+"억"}</button>`;
@@ -36749,7 +36895,7 @@ function clubBuildCard(t){
     <p class="small">${(S&&S.phase!=="done")
       ? `진행 중인 <b>구장 신축 사업</b>의 공사비로 먼저 들어갑니다.`
       : maxed
-        ? `증설로 늘릴 수 있는 좌석 한도(${DON_SEAT_MAX.toLocaleString()}석)에 도달했습니다.`
+        ? `구장이 최대 규모(${STAD_CAP_MAX.toLocaleString()}석)에 도달했습니다 — 세계 최대급 축구 전용 구장입니다.`
         : `한 단위 <b>${DON_STEP}석</b>을 놓는 데 <b class="money">${next}억</b> — 기금이 차면 그 겨울에 착공, 다음 시즌 개막에 개방됩니다.`}<br>
       기금 <b class="money">${(d.fund||0).toFixed(1)}억</b>${d.pend?` · 공사 중 <b>${d.pend.toLocaleString()}석</b>`:""}${d.seats?` · 지금까지 증설 <b>${d.seats.toLocaleString()}석</b>`:""} · 현 수용 <b>${sd.cap.toLocaleString()}석</b></p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
@@ -36795,20 +36941,22 @@ function donSeasonTick(){
     const t=G.teams[id], d=t&&t.don;
     if(!d || !(d.pend>0)) continue;
     const sd=stadOf(t);
-    sd.cap = Math.round((sd.cap||10000) + d.pend);
+    /* 🏗️ 대공사는 한 겨울에 다 못 끝낸다 — 1만 2천 석까지만 완공하고 나머지는 이듬해로 (제보 — 대형 증축 2시즌) */
+    const done=Math.min(d.pend, DON_WINTER_MAX);
+    sd.cap = Math.min(STAD_CAP_MAX, Math.round((sd.cap||10000) + done));
     if(sd._base0==null) sd._base0=sd.avg;
     /* ⚠ K리그 구장은 대부분 좌석이 남는다 — 좌석 수만 늘리면 아무 실익이 없다.
        그래서 이 사업은 「구장 개선」으로 다룬다. 시야·편의시설·원정석이 함께 좋아지고,
        그만큼 이 구장이 담을 수 있는 관중의 천장(_base0 → attCeilOf)이 올라간다. */
-    sd._base0 = Math.round(sd._base0 + d.pend*0.40);
-    sd.avg    = Math.round(sd.avg*1.02 + d.pend*0.06);
-    d.seats=(d.seats||0)+d.pend;
+    sd._base0 = Math.round(sd._base0 + done*0.40);
+    sd.avg    = Math.round(sd.avg*1.02 + done*0.06);
+    d.seats=(d.seats||0)+done;
+    d.pend -= done;
     if(t.isUser){
-      try{ addNews(`🎉 <b>${sd.n}</b> 구장 개선 공사 완료 — 좌석 <b>${d.pend.toLocaleString()}석</b> 증설, 수용 인원 <b>${sd.cap.toLocaleString()}명</b>. 시야와 편의시설도 손봤습니다. (감독 기부 누적 ${(d.total||0).toFixed(1)}억)`, "good", "club"); }catch(e){}
-      try{ socialFill(SOC.donateSeat, 3+R(3), 1, {t:t.short, m:d.pend.toLocaleString()}); }catch(e){}
-      try{ adjustTrust("fans", clamp(d.pend/400, 1, 7), "관중석 증설 완공"); }catch(e){}
+      try{ addNews(`🎉 <b>${sd.n}</b> 구장 개선 공사 완료 — 좌석 <b>${done.toLocaleString()}석</b> 증설, 수용 인원 <b>${sd.cap.toLocaleString()}명</b>. 시야와 편의시설도 손봤습니다.${d.pend>0?` <b>남은 ${d.pend.toLocaleString()}석</b>은 공사가 이어져 다음 겨울에 개방됩니다.`:""}`, "good", "club"); }catch(e){}
+      try{ socialFill(SOC.donateSeat, 3+R(3), 1, {t:t.short, m:done.toLocaleString()}); }catch(e){}
+      try{ adjustTrust("fans", clamp(done/400, 1, 7), "관중석 증설 완공"); }catch(e){}
     }
-    d.pend=0;
   }
   /* 🤫 익명이 밝혀지는 순간 — 금액이 클수록 빨리 알려진다 */
   const ut=userTeam(), ud=ut&&ut.don;
@@ -37090,6 +37238,7 @@ function finance(){
       이적 예산을 1억 줄이면 연봉 상한이 약 ${BUD_CONV}억 늘어납니다.</p></div>
   ${stadiumCard(t)}</div>
   ${clubBuildCard(t)}
+  ${facCard(t)}
   ${gateCard(t)}
   <div class="card"><h3>연봉 <span class="small">— 선수단 전체 ${t.players.length}명 · 총 ${Math.round(t.players.reduce((s,p)=>s+(p.wage||0),0)*10)/10}억</span></h3>
   ${/* ⚠ 제보 — 「연봉 상위를 연봉으로 바꾸고 팀 전체 연봉을 띄워 달라 — 누가 고평가·저평가인지
@@ -37761,13 +37910,14 @@ function gateCard(t){
   const fin=finLedger(t);
   /* ⚠ 제보 — 「상금, ACL 칸을 K리그1(또는 K리그2)·EACL·CWC 상금으로 명칭 변경해 달라」.
      겸사겸사 — 누적 합계에 대회 상금(aclMoney·cwcMoney)이 빠져 있던 것도 함께 넣는다. */
-  const total=Math.round((fin.st+fin.gate+fin.tv+fin.prize+(fin.spon||0)+(t.aclMoney||0)+(t.cwcMoney||0))*10)/10;
+  const total=Math.round((fin.st+fin.gate+fin.tv+fin.prize+(fin.spon||0)+(fin.fac||0)+(t.aclMoney||0)+(t.cwcMoney||0))*10)/10;   // 🏪 시설 수입 포함
   const row=(ic,n,v,d)=>`<tr><td>${ic} ${n}</td><td style="text-align:right;font-weight:800;color:#fff">${Math.round(v*10)/10}억</td><td class="small">${d}</td></tr>`;
   return `<div class="card"><h3>💰 ${G.season} 시즌 수입 <span class="small">— 누적 <b style="color:var(--green)">${total}억</b></span></h3>
     <table style="width:100%">
       ${row("🤝","스폰서", fin.spon||0, `${sponSlots().filter(k=>sponOf(t)[k]).length}개 계약 · 매력도 ${sponAppeal(t)}`)}
       ${row("🎫","시즌권", fin.st, `${(t.seasonTix||0).toLocaleString()}장 · 개막 전 일괄 수령`)}
       ${row("🎟️","입장·부대 수입", fin.gate, `홈 ${fin.att.length}경기 · 당일권 + MD·식음료`)}
+      ${(fin.fac||0)>0?row("🏪","시설 수입", fin.fac, "푸드트럭·편의점·굿즈샵·펍·박물관 순수익"):""}
       ${row("📺","중계권·분배금", fin.tv, `라운드당 ${TV_ROUND[t.div]||0.25}억`)}
       ${row("🏆",divName(t.div)+" 상금", fin.prize, "시즌 종료 시 순위별 지급")}
       ${(t.aclMoney||0)>0?row("🌏",(typeof eaclShort==="function"?eaclShort():"EACL")+" 상금", t.aclMoney||0, "참가·승리·라운드 진출 수당"):""}
@@ -59899,6 +60049,7 @@ function stepDay(){
   try{ propLoanTick(); }catch(e){}   // 🏦 부동산 담보대출 이자
   try{ homeEventTick(); }catch(e){}  // 🏚️ 집에서 벌어지는 일
   try{ armyAutoFloor(); }catch(e){}  // 상무 정원이 위험하게 비면 연맹이 채운다
+  try{ facDailyTick(); }catch(e){}   // 🏛️ 구단 박물관·투어 — 경기가 없는 날도 번다
   try{ tickOverseasAI(); }catch(e){} // 해외 시장 — 타 구단도 뛰어든다 (이적시장 기간만)
   try{ scoutTick(); }catch(e){}     // 🔎 스카우트 — 파견 기간이 차면 보고가 한 건씩 올라온다
   try{ tickOtherDivRounds(); }catch(e){}  // 🗓️ 내 일정이 먼저 끝났으면 남은 부는 날짜에 맞춰 진행된다
