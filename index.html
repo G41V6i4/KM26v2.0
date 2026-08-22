@@ -63098,6 +63098,17 @@ function pvpView(){
     <div class="card"><h3>🟢 지금 접속 중 <span class="small">— ⚔️ 메뉴를 보고 있는 감독들</span></h3>
       <div id="pvpLive">${pvpLiveHtml()}</div>
     </div>
+    <div class="card"><h3>💬 라운지 채팅 <span class="small">— 여기 있는 모두가 함께 봅니다 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다</span></h3>
+      <div id="pvpTalk" class="chatBox" data-cbdef="230">${pvpTalkHtml()}</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:7px">
+        <input id="pvpTalkIn" type="text" maxlength="90" placeholder="${PVP_NET===false?"연결이 끊겨 있습니다":pvpNickClaimed()?"메시지 (90자)":"닉네임을 먼저 저장해 주세요"}"
+          ${(PVP_NET===false||!pvpNickClaimed())?"disabled":""} onkeydown="pvpTalkKey(event)"
+          style="flex:1;min-width:120px;padding:9px;font-size:14px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg)${(PVP_NET===false||!pvpNickClaimed())?";opacity:.5":""}">
+        <button class="mini" style="padding:9px 16px" ${(PVP_NET===false||!pvpNickClaimed())?"disabled":""} onclick="pvpTalkSend()">보내기</button>
+      </div>
+      <p class="small" style="margin-top:6px;opacity:.7">${pvpNickClaimed()?"최근 40줄만 남고, 3시간이 지난 줄은 사라집니다. 서로 예의를 지켜 주세요.":"🎫 위에서 <b>닉네임을 저장</b>하면 채팅을 쓸 수 있습니다 — 누가 한 말인지 알 수 있어야 하니까요."}</p>
+    </div>
+    ${""/* 💬 라운지 채팅 — 개발 노트: 「라운지 채팅 위치를 지금 접속중 아래에」 */}
     <div class="card"><h3>대전 시작${PVP_NET===false?` <span class="small" style="color:#ff9d5c">— 연결이 끊겨 잠겨 있습니다</span>`:""}</h3>
       ${(function(){ const D=(PVP_NET===false||WAITING)?" disabled":""; return `
       <div class="pvpStart">
@@ -63135,16 +63146,6 @@ function pvpView(){
         ? `<p class="small" style="opacity:.55;margin:4px 0 0">접혀 있습니다 — 「▼ 펴기」를 누르면 최근 경기들이 보입니다.</p>`
         : `<div id="pvpRes" class="chatBox" data-cbdef="220">${pvpResHtml()}</div>
       <p class="small" style="margin-top:7px;opacity:.65">경기가 끝나는 즉시 올라옵니다 · 최근 사흘·${PVP_RES_SHOW}경기까지 보관 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다.</p>`}
-    </div>
-    <div class="card"><h3>💬 라운지 채팅 <span class="small">— 여기 있는 모두가 함께 봅니다 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다</span></h3>
-      <div id="pvpTalk" class="chatBox" data-cbdef="230">${pvpTalkHtml()}</div>
-      <div style="display:flex;gap:6px;align-items:center;margin-top:7px">
-        <input id="pvpTalkIn" type="text" maxlength="90" placeholder="${PVP_NET===false?"연결이 끊겨 있습니다":pvpNickClaimed()?"메시지 (90자)":"닉네임을 먼저 저장해 주세요"}"
-          ${(PVP_NET===false||!pvpNickClaimed())?"disabled":""} onkeydown="pvpTalkKey(event)"
-          style="flex:1;min-width:120px;padding:9px;font-size:14px;background:var(--bg);border:1px solid var(--acc);border-radius:8px;color:var(--fg)${(PVP_NET===false||!pvpNickClaimed())?";opacity:.5":""}">
-        <button class="mini" style="padding:9px 16px" ${(PVP_NET===false||!pvpNickClaimed())?"disabled":""} onclick="pvpTalkSend()">보내기</button>
-      </div>
-      <p class="small" style="margin-top:6px;opacity:.7">${pvpNickClaimed()?"최근 40줄만 남고, 3시간이 지난 줄은 사라집니다. 서로 예의를 지켜 주세요.":"🎫 위에서 <b>닉네임을 저장</b>하면 채팅을 쓸 수 있습니다 — 누가 한 말인지 알 수 있어야 하니까요."}</p>
     </div>
     ${logHtml}`;
   }
