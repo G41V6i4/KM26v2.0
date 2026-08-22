@@ -420,11 +420,17 @@ body.matchFS .fmPitchPane{max-width:none;}
 }
 /* 인트로 잠금 — 눌리지 않는 이유가 보이도록 흐리게 처리한다 */
 .navbtn.navLocked{opacity:.32; cursor:not-allowed; filter:grayscale(.6);}
-/* 🔍 경기 일시정지 둘러보기 — 보기만 되고 어떤 조작도 통하지 않는다 */
-#main.peekOnly button, #main.peekOnly select, #main.peekOnly input, #main.peekOnly textarea,
-#main.peekOnly a, #main.peekOnly .clickable, #main.peekOnly [onclick], #main.peekOnly [onchange]{
+/* 🔍 경기 일시정지 둘러보기 — 보기만 되고 어떤 조작도 통하지 않는다.
+   ⚠ 제보 — 「둘러보기의 순위표에서 리그 순위만 볼 수 있다. EACL·CWC·득점·도움·관중도 보게 해 달라」.
+     탭 버튼까지 한꺼번에 잠가서 다른 표로 넘어갈 수가 없었다. 경기 상태를 바꾸지 않는
+     「보는 자리를 옮기는」 버튼은 .peekOK 를 달아 열어 둔다. */
+#main.peekOnly button:not(.peekOK), #main.peekOnly select:not(.peekOK),
+#main.peekOnly input:not(.peekOK), #main.peekOnly textarea,
+#main.peekOnly a:not(.peekOK), #main.peekOnly .clickable:not(.peekOK),
+#main.peekOnly [onclick]:not(.peekOK), #main.peekOnly [onchange]:not(.peekOK){
   pointer-events:none !important; cursor:default !important; opacity:.72;
 }
+#main.peekOnly .peekOK{opacity:1;}
 #peekBar{position:fixed; left:0; right:0; bottom:0; z-index:9000; display:flex; gap:10px; align-items:center;
   justify-content:center; padding:9px 12px; background:#1b1f27; border-top:2px solid var(--gold);
   box-shadow:0 -4px 18px rgba(0,0,0,.45); font-size:13px;}
@@ -543,6 +549,19 @@ body.matchFS .fmPitchPane{max-width:none;}
 .rank-acl  {border-left:5px solid #2f81f7!important; background:linear-gradient(90deg,rgba(47,129,247,.15),rgba(47,129,247,0) 55%);}
 .rank-po   {border-left:5px solid #a371f7!important; background:linear-gradient(90deg,rgba(163,113,247,.17),rgba(163,113,247,0) 55%);}
 .rank-rel  {border-left:5px solid #f85149!important; background:linear-gradient(90deg,rgba(248,81,73,.16),rgba(248,81,73,0) 55%);}
+/* 🌍 세계 클럽 월드컵 조별 순위표 — 네 조를 같은 크기로 놓는다
+   ⚠ 제보 원문 — 「순위표 탭의 CWC 항목에서 각 조의 박스가 A, B, C 조는 조그마한데 D 조만 커서
+      A, B, C, D 조의 조별 상황 박스를 균등하게 크기를 맞춰주시면 감사하겠습니다」.
+   ─ 예전에는 flex-wrap + flex-grow 였다. A·B·C 가 한 줄에 들어가고 D 만 다음 줄로 밀리면
+     그 줄에 혼자인 D 가 남은 폭을 전부 차지해 혼자 커졌다. 칸을 미리 나누는 grid 로 바꾼다. */
+.cwcGrpGrid{display:grid; gap:10px; align-items:start;
+  grid-template-columns:repeat(auto-fit, minmax(min(250px,100%), 1fr));}
+.cwcGrpBox{min-width:0;}                     /* 표가 칸을 밀어 넓히지 못하게 */
+.cwcGrpBox .tblScroll{overflow-x:auto;}
+/* 네 조를 한 줄에 놓으려면 클럽 이름이 접히지 않을 만큼 넓어야 한다 — 아니면 2×2 가 낫다 */
+@media (min-width:1400px){ .cwcGrpGrid{grid-template-columns:repeat(4, minmax(0,1fr));} }
+@media (max-width:1399px) and (min-width:620px){ .cwcGrpGrid{grid-template-columns:repeat(2, minmax(0,1fr));} }
+@media (max-width:619px){ .cwcGrpGrid{grid-template-columns:minmax(0,1fr);} }
 /* 구역 딱지 — 색맹·작은 화면에서도 글자로 읽힌다 */
 .rkTag{display:inline-block;font-size:9.5px;font-weight:900;line-height:1.5;padding:0 4px;
   border-radius:4px;margin-left:4px;vertical-align:middle;white-space:nowrap;border:1px solid;}
@@ -639,14 +658,17 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text; user-se
 .rpHead .mini{padding:2px 8px;}
 .rpSay{padding:7px 11px; font-size:12px; color:#dbe3ea; border-bottom:1px solid #21262d;}
 .rpBody{display:flex; gap:0; align-items:stretch;}
-.rpLeft{flex:0 0 208px; max-height:52vh; overflow:auto; padding:5px; border-right:1px solid #21262d;}
+.rpLeft{flex:0 0 300px; max-height:52vh; overflow:auto; padding:5px; border-right:1px solid #21262d;}
 .rpRight{flex:1; min-width:190px; padding:8px 10px;}
 .rpItem{display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12.5px;}
 .rpItem:hover{background:rgba(255,255,255,.06);}
 .rpItem.on{background:#4a2f8f; color:#fff; font-weight:700;}
 .rpStars{font-size:9.5px; letter-spacing:-.5px;}
-.rpName{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.rfBar{margin-left:auto; width:34px; height:4px; border-radius:3px; background:#30363d; overflow:hidden; flex:none;}
+/* ⚠ 제보 — 「전진형 플레이메이커 같은 정식 명칭이 …로 줄어서 나온다」.
+   칸이 좁아 잘라 내고 있었다. 칸을 넓히고, 그래도 모자라면 줄여 쓰지 말고 두 줄로 접는다. */
+.rpName{flex:1 1 auto; min-width:0; white-space:normal; word-break:keep-all;
+  overflow-wrap:break-word; line-height:1.25; text-overflow:clip;}
+.rfBar{margin-left:auto; width:30px; height:4px; border-radius:3px; background:#30363d; overflow:hidden; flex:none;}
 .rfBar i{display:block; height:100%; border-radius:3px;}
 .rfTag{font-size:10.5px; font-weight:800; white-space:nowrap;}
 .rpDuties{display:flex; gap:5px; flex-wrap:wrap; margin-bottom:9px;}
@@ -680,7 +702,7 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text; user-se
 .rpApply.on{opacity:1; cursor:pointer; background:#4a2f8f; border-color:#7b5cd6; color:#fff; font-weight:700;}
 .rpApply.on:hover{background:#5b3ba8;}
 @media (max-width:640px){ .rpBody{flex-direction:column;} .rpLeft{flex:auto; max-height:38vh; border-right:0; border-bottom:1px solid #21262d;} }
-.rmenu{position:fixed; z-index:9000; width:min(560px,94vw); max-height:80vh; overflow:auto;
+.rmenu{position:fixed; z-index:9000; width:min(680px,94vw); max-height:80vh; overflow:auto;
   background:#0d1117; border:1px solid var(--bd); border-radius:10px; box-shadow:0 12px 34px rgba(0,0,0,.6);}
 .rmenu.hidden{display:none;}
 .rmHead{display:flex; align-items:center; gap:6px; padding:8px 10px; border-bottom:1px solid var(--bd); position:sticky; top:0; background:#0d1117;}
@@ -3991,6 +4013,51 @@ function noteLeg(t, p){
     if(p.sLeg.length>6) p.sLeg=p.sLeg.slice(-6);
   }catch(e){}
 }
+/* 🗓️ 시즌이 열릴 때 모두에게 「출발 소속」 도장을 찍는다.
+   ⚠ 제보 — 「순위표 득점·도움 순위에 그 시즌 거쳐간 모든 팀을 병기해 달라」.
+      구간(sLeg)은 입단할 때만 찍혀서, 시즌 중에 옮긴 선수는 「새 팀」 한 구간만 남았다.
+      원래 어디서 출발했는지가 없으니 「전북 → 울산」을 적을 수가 없었다. */
+function seasonLegInit(){
+  try{
+    for(const id in G.teams){
+      const t=G.teams[id]; if(!t || !Array.isArray(t.players)) continue;
+      for(const p of t.players){
+        if(!p) continue;
+        p.sLeg=[{s:G.season, t:t.id, sh:t.short||"", d:G.day||0, ap0:0, g0:0, a0:0, r0:0}];
+      }
+    }
+  }catch(e){}
+}
+/* 이번 시즌 「실제로 뛴」 구단들 — 순위표 소속 칸이 이걸 읽는다 (제보).
+   임대를 갔으면 임대 구단, 시즌 중 옮겼으면 거쳐간 팀을 순서대로 모두 적는다. */
+function seasonClubsOf(p, cur){
+  const fb=[{id:(cur&&cur.id)||null, sh:(cur&&cur.short)||"?", ap:p.apps||0, g:p.goals||0, a:p.assists||0}];
+  try{
+    const L=seasonLegs(p);
+    if(!L || !L.length) return fb;
+    const rows=L.map(x=>({id:x.t, sh:x.sh || ((G.teams[x.t]||{}).short) || "?", ap:x.ap|0, g:x.g|0, a:x.a|0}));
+    /* 한 경기도 못 뛴 구간은 「거쳐갔다」고 적을 것이 없다 — 다만 전부 0이면 지금 소속만 남긴다 */
+    const played=rows.filter(x=>x.ap>0 || x.g>0 || x.a>0);
+    if(!played.length) return fb;
+    /* 지금 소속은 기록이 없어도 마지막에 붙여 준다 — 「어디 소속인지」는 알아야 하니까 */
+    if(cur && !played.some(x=>x.id===cur.id) && rows.length && rows[rows.length-1].id===cur.id)
+      played.push(rows[rows.length-1]);
+    return played;
+  }catch(e){}
+  return fb;
+}
+/* 순위표 소속 칸 — 한 곳이면 종전대로, 여러 곳이면 「전북 → 울산」처럼 병기한다 */
+function seasonClubCell(p, cur, kind){
+  const cl=seasonClubsOf(p, cur);
+  const tip=cl.map(x=>`${x.sh} ${x.ap}경기 ${x.g}골 ${x.a}도움`).join(" · ");
+  const one=(x)=>`<span class="clickable peekOK" onclick="event.stopPropagation();openTeamSquad('${x.id}')" style="text-decoration:underline dotted;text-underline-offset:3px">${x.sh}</span>`;
+  if(cl.length<=1) return `<td title="${tip}">${one(cl[0])}</td>`;
+  const body=cl.map((x,i)=>{
+    const n=(kind==="a")?x.a:x.g;
+    return one(x)+(n>0?`<span class="small" style="opacity:.75">${n}</span>`:"");
+  }).join(`<span style="opacity:.45;margin:0 2px">→</span>`);
+  return `<td title="${tip}" style="white-space:nowrap">${body}</td>`;
+}
 /* 이번 시즌 구간별 성적 — 두 곳 이상을 거쳤을 때만 의미가 있다 */
 function seasonLegs(p){
   const L=(Array.isArray(p&&p.sLeg)?p.sLeg:[]).filter(x=>x && x.s===G.season);
@@ -4013,6 +4080,7 @@ function legPathTxt(legs){
   return legs.map(x=>x.sh||"무소속").join(" → ");
 }
 function joinClub(t, p, lock){
+  try{ delete p._banAct; }catch(e){}       // 🟥 소속이 바뀌면 「다음 경기 대회」 표식은 무효다
   try{ noteLeg(t, p); }catch(e){}
   /* ⚠ 제보 — 영입 직후 곧바로 재계약해 연봉을 후려치는 악용. 입단하는 순간 재계약 잠금이 걸린다.
      계약 조건(연봉·기간)은 영입 협상 테이블에서 이미 정한 것이다.
@@ -4147,8 +4215,8 @@ function mkTeam(d, div){
     tactic:{formation: div===1?"4-3-3":"4-4-2", mentality:2,   // 0~4 다섯 칸, 2가 가운데
             pass:2, tempo:2, press:2, line:2, width:2, counter:2, crossFq:2, longShot:2, benchSel:[]},
     W:0,Dw:0,L:0,GF:0,GA:0,Pts:0, isUser:false, aclMoney:0,
-    trainLv: clamp(baseTrainLv(d.id, div), 1, 5),   // 🏋️ 훈련시설 — 기업구단 최소 3등급, 포항이 최고
-    youthLv: clamp(baseYouthLv(d.id, div), 1, 5),   // 🌱 유스 아카데미 — 명문은 세월로 쌓인다
+    trainLv: clamp(baseTrainLv(d.id, div), 1, FAC_MAX),   // 🏋️ 훈련시설 — 기업구단 하한 보장, 포항이 최고 (🔟 10단계 눈금)
+    youthLv: clamp(baseYouthLv(d.id, div), 1, FAC_MAX),   // 🌱 유스 아카데미 — 명문은 세월로 쌓인다 (🔟 10단계 눈금)
     scoutLv: 1};
   const real = ROSTER26[d.id];
   if(real && real.length){
@@ -4210,7 +4278,64 @@ function teamOVR(t){
   return Math.round(xi.reduce((s,p)=>s+p.ovr,0)/11*10)/10;
 }
 function isU22(p){ return (G.season - p.by) <= 22; }
-function avail(p){ return p.inj<=0 && !(p.ban>0) && !(p.sulk>0) && !p._loanBlk; }
+/* 🟥 ⚠ 제보 원문 — 「K리그 마지막 경기와 마지막 전 경기에서 퇴장 당한 선수들이 EACL 4강전
+   하루 직전까지 스쿼드에서 출장 정지로 표기 되어 있다가 EACL 4강 당일날 정상 출전 가능한
+   것으로 표기 되었습니다 (…) 다른 대회의 경기가 5일 후에 열린다면 바로 다음 날부터 다른
+   대회는 출전이 가능하다고 출전 금지 표시를 없애주시면 감사하겠습니다」.
+   원인 — 징계 장부는 대회별로 따로 있는데(ban·banE·banC), 화면과 avail() 은 리그 장부(ban)
+      하나만 봤다. 대회 장부로 갈아 끼우는 시점이 「경기 시작 직전」이라, 그전까지는
+      리그 징계가 대회 스쿼드에까지 그대로 걸려 주전이 매번 명단 밖으로 밀려났다.
+   ─ 「다음 경기가 어느 대회인가」를 먼저 정하고, 그 대회의 장부로 판단한다.
+     연습경기는 애초에 징계가 적용되지 않는다. */
+let BAN_CTX="league";
+function nextCompUser(){
+  try{
+    if(G.jobless || !userTeam()) return "league";
+    const day=G.day||0;
+    try{ if(typeof cwcUserDue==="function" && cwcUserDue()) return "cwc"; }catch(e){}
+    try{ if(typeof eaclUserDue==="function" && eaclUserDue()) return "eacl"; }catch(e){}
+    const cand=[];
+    try{ const c=cwcNextForUser();  if(c && c.day>=day) cand.push({d:c.day, k:"cwc"}); }catch(e){}
+    try{ const e=eaclNextForUser(); if(e && e.day>=day) cand.push({d:e.day, k:"eacl"}); }catch(e){}
+    try{
+      if(G.phase==="league" && G.cal && !userSeasonOver()){
+        const r=userRoundNow();
+        if(r<((G.cal.roundDay||[]).length)) cand.push({d:matchDayOf(r), k:"league"});
+      }
+    }catch(e){}
+    /* ⚠ 제보 원문 — 「작년 리그에서 출장정지를 당한 선수가 친선경기 첫 경기에 못 나온다」.
+       친선경기를 「대회가 하나도 없을 때의 기본값」으로만 뒀더니, 몇 달 뒤 EACL 일정이
+       하나라도 잡혀 있으면 프리시즌 내내 그 대회 기준으로 판정됐다. 친선도 어엿한 다음 경기다. */
+    try{
+      const f=(G.friendlies||[]).filter(x=>x && !x.done && x.d!=null && x.d>=day).sort((a,b)=>a.d-b.d)[0];
+      if(f) cand.push({d:f.d, k:"friendly"});
+    }catch(e){}
+    if(cand.length){ cand.sort((a,b)=>a.d-b.d); return cand[0].k; }
+    return (G.phase==="pre") ? "friendly" : "league";
+  }catch(e){ return "league"; }
+}
+/* 내 선수들에게 「지금 유효한 정지 경기 수」를 표시해 둔다 — avail()·전술판이 이 값을 본다 */
+function banCtxSync(){
+  try{
+    const t=userTeam(); if(!t || !Array.isArray(t.players)) return;
+    const c=nextCompUser(); BAN_CTX=c;
+    for(const p of t.players){
+      if(!p) continue;
+      /* 대회 경기가 실제로 도는 동안에는 이미 장부가 갈아 끼워져 있다 — p.ban 이 곧 그 장부다 */
+      if(p._banL!=null || p._banLC!=null){ delete p._banAct; continue; }
+      const v = c==="eacl" ? (p.banE||0) : c==="cwc" ? (p.banC||0) : c==="friendly" ? 0 : (p.ban||0);
+      if(v===(p.ban||0)) delete p._banAct; else p._banAct=v;
+    }
+  }catch(e){}
+}
+/* 지금 이 선수에게 걸려 있는 정지 경기 수 — 다음 경기 대회 기준.
+   ⚠ 제보 — 「친선경기는 친선경기인 만큼 완전 독립적이게」. 친선에는 어떤 대회의 징계도
+      걸리지 않는다 — 내 팀이든 상대 팀이든 마찬가지다. */
+function banNow(p){
+  if(BAN_CTX==="friendly") return 0;
+  return (p && p._banAct!=null) ? p._banAct : ((p&&p.ban)||0);
+}
+function avail(p){ return p.inj<=0 && !(banNow(p)>0) && !(p.sulk>0) && !p._loanBlk; }
 /* 🔁 임대 선수는 원소속 구단과의 경기에 나설 수 없다 (K리그 규정).
    경기를 만들기 직전에 표식을 달고, 끝나면 지운다 — avail() 을 쓰는 모든 경로가 한 번에 따른다. */
 function loanBlockSet(home, away){
@@ -4532,7 +4657,10 @@ function xiStrength(t){
 const SQUAD_FLOOR=12;                 // 선발 11 + 최소 교체 1
 function emergencyCallup(t, n, needGK){
   if(!t || n<=0) return [];
-  const lv=clamp(t.youthLv||1, 1, 5) + Math.round((trainLv(t)-1)*0.6);
+  /* 🎖️ ⚠ 제보 원문 — 「김천 상무는 유스 콜업이 없는 팀이라서 김천 상무의 유스 콜업이 있다면
+     없애주시면 감사하겠습니다」. 국군체육부대에는 아카데미가 없다. 어떤 경로로 불려도 만들지 않는다. */
+  if(isArmyTeam(t)) return [];
+  const lv=Math.round(lvEff(t.youthLv||1) + (lvEff(trainLv(t))-1)*0.6);   // 🔟 10단계 → 예전 성능 축
   const made=[];
   for(let i=0;i<n;i++){
     const pos = (needGK && i===0) ? "GK" : pick(["DF","DF","MF","MF","FW"]);
@@ -5315,6 +5443,44 @@ function styleName(t){
   if(HI(T.mentality)) return "닥공";
   if(LO(T.mentality)) return "실리 축구";
   return "밸런스";
+}
+/* 🕵️ 수석코치의 대응 조언 — ⚠ 제보 원문 — 「상대가 '점유율 축구', '실리 축구' 일 때는
+   상대의 정보만 알려줄 뿐 적절한 조언을 해주지 않고 있다 (…) '닥공' 일 때도 마찬가지다.
+   보일 때도 있고 안 보일 때도 있는 듯 합니다」.
+   원인 — 조언이 「라인이 높은가 / 압박이 강한가」 두 가지만 보고 붙었다. 그래서 라인이 보통이고
+      압박도 평범한 스타일(점유율 축구·실리 축구·닥공 등)에서는 조언 줄이 통째로 비어 버렸다.
+      같은 스타일이라도 라인·압박이 우연히 높으면 조언이 뜨니 「보일 때도 있고 안 보일 때도」였다.
+   ─ 스타일마다 대응 한 수를 반드시 붙이고, 라인·압박·전력 차 조언을 그 위에 얹는다. */
+const SCOUT_PLAN={
+  "점유율 축구":"공을 길게 소유하며 우리를 끌고 다닙니다. 쫓아다니면 체력만 빠집니다 — <b>중앙을 좁혀</b> 길목을 막고, 끊는 즉시 <b>빠른 역습</b>으로 나가세요.",
+  "실리 축구":"내려앉아 기다리는 팀입니다. <b>폭을 넓혀</b> 수비 블록을 벌리고 <b>측면 크로스·중거리</b>로 두드리세요. 대신 <b>역습 한 방</b>은 늘 대비해야 합니다.",
+  "닥공":"앞에서부터 몰아칩니다. <b>라인을 낮춰</b> 뒷공간을 지우고 <b>역습</b>으로 응수하세요 — 무리한 빌드업보다 다이렉트가 안전합니다.",
+  "티키타카":"짧은 패스로 삼각형을 만들어 조립합니다. <b>중앙 압박</b>으로 연결 고리를 끊고, 빼앗으면 <b>한 번에</b> 앞으로 넘기세요.",
+  "게겐프레싱":"공을 잃으면 곧바로 달려듭니다. 우리 진영에서 짧게 돌리지 말고 <b>한 번에 넘겨</b> 첫 압박을 건너뛰세요.",
+  "롱볼 역습":"길게 넘겨 우리 뒤를 노립니다. <b>라인을 내리고</b> 세컨드볼 다툼에 사람을 두세요.",
+  "선수비 후역습":"버스를 세우고 기다립니다. 서두르지 말고 <b>넓게</b> 돌리되, 우리 뒷공간에 <b>한 명은 남겨</b> 두세요.",
+  "극단적 역습":"오직 역습만 봅니다. 공을 잃는 위치가 곧 승부입니다 — <b>무리한 전진</b>과 얕은 패스를 줄이세요.",
+  "측면 크로스":"측면에서 올려 붙입니다. <b>폭을 좁혀</b> 박스 안 숫자를 늘리고, 제공권이 약하면 <b>측면부터</b> 차단하세요.",
+  "밸런스":"뚜렷한 색이 없는 팀입니다. 우리 색을 그대로 밀어붙이되, 흐름을 보고 <b>먼저 한 수</b>를 두세요."
+};
+/* st=스타일 이름 · OT=TAC() 결과(0~2) · gap=상대 전력-우리 전력 */
+function scoutAdvice(st, OT, gap){
+  const out=[];
+  if(SCOUT_PLAN[st]) out.push(SCOUT_PLAN[st]);
+  try{
+    if(OT){
+      if(HI(OT.line))      out.push("라인이 높습니다 — <b>배후 침투·다이렉트</b>로 뒷공간을 노려보세요.");
+      else if(LO(OT.line)) out.push("깊이 내려섭니다 — <b>짧은 패스 + 넓은 폭</b>으로 끈질기게 두드리세요.");
+      if(HI(OT.press))      out.push("압박이 강합니다 — 중원이 밀리면 <b>다이렉트 패스</b>가 안전합니다.");
+      else if(LO(OT.press)) out.push("압박이 헐겁습니다 — <b>템포를 올려</b> 상대가 정비되기 전에 들어가세요.");
+    }
+    if(typeof gap==="number"){
+      if(gap>=2.5)       out.push("전력이 처집니다 — 실점 없이 버티다 <b>후반 승부</b>를 보는 편이 낫습니다.");
+      else if(gap<=-2.5) out.push("우리가 앞섭니다 — 상대는 내려앉을 겁니다. <b>인내심</b>을 갖고 두드리세요.");
+    }
+  }catch(e){}
+  if(!out.length) out.push("특별히 경계할 색은 없습니다 — 우리 전술을 그대로 밀고 나가세요.");
+  return out.slice(0,3);
 }
 /* AI 팀 전술 성향 부여 */
 function assignAITactics(t){
@@ -7048,9 +7214,17 @@ function passMapCard(res, h, a){
     if(!moved) break;
   }
   /* 좌표 — 세로 피치. 게임 좌표는 x=길이(0~1), y=폭(0~1)이므로 세로로 세운다.
-     공격 방향이 위가 되도록 x 를 뒤집는다. */
+     공격 방향이 위가 되도록 x 를 뒤집는다.
+     ⚠ 제보 원문 — 「지난경기 리포트 패스맵에서 좌우 선수가 우윙→좌윙 이런 식으로 반전되어
+        표시되는데 수정 부탁드립니다」.
+     ─ 원인: x 와 y 를 둘 다 뒤집고 있었다 — (x,y) → (1-y, 1-x) 는 회전이 아니라 「거울」이다
+       (야코비 행렬식 −1). 그래서 왼쪽 선수가 오른쪽에, 오른쪽 선수가 왼쪽에 그려졌다.
+     ─ 중계 화면은 x=오른쪽, y=아래(pitchToCanvasXY)다. 공격 방향(+x)이 위가 되게 화면을
+       반시계로 90° 돌리면 위쪽 터치라인(y 작은 쪽)이 왼쪽으로 온다 → 화면 x = y, 화면 y = 1−x.
+       (dir<0 인 팀은 수집 단계에서 이미 (1−x, 1−y) 로 180° 돌려 놨으므로, 두 팀 모두
+        「y 가 작은 쪽 = 우리 왼쪽 측면」으로 통일돼 있다.) */
   const W=300, H2=430, PAD=26;
-  const px=(n)=>PAD + (1-n.y)*(W-PAD*2);
+  const px=(n)=>PAD + n.y*(W-PAD*2);
   const py=(n)=>PAD + (1-n.x)*(H2-PAD*2);
   const col=(team&&team.col)||"#e5484d";
   const line=links.map(l=>{
@@ -7260,7 +7434,7 @@ function newGame(teamId){
   G = {season:2026, userTeamId:teamId, teams:{}, news:[], history:[], userXI:null,
        k1:[], k2:[], k1Fix:[], k2Fix:[], r1:0, r2:0, phase:"league", splitDone:false,
        results:[], poResults:[], aclTeams:[], aclFix:[], eacl:null, eaclClubs:{}, pendingEACL:null, cwc:null, cwcClubs:{}, cwcQual:null, cwcName:{}, pendingCWC:null, sponHeat:0, transferBids:[], offers:[], nego:null, snego:null, freeAgents:[], press:{rel:50, skip:0}, trust:{owner:70, fans:70, log:[]}, seen:{}, introDone:false,
-       ageV2:true, htV1:true, specV1:true};   // 선수를 만들 때 이미 나이·키만큼 몸을 깎았다 — 다시 읽어도 두 번 깎지 않는다
+       ageV2:true, htV1:true, specV1:true, fac10:1};   // 선수를 만들 때 이미 나이·키만큼 몸을 깎았다 — 다시 읽어도 두 번 깎지 않는다 · fac10: 시설 10단계 눈금
   for(const d of D1){ const t=mkTeam(d,1); G.teams[t.id]=t; G.k1.push(t.id); }
   for(const d of D2){ const t=mkTeam(d,2); G.teams[t.id]=t; G.k2.push(t.id); }
   /* 홈그로운 표시 — 개명 전 원본 이름으로 찾는다 */
@@ -7362,20 +7536,20 @@ function aiSquadFloor(t){
 /* 🌱 AI 구단 유스 졸업 — 다른 구단 아카데미에서도 풀백·골키퍼가 올라온다 */
 function aiYouthIntake(t){
   if(isArmyTeam(t)) return 0;             // 국군체육부대에는 아카데미가 없다
-  const yl=clamp(t.youthLv||1,1,5), tl=trainLv(t);
-  const n=1+R(2)+[0,0,0,1,1,2][yl];       // 1~5명 — 유스 등급이 높은 명문이 더 많이 낸다
+  const yl=lvEff(t.youthLv||1), tl=lvEff(trainLv(t));   // 🔟 10단계 → 예전 1~5 성능 축
+  const n=1+R(2)+[0,0,0,1,1,2][Math.round(yl)];       // 1~5명 — 유스 등급이 높은 명문이 더 많이 낸다
   for(let i=0;i<n;i++){
     const sl=youthPickSlot(t);
     const hgY=Math.random()<(0.05+yl*0.015);
     const yp=mkPlayer(hgY?genFrnName():genName(), sl.pos, G.season-17-R(2),
-                      50+R(9)+(yl-1)+Math.round((tl-1)*0.5), hgY?1:0);
+                      Math.round(50+R(9)+(yl-1)+(tl-1)*0.5), hgY?1:0);
     if(hgY) yp.hg=1;
     try{ yp.prefPos=sl.pref; yp.posFam=initPosFam(yp); syncPosBand(yp); applySpecialization(yp); retuneTraits(yp); }catch(e){}
     /* 저점은 낮게, 천장은 유저 아카데미보다 조금 낮게 — AI가 특급을 매년 뽑아 오면 난이도가 무너진다.
        (유저 천장 하향과 함께 내렸다 — 안 내리면 유저만 손해 보는 비대칭이 된다.
         리그 상위권 재생산은 특급(84~92)이 맡는다: 25구단 합산 시즌당 1.5~2명) */
     const gem=Math.random() < (0.004+(yl-1)*0.010+(tl-1)*0.004);
-    const pot0=clamp(yp.ovr+3+R(9)+(yl-1)*1.4, 64, Math.round(68+(yl-1)*1.8));
+    const pot0=clamp(Math.round(yp.ovr+3+R(9)+(yl-1)*1.4), 64, Math.round(68+(yl-1)*1.8));
     yp.pot=gem ? clamp(pot0+4+R(7), 84, 92) : pot0;
     yp.wage=0.3; yp.ct=aiCtYears(yp);          // 유스는 장기 계약으로 묶는다 (제보 — 보스만 방어)
     t.players.push(yp);
@@ -7386,6 +7560,11 @@ function aiYouthIntake(t){
 }
 /* 🧱 자리별 하한을 채우고, 그다음 스쿼드 인원을 채운다 */
 function aiSquadFill(t){
+  /* 🎖️ ⚠ 제보 원문 — 「김천 상무는 유스 콜업이 없는 팀이라서 김천 상무의 유스 콜업이 있다면 없애 달라」.
+     ─ 원인이 여기였다. 이 함수는 모자란 자리를 youthPickSlot 으로 뽑아 선수를 '만들어' 채운다.
+       상무에도 그대로 돌아서, 입대한 적 없는 19~27세 선수가 해마다 새로 생겨났다. 사실상 유스 콜업이다.
+       상무의 선수는 오직 입대로만 온다 — 모자라면 연맹이 다른 구단 현역을 배정한다(armyAutoFloor). */
+  if(isArmyTeam(t)) return;
   const cnt=(list)=>{ let n=0; for(const p of t.players){ const s=p.prefPos||p.pos; if(list.indexOf(s)>=0) n++; } return n; };
   const rich=clamp((t.budget||0)/60, 0, 1);
   /* 🎖️ 국군체육부대는 용병을 뽑지 않는다 — 자동 보충으로도 외국인이 생기면 안 된다 (제보) */
@@ -9779,6 +9958,7 @@ function banSweepEacl(t){
 function cwcBanPush(t){
   if(!t || !t.players) return;
   for(const p of t.players){
+    delete p._banAct;                    // 🟥 이제 p.ban 자리가 곧 대회 장부다 (제보)
     if(p._banLC!=null) continue;
     p._banLC=p.ban||0; p._banNewLC=p.banNew?1:0;
     p.ban=p.banC||0; if(p.banCNew) p.banNew=1; else delete p.banNew;
@@ -9790,10 +9970,11 @@ function cwcBanPop(t){
     if(p._banLC==null) continue;
     p.banC=p.ban||0; if(p.banNew) p.banCNew=1; else delete p.banCNew;
     p.ban=p._banLC||0; if(p._banNewLC) p.banNew=1; else delete p.banNew;
-    delete p._banLC; delete p._banNewLC;
+    delete p._banLC; delete p._banNewLC; delete p._banAct;
     if(!p.banC) delete p.banC;
     if(!p.banCNew) delete p.banCNew;
   }
+  try{ banCtxSync(); }catch(e){}          // 🟥 다음 경기 대회 기준으로 다시 잡는다 (제보)
 }
 function cwcBanTick(t){
   if(!t || !t.players) return;
@@ -9808,6 +9989,7 @@ function cwcBanTick(t){
 function eaclBanPush(t){
   if(!t || !t.players) return;
   for(const p of t.players){
+    delete p._banAct;                    // 🟥 이제 p.ban 자리가 곧 대회 장부다 (제보)
     if(p._banL!=null) continue;          // 이미 올려 둔 상태
     p._banL=p.ban||0; p._banNewL=p.banNew?1:0;
     p.ban=p.banE||0; if(p.banENew) p.banNew=1; else delete p.banNew;
@@ -9819,10 +10001,11 @@ function eaclBanPop(t){
     if(p._banL==null) continue;
     p.banE=p.ban||0; if(p.banNew) p.banENew=1; else delete p.banENew;
     p.ban=p._banL||0; if(p._banNewL) p.banNew=1; else delete p.banNew;
-    delete p._banL; delete p._banNewL;
+    delete p._banL; delete p._banNewL; delete p._banAct;
     if(!p.banE) delete p.banE;
     if(!p.banENew) delete p.banENew;
   }
+  try{ banCtxSync(); }catch(e){}          // 🟥 다음 경기 대회 기준으로 다시 잡는다 (제보)
 }
 /* ═══ 🟥 징계 자가 복구 ═══════════════════════════════════════════════════
    ⚠ 제보 — 「퇴장당한 선수가 출장정지(몇 경기)가 아니라 계속 '대기' 상태로 남아 경기에 못 나온다」.
@@ -10143,6 +10326,16 @@ function eaclUserPendingKO(st){
 /* 🏆 아직 내가 치러야 할 대회 경기가 남아 있는가 — 리그가 끝나도 시즌을 닫으면 안 되는 이유.
    ⚠ 제보 — 승강 PO 가 끝나는 순간 endSeason() 이 불려, 남아 있던 4강·결승을
       시즌 정산의 eaclTick(true) 가 「수석코치 대행」으로 몰아서 치러 버렸다. */
+/* 🏆 승강 플레이오프에 내가 끼어 있는가 — 남은 대진 중 우리 경기가 있는지 (제보) */
+function poUserIn(){
+  try{
+    if(G.jobless || !G.userTeamId) return false;
+    const me=G.userTeamId;
+    return (G.poQueue||[]).some(m=>{
+      try{ return resolvePOid(m.h)===me || resolvePOid(m.a)===me; }catch(e){ return false; }
+    });
+  }catch(e){ return false; }
+}
 function eaclUserLeft(){
   try{
     if(!eaclOn() || G.jobless) return false;
@@ -10358,6 +10551,7 @@ function advance(){
    이걸 안 하면 다음 경기 전술판이 그 선수를 자리에 붙잡아 둔 채 화면이 어긋난다. */
 function pruneUserLineup(){
   const t=userTeam(); if(!t) return;
+  try{ banCtxSync(); }catch(e){}         // 🟥 제보 — 대회가 다르면 정지는 걸리지 않는다
   /* ⚠ 제보 — 선발에 부상자가 생기면 벤치에 빈자리가 생기고, 그 자리와 그 외 명단이 뒤죽박죽이 된다.
      예전에는 못 뛰게 된 선수를 「지우기만」 했다. 그가 서 있던 자리는 주인 없이 남고,
      대신 들어온 선수는 자리를 물려받지 못해 전술판이 임의로 다시 그려졌다.
@@ -12185,8 +12379,12 @@ function nextFriendly(){ return (G.friendlies||[]).find(f=>!f.done) || null; }
 function friendlyOn(i){ return (G.friendlies||[]).find(f=>f.d===i && !f.done) || null; }
 /* 프리시즌이 끝났는지 — 연습경기를 다 치렀고 개막일에 도달했으면 리그로 넘어간다 */
 /* 연습경기를 한 경기 치렀다 — 경기 단위 징계(ban)가 흘러간다 */
+/* ⚠ 제보 원문 — 「친선 경기끼리도 출장 정지 기록을 공유하지 않게 해 달라」.
+   예전에는 연습경기를 치를 때마다 리그 출장정지를 한 경기씩 깎았다(tickBanInj).
+   친선은 공식 경기가 아니다 — 징계를 만들지도, 소진시키지도 않는다.
+   ─ 리그 정지는 리그 라운드로만, 대회 정지는 그 대회 경기로만 흘러간다. */
 function preFriendlyPlayed(){
-  try{ tickBanInj({ban:true}); }catch(e){}
+  /* 아무것도 하지 않는다 — 친선경기는 어떤 장부에도 손대지 않는다 (제보) */
 }
 function checkPreseasonEnd(){
   if(G.phase!=="pre") return;
@@ -12409,7 +12607,7 @@ const IND_TRAIN=[
 const IND_BY_K={}; for(const x of IND_TRAIN) IND_BY_K[x.k]=x;
 const IND_COND=-0.15;      // 개인 과제를 하나 더 소화하는 만큼 몸이 조금 더 갈린다
 /* 코치가 한 번에 볼 수 있는 인원 — 훈련 시설 등급이 곧 코칭 스태프 규모다 */
-function indCap(t){ return 5 + trainLv(t||userTeam())*3; }
+function indCap(t){ return Math.round(5 + lvEff(trainLv(t||userTeam()))*3); }   // 🔟
 function indCount(t){ t=t||userTeam(); return (t&&t.players||[]).filter(p=>p.itr && IND_BY_K[p.itr]).length; }
 function indOf(p){ return (p && p.itr && IND_BY_K[p.itr]) || null; }
 function indKeysOf(p){
@@ -12588,7 +12786,7 @@ function trainInjMul(t, p){
   const age=G.season-(p.by||2000);
   let m = 1 + (100-(p.cond||90))/45;                 // 지쳐 있을수록
   m *= age<=23 ? 0.85 : age<=29 ? 1.00 : age<=32 ? 1.25 : 1.55;
-  m *= 1.12 - (trainLv(t)-1)*0.05;                    // 좋은 훈련시설일수록 덜 다친다
+  m *= 1.12 - (lvEff(trainLv(t))-1)*0.05;                    // 좋은 훈련시설일수록 덜 다친다 (🔟)
   return m;
 }
 /* ⚠ 임대 나간 선수는 우리 훈련장에 없다. 그런데도 우리 강도·부상 판정을 그대로 받고 있었다.
@@ -12658,7 +12856,7 @@ function applyDayToTeam(t, pl){
     return null;
   }
   const k=TRAIN_INT[clamp(pl.i||0,0,2)];
-  const lv=trainLv(t);
+  const lv=lvEff(trainLv(t));   // 🔟 예전 1~5 성능 축
   const pre=(typeof G.phase!=="undefined" && G.phase==="pre");
   const FOC=focusOf(pl);                       // 🏋️ 오늘의 훈련 주제
   const line=pl.ln||"ALL";
@@ -12875,7 +13073,7 @@ function developPlayer(t, p, load, foc){
     dir *= (t && t.div===1) ? 1.05 : 0.96;                      // 1부의 훈련 환경이 조금 낫다
     /* 시설이 곧 훈련의 질이다 — 1등급 0.88배 … 5등급 1.16배.
        (예전 0.90~1.10은 room 감쇠를 거치면 한 시즌 차이가 0.4 OVR 남짓이라 체감이 없었다) */
-    dir *= 0.88 + (trainLv(t)-1)*0.07;
+    dir *= 0.88 + (lvEff(trainLv(t))-1)*0.07;   // 🔟
     dir *= 0.88 + (p.morale||65)/100*0.30;                      // 사기가 좋으면 훈련이 잘 붙는다
     /* 감독을 믿는 선수가 코치의 말을 듣는다 — 면담·선물이 성장으로 돌아온다 */
     if(t && t.isUser){ try{ dir *= clamp(0.93+(aff(p)-50)/100*0.16, 0.88, 1.10); }catch(e){} }
@@ -13128,6 +13326,9 @@ function famLabel(v){
    패스 정확도·수비 간격·압박 타이밍에 곱해 쓴다. 체감은 되지만 전력 차를 뒤집지는 못한다. */
 function famK(t){ return clamp((famOf(t)-70)/30, -1.5, 1); }
 function playRound(div, skipUser){
+  /* 🟥 리그 라운드를 굴리기 전에 징계 문맥을 리그로 맞춘다 — 프리시즌의 「친선」 문맥이
+     남아 있으면 리그 경기에 정지 선수가 뛴다 (제보: 대회 간 징계 완전 분리) */
+  try{ banCtxSync(); }catch(e){}
   const fix=div===1?G.k1Fix:G.k2Fix;
   const r=div===1?G.r1:G.r2;
   if(r>=fix.length) return;
@@ -13643,6 +13844,7 @@ function startNewSeason(){
   try{ if(!G.jobless) notify("🎖️ 새 시즌 주장단을 <b>시즌 시작 전에</b> 정해야 합니다 — 스태프 화면에서 주장·부주장을 지정하세요.","warn"); }catch(e){}
   try{ archiveAllSeasonRecs(G.season); }catch(e){}   // 📚 지난 시즌 성적을 커리어에 남긴다
   G.season++;
+  try{ seasonLegInit(); }catch(e){}   // 🗓️ 제보 — 새 시즌 「출발 소속」 도장
   G.negoBlock={};      // 협상 냉각기는 시즌을 넘기지 않는다 (제보 — 겨울 이적시장에서도 안 풀림)
   G.loanAsks=[];       // 🔁 임대 문의도 시즌을 넘기지 않는다 (제보 — 지난 시즌 문의가 빈 채로 남아 있음)
   G.hiredAtR=0;   // 새 시즌 — 유예 기준점 초기화
@@ -13795,10 +13997,10 @@ function startNewSeason(){
   /* 유스 등급(youthLv) — 몇 명을, 얼마나 큰 재목으로 '발굴'하는가
      훈련시설(trainLv) — 그 재목이 올라올 때 얼마나 '다듬어져' 있고, 특급이 터질 확률 보정
      둘 다 최고면 FM의 명문 아카데미처럼 매년 한 명쯤은 리그를 놀라게 할 아이가 나온다. */
-  const yl=clamp(ut.youthLv||1, 1, 5);
-  const tl=trainLv(ut);
+  const yl=lvEff(ut.youthLv||1);   // 🔟 10단계 → 예전 1~5 성능 축
+  const tl=lvEff(trainLv(ut));
   /* 배출 인원 — 등급마다 한 칸씩 차이가 난다 (예전엔 4등급 이상에서만 +1이라 1~3등급이 똑같았다) */
-  const n=1+R(2)+[0,0,1,2,2,3][yl];
+  const n=1+R(2)+[0,0,1,2,2,3][Math.round(yl)];
   for(let i=0;i<n;i++){
     /* 🧭 어느 자리 유망주가 올라오는가 — 예전에는 DF/MF/FW 만 뽑아 골키퍼가 아예 없었고,
        수비수도 세부 자리를 정하지 않아 능력치 추론이 대부분 센터백으로 몰렸다(제보 — 풀백·GK 기근).
@@ -13810,7 +14012,7 @@ function startNewSeason(){
        이 기간 요건을 채우고 올라오므로, 외국 국적 유스는 콜업 즉시 홈그로운 판정을 받는다.
        유스 등급이 높을수록 외국 유소년을 일찍 발굴해 데려왔을 확률도 높다. */
     const hgY = Math.random() < (0.07 + yl*0.02);          // 1등급 9% → 5등급 17%
-    const yp=mkPlayer(hgY?genFrnName():genName(),pos,G.season-17-R(2),54+R(10)+(yl-1)+Math.round((tl-1)*0.6),hgY?1:0);
+    const yp=mkPlayer(hgY?genFrnName():genName(),pos,G.season-17-R(2),Math.round(54+R(10)+(yl-1)+(tl-1)*0.6),hgY?1:0);
     if(hgY) yp.hg=1;
     /* 세부 자리를 못 박는다 — 능력치 추론에 맡기면 풀백·윙어가 거의 안 나온다 */
     try{ yp.prefPos=_slot.pref; yp.posFam=initPosFam(yp); syncPosBand(yp); applySpecialization(yp); retuneTraits(yp); }catch(e){}
@@ -13830,11 +14032,11 @@ function startNewSeason(){
        "보통" 유망주가 1년 만에 리그 최강이 되는 구조.
        ─ 천장을 리그 상위 3% 선(76~77)으로 내린다: 1등급 70 → 5등급 77.
          일반 배출은 「잘 키우면 리그 주전~탑급」, 리그를 넘는 건 특급(85+)만. */
-    const pot0=clamp(yp.ovr+3+R(9)+(yl-1)*1.4, 66, Math.round(70+(yl-1)*1.8));
+    const pot0=clamp(Math.round(yp.ovr+3+R(9)+(yl-1)*1.4), 66, Math.round(70+(yl-1)*1.8));
     /* 보석이라도 전원이 최상급은 아니다. 대부분 85~91에 머물고, 그중 일부만 92 위로 간다.
        유스5·훈련5 기준 — 최상급 3년에 1명 · 특급 2년에 1명 */
     const superGem = gem && Math.random()<0.42;
-    yp.pot = gem ? (superGem ? clamp(pot0+9+R(8), 92, 92+(yl-1))
+    yp.pot = gem ? (superGem ? clamp(pot0+9+R(8), 92, Math.round(92+(yl-1)))
                              : clamp(pot0+3+R(6), 85, 91))
                  : pot0;
     yp.wage=0.3;
@@ -14895,7 +15097,7 @@ function tickLoanOffer(){
   }
   if(!pool.length) return;
   /* 유스 시설이 좋고 평판이 좋은 감독에게 더 좋은 재목이 온다 */
-  const yl=clamp(t.youthLv||1,1,5), rep=clamp((G.trust&&G.trust.fans)||60, 0, 100);
+  const yl=lvEff(t.youthLv||1), rep=clamp((G.trust&&G.trust.fans)||60, 0, 100);   // 🔟
   pool.sort((a,b)=>(b.p.pot||0)-(a.p.pot||0));
   const cut=Math.max(1, Math.round(pool.length*clamp(0.12+yl*0.06+(rep-50)*0.004, 0.08, 0.9)));
   const {p, c}=pick(pool.slice(0, cut));
@@ -16725,15 +16927,24 @@ function migrateSave(){
   if(!Array.isArray(G.scout.send)) G.scout.send=[];
   if(!Array.isArray(G.scout.list)) G.scout.list=[];
   if(!Array.isArray(G.scout.gone)) G.scout.gone=[];
+  /* 🔟 10단계 이관 — 예전 세이브(1~5 눈금)를 성능 보존 변환한다: 예전 5단계 = 지금 10단계.
+     새 게임과 이미 변환된 세이브는 G.fac10 이 있어 건너뛴다. */
+  if(!G.fac10){
+    for(const id in G.teams){ const T=G.teams[id];
+      if(typeof T.youthLv==="number" && T.youthLv>0) T.youthLv=lv10From5(clamp(T.youthLv,1,5));
+      if(typeof T.trainLv==="number" && T.trainLv>0) T.trainLv=lv10From5(clamp(T.trainLv,1,5));
+    }
+    G.fac10=1;
+  }
   for(const id in G.teams){ const T=G.teams[id];
     if(typeof T.scoutLv!=="number") T.scoutLv=1;
     /* 훈련시설 — 구단별 기본 등급(baseTrainLv)을 따르되, 유스 등급이 더 높으면 그쪽을 쓴다.
-       기업구단은 최소 3등급이 보장되고, 인프라로 이름난 구단은 4~5등급에서 시작한다. */
+       기업구단은 하한이 보장되고, 인프라로 이름난 구단은 위쪽에서 시작한다. (🔟 10단계 눈금) */
     if(typeof T.trainLv!=="number"){
-      T.trainLv=clamp(Math.max(T.youthLv||1, baseTrainLv(id, T.div)), 1, 5);
+      T.trainLv=clamp(Math.max(T.youthLv||1, baseTrainLv(id, T.div)), 1, FAC_MAX);
     }
     /* 유스 등급도 구단별 기본값을 따른다 — 예전 세이브는 전 구단이 1등급이었다 */
-    if(typeof T.youthLv!=="number" || T.youthLv<=0) T.youthLv=clamp(baseYouthLv(id, T.div), 1, 5);
+    if(typeof T.youthLv!=="number" || T.youthLv<=0) T.youthLv=clamp(baseYouthLv(id, T.div), 1, FAC_MAX);
   }
   if(!G.stad && G.stad!==null) G.stad=null;
   if(typeof G.stadNo!=="number") G.stadNo=0;
@@ -18969,8 +19180,8 @@ function edSetTeamQ(t, field, v){
     if(nm && nm!==s.n){ const old=s.n; s.n=nm; try{ renameEverywhere([[old,nm]]); }catch(e){} } }
   else if(field==="stadCap"){ const s=stadOf(t); const n2=edNum(v,1000,120000,0); if(n2!=null) s.cap=n2; }
   else if(field==="stadAvg"){ const s=stadOf(t); const n2=edNum(v,100,120000,0); if(n2!=null) s.avg=Math.min(n2, s.cap||n2); }
-  else if(field==="youthLv"){ const n=edNum(v,1,5,0); if(n!=null) t.youthLv=n; }
-  else if(field==="trainLv"){ const n=edNum(v,1,5,0); if(n!=null) t.trainLv=n; }
+  else if(field==="youthLv"){ const n=edNum(v,1,10,0); if(n!=null) t.youthLv=n; }
+  else if(field==="trainLv"){ const n=edNum(v,1,10,0); if(n!=null) t.trainLv=n; }
   else if(field==="scoutLv"){ const n=edNum(v,1,5,0); if(n!=null) t.scoutLv=n; }
 }
 function edSetTeam(field, v){
@@ -19650,8 +19861,8 @@ function edImport(input){
             if(typeof D.fans==="number") T.fans=clamp(D.fans,1,200);
             if(typeof D.morale==="number") T.morale=clamp(D.morale,40,99);
             if(typeof D.fam==="number") T.fam=clamp(D.fam,0,100);
-            if(typeof D.youthLv==="number") T.youthLv=clamp(Math.round(D.youthLv),1,5);
-            if(typeof D.trainLv==="number") T.trainLv=clamp(Math.round(D.trainLv),1,5);
+            if(typeof D.youthLv==="number") T.youthLv=clamp(Math.round(D.youthLv),1,10);
+            if(typeof D.trainLv==="number") T.trainLv=clamp(Math.round(D.trainLv),1,10);
             if(typeof D.scoutLv==="number") T.scoutLv=clamp(Math.round(D.scoutLv),1,5);
             if(D.stad){ const s=stadOf(T);
               if(D.stad.n){ const nn=String(D.stad.n).slice(0,24); if(nn!==s.n){ ED_RENAMES.push([s.n, nn]); s.n=nn; } }
@@ -20203,8 +20414,8 @@ function editorView(){
       ${ED_ROW(`평균 관중 <span class="small">티켓 수입 기준값</span>`, ED_IN("edSetTeam","stadAvg",stadOf(t).avg||3000,80))}
       ${ED_ROW("팀 사기 (40~99)", ED_IN("edSetTeam","morale",Math.round(t.morale||70)))}
       ${ED_ROW("조직력 (0~100)", ED_IN("edSetTeam","fam",Math.round(t.fam!=null?t.fam:70)))}
-      ${ED_ROW("유스 등급 (1~5) <span class=\"small\">발굴 — 배출 인원·잠재력</span>", ED_IN("edSetTeam","youthLv",t.youthLv||1,50))}
-      ${ED_ROW("훈련시설 (1~5) <span class=\"small\">육성 — 성장 속도·훈련 부상·특급 확률</span>", ED_IN("edSetTeam","trainLv",trainLv(t),50))}
+      ${ED_ROW("유스 등급 (1~10) <span class=\"small\">발굴 — 배출 인원·잠재력</span>", ED_IN("edSetTeam","youthLv",t.youthLv||1,50))}
+      ${ED_ROW("훈련시설 (1~10) <span class=\"small\">육성 — 성장 속도·훈련 부상·특급 확률</span>", ED_IN("edSetTeam","trainLv",trainLv(t),50))}
       ${ED_ROW("스카우팅 등급 (1~5)", ED_IN("edSetTeam","scoutLv",t.scoutLv||1,50))}`;
   } else if(ED.tab==="player"){
     const vRoster = ED.tid==="fa" ? (G.freeAgents||[]) : ED.tid==="os" ? (G.overseas||[]) : null;
@@ -21089,9 +21300,28 @@ if(typeof document!=="undefined"&&document.addEventListener){
 function pTags(p){
   let s="";
   if(p.inj>0) s+=` <span class="tag inj">부상 ${p.inj}주</span>`;
-  /* ⚠ 제보 — 「출장정지(몇 경기)가 아니라 그냥 정지라고만 떠서 언제 풀리는지 알 수 없다」 */
-  if(p.ban>0) s+=` <span class="tag inj" title="${p.banNew?"이번 경기부터 적용됩니다":"남은 출장정지 경기 수"}">출장정지 ${p.ban}경기${p.banNew?" (다음 경기부터)":""}</span>`;
-  else if(p.banE>0) s+=` <span class="tag inj">${eaclShort()} 출전정지 ${p.banE}경기</span>`;
+  /* ⚠ 제보 — 「출장정지(몇 경기)가 아니라 그냥 정지라고만 떠서 언제 풀리는지 알 수 없다」
+     🟥 ⚠ 제보 — 「대회가 다르면 정지가 걸리지 않는데도 계속 정지로 표기된다」.
+        다음 경기에 실제로 걸리는 정지만 붉게 세우고, 다른 대회의 정지는 「그 대회에서만」이라고
+        회색으로 따로 적는다 — 감독이 언제 못 쓰는지는 알아야 하니 지우지는 않는다. */
+  s+=(function(){
+    try{
+      if(p._banL!=null || p._banLC!=null){    // 대회 경기 진행 중 — 지금 ban 자리가 그 대회 장부
+        return p.ban>0 ? ` <span class="tag inj">출전정지 ${p.ban}경기</span>` : "";
+      }
+      const C=(typeof BAN_CTX!=="undefined")?BAN_CTX:"league";
+      const LB={league:"리그", eacl:(typeof eaclShort==="function"?eaclShort():"EACL"),
+                cwc:(typeof cwcShort==="function"?cwcShort():"CWC"), friendly:"연습경기"};
+      const list=[{k:"league",n:p.ban|0},{k:"eacl",n:p.banE|0},{k:"cwc",n:p.banC|0}].filter(x=>x.n>0);
+      if(!list.length) return "";
+      let out="";
+      const hit=list.find(x=>x.k===C);
+      if(hit) out+=` <span class="tag inj" title="${p.banNew&&hit.k==="league"?"이번 경기부터 적용됩니다":"남은 출전정지 경기 수"}">${LB[hit.k]} 출전정지 ${hit.n}경기${(p.banNew&&hit.k==="league")?" (다음 경기부터)":""}</span>`;
+      const rest=list.filter(x=>x!==hit);
+      if(rest.length) out+=` <span class="tag" style="background:#2a3038;color:#a9b4c0" title="다음 경기(${LB[C]||"리그"})에는 출전할 수 있습니다 — 해당 대회에서만 정지입니다">${rest.map(x=>`${LB[x.k]} ${x.n}경기 정지`).join(" · ")}</span>`;
+      return out;
+    }catch(e){ return p.ban>0?` <span class="tag inj">출전정지 ${p.ban}경기</span>`:""; }
+  })();
   if(p.army && p.army.out){ const d=armyDaysLeft(p);
     if(d!=null && d>0) s+=` <span class="tag" style="background:#3a4a2a;color:#a8e04a" title="${p.army.out} 전역 · 원소속 ${p.army.own&&G.teams[p.army.own]?G.teams[p.army.own].short:"무소속"}">🎖️ 전역 D-${d}</span>`; }
   if(p.sulk>0) s+=' <span class="tag inj">태업</span>';
@@ -21149,32 +21379,68 @@ const YOUTH_LV_BASE={
   daejeon:3, busan:3, jeju:3, gangwon:3, seoule:3, jeonnam:3, anyang:3
 };
 function baseYouthLv(id, div){
-  if(YOUTH_LV_BASE[id]) return YOUTH_LV_BASE[id];
-  const corp = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="corp";
-  const army = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="army";
-  if(army) return 1;                                   // 군경구단은 아카데미가 없다
-  if(corp) return 2;
-  return div===1 ? 2 : 1;
+  /* 표는 예전 1~5 눈금 그대로 두고, 여기서 10단계로 환산한다 (성능 보존 — 예전 5 = 지금 10) */
+  const raw = YOUTH_LV_BASE[id] || (function(){
+    const corp = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="corp";
+    const army = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="army";
+    if(army) return 1;                                   // 군경구단은 아카데미가 없다
+    if(corp) return 2;
+    return div===1 ? 2 : 1;
+  })();
+  return lv10From5(raw);
+}
+/* ═══ 🔟 시설 10단계 ═══════════════════════════════════════════════════════
+   ⚠ 제보 원문 — 「유스 아카데미와 훈련시설을 10단계로 만들자. 지금 현재는 5단계가 최대치고
+      초록별이잖아? 6단계부터는 빨간별이 추가되는거지. (빨간별)(초록별)(초록별)(초록별)(초록별)
+      이런식으로 말이야. 지금 현재 5단계 능력을 그대로 10단계로 나눠서 구현해.
+      즉 현재 5단계가 10단계와 같은 성능인거지」.
+   ─ 설계: 성능 축은 그대로 두고 눈금만 두 배로 쪼갠다.
+     · lvEff(l) 이 10단계 눈금을 예전 1~5 성능 축으로 환산한다 — lvEff(10)=5 (예전 5단계 성능).
+     · 모든 효과 공식은 lvEff 를 쓴다. 예전 세이브(1~5)는 lv10From5 로 성능 보존 변환.
+     · 별 표시: 1~5단계 초록별, 6단계부터 왼쪽부터 빨간별로 바뀐다 — 6단계 = ★(빨)★★★★(초). */
+const FAC_MAX=10;
+function lvEff(l){ return 1+(clamp(l||1,1,FAC_MAX)-1)*(4/9); }
+function lv10From5(l5){ return clamp(Math.round(1+((l5||1)-1)*2.25), 1, FAC_MAX); }
+function facStars(l, size){
+  l=clamp(Math.round(l||1),1,FAC_MAX);
+  const red=Math.max(0,l-5), green=l<=5?l:10-l, empty=Math.max(0,5-red-green);
+  return `<b style="${size?`font-size:${size}px;`:""}letter-spacing:1px;white-space:nowrap;font-weight:800">`
+    + (red?`<span style="color:#f85149">${"★".repeat(red)}</span>`:"")
+    + (green?`<span style="color:var(--green)">${"★".repeat(green)}</span>`:"")
+    + (empty?`<span style="color:var(--sub);opacity:.5">${"☆".repeat(empty)}</span>`:"")
+    + `</b>`;
 }
 const YOUTH_LABEL=[null,
-  {n:"미미",   c:"var(--red)",   d:"아카데미라 부르기 어려운 수준. 1군에 올릴 재목이 거의 없습니다."},
-  {n:"평범",   c:"var(--sub)",   d:"매년 두어 명이 올라오지만 대부분 자리를 잡지 못합니다."},
-  {n:"견실",   c:"var(--gold)",  d:"꾸준히 쓸 만한 자원을 배출합니다."},
-  {n:"명문",   c:"#58a6ff",      d:"지역 유망주가 먼저 찾아오는 아카데미. 특급이 종종 나옵니다."},
-  {n:"최고",   c:"var(--green)", d:"리그를 대표하는 유스. 매년 한 명쯤은 리그를 놀라게 합니다."}];
+  {n:"미미",     c:"var(--red)",   d:"아카데미라 부르기 어려운 수준. 1군에 올릴 재목이 거의 없습니다."},
+  {n:"걸음마",   c:"var(--red)",   d:"이제 막 틀을 잡은 아카데미. 아직 배출은 기대하기 어렵습니다."},
+  {n:"평범",     c:"var(--sub)",   d:"매년 두어 명이 올라오지만 대부분 자리를 잡지 못합니다."},
+  {n:"자리잡음", c:"var(--sub)",   d:"체계가 잡히기 시작했습니다. 쓸 만한 아이가 가끔 나옵니다."},
+  {n:"견실",     c:"var(--gold)",  d:"꾸준히 쓸 만한 자원을 배출합니다."},
+  {n:"알찬",     c:"var(--gold)",  d:"지역에서 알아주는 아카데미. 배출의 질이 눈에 띄게 오릅니다."},
+  {n:"명문",     c:"#58a6ff",      d:"지역 유망주가 먼저 찾아오는 아카데미. 특급이 종종 나옵니다."},
+  {n:"전국구",   c:"#58a6ff",      d:"전국의 재목이 모여듭니다. 스카우트들이 상주하는 아카데미입니다."},
+  {n:"정상급",   c:"var(--green)", d:"리그 정상급 유스. 해마다 1군감이 올라옵니다."},
+  {n:"최고",     c:"var(--green)", d:"리그를 대표하는 유스. 매년 한 명쯤은 리그를 놀라게 합니다."}];
 function baseTrainLv(id, div){
-  if(TRAIN_LV_BASE[id]) return TRAIN_LV_BASE[id];
-  const corp = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="corp";
-  if(corp) return 3;                               // 기업구단 하한
-  return div===1 ? 2 : 1;
+  const raw = TRAIN_LV_BASE[id] || (function(){
+    const corp = (typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[id] && CLUB_TYPE[id].k==="corp";
+    if(corp) return 3;                               // 기업구단 하한
+    return div===1 ? 2 : 1;
+  })();
+  return lv10From5(raw);
 }
 const TRAIN_LABEL=[null,
-  {n:"열악",   c:"var(--red)",   d:"낡은 훈련장. 성장은 더디고 훈련 중 부상이 잦습니다."},
-  {n:"기본",   c:"var(--sub)",   d:"평범한 시설. 특별할 것도 모자랄 것도 없습니다."},
-  {n:"양호",   c:"var(--gold)",  d:"관리가 잘 된 클럽하우스. 성장에 도움이 됩니다."},
-  {n:"우수",   c:"#58a6ff",      d:"체계적인 훈련·회복 시설. 유망주가 잘 자랍니다."},
-  {n:"최상",   c:"var(--green)", d:"리그 최고 수준. 특급 유망주가 터질 확률이 가장 높습니다."}];
-function pickTrainLv(d, div){ return clamp(baseTrainLv(d.id, div), 1, 5); }
+  {n:"열악",     c:"var(--red)",   d:"낡은 훈련장. 성장은 더디고 훈련 중 부상이 잦습니다."},
+  {n:"허름",     c:"var(--red)",   d:"손은 봤지만 여전히 부족한 시설. 선수들이 불평합니다."},
+  {n:"기본",     c:"var(--sub)",   d:"평범한 시설. 특별할 것도 모자랄 것도 없습니다."},
+  {n:"정돈",     c:"var(--sub)",   d:"필요한 것은 갖춘 훈련장. 조금씩 나아지고 있습니다."},
+  {n:"양호",     c:"var(--gold)",  d:"관리가 잘 된 클럽하우스. 성장에 도움이 됩니다."},
+  {n:"충실",     c:"var(--gold)",  d:"회복실·분석실까지 갖췄습니다. 훈련의 질이 다릅니다."},
+  {n:"우수",     c:"#58a6ff",      d:"체계적인 훈련·회복 시설. 유망주가 잘 자랍니다."},
+  {n:"첨단",     c:"#58a6ff",      d:"데이터 기반 훈련 시스템. 다른 구단이 견학을 옵니다."},
+  {n:"정상급",   c:"var(--green)", d:"리그 정상급 클럽하우스. 선수들이 오고 싶어 하는 환경입니다."},
+  {n:"최상",     c:"var(--green)", d:"리그 최고 수준. 특급 유망주가 터질 확률이 가장 높습니다."}];
+function pickTrainLv(d, div){ return clamp(baseTrainLv(d.id, div), 1, FAC_MAX); }
 /* 매력도 — sponAppealDetail 과 같은 눈금을 쓰되, G 없이 구할 수 있는 항목만 본다 */
 function pickAppeal(d, div){
   const s=STADIUM[d.id]||{cap:12000, avg:2500};
@@ -21242,13 +21508,17 @@ function pickPanel(d, div){
     ${row("스쿼드 전력", teamStars(ovr, d.short||d.name))}
     ${row("팬 열정도", `<span style="color:${fanZeal(s.avg).c}">${fanZeal(s.avg).n}</span> <span class="small">· 평균 ${s.avg.toLocaleString()}명</span>`)}
     ${(function(){
-      const lv=clamp(baseYouthLv(d.id, div),1,5), L=YOUTH_LABEL[lv];
-      return row("유스 아카데미", `<span style="color:${L.c}">${"★".repeat(lv)}${"☆".repeat(5-lv)} ${L.n}</span>`
+      /* 🎖️ 제보 — 국군체육부대에는 아카데미가 없다. 등급을 매길 대상이 아니다. */
+      if((typeof CLUB_TYPE!=="undefined") && CLUB_TYPE[d.id] && CLUB_TYPE[d.id].k==="army")
+        return row("유스 아카데미", `<span style="color:var(--sub)">없음</span>`
+          + `<br><span class="small" style="opacity:.65">국군체육부대에는 유스 아카데미가 없습니다 — 선수는 전원 입대로 들어옵니다.</span>`);
+      const lv=clamp(baseYouthLv(d.id, div),1,FAC_MAX), L=YOUTH_LABEL[lv];
+      return row("유스 아카데미", `${facStars(lv)} <span style="color:${L.c}">${L.n}</span>`
         + `<br><span class="small" style="opacity:.65">${L.d}</span>`);
     })()}
     ${(function(){
       const lv=pickTrainLv(d, div), L=TRAIN_LABEL[lv];
-      return row("훈련시설", `<span style="color:${L.c}">${"★".repeat(lv)}${"☆".repeat(5-lv)} ${L.n}</span>`
+      return row("훈련시설", `${facStars(lv)} <span style="color:${L.c}">${L.n}</span>`
         + `<br><span class="small" style="opacity:.65">${L.d}</span>`);
     })()}
     ${(function(){
@@ -26432,7 +26702,11 @@ function show(v){
         try{ if(eaclUserDue()) return "🌏 "+eaclShort()+" 경기 시작 ▶"; }catch(e){}
         if(G.phase==="po"){
           try{ if(!((G.poQueue||[]).length) && eaclUserLeft()) return "🌏 "+eaclShort()+" 일정 진행 ▶"; }catch(e){}
-          return "승강 PO 진행 ▶";
+          /* ⚠ 제보 원문 — 「EACL 결승이 끝난 후 경기 진행 버튼이 '승강 PO 시작' 이었는데,
+             EACL 결승이 끝나면 그 해 모든 일정이 끝나는 것이므로 '진행' 문구로 바꿔 달라」.
+             승강 PO 는 내가 그 대진에 낄 때만 그 이름으로 부른다 — 남의 집 일정은 그냥 진행이다. */
+          try{ if(poUserIn()) return "승강 PO 진행 ▶"; }catch(e){}
+          return "진행 ▶";
         }
         return atMatchDay() ? "경기 시작 ▶" : "진행 ▶";
       })();
@@ -26465,6 +26739,7 @@ function show(v){
   if(!G.seen) G.seen={};
   G.seen[v]=notifCount(v); // 이 탭을 확인했으니 알림 해제
   renderNavDots();
+  try{ banCtxSync(); }catch(e){}         // 🟥 제보 — 다음 경기 대회 기준으로 출전정지를 다시 잡는다
   try{ document.body.classList.toggle("pvpMenu", v==="pvp"); }catch(e){}   // ⚔️ 제보 — 모바일 진행 버튼 숨김
   try{ chatBoxSync(); }catch(e){}        // 💬 제보 — 채팅창 스크롤바·높이 복원
   try{ pvpPresenceSync(v); }catch(e){}   // 🌐 제보 — ⚔️ 메뉴에 있는 동안만 접속 인원에 잡힌다
@@ -26621,10 +26896,14 @@ function home(){
       스쿼드 전력(베스트XI): ${teamStars(t,"우리 팀")}<br>
       최근 5경기: ${t.form.slice(-5).map(f=>f==="W"?"🟢":f==="D"?"🟡":"🔴").join("")||"-"}<br>
       ${(function(){
-        const yl=clamp(t.youthLv||1,1,5), tl=trainLv(t);
+        const yl=clamp(t.youthLv||1,1,FAC_MAX), tl=trainLv(t);
         const Y=YOUTH_LABEL[yl], L=TRAIN_LABEL[tl];
-        return `<span class="small" style="opacity:.85">🌱 유스 <b style="color:${Y.c}">${"★".repeat(yl)}${"☆".repeat(5-yl)}</b> ${Y.n}`
-          + ` &nbsp;·&nbsp; 🏋️ 훈련시설 <b style="color:${L.c}">${"★".repeat(tl)}${"☆".repeat(5-tl)}</b> ${L.n}</span>`;
+        /* 🎖️ 제보 — 「김천 상무는 유스 콜업이 없는 팀」. 콜업을 막았으면 표기도 별을 띄우면 안 된다. */
+        const yTxt = isArmyTeam(t)
+          ? `🌱 유스 <b style="color:var(--sub)">아카데미 없음</b> <span style="opacity:.7">— 선수는 입대로만 옵니다</span>`
+          : `🌱 유스 ${facStars(yl)} ${Y.n}`;
+        return `<span class="small" style="opacity:.85">${yTxt}`
+          + ` &nbsp;·&nbsp; 🏋️ 훈련시설 ${facStars(tl)} ${L.n}</span>`;
       })()}</div>
     <div class="card"><h3>다음 경기</h3>${next}</div>
   </div>
@@ -30478,6 +30757,8 @@ function fmTopBar(t, xi, formName){
       <button class="fmDetailBtn ${tacDetailOpen?"on":""}" onclick="toggleTacDetail()">⚙️ 세부 전술 ${tacDetailOpen?"▲":"▼"}</button>
       ${(typeof inLiveTactics!=="undefined" && inLiveTactics && !(typeof liveM!=="undefined" && liveM && liveM.opts && liveM.opts.pvp))
         ? `<button class="fmDetailBtn ${liveAdvOpen?"on":""}" onclick="toggleLiveAdvice()">📋 수석코치의 조언 ${liveAdvOpen?"▲":"▼"}</button>` : ""}
+      ${(typeof inLiveTactics!=="undefined" && inLiveTactics)
+        ? `<button class="fmDetailBtn ${(typeof liveOppOpen!=="undefined"&&liveOppOpen)?"on":""}" onclick="toggleLiveOpp()">🔭 상대 포메이션 ${(typeof liveOppOpen!=="undefined"&&liveOppOpen)?"▲":"▼"}</button>` : ""}
     </div>
     <div class="fmBarR">
       <div class="fmMeter"><span>친숙도${famFresh(t)?` <b style="color:var(--green)" title="최근 이 전술로 실전을 치렀습니다 — 쉬어도 깎이지 않습니다">⚡${t._famUseL}일</b>`:""}</span>${gauge(fam,100,"g")}</div>
@@ -31133,7 +31414,12 @@ function tacticDetailCard(t, xi){
       scout=`🔎 다음 상대 <b>${nm}</b> <span class="small" style="opacity:.85">${tag} · ${_neutral?"중립지":(home?"홈":"원정")}${dLeft>0?` · D-${dLeft}`:" · 오늘"}</span>${
         _neutral?`<span class="small" style="opacity:.7"> · 전력 ${Math.round(teamOVR(opp))} (우리 ${Math.round(teamOVR(t))})</span>`:""}<br>
       <b style="color:var(--gold)">${styleName(_oppView)}</b> — 라인 ${lv3(OT.line,["낮음","보통","높음"])} · 압박 ${lv3(OT.press,["약함","보통","강함"])} · ${lv3(OT.pass,["짧은 패스","혼합","다이렉트"])}${ctrLv(OT)>=3?" · 역습형":ctrLv(OT)>=2?" · 역습 병행":""}
-      <span class="small">${HI(OT.line)?"→ 다이렉트/역습으로 뒷공간을 노려보세요!":LO(OT.line)?"→ 내려앉는 팀입니다. 짧은 패스+넓은 폭으로 두드리세요.":""}${HI(OT.press)?" 상대 압박이 강합니다. 미드필더가 약하면 다이렉트 패스가 안전합니다.":""}</span>`;
+      ${(function(){
+        /* ⚠ 제보 — 어떤 스타일이든 대응 한 수는 반드시 나온다 */
+        let _gap=null; try{ _gap=teamOVR(opp)-teamOVR(t); }catch(e){}
+        const tips=scoutAdvice(styleName(_oppView), OT, _gap);
+        return `<div class="small" style="margin-top:3px;line-height:1.65">${tips.map(x=>`→ ${x}`).join("<br>")}</div>`;
+      })()}`;
     }
   }
   // 판단에 실제로 쓰이는 값만 위에 모아 굵게 보여준다 — 선수 능력치와 같은 1~20 눈금.
@@ -31761,6 +32047,54 @@ function undoAllLiveSubs(){
    경기 화면과 같은 패널(lvPanel)을 그대로 쓴다 — 두 화면이 동시에 뜨지는 않는다. */
 let liveAdvOpen=false;
 function toggleLiveAdvice(){ liveAdvOpen=!liveAdvOpen; renderLiveTactics(); }
+/* 🔭 상대 포메이션 그림 — ⚠ 제보 원문 — 「개인적으로 경기중에 전술창 들어가면 상대 포메이션도
+   이미지로 구현됐으면 좋겠습니다」.
+   지금 그라운드 위에 서 있는 상대 11명(퇴장·교체 반영)을 전술판 좌표(SLOT_XY)에 세워 보여 준다.
+   로비의 pvpFormPitch 와 같은 그리기 방식 — 상대 골문이 위, 우리를 향해 내려오는 그림이다. */
+let liveOppOpen=false;
+function toggleLiveOpp(){ liveOppOpen=!liveOppOpen; renderLiveTactics(); }
+function liveOppCard(M, myKey){
+  try{
+    const ok2 = myKey==="h" ? "a" : "h";
+    const osd=M[ok2]; if(!osd) return "";
+    const oppT=osd.team;
+    const pitch=onPitch(osd); if(!pitch.length) return "";
+    const xi=pitch.map(x=>x.p);
+    const slotOf=computeRenderSlots(oppT, xi);
+    let col=(oppT&&oppT.col)||"#e5484d";
+    if(!/^#[0-9a-fA-F]{3,8}$/.test(col)) col="#e5484d";
+    const ink=(typeof isLightColor==="function"&&isLightColor(col))?"#0d1117":"#fff";
+    const used={};
+    const chips=pitch.map(x=>{
+      const q=x.p;
+      const sl=slotOf[q.id] || (q.pos==="GK"?"GK":q.pos==="DF"?"CB":q.pos==="FW"?"ST":"CM");
+      const nth=(used[sl]=(used[sl]||0)+1);
+      const b=SLOT_XY[sl]||SLOT_XY.CM;
+      /* 같은 칸에 둘이 서면 옆으로 조금 벌린다 (로비 그림과 같은 규칙) */
+      let y=b.y + (nth>1 ? ((nth%2)?1:-1)*0.11*Math.ceil((nth-1)/2) : 0);
+      y=clamp(y, 0.07, 0.93);
+      /* 상대는 「우리를 마주 보고 내려오는」 그림 — 상대 골키퍼가 맨 위 */
+      const left=((1-y)*100).toFixed(1), top=((1-b.x)*84+6).toFixed(1);
+      return `<div style="position:absolute;left:${left}%;top:${top}%;transform:translate(-50%,-50%);text-align:center;width:56px;pointer-events:none">
+        <div style="width:23px;height:23px;line-height:23px;border-radius:50%;background:${col};color:${ink};font-weight:800;font-size:10.5px;margin:0 auto;border:1.5px solid rgba(0,0,0,.55)">${q.no||""}</div>
+        <div style="font-size:9.5px;margin-top:1px;color:#f2f6fa;text-shadow:0 1px 2px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.name||""}</div></div>`;
+    }).join("");
+    const formN=(function(){ try{ return formationLabel(oppT, xi); }catch(e){ return ""; } })();
+    const reds=osd.red>0?` · 🟥 ${osd.red}명 퇴장 (${pitch.length}명)`:"";
+    return `<div class="card" style="margin:0"><h3>🔭 상대 포메이션
+      <span class="small">— ${oppT.short||oppT.name} · <b style="color:var(--gold)">${formN}</b> · 교체 ${osd.subs||0}/${subMax(M)}${reds}</span></h3>
+      <div style="display:flex;justify-content:center">
+      <div style="position:relative;width:100%;max-width:290px;aspect-ratio:3/3.8;background:linear-gradient(#155d31,#123f24);border:1px solid var(--line);border-radius:8px;overflow:hidden">
+        <div style="position:absolute;left:4%;right:4%;top:3%;bottom:3%;border:1px solid rgba(255,255,255,.28);border-radius:2px"></div>
+        <div style="position:absolute;left:4%;right:4%;top:50%;border-top:1px solid rgba(255,255,255,.28)"></div>
+        <div style="position:absolute;left:50%;top:50%;width:26%;aspect-ratio:1;border:1px solid rgba(255,255,255,.28);border-radius:50%;transform:translate(-50%,-50%)"></div>
+        <div style="position:absolute;left:29%;right:29%;bottom:3%;height:13%;border:1px solid rgba(255,255,255,.28);border-bottom:none"></div>
+        <div style="position:absolute;left:29%;right:29%;top:3%;height:13%;border:1px solid rgba(255,255,255,.28);border-top:none"></div>
+        ${chips}
+      </div></div>
+      <p class="small" style="margin:6px 0 0;opacity:.75">지금 그라운드에 서 있는 상대 선수들입니다 — 교체·퇴장이 그대로 반영됩니다. 위쪽이 상대 골문입니다.</p></div>`;
+  }catch(e){ return ""; }
+}
 function renderLiveTactics(){
   const M=liveM; if(!M){ inLiveTactics=false; return; }
   /* ⚔️ 제보 — 「온라인 경기중에 수석코치의 조언이 있던데 이거 안보이게」 */
@@ -31824,6 +32158,7 @@ function renderLiveTactics(){
   ${liveAdvOpen?`<div class="fmDetailPane"><div class="card" style="margin:0"><h3>📋 수석코치의 조언
     <span class="small">— ${M.min}분 · ${M.home.short} ${M.hg}-${M.ag} ${M.away.short}</span></h3>
     <div id="lvPanel"></div></div></div>`:""}
+  ${liveOppOpen?`<div class="fmDetailPane">${liveOppCard(M, key)}</div>`:""}
   ${tacDetailOpen?`<div class="fmDetailPane">${tacticDetailCard(t, xi)}</div>`:""}
   <div class="fmBody">
     <div class="fmPitchPane">
@@ -32069,12 +32404,13 @@ function tableView(){
   let cwcOK=false; try{ cwcOK = cwcOn(); }catch(e){ cwcOK=false; }
   if(!cwcOK && TBLTAB==="cwc") TBLTAB="league";
   const tabs=`<div style="margin:0 0 10px; display:flex; gap:6px; flex-wrap:wrap">
-    <button class="mini ${TBLTAB==='league'?'sel':''}" onclick="setTblTab('league')">🏆 리그 순위</button>
-    ${eaclOK?`<button class="mini ${TBLTAB==='eacl'?'sel':''}" onclick="setTblTab('eacl')">🌏 ${eaclShort()}</button>`:""}
-    ${cwcOK?`<button class="mini ${TBLTAB==='cwc'?'sel':''}" onclick="setTblTab('cwc')">🌍 ${cwcShort()}</button>`:""}
-    <button class="mini ${TBLTAB==='scorer'?'sel':''}" onclick="setTblTab('scorer')">⚽ 득점 순위</button>
-    <button class="mini ${TBLTAB==='assist'?'sel':''}" onclick="setTblTab('assist')">🅰️ 도움 순위</button>
-    <button class="mini ${TBLTAB==='att'?'sel':''}" onclick="setTblTab('att')">👥 관중 순위</button>
+    ${/* 🔍 제보 — 둘러보기 중에도 탭은 넘길 수 있어야 한다 (.peekOK) */""}
+    <button class="mini peekOK ${TBLTAB==='league'?'sel':''}" onclick="setTblTab('league')">🏆 리그 순위</button>
+    ${eaclOK?`<button class="mini peekOK ${TBLTAB==='eacl'?'sel':''}" onclick="setTblTab('eacl')">🌏 ${eaclShort()}</button>`:""}
+    ${cwcOK?`<button class="mini peekOK ${TBLTAB==='cwc'?'sel':''}" onclick="setTblTab('cwc')">🌍 ${cwcShort()}</button>`:""}
+    <button class="mini peekOK ${TBLTAB==='scorer'?'sel':''}" onclick="setTblTab('scorer')">⚽ 득점 순위</button>
+    <button class="mini peekOK ${TBLTAB==='assist'?'sel':''}" onclick="setTblTab('assist')">🅰️ 도움 순위</button>
+    <button class="mini peekOK ${TBLTAB==='att'?'sel':''}" onclick="setTblTab('att')">👥 관중 순위</button>
   </div>`;
   if(TBLTAB==="eacl")   return `<h2>🏆 순위표</h2>${tabs}${eaclCard()}${eaclRankCard("goal",12)}${eaclRankCard("assist",12)}`;
   if(TBLTAB==="cwc")    return `<h2>🏆 순위표</h2>${tabs}${cwcCard()}${cwcRankCard("goal",12)}${cwcRankCard("assist",12)}`;
@@ -32105,10 +32441,10 @@ function scorerCard(div){
     ${top.map((r,i)=>`<tr style="${r.t.isUser?'background:#1f6feb22;font-weight:700':''}">
       <td>${i+1}</td><td class="clickable" onclick="showPlayerInfoPopup(event,${r.p.id})" oncontextmenu="showPlayerInfoPopup(event,${r.p.id})">${r.p.name}</td>
       <td class="pos-${r.p.pos}">${prefSlotOf(r.p)}</td>
-      <td class="clickable" onclick="openTeamSquad('${r.t.id}')" style="text-decoration:underline dotted; text-underline-offset:3px">${r.t.short}</td>
+      ${seasonClubCell(r.p, r.t, "g")}
       <td>${r.p.apps||0}</td><td><b>${r.p.goals||0}</b></td><td>${r.p.assists||0}</td></tr>`).join("")}
   </table></div>
-  <p class="small" style="margin-top:6px">골 → 도움 → 적은 출장 순 정렬 · 프리시즌 제외</p></div>`;
+  <p class="small" style="margin-top:6px">골 → 도움 → 적은 출장 순 정렬 · 프리시즌 제외 · 시즌 중 팀을 옮겼으면 <b>거쳐간 팀을 모두</b> 적습니다(임대 포함)</p></div>`;
 }
 /* 🅰️ 도움 순위 — 득점 순위와 같은 집계, 도움 기준 정렬 */
 function assistCard(div){
@@ -32128,10 +32464,10 @@ function assistCard(div){
     ${top.map((r,i)=>`<tr style="${r.t.isUser?'background:#1f6feb22;font-weight:700':''}">
       <td>${i+1}</td><td class="clickable" onclick="showPlayerInfoPopup(event,${r.p.id})" oncontextmenu="showPlayerInfoPopup(event,${r.p.id})">${r.p.name}</td>
       <td class="pos-${r.p.pos}">${prefSlotOf(r.p)}</td>
-      <td class="clickable" onclick="openTeamSquad('${r.t.id}')" style="text-decoration:underline dotted; text-underline-offset:3px">${r.t.short}</td>
+      ${seasonClubCell(r.p, r.t, "a")}
       <td>${r.p.apps||0}</td><td><b>${r.p.assists||0}</b></td><td>${r.p.goals||0}</td></tr>`).join("")}
   </table></div>
-  <p class="small" style="margin-top:6px">도움 → 골 → 적은 출장 순 정렬 · 프리시즌 제외</p></div>`;
+  <p class="small" style="margin-top:6px">도움 → 골 → 적은 출장 순 정렬 · 프리시즌 제외 · 시즌 중 팀을 옮겼으면 <b>거쳐간 팀을 모두</b> 적습니다(임대 포함)</p></div>`;
 }
 /* ── 👥 타구단 스쿼드 — 순위표에서 팀명을 누르면 열린다. 정렬 가능, 별점 눈금은 내 스쿼드와 동일. ── */
 let OSQ={tid:null, k:"ovr", dir:1};
@@ -32261,7 +32597,7 @@ function attRankCard(){
       pct : x.hn?Math.round((x.h/x.hn)/Math.max(1,sd.cap)*100):0};
   }).filter(Boolean);
   const anyData=rows.some(r=>r.x.hn>0);
-  const tb=(d,l)=>`<button class="mini ${attTab===d?'sel':''}" style="padding:5px 14px" onclick="setAttTab(${d})">${l}</button>`;
+  const tb=(d,l)=>`<button class="mini peekOK ${attTab===d?'sel':''}" style="padding:5px 14px" onclick="setAttTab(${d})">${l}</button>`;
   if(!anyData) return `<div class="card"><h3>👥 관중 순위</h3>
     <div style="margin-bottom:8px">${tb(1,"K리그1")} ${tb(2,"K리그2")}</div>
     <p class="small">아직 이번 시즌 경기가 없습니다. 라운드가 진행되면 홈 평균 관중과 원정 동원력이 집계됩니다.</p></div>`;
@@ -32273,7 +32609,7 @@ function attRankCard(){
     const me=r.t.isUser;
     return `<tr style="${me?'background:#1f6feb22;font-weight:700':''}">
       <td>${i+1}</td>
-      <td class="clickable" onclick="openTeamSquad('${r.t.id}')" style="text-decoration:underline dotted;text-underline-offset:3px">${r.t.name}</td>
+      <td class="clickable peekOK" onclick="openTeamSquad('${r.t.id}')" style="text-decoration:underline dotted;text-underline-offset:3px">${r.t.name}</td>
       <td class="small">${r.sd.n}<br><span style="opacity:.7">${r.sd.cap.toLocaleString()}석</span></td>
       <td><b>${r.avgH.toLocaleString()}</b><br><span class="small" style="color:${r.pct>=85?"var(--green)":r.pct>=60?"var(--gold)":"var(--sub)"}">좌석 ${r.pct}%</span></td>
       <td>${r.x.best?`${r.x.best.toLocaleString()}<br><span class="small" style="opacity:.7">${r.x.bestOpp}전</span>`:"-"}</td>
@@ -32325,7 +32661,7 @@ function eaclNm(id, full){
   const t=eaclTeam(id); if(!t) return "?";
   const me=id===G.userTeamId;
   /* 클럽명을 누르면 스쿼드가 열린다 — K리그 팀이든 EACL 클럽이든 같은 화면을 쓴다 */
-  return `<span class="clickable" onclick="openTeamSquad('${id}')" title="${t.name} 스쿼드 보기"
+  return `<span class="clickable peekOK" onclick="openTeamSquad('${id}')" title="${t.name} 스쿼드 보기"
     style="text-decoration:underline dotted;text-underline-offset:3px;${me?"font-weight:800;color:var(--acc)":""}">${eaclDot(id)}${full?t.name:t.short}</span>`;
 }
 function eaclStageLabel(){
@@ -32615,7 +32951,7 @@ function indTrainCard(){
   <div class="msg info">팀 훈련 주제 위에 <b>선수별 과제</b>를 하나씩 얹습니다. 그 항목이 <b>팀 주제의 두 배 무게</b>로 오르는 대신,
     과제를 맡은 선수는 훈련일마다 몸이 조금 더 갈립니다. 부상·태업 중에는 적용되지 않습니다.<br>
     <span class="small">코치진이 한 번에 볼 수 있는 인원 <b style="color:${n>=cap?"var(--gold)":"var(--green)"}">${n} / ${cap}명</b>
-    — 훈련 시설 ${trainLv(t)}등급 기준입니다. 시설을 올리면 세 명씩 늘어납니다.</span></div>
+    — 훈련 시설 ${trainLv(t)}등급 기준입니다. 시설을 올리면 코치진도 함께 늘어납니다.</span></div>
   <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
     <button class="mini" onclick="autoIndTrain()">✨ 자리에 맞게 자동 배정</button>
     <button class="mini" onclick="clearIndTrain()">전체 해제</button>
@@ -32690,11 +33026,79 @@ function curCalMonth(){ const dt=dateOfDay(G.day||0); return dt.getFullYear()*12
 /* 🌏 이 날짜에 우리 EACL 경기가 있는가 — 달력 칸에 쓰인다 */
 
 /* ── 🌍 CWC 화면 ───────────────────────────────────────────────────── */
-const CWC_FLAG={ "스페인":"🇪🇸","잉글랜드":"🏴","독일":"🇩🇪","프랑스":"🇫🇷","이탈리아":"🇮🇹","포르투갈":"🇵🇹",
-  "오스트리아":"🇦🇹","아르헨티나":"🇦🇷","브라질":"🇧🇷","이집트":"🇪🇬","모로코":"🇲🇦","남아공":"🇿🇦","튀니지":"🇹🇳",
-  "멕시코":"🇲🇽","미국":"🇺🇸","뉴질랜드":"🇳🇿","호주":"🇦🇺","일본":"🇯🇵","중국":"🇨🇳","태국":"🇹🇭","말레이시아":"🇲🇾","한국":"🇰🇷" };
+/* 🏴 CWC 국기 — ⚠ 제보 원문 — 「CWC 팀별 국가 국기가 표기 안 되는데 EACL 국가 국기 표기방법으로 해줄래?」
+   ─ 원인: 여기만 유니코드 국기 이모지(🇧🇷)를 쓰고 있었다. 윈도우는 국기 이모지를 그리지 않아서
+     "BR" 두 글자로 나오거나 아예 빈칸이 된다. EACL 은 이미 그 이유로 인라인 SVG 를 직접 그리고 있다.
+     같은 방식으로 통일한다 — 아시아 다섯 나라는 EACL 이 그려 둔 그림을 그대로 물려받는다. */
+const CWC_FLAG_SVG=Object.assign({}, (typeof EACL_FLAG_SVG!=="undefined"?EACL_FLAG_SVG:{}), {
+  "스페인":`<rect width="30" height="20" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/>
+    <rect x="6.2" y="7.7" width="3" height="4.6" rx="0.5" fill="#c60b1e"/>`,
+  "잉글랜드":`<rect width="30" height="20" fill="#fff"/><rect x="12" width="6" height="20" fill="#ce1124"/>
+    <rect y="7" width="30" height="6" fill="#ce1124"/>`,
+  "독일":`<rect width="30" height="20" fill="#000"/><rect y="6.67" width="30" height="6.67" fill="#dd0000"/>
+    <rect y="13.34" width="30" height="6.66" fill="#ffce00"/>`,
+  "프랑스":`<rect width="30" height="20" fill="#fff"/><rect width="10" height="20" fill="#002395"/>
+    <rect x="20" width="10" height="20" fill="#ed2939"/>`,
+  "이탈리아":`<rect width="30" height="20" fill="#fff"/><rect width="10" height="20" fill="#009246"/>
+    <rect x="20" width="10" height="20" fill="#ce2b37"/>`,
+  "포르투갈":`<rect width="30" height="20" fill="#da291c"/><rect width="12" height="20" fill="#046a38"/>
+    <circle cx="12" cy="10" r="3.6" fill="#ffe900"/><circle cx="12" cy="10" r="2.1" fill="#046a38"/>
+    <circle cx="12" cy="10" r="1.1" fill="#fff"/>`,
+  "오스트리아":`<rect width="30" height="20" fill="#ed2939"/><rect y="6.67" width="30" height="6.66" fill="#fff"/>`,
+  "아르헨티나":`<rect width="30" height="20" fill="#74acdf"/><rect y="6.67" width="30" height="6.66" fill="#fff"/>
+    <circle cx="15" cy="10" r="2.1" fill="#f6b40e"/><circle cx="15" cy="10" r="1.1" fill="#e0a020"/>`,
+  "브라질":`<rect width="30" height="20" fill="#009b3a"/>
+    <polygon points="15,2.4 27.2,10 15,17.6 2.8,10" fill="#fedf00"/>
+    <circle cx="15" cy="10" r="4.2" fill="#002776"/>
+    <path d="M11.2 9.0 Q15 13.0 18.9 10.3" stroke="#fff" stroke-width="1.1" fill="none"/>`,
+  "이집트":`<rect width="30" height="20" fill="#ce1126"/><rect y="6.67" width="30" height="6.66" fill="#fff"/>
+    <rect y="13.33" width="30" height="6.67" fill="#000"/><circle cx="15" cy="10" r="1.9" fill="#c09300"/>`,
+  "모로코":`<rect width="30" height="20" fill="#c1272d"/>
+    <polygon points="15,5.6 16.55,10.36 21.55,10.36 17.5,13.3 19.05,18.06 15,15.12 10.95,18.06 12.5,13.3 8.45,10.36 13.45,10.36"
+      fill="none" stroke="#006233" stroke-width="0.95"/>`,
+  "남아공":`<rect width="30" height="20" fill="#de3831"/><rect y="10" width="30" height="10" fill="#002395"/>
+    <path d="M0 0 L3.2 0 L16.4 8.4 L30 8.4 L30 11.6 L16.4 11.6 L3.2 20 L0 20 Z" fill="#fff"/>
+    <path d="M0 3.4 L1.4 3.4 L13.8 9.2 L30 9.2 L30 10.8 L13.8 10.8 L1.4 16.6 L0 16.6 Z" fill="#007a4d"/>
+    <path d="M0 2.2 L12.6 10 L0 17.8 Z" fill="#ffb612"/><path d="M0 4.4 L9.6 10 L0 15.6 Z" fill="#000"/>`,
+  "튀니지":`<rect width="30" height="20" fill="#e70013"/><circle cx="15" cy="10" r="5.3" fill="#fff"/>
+    <circle cx="15.3" cy="10" r="3.5" fill="#e70013"/><circle cx="16.7" cy="10" r="2.8" fill="#fff"/>
+    <polygon points="16.5,7.8 17.12,9.62 19.05,9.62 17.49,10.75 18.09,12.57 16.5,11.45 14.91,12.57 15.51,10.75 13.95,9.62 15.88,9.62" fill="#e70013"/>`,
+  "멕시코":`<rect width="30" height="20" fill="#fff"/><rect width="10" height="20" fill="#006847"/>
+    <rect x="20" width="10" height="20" fill="#ce1126"/>
+    <ellipse cx="15" cy="10" rx="2.2" ry="1.9" fill="none" stroke="#7a5c33" stroke-width="0.85"/>`,
+  "미국":`<rect width="30" height="20" fill="#fff"/>
+    <g fill="#b22234"><rect width="30" height="1.54"/><rect y="3.08" width="30" height="1.54"/><rect y="6.15" width="30" height="1.54"/>
+    <rect y="9.23" width="30" height="1.54"/><rect y="12.31" width="30" height="1.54"/><rect y="15.38" width="30" height="1.54"/>
+    <rect y="18.46" width="30" height="1.54"/></g>
+    <rect width="12.6" height="10.77" fill="#3c3b6e"/>
+    <g fill="#fff"><circle cx="2.1" cy="1.9" r="0.55"/><circle cx="5.3" cy="1.9" r="0.55"/><circle cx="8.5" cy="1.9" r="0.55"/><circle cx="11.7" cy="1.9" r="0.55"/>
+    <circle cx="3.7" cy="4.3" r="0.55"/><circle cx="6.9" cy="4.3" r="0.55"/><circle cx="10.1" cy="4.3" r="0.55"/>
+    <circle cx="2.1" cy="6.7" r="0.55"/><circle cx="5.3" cy="6.7" r="0.55"/><circle cx="8.5" cy="6.7" r="0.55"/><circle cx="11.7" cy="6.7" r="0.55"/>
+    <circle cx="3.7" cy="9.1" r="0.55"/><circle cx="6.9" cy="9.1" r="0.55"/><circle cx="10.1" cy="9.1" r="0.55"/></g>`,
+  "뉴질랜드":`<rect width="30" height="20" fill="#00247d"/>
+    <path d="M0 0 L12.6 10 M12.6 0 L0 10" stroke="#fff" stroke-width="2.2"/>
+    <path d="M0 0 L12.6 10 M12.6 0 L0 10" stroke="#cf142b" stroke-width="1"/>
+    <path d="M6.3 0 V10 M0 5 H12.6" stroke="#fff" stroke-width="3.4"/>
+    <path d="M6.3 0 V10 M0 5 H12.6" stroke="#cf142b" stroke-width="1.9"/>
+    <g fill="#cf142b" stroke="#fff" stroke-width="0.4">
+      <circle cx="24.2" cy="4.2" r="1"/><circle cx="26.6" cy="9.6" r="1"/><circle cx="21.6" cy="11.2" r="1"/><circle cx="24.4" cy="15.6" r="1"/></g>`,
+  "호주":`<rect width="30" height="20" fill="#00247d"/>
+    <path d="M0 0 L12.6 10 M12.6 0 L0 10" stroke="#fff" stroke-width="2.2"/>
+    <path d="M0 0 L12.6 10 M12.6 0 L0 10" stroke="#cf142b" stroke-width="1"/>
+    <path d="M6.3 0 V10 M0 5 H12.6" stroke="#fff" stroke-width="3.4"/>
+    <path d="M6.3 0 V10 M0 5 H12.6" stroke="#cf142b" stroke-width="1.9"/>
+    <g fill="#fff"><circle cx="6.3" cy="15.2" r="1.5"/>
+      <circle cx="24.2" cy="4.4" r="0.95"/><circle cx="26.7" cy="9.6" r="0.95"/><circle cx="21.7" cy="11.4" r="0.95"/>
+      <circle cx="24.4" cy="16" r="0.95"/><circle cx="23.4" cy="8.2" r="0.5"/></g>`
+});
 function cwcNat(id){ const t=cwcTeam(id); if(!t) return "-"; return G.teams[id]?"한국":(t.nat||"-"); }
-function cwcFlag(id){ return CWC_FLAG[cwcNat(id)]||"🏳️"; }
+/* EACL 과 완전히 같은 방식·같은 크기로 그린다 (eaclFlag 참고) */
+function cwcFlag(id, big){
+  const b=CWC_FLAG_SVG[cwcNat(id)];
+  const w=big?21:16, h=Math.round(w/1.5);
+  if(!b) return `<span style="display:inline-block;width:${w}px;height:${h}px;border-radius:2px;background:#39414d;margin-right:5px;vertical-align:-1px"></span>`;
+  return `<svg viewBox="0 0 30 20" width="${w}" height="${h}" style="border-radius:2px;margin-right:5px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(255,255,255,.18)">${b}</svg>`;
+}
 function cwcConfOf(id){
   if(G.teams[id]||String(id).indexOf("eacl_")===0) return "AS";
   const d=cwcClubDef(String(id).replace(/^cwc_/,"")); return d?d.cf:"?";
@@ -32707,10 +33111,15 @@ function cwcGroupTable(k){
     const r=cwcRow(id), t=cwcTeam(id);
     return `<tr class="${i<2?"rank-acl":""}" style="${id===me?"background:rgba(80,160,255,.10)":""}">
       <td>${i+1}</td>
-      <td style="text-align:left">${cwcFlag(id)} ${cwcNm(id)}<span class="small" style="opacity:.5"> ${Math.round(teamOVR(t)||0)}</span></td>
+      <td style="text-align:left">${cwcFlag(id)}${cwcNm(id)}<span class="small" style="opacity:.5"> ${Math.round(teamOVR(t)||0)}</span></td>
       <td>${r.W}</td><td>${r.D}</td><td>${r.L}</td><td>${r.GF}:${r.GA}</td><td><b>${r.Pts}</b></td></tr>`;
   }).join("");
-  return `<div style="flex:1 1 260px;min-width:250px">
+  /* ⚠ 제보 원문 — 「순위표 탭의 CWC 항목에서 각 조의 박스가 A, B, C 조는 조그마한데 D 조만
+     커서 A, B, C, D 조의 조별 상황 박스를 균등하게 크기를 맞춰 달라」.
+     ─ 원인: 부모가 flex-wrap 이고 자식이 flex-grow:1 이었다. A·B·C 가 한 줄에 들어가고 D 만
+       다음 줄로 넘어가면, 그 줄에 혼자 남은 D 가 남은 폭을 전부 먹어 혼자 커졌다.
+       칸을 고정하는 grid 로 바꾼다 — 몇 개가 한 줄에 들어가든 네 조가 같은 폭이다. */
+  return `<div class="cwcGrpBox">
     <div class="small" style="font-weight:800;margin-bottom:3px">${k}조</div>
     <div class="tblScroll"><table>
       <tr><th>#</th><th style="text-align:left">클럽</th><th>승</th><th>무</th><th>패</th><th>득실</th><th>점</th></tr>
@@ -32721,7 +33130,7 @@ function cwcCard(){
   const C=G.cwc, me=G.userTeamId, joined=C.teams.indexOf(me)>=0;
   const KEY=["A","B","C","D"];
   /* ① 조별 순위표 */
-  const groups=`<div style="display:flex;gap:10px;flex-wrap:wrap">${KEY.map(cwcGroupTable).join("")}</div>`;
+  const groups=`<div class="cwcGrpGrid">${KEY.map(cwcGroupTable).join("")}</div>`;
   /* ② 내 일정 */
   const myFix=!joined?"":(function(){
     const rows=C.fix.filter(m=>m.h===me||m.a===me).sort((x,y)=>x.r-y.r).map(m=>{
@@ -32729,7 +33138,7 @@ function cwcCard(){
       const res=m.done?`<b style="color:${my>op?"var(--green)":my===op?"var(--gold)":"var(--red)"}">${my} : ${op}</b>`
                       :`<span class="small">${cwcDayLabel(C.day.g[m.r])}</span>`;
       return `<tr><td>조별 ${m.r+1}차전</td><td class="small">${cwcDayLabel(C.day.g[m.r])}</td>
-        <td style="text-align:left">${cwcFlag(opp)} ${cwcNm(opp,true)}</td><td>${res}</td></tr>`;
+        <td style="text-align:left">${cwcFlag(opp)}${cwcNm(opp,true)}</td><td>${res}</td></tr>`;
     }).join("");
     const ko=[];
     for(const st of ["qf","sf","f"]){
@@ -32740,7 +33149,7 @@ function cwcCard(){
         const res=t.done?`<b style="color:${t.w===me?"var(--green)":"var(--red)"}">${my} : ${op}</b>${t.pk?'<span class="small"> (승부차기)</span>':""}`
                         :`<span class="small">${cwcDayLabel(C.day[st])}</span>`;
         ko.push(`<tr><td>${CWC_KO_NAME[st]}</td><td class="small">${cwcDayLabel(C.day[st])}</td>
-          <td style="text-align:left">${cwcFlag(opp)} ${cwcNm(opp,true)}</td><td>${res}</td></tr>`);
+          <td style="text-align:left">${cwcFlag(opp)}${cwcNm(opp,true)}</td><td>${res}</td></tr>`);
       }
     }
     return `<div class="tblScroll" style="margin-top:10px"><table>
@@ -32752,8 +33161,8 @@ function cwcCard(){
     const res=t.done?`<b>${t.hg} : ${t.ag}</b>${t.pk?'<span class="small"> (승부차기)</span>':""}`
                     :`<span class="small">${cwcDayLabel(C.day[st])}</span>`;
     const hi=(x)=>x===me?`<b style="color:var(--gold)">${cwcNm(x)}</b>`:cwcNm(x);
-    return `<tr><td class="small">${nm}</td><td style="text-align:right">${cwcFlag(t.h)} ${hi(t.h)}</td>
-      <td>${res}</td><td style="text-align:left">${hi(t.a)} ${cwcFlag(t.a)}</td></tr>`;
+    return `<tr><td class="small">${nm}</td><td style="text-align:right">${cwcFlag(t.h)}${hi(t.h)}</td>
+      <td>${res}</td><td style="text-align:left">${cwcFlag(t.a)}${hi(t.a)}</td></tr>`;
   };
   let ko="";
   if(C.stage!=="grp"){
@@ -32761,7 +33170,7 @@ function cwcCard(){
       ${(C.ko.qf||[]).map(t=>tie(t,"8강","qf")).join("")}
       ${(C.ko.sf||[]).map(t=>tie(t,"4강","sf")).join("")}
       ${tie(C.ko.f,"결승","f")}</table></div>`;
-    if(C.champ) ko+=`<div style="margin-top:6px">🏆 우승 — <b>${cwcFlag(C.champ)} ${cwcNm(C.champ,true)}</b></div>`;
+    if(C.champ) ko+=`<div style="margin-top:6px">🏆 우승 — <b>${cwcFlag(C.champ,true)}${cwcNm(C.champ,true)}</b></div>`;
   }
   /* ④ 참가 클럽 등록 정보 */
   const uidCell=(u)=>`<span class="small" style="opacity:.5">#${u}</span>`;
@@ -32774,7 +33183,7 @@ function cwcCard(){
              else { const c=(typeof coachOf==="function")?coachOf(t):null; mgN=(c&&c.n)||mgrName(t); } }
     else mgN=(t.coach&&t.coach.n)||"미상";
     const own=isK?(clubType(t).o):((t.own&&t.own.n)||"-");
-    return `<tr><td style="text-align:left">${cwcFlag(id)} ${cwcNm(id)} ${uidCell(t.uid||0)}</td>
+    return `<tr><td style="text-align:left">${cwcFlag(id)}${cwcNm(id)} ${uidCell(t.uid||0)}</td>
       <td class="small">${cwcNat(id)}</td><td style="text-align:left">${mgN}</td>
       <td style="text-align:left">${sd.n} <span class="small" style="opacity:.6">${(sd.cap||0).toLocaleString()}석</span></td>
       <td style="text-align:left">${own}</td></tr>`;
@@ -33076,7 +33485,7 @@ function cwcRankCard(kind, n){
         return `<tr style="${mine?"background:rgba(80,160,255,.10);font-weight:700":""}">
           <td>${i+1}</td>
           <td style="text-align:left"${(mine&&x.pid!=null)?` class="clickable" onclick="showPlayerInfoPopup(event,${x.pid})"`:""}>${x.nm}<span class="small pos-${x.pos}" style="margin-left:4px">${x.pos}</span></td>
-          <td style="text-align:left">${cwcFlag(x.tid)} ${cwcNm(x.tid)}</td>
+          <td style="text-align:left">${cwcFlag(x.tid)}${cwcNm(x.tid)}</td>
           <td>${x.apps}</td>
           <td><b>${goal?x.goals:x.assists}</b></td>
           <td class="small">${goal?x.assists:x.goals}</td></tr>`;
@@ -33137,7 +33546,7 @@ function cwcSchedCard(){
       ? `<b style="color:${r.my>r.op?"var(--green)":r.my===r.op?"var(--gold)":"var(--red)"}">${r.my} : ${r.op}</b>${r.pk?'<span class="small"> (승부차기)</span>':""}`
       : `<span class="small" style="opacity:.7">${dateLabel(r.day)}${r.day>=(G.day||0)?` · D-${r.day-(G.day||0)}`:""}</span>`;
     return `<tr><td class="small">${r.label}</td><td class="small">${dateLabel(r.day)}</td>
-      <td style="text-align:left">${cwcFlag(r.opp&&r.opp.id)} ${r.opp?(r.opp.short||r.opp.name):"-"}
+      <td style="text-align:left">${cwcFlag(r.opp&&r.opp.id)}${r.opp?(r.opp.short||r.opp.name):"-"}
         <span class="small" style="opacity:.5">${r.opp?Math.round(teamOVR(r.opp)):""}</span></td><td>${res}</td></tr>`;
   }).join("");
   return `<div class="card"><h3>🌍 ${cwcName()} <span class="small" style="color:var(--gold)">— ${stageN}${gk?` · ${gk}조 ${pos}위`:""}</span></h3>
@@ -34775,13 +35184,52 @@ function armyApply(pid){
     }, {okLabel:"🎖️ 신청한다", cancelLabel:"취소"});
 }
 /* 정원이 심각하게 비면 연맹이 채워 준다 — 감독이 손을 놓아도 경기는 해야 한다 */
+/* 🎖️ 연맹 강제 배정 — 상무의 정원과 자리가 비면 채운다
+   ⚠ 제보 원문 — 「김천 상무는 유스 콜업이 없는 팀이라서 김천 상무의 유스 콜업이 있다면 없애주시면
+      감사하겠습니다」.
+   ─ 원인이 둘이었다.
+     ① aiSquadFill(AI 구단 스쿼드 보충)이 상무에도 돌아, 입대한 적 없는 선수를 무에서 만들어 냈다.
+        자리를 유스 자리표(youthPickSlot)로 뽑았으니 사실상 유스 콜업이었다. → 그쪽을 막았다.
+     ② 그런데 이 함수는 armyUserClub() — 「내가 상무일 때만」 — 을 보고 있었다. 상무가 AI면 아예
+        돌지 않아서, 빈자리를 전부 ①이 대신 메우고 있었다.
+   상무의 선수는 오직 입대로만 온다. 모자라면 연맹이 다른 구단 현역을 데려온다 — 새로 만들지 않는다.
+   ⚠ 유저 팀 선수는 어느 경우에도 강제 징집하지 않는다 (감독 동의 없는 차출 금지). */
+const ARMY_POS_MIN={GK:3, DF:6, MF:6, FW:3};
+function armyClub(){ try{ for(const id in G.teams) if(isArmyTeam(G.teams[id])) return G.teams[id]; }catch(e){} return null; }
 function armyAutoFloor(){
-  const gc=armyUserClub(); if(!gc) return;
-  if(gc.players.length>=ARMY_MIN) return;
-  const need=ARMY_MIN-gc.players.length;
-  const cands=armyCandList().sort((a,b)=>(a.p.apps||0)-(b.p.apps||0));
+  const gc=armyClub(); if(!gc || !Array.isArray(gc.players)) return;
+  /* 유저가 상무면 스스로 입대 지원을 받으므로 하한만 지킨다.
+     AI가 상무면 스스로 모집할 창구가 없으니 실제 등록 규모(24명)까지 연맹이 채운다. */
+  const floor = gc.isUser ? ARMY_MIN : 24;
+  const posN=(k)=>gc.players.filter(p=>p && p.pos===k).length;
+  const wantPos=[];
+  for(const k in ARMY_POS_MIN) for(let i=posN(k); i<ARMY_POS_MIN[k]; i++) wantPos.push(k);
+  if(!wantPos.length && gc.players.length>=floor) return;
+  /* 자격을 갖춘 지원 대상이 1순위. 그래도 못 채우면 연맹이 조건을 넓혀 강제 배정한다. */
+  const wide=[];
+  try{ for(const id in G.teams){ const t=G.teams[id];
+    if(t===gc || t.isUser) continue;
+    for(const p of (t.players||[])){
+      const age=G.season-p.by;
+      if(p.loan || p.frn || p.armyDone || p.army || p.armyCall) continue;
+      if(age<20 || age>27) continue;
+      if((t.players||[]).length<=20) continue;      // 원소속을 빈껍데기로 만들지는 않는다
+      wide.push({p,t});
+    } } }catch(e){}
+  const strict=wide.filter(c=>{ try{ return armyEligible(c.p, c.t); }catch(e){ return false; } });
   const got=[];
-  for(const c of cands){ if(got.length>=need) break; if(c.t.players.length<=22) continue; armyEnlist(c.p, c.t, gc); got.push(c.p.name); }
+  const take=(pool, want)=>{
+    if(gc.players.length>=ARMY_CAP) return false;
+    const c=pool.filter(x=>(!want || x.p.pos===want) && x.t.players.indexOf(x.p)>=0)
+                .sort((a,b)=>(a.p.apps||0)-(b.p.apps||0))[0];
+    if(!c) return false;
+    try{ armyEnlist(c.p, c.t, gc); }catch(e){ return false; }
+    got.push(`${c.p.name}(${c.p.pos})`);
+    return true;
+  };
+  for(const k of wantPos){ if(!take(strict,k)) take(wide,k); }
+  let g=0;
+  while(gc.players.length<floor && g++<40){ if(!take(strict,null) && !take(wide,null)) break; }
   if(got.length) addNews(`🎖️ 국군체육부대, 부족 인원 ${got.length}명 긴급 배정 — ${got.join(", ")}`, "warn", "club");
 }
 let armyPg=1;
@@ -36776,13 +37224,13 @@ const REQ_ARG=[
     else { s-=0.25; w.push("정상급이라 부르기 어려운 순위"); }
     if((G.trophies||[]).some(x=>x.kind==="champ"||x.kind==="champ2")){ s+=0.18; w.push("우승 경력 구단"); }
     if(c.u23>=5){ s+=0.15; w.push(`키울 유망주 ${c.u23}명`); }
-    if(c.trainLv<=2){ s+=0.12; w.push("시설이 순위에 한참 못 미친다"); }
+    if(c.trainLv<=4){ s+=0.12; w.push("시설이 순위에 한참 못 미친다"); }
     return {s:clamp(s,-1,1), why:w}; }},
  {k:"trainOld", n:"🏋️ 훈련장이 팀의 발목을 잡고 있다", kinds:["train"], w:1.0, only:"any",
   say:"지금 훈련장으로는 선수를 키울 수 없습니다. 남들이 시설에서 얻는 1%를 우리는 매일 잃고 있습니다. 증축해 주시면 이적료 없이 전력이 오릅니다.",
   ev:(c)=>{ const w=[]; let s=0.28;
-    if(c.trainLv<=1){ s+=0.35; w.push("훈련시설이 최하 등급"); }
-    else if(c.trainLv>=4){ s-=0.40; w.push(`이미 훈련시설 ${c.trainLv}등급`); }
+    if(c.trainLv<=2){ s+=0.35; w.push("훈련시설이 최하 등급"); }
+    else if(c.trainLv>=8){ s-=0.40; w.push(`이미 훈련시설 ${c.trainLv}등급`); }
     if(c.injN>=4){ s+=0.30; w.push(`부상자 ${c.injN}명 — 시설 문제라는 명분`); }
     if(c.u23>=6){ s+=0.20; w.push(`23세 이하 ${c.u23}명 — 키울 재료가 있다`); }
     if(c.avgAge>=28.5){ s-=0.15; w.push("노장 위주 스쿼드 — 투자 명분이 약하다"); }
@@ -36790,8 +37238,8 @@ const REQ_ARG=[
  {k:"future", n:"🌱 자체 생산으로 자생하자", kinds:["youth"], w:1.0, only:"any",
   say:"외부 영입에만 기대서는 이 구단이 자생할 수 없습니다. 유스와 훈련 시설에 투자하면 몇 년 뒤에는 우리가 키운 선수를 팔아 이적료를 벌게 됩니다. 가장 남는 장사입니다.",
   ev:(c)=>{ const w=[]; let s=0.30;
-    if(c.youthLv<=1){ s+=0.30; w.push("유스 시설이 아직 최하 등급"); }
-    else if(c.youthLv>=4){ s-=0.35; w.push(`이미 유스 ${c.youthLv}단계 — 더 올릴 명분이 약하다`); }
+    if(c.youthLv<=2){ s+=0.30; w.push("유스 시설이 아직 최하 등급"); }
+    else if(c.youthLv>=8){ s-=0.35; w.push(`이미 유스 ${c.youthLv}단계 — 더 올릴 명분이 약하다`); }
     if(c.avgAge>=28.5){ s+=0.35; w.push(`스쿼드 평균 ${c.avgAge}세 — 세대교체가 급하다`); }
     if(c.u23>=6){ s+=0.20; w.push(`23세 이하 ${c.u23}명 — 키울 재료가 있다`); }
     if(c.budRank>=c.N-3){ s+=0.25; w.push("돈으로 경쟁할 수 없는 구단 사정"); }
@@ -36898,7 +37346,9 @@ function reqCtx(){
 }
 /* 요청 규모 — 구단 체급에 비례한다 */
 function reqAmount(kind, c){
-  const base = kind==="youth" ? Math.max(3, Math.round(budPool(c.t)*0.10))
+  /* 🔟 유스·훈련시설은 10단계가 되며 한 단계가 예전의 반 걸음이다 — 요청 금액도 절반 */
+  const base = kind==="youth" ? Math.max(2, Math.round(budPool(c.t)*0.05))
+             : kind==="train" ? Math.max(2, Math.round(budPool(c.t)*0.10))
                               : Math.max(3, Math.round(budPool(c.t)*0.20));
   return Math.round(base*10)/10;
 }
@@ -36911,7 +37361,8 @@ function reqChance(kind, arg, c, detail){
   /* 시설 투자는 갈수록 비싸진다 — 1→2등급은 쉽게 내주지만 4→5등급은 큰돈이다 */
   if(kind!=="budget"){
     const lvNow={youth:c.t.youthLv||1, train:trainLv(c.t), scout:scoutLv(c.t)}[kind]||1;
-    p += add(`현재 ${lvNow}등급 (높을수록 비싸다)`, -(lvNow-1)*0.05);
+    const lvPen=(kind==="scout") ? lvNow : lvEff(lvNow);   // 🔟 10단계는 효과 축으로 환산해 벌점
+    p += add(`현재 ${lvNow}등급 (높을수록 비싸다)`, -(lvPen-1)*0.05);
     if(kind==="train" && (G.stad && G.stad.phase && G.stad.phase!=="done"))
       p += add("구장 공사와 동시 진행 부담", -0.10);
   }
@@ -37024,10 +37475,12 @@ function renderBudgetRequest(){
       <div class="small">🎖️ 국군체육부대에는 ${k==="youth"?"유스 아카데미":"해외 스카우트"}를 둘 수 없습니다.</div></button>`;
     /* 예산은 금액을, 시설류는 "지금 등급 → 다음 등급"을 보여 준다 — 무엇이 어떻게 변하는지 명확하게 */
     const lvOf={youth:c.t.youthLv||1, train:trainLv(c.t), scout:scoutLv(c.t)}[k];
-    const maxed = lvOf!=null && lvOf>=5;
+    const lvMax = k==="scout" ? 5 : FAC_MAX;   // 🔟 유스·훈련시설은 10단계
+    const maxed = lvOf!=null && lvOf>=lvMax;
     let tail;
     if(k==="budget") tail=`<span class="reqAmt">+${reqAmount(k,c)}억</span>`;
-    else tail=`<span class="reqAmt">${maxed?"최고 등급":`${"◆".repeat(lvOf)}${"◇".repeat(5-lvOf)} → ${lvOf+1}등급`}</span>`;
+    else if(k==="scout") tail=`<span class="reqAmt">${maxed?"최고 등급":`${"◆".repeat(lvOf)}${"◇".repeat(5-lvOf)} → ${lvOf+1}등급`}</span>`;
+    else tail=`<span class="reqAmt">${maxed?"최고 등급":`${facStars(lvOf)} → ${lvOf+1}등급`}</span>`;
     return `<button class="mini reqOpt ${reqUI.kind===k?"sel":""}" ${(cool||maxed)?"disabled":""} onclick="reqPick('kind','${k}')">
       <b>${K.ic} ${K.n}</b> ${tail}
       <div class="small">${cool?`⏳ ${cool}일 뒤 다시 요청할 수 있습니다`:maxed?"더 올릴 곳이 없습니다 — 리그 최고 수준입니다":K.d}</div></button>`;
@@ -37238,8 +37691,8 @@ function resolveBudgetRequest(p){
       if(G.scout) G.scout.key="";                    // 등급이 올랐으니 다음 창부터 보고서가 달라진다
       fx.push(`스카우팅 등급 ${t.scoutLv}단계 (동시 파견 ${t.scoutLv}곳)`);
     }
-    else if(p.kind==="train"){ t.trainLv=clamp(trainLv(t)+1,1,5); fx.push(`훈련시설 ${t.trainLv}등급`); }
-    else if(!isArmyTeam(t)){ t.youthLv=clamp((t.youthLv||1)+1,1,5); fx.push(`유스 등급 ${t.youthLv}단계`); }
+    else if(p.kind==="train"){ t.trainLv=clamp(trainLv(t)+1,1,FAC_MAX); fx.push(`훈련시설 ${t.trainLv}등급`); }
+    else if(!isArmyTeam(t)){ t.youthLv=clamp((t.youthLv||1)+1,1,FAC_MAX); fx.push(`유스 등급 ${t.youthLv}단계`); }
     adjustTrust("owner", civic?-2:1, `${K.n} 승인 (${p.amt}억)`);
   } else {
     adjustTrust("owner", arg.danger?-14:-3, `${K.n} 요청 거절${arg.danger?" (최후통첩)":""}`);
@@ -37388,19 +37841,21 @@ function youth(){
   return `<h2>🌱 유스 & 유망주</h2>
   <div class="row">
     ${(function(){
-      const yl=clamp(t.youthLv||1,1,5), Y=YOUTH_LABEL[yl];
-      const n=`${1+[0,0,1,2,2,3][yl]}~${3+[0,0,1,2,2,3][yl]}명`;
+      const yl=clamp(t.youthLv||1,1,FAC_MAX), Y=YOUTH_LABEL[yl];
+      const e=lvEff(yl);   // 🔟 효과 축 (예전 1~5)
+      const n=`${1+[0,0,1,2,2,3][Math.round(e)]}~${3+[0,0,1,2,2,3][Math.round(e)]}명`;
       return `<div class="card"><h3>🌱 유스 아카데미</h3>
-        <div style="font-size:22px;color:${Y.c}">${"★".repeat(yl)}${"☆".repeat(5-yl)} <span class="small">${yl}등급 · ${Y.n}</span></div>
+        <div style="font-size:22px">${facStars(yl,22)} <span class="small" style="color:${Y.c}">${yl}등급 · ${Y.n}</span></div>
         <p class="small" style="margin-top:6px">${Y.d}</p>
-        <p class="small" style="opacity:.7"><b>발굴</b> — 매 시즌 <b>${n}</b> 콜업 · 잠재력 천장 ${Math.round(74+(yl-1)*2.4)} · 특급 확률 ${Math.round((0.012+(yl-1)*0.028)*100)}%<br>🏦 재정 → 예산 증액 요청에서 올립니다.</p></div>`;
+        <p class="small" style="opacity:.7"><b>발굴</b> — 매 시즌 <b>${n}</b> 콜업 · 잠재력 천장 ${Math.round(70+(e-1)*1.8)} · 특급 확률 ${Math.round((0.008+(e-1)*0.016)*1000)/10}%<br>🏦 재정 → 예산 증액 요청에서 올립니다. <span style="opacity:.8">6단계부터 빨간별 — 10단계가 최고입니다.</span></p></div>`;
     })()}
     ${(function(){
       const tl=trainLv(t), L=TRAIN_LABEL[tl];
+      const te=lvEff(tl);   // 🔟 효과 축 (예전 1~5)
       return `<div class="card"><h3>🏋️ 훈련시설</h3>
-        <div style="font-size:22px;color:${L.c}">${"★".repeat(tl)}${"☆".repeat(5-tl)} <span class="small">${tl}등급 · ${L.n}</span></div>
+        <div style="font-size:22px">${facStars(tl,22)} <span class="small" style="color:${L.c}">${tl}등급 · ${L.n}</span></div>
         <p class="small" style="margin-top:6px">${L.d}</p>
-        <p class="small" style="opacity:.7"><b>육성</b> — 성장 속도 ×${Math.round((0.88+(tl-1)*0.07)*100)/100} · 훈련 부상 ×${Math.round((1.12-(tl-1)*0.05)*100)/100} · 특급 확률 +${Math.round((tl-1)*1.4)}%p</p></div>`;
+        <p class="small" style="opacity:.7"><b>육성</b> — 성장 속도 ×${Math.round((0.88+(te-1)*0.07)*100)/100} · 훈련 부상 ×${Math.round((1.12-(te-1)*0.05)*100)/100} · 특급 확률 +${Math.round((te-1)*0.9*10)/10}%p</p></div>`;
     })()}
   </div>
   <div class="msg info">시즌이 끝날 때마다 유스 아카데미에서 2~3명이 콜업됩니다. 외국 국적 유소년도 만 18세까지 국내 유스에서 합계 5년(또는 연속 3년) 이상 성장하면 <b>🌱 홈그로운</b>으로 인정되어 국내 선수로 등록됩니다 — 외국인 쿼터를 차지하지 않으며 이름이 초록색으로 표시됩니다. 23세 이하 선수는 매 시즌 잠재력까지 성장합니다. 잘 키운 유망주는 이적 자금과 팀의 미래가 됩니다.</div>
@@ -48921,6 +49376,11 @@ class MatchSim{
     this.M.min=clamp(m, 0, 999);
     this.M.half = this.clock < this.htSec ? 1 : 2;
     this.M.minTxt=this.clockLabel();
+    /* ⏱️ 제보 — 추가시간을 분 단위 표(matchMinLabel)에도 내려 준다.
+       예전에는 분 단위 엔진에서만 채워져, 연속 엔진의 다른 화면들이 「90+3」을 못 찍었다. */
+    if(this._a1!=null) this.M.a1=Math.max(1, Math.round(this._a1/60));
+    if(this._a2!=null) this.M.a2=Math.max(1, Math.round(this._a2/60));
+    if(this._a3!=null) this.M.a3=Math.max(1, Math.round(this._a3/60));
   }
   /* ⏱️ 전광판에 찍히는 글자 — 추가시간은 45+1 · 90+3 · 105+1 · 120+2 로 보인다.
      ⚠ 제보 — 「추가시간이 46 으로 표시된다」. 흐른 초를 그대로 분으로 바꿔 찍고 있었다.
@@ -48955,7 +49415,17 @@ class MatchSim{
     this.syncStats();                      // 이 줄이 나가는 시점의 통계를 확정해 둔다
     ev(this.M, side?this.rec(side):null, txt, type||"txt", false, scene||null);
     const e=this.M.events[this.M.events.length-1];
-    if(e) e.simT=this.t;      // 통계 스냅샷은 ev() 가 이미 붙여 두었다
+    if(e){
+      e.simT=this.t;          // 통계 스냅샷은 ev() 가 이미 붙여 두었다
+      /* ⏱️ ⚠ 제보 원문 — 「가끔 실제 경기 시간과 경기 화면 해설 문구의 시간이 맞지 않는다.
+         동일하게 흘러갈 수 있도록 교정해 달라」.
+         원인 — 전광판은 초 단위 시계(clockLabel)로 「90+3」을 찍는데, 해설 줄의 시간 배지는
+            분 단위 표(matchMinLabel)를 따로 쓰고 있었다. 그 표가 보는 추가시간(M.a1/M.a2)은
+            분 단위 엔진에서만 채워지는 값이라, 연속 2D 엔진에서는 비어 있기 일쑤였다 —
+            그래서 전광판이 「90+3」일 때 해설 줄은 「93」으로 찍혔다.
+         ─ 해설 줄도 전광판과 똑같은 시계를 쓴다. 한 곳에서 나온 글자라 어긋날 수가 없다. */
+      try{ e.min=this.clockLabel(); }catch(_){}
+    }
   }
   /* ── 하이라이트 녹화 ──────────────────────────────────────────
      FM처럼 "빌드업부터 결말까지" 되감아 보여주려면, 결정적 장면이 터진 뒤에
@@ -51765,10 +52235,29 @@ class MatchSim{
     const st=this.stats[gk.side];
     // 잡을지 놓칠지 — 공중 장악력이 8할, 붙어 있는 사람 수가 나머지
     if(Math.random() < clamp(0.32+aer*0.55-crowd*0.05, 0.15, 0.94)){
-      /* 🧤 특성 — 「캐치보다 펀칭」은 주먹으로, 「품에 안는다」는 끝까지 잡는다 */
+      /* 🧤 특성 — 「캐치보다 펀칭」은 주먹으로, 「품에 안는다」는 끝까지 잡는다.
+         ⚠ 제보 — 「펀칭이 경기장 중간 터치라인까지 날아가는 게 어색하다」.
+            예전에는 clearBall(수비수의 다급한 걷어내기)을 그대로 썼다 — 세게 차서 멀리 보내는
+            동작이라 하프라인까지 갔다. 주먹으로 치는 공은 그렇게 멀리 가지 않는다.
+            ─ 박스 언저리(12~20m)까지만 밀어낸다. 골라인에 바짝 붙은 공은 아예 옆으로 넘겨 코너. */
       if(Math.random() < clamp((gk.gkPunch||0.5)*0.55 + FX(gk,"gkFist")*0.30, 0.02, 0.85)){
         st.shotPunched=(st.shotPunched||0)+1;
-        this.clearBall(gk);                            // 펀칭 — 멀리 걷어낸다
+        const adv2 = gk.dir>0 ? b.x : 1-b.x;
+        if(adv2<0.045 && Math.random()<0.55){          // 골라인 코앞 — 처리하기 어렵다. 옆으로 넘긴다
+          st.shotTipped=(st.shotTipped||0)+1;
+          const gx2 = gk.dir>0 ? 0 : 1;
+          const sideY2 = (b.y<0.5) ? -1 : 1;
+          b.y=clamp01(0.5 + sideY2*(GOAL_HALF+0.012));
+          b.x=clamp01(gx2 + (gx2>0.5?-1:1)*0.008);
+          b.vx=0; b.vy=0; b.vz=0; b.z=0; b.aerial=false;
+          this.cornerKick(this.opp(gk.side), gx2, b.y);
+          return true;
+        }
+        const away2 = (gk.dir>0) ? 0 : Math.PI;        // 골문 반대(앞) 방향
+        const ang2 = away2 + (Math.random()-0.5)*1.5;  // 앞쪽으로 부채꼴
+        this.evl("CLEAR", gk, {gk:1, punch:1});
+        this.cap(gk.side, COMM.lvClear, {p:this.nm(gk)}, true);
+        this.launchLoose(b.x, b.y, ang2, 12+Math.random()*8, this.opp(gk.side), true);
       } else {
         st.shotCaught=(st.shotCaught||0)+1;
         this.giveTo(gk, {noTouch:true});               // 캐치 — 손으로 잡는다(퍼스트터치 아님)
@@ -53740,17 +54229,23 @@ class MatchSim{
         if(deflected) hold -= 0.20;
         if(type===SHOT_TYPE.POWER) hold += 0.12;
         if(type===SHOT_TYPE.CHIP) hold += 0.10;   // 느리게 떠오는 공은 잡기 쉽다
+        /* 🧤 ⚠ 제보 원문 — 「골키퍼가 손으로 펀칭해서 경기장 중간 터치라인까지 튕겨내는 장면이
+           어색하다. 처리하기 쉬운 볼이면 잡고, 어려운 볼이면 코너킥이 되게 튕겨냈으면」.
+           ─ 「처리하기 쉬운 공」의 기준을 분명히 한다: 힘없이 오고, 정면이고, 여유 있게 닿은 공. */
+        if(power<0.88) hold += 0.16;                       // 힘이 실리지 않은 공 — 품에 안는다
+        if(nearPost<0.30) hold += 0.10;                    // 정면으로 온 공
+        if(_mg>0.55) hold += 0.10;                         // 여유 있게 닿았다
         /* 🧤 ⚠ 제보 — 「키퍼가 슛을 하프라인 근처 터치라인까지 뻥 차서 막는 장면이 잦다.
            실축에서는 잡기 어려우면 옆으로 쳐내 코너를 만들고, 잡기 쉬우면 잡아 골킥으로 넘긴다」.
            ─ 잡을 수 있으면 잡고(CATCH), 못 잡을 공은 「옆으로 흘려 코너」(TIP)를 1순위로 둔다.
              주먹으로 멀리 걷어내는 펀칭은 정말 그럴 수밖에 없는 공에만 남긴다. */
-        if(gk && Math.random() < clamp(hold, 0.04, 0.85)){ st.shotCaught++; outcome=SAVE_TYPE.CATCH; }
+        if(gk && Math.random() < clamp(hold, 0.04, 0.90)){ st.shotCaught++; outcome=SAVE_TYPE.CATCH; }
         else if(!isPen && margin<0.18){ st.shotTipped++; outcome=SAVE_TYPE.TIP; }   // 손끝에 겨우 걸렸다
-        else if(nearPost>0.55 && Math.random()<0.74){ st.shotTipped++; outcome=SAVE_TYPE.TIP; }
-        /* 구석은 아니어도 「잡지 못한 강슛」은 대개 옆으로 밀어 라인 밖으로 보낸다 */
-        else if(power>1.10 && Math.random()<0.42+clamp((power-1.10)*0.55,0,0.22)){ st.shotTipped++; outcome=SAVE_TYPE.TIP; }
-        /* 펀칭 — 정면으로 오는 아주 강한 공이거나, 주먹을 즐겨 쓰는 키퍼일 때 */
-        else if(power>1.30 && Math.random()<0.12+(gk.gkPunch||0.5)*0.32){ st.shotPunched++; outcome=SAVE_TYPE.PUNCH; }
+        else if(nearPost>0.55 && Math.random()<0.80){ st.shotTipped++; outcome=SAVE_TYPE.TIP; }
+        /* 구석은 아니어도 「잡지 못한 강슛」은 옆으로 밀어 라인 밖으로 — 코너킥이 된다 (제보) */
+        else if(power>1.05 && Math.random()<0.58+clamp((power-1.05)*0.60,0,0.28)){ st.shotTipped++; outcome=SAVE_TYPE.TIP; }
+        /* 🧤 제보 — 슛을 주먹으로 멀리 걷어내는 그림은 없앴다. 못 잡으면 몸 앞에 흘리거나(리바운드)
+           옆으로 밀어 코너를 준다. 펀칭은 크로스를 걷어낼 때만 남는다. */
         else { st.shotParried++; outcome=SAVE_TYPE.PARRY; }
         // 슈퍼세이브 — 막힐 리 없던 슛을 막아냈다
         if((g.distM<14 && g.angle>0.45) || (power>1.32 && nearPost>0.68)) st.superSave++;
@@ -54543,11 +55038,21 @@ class MatchSim{
     const b=this.ball;
     return !!(b && (b.foulScene || b.isPenalty || (b.setPiece && b.setPiece.kind==="penalty") || b.state==="SHOT" || b.celebrate));
   }
+  /* 🅿️ 지금 「선언된 페널티킥」이 남아 있는가 — 선언부터 공이 발을 떠날 때까지.
+     ⚠ 제보 원문 — 「후반 극후반·추가시간에 페널티킥이 주어졌는데 보지 않고 그냥 건너뛰어서
+        경기가 종료되는 버그. 페널티킥을 차는 동안은 경기가 종료되지 않게 해 달라」.
+     종료 판정을 하는 곳이 여럿이라(라이브 루프·하이라이트 꼬리·위임 run·고정 시간 run)
+     한 군데라도 이 판정을 빼먹으면 휘슬이 먼저 울린다. 그래서 종료 자체를 막는다. */
+  penPending(){
+    const b=this.ball;
+    return !!(b && (b.isPenalty || (b.setPiece && b.setPiece.kind==="penalty")));
+  }
   run(seconds){
     /* ⚠ 연장에 들어가면 종료 시각이 늘어난다 — 시작할 때 잡아 둔 값을 쓰면 연장을 못 뛴다 */
     const fixedEnd=seconds||0;
     let guard=0;
-    while((this.clock<(fixedEnd||this.endSec) || (!seconds && (this.varPending || this.pkHold()))) && guard++<200000){
+    /* 🅿️ 제보 — 고정 시간 run(seconds) 에서도 선언된 PK 는 반드시 차고 끝난다 */
+    while((this.clock<(fixedEnd||this.endSec) || this.varPending || this.pkHold()) && guard++<200000){
       this.tick();
       // 하프타임 — 해설에 한 줄 남긴다 (실제 경기 모드일 때만)
       if(this.emitEvents) this.stoppageCheck();
@@ -54574,7 +55079,12 @@ class MatchSim{
     }catch(e){}
   }
   /* 경기 종료 — M을 시즌 시스템이 읽을 수 있는 완성된 상태로 만든다 */
-  finishMatch(){
+  finishMatch(force){
+    /* 🅿️ 최후 방어선 — 차지 않은 페널티킥이 남아 있으면 휘슬을 불지 않는다 (제보).
+       어느 경로로 들어와도 여기서 한 번 더 막는다. 다만 상태가 꼬여 영영 안 끝나는 일은 없도록
+       충분히 큰 상한을 둔다(약 6분치 틱). */
+    if(!force && this.penPending() && (this._ftWait=(this._ftWait||0)+1) < 900) return;
+    this._ftWait=0;
     this.settleVar();          // 📺 결론 없이 끝나는 판독이 없게 한다 (제보)
     this.restoreAITactics();
     const M=this.M;
@@ -55543,7 +56053,9 @@ function updateTopBar(t, r, fix){
           const i=eaclTableSorted().indexOf(o.id); if(i>=0) return `(${i+1}위)`;   // 토너먼트면 라벨(8강 등)이 대신 말한다
         }
       }catch(e){} return ""; };
-      const oppTxt=nx.opp&&nx.opp.o ? ` · ${nx.opp.home?"홈":"원정"} ${nx.opp.o.short}${_rk(nx.opp.o)}` : "";
+      /* ⚠ 제보 — 「홈 OO(12위) 처럼 붙어 있는데 홈 OO (12위) 로 띄어 주세요」 */
+      const _rkTxt=(o)=>{ const s=_rk(o); return s?` ${s}`:""; };
+      const oppTxt=nx.opp&&nx.opp.o ? ` · ${nx.opp.home?"홈":"원정"} ${nx.opp.o.short}${_rkTxt(nx.opp.o)}` : "";
       sub = left===0
         ? `⚽ 오늘 ${nx.tag}${nx.label}${oppTxt}`
         : `${nx.tag}${nx.label}까지 ${left}일${oppTxt}`;
@@ -56158,7 +56670,7 @@ const REF_TRAIT=[
   {k:"vet",    n:"베테랑",   d:"산전수전 다 겪었다. 웬만한 일에는 눈도 깜짝 안 한다.", tol:+0.20},
   {k:"rookie", n:"신인",     d:"아직 휘슬을 부는 손이 떨린다.",                tol:-0.04}
 ];
-function trainLv(t){ t=t||userTeam(); return clamp((t&&t.trainLv)||1, 1, 5); }
+function trainLv(t){ t=t||userTeam(); return clamp((t&&t.trainLv)||1, 1, FAC_MAX); }
 function refState(){
   if(!G.refs) G.refs={rel:0, n:0, log:[]};
   if(typeof G.refs.rel!=="number") G.refs.rel=0;
@@ -57106,6 +57618,13 @@ function showPreMatchTactics(M, tag){
 }
 function renderPreMatchTactics(){
   const M=pendingLiveM; if(!M){ inPreTactics=false; return; }
+  /* 🟥 제보 — 「경기 당일 선발 명단을 눌렀는데도 출장정지가 안 풀린다」.
+     이 화면은 show() 를 거치지 않고 직접 그려진다 — 여기서도 문맥을 새로 잡는다.
+     대회가 다르면(친선 포함) 그 정지는 이 경기와 무관하다. */
+  try{
+    if(M.opts && M.opts.friendly){ BAN_CTX="friendly"; }
+    else banCtxSync();
+  }catch(e){}
   const t=userTeam();
   const fx=flashHtml();
   const opp = M.home.isUser ? M.away : M.home;
@@ -58055,7 +58574,14 @@ function startHighlight(){
   //    트리거는 "슛을 때리기로 결정한 순간"이라 공은 아직 발 앞에 있다. 여기서 시간으로 잘라 버리면
   //    날아가는 도중에 화면이 끊긴다. 대신 공이 실제로 잠잠해질 때까지 따라간다 —
   //    슛 → 키퍼 선방 → 리바운드 → 정리, 또는 골대 맞고 튕겨 나가 골라인 아웃까지가 한 장면이다.
-  const tMin=s.t+HL_TAIL_MIN, tMax=s.t+HL_TAIL_MAX;
+  /* 🅿️ ⚠ 제보 원문 — 「추가시간에 페널티킥이 주어졌는데 보지 않고 그냥 건너뛰어서 경기가 종료된다.
+     끝까지 페널티킥을 하이라이트로 충분히 보고 종료되게 해 달라」.
+     원인 — 하이라이트는 「공이 잠잠해지면」 끊는다(HL_SETTLE 2.2초). 그런데 PK 는 선언 직후
+        공이 점 위에 놓인 채 十여 초를 기다린다 — 그 정지 상태가 「잠잠함」으로 읽혀 장면이
+        선언 2.5초 만에 잘렸다. 정작 차는 장면은 화면 밖에서 지나갔다.
+     ─ PK 장면은 공이 실제로 발을 떠날 때까지 끊지 않는다. 선언 → 런업 → 킥 → 결과가 한 장면이다. */
+  const isPen = hl.kind==="pen";
+  const tMin=s.t+HL_TAIL_MIN, tMax=s.t+(isPen?HL_TAIL_MAX*2.5:HL_TAIL_MAX);
   let calm=0, guard=0, pending=null;
   while(s.t<tMax && (s.clock<s.endSec || s.varPending || s.pkHold()) && guard++<900){
     s.tick();
@@ -58072,6 +58598,8 @@ function startHighlight(){
       if(b.celebrate.t>=HL_CELEB) break;
       continue;
     }
+    /* 🅿️ 아직 차지 않은 페널티킥 — 공이 점 위에 멈춰 있어도 장면이 끝난 게 아니다 (제보) */
+    if(isPen && s.penPending()){ calm=0; continue; }
     // 공이 날아가거나 굴러다니는 동안은 장면이 끝난 게 아니다
     const moving = b.state==="SHOT" || b.state==="PASS" || b.state==="LOOSE";
     calm = moving ? 0 : calm+SIM_DT;
@@ -58619,6 +59147,19 @@ function shownRedCount(M, key){
   }catch(e){}
   return (key==="h"?M.h:M.a).red||0;   // 분 단위 엔진 — 지연 재생이 없으니 그대로
 }
+/* 🟥 화면에 공개된 기준으로 「지금 그라운드에 몇 명인가」 — 퇴장 + 채우지 못한 부상 공백.
+   ⚠ 제보 원문 — 「상대도 한 명 퇴장, 우리도 한 명 퇴장이라 10명 대 10명인데 수석코치가
+      '수적 열세입니다' 라고 한다. 상대보다 우리 숫자가 적을 때만 나오게 해 달라」.
+   원인 — 조언이 「우리 퇴장이 한 명이라도 있는가」만 봤다. 상대 인원은 아예 세지 않았다. */
+function shownOnPitch(M, key){
+  try{
+    const sd=(key==="h")?M.h:M.a;
+    const red=shownRedCount(M, key);
+    let gap=0;
+    try{ gap=(sd.list||[]).filter(x=>x && x.off!==null && !x.red && x.injGap).length; }catch(e){}
+    return Math.max(7, 11-red-gap);
+  }catch(e){ return 11; }
+}
 function renderCoachAdvice(){
   const M=liveM; const el=document.getElementById("lvPanel"); if(!el||!M) return;
   /* ⚔️ 온라인 대전 — 조언 대신 실시간 전술 지시 패널 (게스트와 완전히 같은 조작권) */
@@ -58647,7 +59188,18 @@ function renderCoachAdvice(){
   const add=(pri,html)=>L.push({pri,html});
 
   /* ── 사람 문제부터 (제일 급하다) ───────────────────── */
-  if(shownRedCount(M, isHome?"h":"a")>0) add(0, `🟥 <b>수적 열세</b>입니다. 공격 자원 하나를 내리고 중원을 한 명 더 채우는 게 안전합니다.`);
+  /* 🟥 제보 — 상대 인원까지 세고 「우리가 적을 때만」 수적 열세라고 말한다 */
+  {
+    const _mk=isHome?"h":"a", _ok=isHome?"a":"h";
+    const _mine=shownOnPitch(M,_mk), _theirs=shownOnPitch(M,_ok);
+    const _cnt=`(${_mine} vs ${_theirs})`;
+    if(_mine<_theirs)
+      add(0, `🟥 <b>수적 열세</b>입니다 ${_cnt}. 공격 자원 하나를 내리고 중원을 한 명 더 채우는 게 안전합니다.`);
+    else if(_mine>_theirs)
+      add(0, `🟥 <b>수적 우위</b>입니다 ${_cnt}. 폭을 넓히고 라인을 올려 상대를 좌우로 흔드세요.`);
+    else if(_mine<11)
+      add(0, `🟥 양 팀 모두 한 명씩 빠져 <b>${_mine} 대 ${_theirs}</b>입니다. 인원은 같지만 공간이 넓어집니다 — 체력 관리와 역습 대비를 함께 챙기세요.`);
+  }
   const tired=[...pitch].sort((a,b)=>a.fit-b.fit);
   const dead=tired.filter(x=>x.fit<58);
   /* 🔁 「누구를 빼라」에서 끝내지 않는다 — 그 자리를 맡을 수 있는 벤치 자원을 이름으로 짚어 준다.
@@ -59525,18 +60077,31 @@ function stepDay(){
       addNews(`🚑 ${hurt.name} 선수가 훈련 중 부상했습니다. (약 ${hurt.inj}주 결장)`);
       prgPush(`🚑 <b>${hurt.name}</b> 선수가 훈련 중 쓰러졌습니다. (약 ${hurt.inj}주 결장)`, "prgAlert");
     }
+    /* 📨 하루치 소식 — 이적 문의·이적 뉴스를 먼저 흘려보낸다.
+       ⚠ 제보 원문 — 「현재 기자회견 방식에선 기자회견하는 날 동안은 타구단 제의가 안 와
+          많은 선수를 영입하면 타구단 제의를 아예 못 받고 이적시장이 끝나 판매를 못 하는
+          경우가 생깁니다」.
+       ─ 원인이 순서였다. 영입 발표 기자회견이 잡힌 날은 duePresser() 에서 곧바로 return 해
+         버려서 그날의 dailyEvents() 가 아예 돌지 않았다. 타구단 제의를 굴리는 곳(genOffers,
+         하루 22%)이 바로 거기라서, 영입을 많이 할수록 회견 날이 늘고 그만큼 제의 굴림이
+         통째로 사라졌다. 이적시장이 끝날 때까지 제의를 한 건도 못 받는 일이 실제로 났다.
+       ─ 순서를 뒤집는다. 하루의 소식은 먼저 다 굴리고, 기자회견은 그다음에 잡는다.
+         둘 다 멈출 일이면 stopProgress 가 뒤엣것을 stopQ 에 줄 세우므로 하나도 잃지 않는다. */
+    let _offStop=false;
+    for(const e of dailyEvents(G.day)){
+      prgPush(e.txt, (e.offerStop&&!G.jobless)?"prgStop":e.alert?"prgAlert":"prgNews");
+      /* ⚠ 무직 — 구단 일로 진행을 멈출 이유가 없다 (제보) */
+      if(e.offerStop && !G.jobless) _offStop=true;
+    }
     // 오늘 예정된 영입 발표 기자회견이 있으면 여기서 멈춘다
     const pres=duePresser();
     if(pres && !G.jobless){
       prgPush(`🎙️ <b>${pres.name}</b> 영입 발표 기자회견이 예정돼 있습니다.`, "prgStop");
-      saveGame(); stopProgress({kind:"presser", info:pres}); return;
+      saveGame(); stopProgress({kind:"presser", info:pres});
+      if(_offStop) stopProgress({kind:"offers"});   // 회견이 끝나면 이어서 뜬다 (stopQ)
+      return;
     }
-    // 이적 문의·이적 뉴스도 흘려보낸다. 진행을 끊는 건 경기와 기자회견뿐이다.
-    for(const e of dailyEvents(G.day)){
-      prgPush(e.txt, (e.offerStop&&!G.jobless)?"prgStop":e.alert?"prgAlert":"prgNews");
-      /* ⚠ 무직 — 구단 일로 진행을 멈출 이유가 없다 (제보) */
-      if(e.offerStop && !G.jobless){ saveGame(); stopProgress({kind:"offers"}); return; }
-    }
+    if(_offStop){ saveGame(); stopProgress({kind:"offers"}); return; }
     /* 📬 감독직 제의 — 무직에게 이보다 급한 소식은 없다 */
     if(G._jobOfferPing){
       const jo=G._jobOfferPing; G._jobOfferPing=null;
