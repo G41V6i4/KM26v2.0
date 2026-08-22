@@ -18910,18 +18910,22 @@ function drawHighlightFrame(cv, hl){
   for(let i=0;i<f.a.length;i++){
     const rec=f.a[i], nx=(nf.a[i]&&nf.a[i].id===rec.id)?nf.a[i]:rec;
     const ag=byId[rec.id]; if(!ag) continue;
-    save.push([ag, ag.x, ag.y, ag.face, ag._rx, ag._ry]);
+    save.push([ag, ag.x, ag.y, ag.face, ag._rx, ag._ry, ag._rf]);
     // ⚠ 보간은 여기서 이미 끝냈다. drawSimWatch 는 _rx→x 를 자기 나름의 알파로 한 번 더
     //    보간하는데, 그 알파는 관전 화면용이라 여기와 무관하다. 두 번 보간되면 화면이 뚝뚝 끊긴다.
     //    _rx 를 결과값과 같게 맞춰 두 번째 보간을 무력화한다.
     const px=lerp(rec.x, nx.x, k), py=lerp(rec.y, nx.y, k);
     ag.x=px; ag.y=py; ag._rx=px; ag._ry=py;
     ag.face=lerpAngle(rec.face, nx.face, k);
+    /* ⚠ drawSimWatch 는 face 를 _rf 와 한 번 더 섞는다(그 알파는 관전 화면용이라 여기와 무관하다).
+       _rx 와 같은 이유로 _rf 도 결과값에 맞춰 두 번째 보간을 무력화한다. */
+    ag._rf=ag.face;
   }
   s._hlOwner = (f.oi!==undefined) ? (f.oi||null) : undefined;   // 이 프레임의 볼 소유자 (흰 링용)
-  const b=s.ball, bs=[b.x,b.y,b.z,b._rx,b._ry];
+  const b=s.ball, bs=[b.x,b.y,b.z,b._rx,b._ry,b._rz];
   const bx=lerp(f.bx, nf.bx, k), by=lerp(f.by, nf.by, k);
-  b.x=bx; b.y=by; b._rx=bx; b._ry=by; b.z=lerp(f.bz, nf.bz, k);
+  b.x=bx; b.y=by; b._rx=bx; b._ry=by;
+  b.z=lerp(f.bz, nf.bz, k); b._rz=b.z;   // 높이도 같은 이유로 못 박는다 (안 그러면 공이 위아래로 튄다)
   // 심판도 그때 그 자리로 되돌린다
   const rf=s.ref, rs = rf ? [rf.x, rf.y, rf._rx, rf._ry] : null;
   if(rf && f.rx!==undefined){
@@ -18950,8 +18954,8 @@ function drawHighlightFrame(cv, hl){
   // 원래 좌표로 되돌린다 — 재생이 끝나면 경기가 그 자리에서 이어져야 한다
   s._hlOwner=undefined;
   if(ghosts.length) s.agents=s.agents.filter(a=>ghosts.indexOf(a)<0);   // 유령은 다시 걷어낸다
-  for(const [ag,x,y,fc,rx,ry] of save){ ag.x=x; ag.y=y; ag.face=fc; ag._rx=rx; ag._ry=ry; }
-  b.x=bs[0]; b.y=bs[1]; b.z=bs[2]; b._rx=bs[3]; b._ry=bs[4];
+  for(const [ag,x,y,fc,rx,ry,rf] of save){ ag.x=x; ag.y=y; ag.face=fc; ag._rx=rx; ag._ry=ry; ag._rf=rf; }
+  b.x=bs[0]; b.y=bs[1]; b.z=bs[2]; b._rx=bs[3]; b._ry=bs[4]; b._rz=bs[5];
   if(rs){ s.ref.x=rs[0]; s.ref.y=rs[1]; s.ref._rx=rs[2]; s.ref._ry=rs[3]; }
   }
 }
@@ -19083,7 +19087,37 @@ function drawSimWatch(cv, simOverride){
     }
   }
   const bz = s.ball._rz===undefined ? (s.ball.z||0) : lerp(s.ball._rz, s.ball.z||0, AL);
-  drawBallZ(ctx, cv, IX(s.ball), IY(s.ball), bz);
+  /* 🎾 빠른 공은 잔상을 남긴다 — ⚠ 제보 원문 — 「공이 패스나 슈팅으로 이동되어지다가 확
+     빨라져서 스킵되는거같이 보이는 현상」.
+     ─ 공은 지름 6~12px 짜리 점인데, 강한 패스(26m/s)는 한 화면 프레임에 그보다 멀리 간다.
+       제 몸집보다 멀리 뛰는 점은 이어져 보이지 않는다 — 스트로보처럼 툭툭 끊겨 보인다.
+       실제 중계 화면이 그렇듯 지나온 자리를 옅게 이어 그려 하나의 궤적으로 읽히게 한다.
+       공이 느리면 잔상 길이가 0에 수렴하므로 평소 화면은 그대로다. */
+  const _bx=IX(s.ball), _by=IY(s.ball);
+  (function(){
+    try{
+      const b=s.ball, tr=(b._tr=b._tr||[]);
+      const lastP=tr.length?tr[tr.length-1]:null;
+      /* 장면 전환·세트피스 배치처럼 통째로 튀면 잔상을 끊는다 (선을 그으면 안 되는 순간) */
+      if(lastP && Math.hypot((_bx-lastP.x)*PITCH_AR, _by-lastP.y) > 0.10) tr.length=0;
+      tr.push({x:_bx, y:_by, z:bz});
+      if(tr.length>5) tr.shift();
+      if(tr.length<3) return;
+      const p0=pitchToCanvasXY(cv, tr[0].x, tr[0].y), p1=pitchToCanvasXY(cv, _bx, _by);
+      if(Math.hypot(p1.x-p0.x, p1.y-p0.y) < 6) return;      // 느린 공 — 잔상 없음
+      const K3=cvK(cv);
+      for(let i=0;i<tr.length-1;i++){
+        const q=tr[i], a=(i+1)/tr.length;
+        const pt=pitchToCanvasXY(cv, q.x, q.y);
+        const hM=(q.z||0)*ISO_TO_M, lf=Math.min(24, hM*3.0)*K3;
+        ctx.globalAlpha=a*a*0.34;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y-lf, (1.6+a*1.9)*K3, 0, Math.PI*2);
+        ctx.fillStyle="#ffffff"; ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    }catch(e){ try{ ctx.globalAlpha=1; }catch(_){} }
+  })();
+  drawBallZ(ctx, cv, _bx, _by, bz);
   try{ if(G.opt && G.opt.ftDebug) drawReceiveDebug(ctx, cv, s, IX, IY); }catch(e){}
   const el=document.getElementById("simInfo");
   // 매 프레임 통계를 다시 집계하고 HTML 을 새로 쓰면 60fps 가 버겁다. 5Hz 로 충분하다.
@@ -31725,6 +31759,8 @@ function tacPreview(el, key){
   }catch(e){}
 }
 function setTac(key,val){
+  /* 🔭 접속 목록에 뿌리는 선발 스냅샷을 새로 만들게 한다 (요청: 상대 포메이션 보기) */
+  try{ pvpFormPackDirty(); }catch(e){}
   const t=userTeam();
   // <input type=range> 는 문자열을 준다. 숫자로 못 박지 않으면 "3"이 그대로 저장돼 계산이 어긋난다.
   t.tactic[key] = clamp(parseInt(val,10)||0, 0, TAC_STEPS-1);
@@ -32049,6 +32085,7 @@ function swapSlots(pidA, pidB){
   refreshTactics();
 }
 function swapSel(pid){
+  try{ pvpFormPackDirty(); }catch(e){}   // 🔭 선발이 바뀌면 접속 목록용 스냅샷도 새로 만든다
   if(selSwap===null){ selSwap=pid; refreshTactics(); return; }
   if(selSwap===pid){ selSwap=null; refreshTactics(); return; }
   const a=selSwap; selSwap=null;
@@ -44100,6 +44137,15 @@ function peekBarRender(){
 let liveSim=null, liveSimHalf=false;
 /* 지금 재생 중인 하이라이트 — {frames, i, acc, kind, side}. null 이면 경기를 빨리 감는 중이다. */
 let liveHL=null, lastHLTick=null;
+/* 🎞️ 장면과 장면 사이에 화면에 붙잡아 둘 프레임 — ⚠ 제보 원문 — 「매치엔진에서 공이 가다가
+   스킵되는 거같은 느낌이 드는거 수정해줄래?」.
+   ─ 원인: 하이라이트가 끝나면 경기는 뒤에서 빨리 감기로 굴러가는데, 그동안 화면은 그 「지금
+     이 순간의 그라운드」를 어둡게 덮어서 그대로 그리고 있었다. 빨리 감기는 한 프레임에 수십
+     틱을 굴리므로 공이 프레임마다 순간이동한다 — 실측: 화면 프레임의 30%가 5m 이상, 13%가
+     15m 이상 튀고 최대 59m. 부드러운 장면 → 공이 튀는 구간 → 다시 장면, 이게 「스킵」이다.
+   ─ 장면 사이에는 마지막으로 「본」 프레임을 그대로 붙잡아 둔다. 공이 튀지 않고, 아직 보여
+     주지 않은 장면을 미리 흘리지도 않는다. */
+let liveHoldF=null;
 let tacApplyTimer=null;                 // "전술 반영 중" 표시 타이머
 const TAC_APPLY_MS=1600;                // 지시가 전달되는 데 걸리는 시간(ms)
 /* 하이라이트 공개 큐 — 한 분(tick) 안에 여러 사건이 동시에 쏟아져도 한 장면씩 순서대로 재생한다. */
@@ -44961,39 +45007,63 @@ function sampleTrajectory(traj, p){
 
 /* ── 캔버스 그리기 ── */
 function cvK(cv){ return cv.width/640; }   // 캔버스 해상도 배율 — 모든 픽셀 상수는 640 기준
+/* 🥅 골대 뒤 여백 — ⚠ 사용자 요청 원문 — 「매치엔진 경기장 그래픽에서 골대 뒤에 공간을 좀
+   넉넉하게 넓혀서, 공이 골문 위로 뜨면 골대 뒤 공간으로 공이 나가게끔 해서 확실히 빗나갔다는 걸
+   쉽게 볼 수 있게 하자」.
+   ─ 예전에는 상하좌우 여백이 똑같이 18px 이었다. 골망 깊이만으로 그 여백이 거의 다 차서,
+     빗나간 슛(골라인 뒤 4~7m)이 화면 밖으로 나가 그냥 사라졌다. 좌우 여백을 크게 벌려
+     골대 뒤 「경기장 밖」을 실제로 그린다 — 공이 거기까지 굴러 나가는 게 눈에 보인다. */
+const PITCH_PAD_X=50, PITCH_PAD_Y=14;      // 640 기준 px (cvK 로 배율)
 function pitchToCanvasXY(cv, nx, ny){
-  const pad=18*cvK(cv), w=cv.width-2*pad, h=cv.height-2*pad;
-  return {x:pad+nx*w, y:pad+ny*h};
+  const k=cvK(cv), px=PITCH_PAD_X*k, py=PITCH_PAD_Y*k;
+  const w=cv.width-2*px, h=cv.height-2*py;
+  return {x:px+nx*w, y:py+ny*h};
 }
 function drawPitchBase(ctx, cv){
   const kpb=cvK(cv);
-  const W=cv.width, H=cv.height, pad=18*kpb;
+  const W=cv.width, H=cv.height;
+  const px=PITCH_PAD_X*kpb, py=PITCH_PAD_Y*kpb;   // 좌우는 넉넉하게, 위아래는 종전대로
+  const pw=W-2*px, ph=H-2*py;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle="#143a24"; ctx.fillRect(0,0,W,H);
+  /* 경기장 밖 — 잔디가 아닌 어두운 바닥. 여기로 나간 공은 「밖」이라는 게 한눈에 보인다 */
+  ctx.fillStyle="#0c1f14"; ctx.fillRect(0,0,W,H);
+  /* 잔디 — 라인 안쪽만 */
+  ctx.fillStyle="#143a24"; ctx.fillRect(px,py,pw,ph);
   ctx.fillStyle="rgba(255,255,255,.025)";
-  for(let i=0;i<8;i+=2) ctx.fillRect(i*W/8,0,W/8,H);
+  for(let i=0;i<8;i+=2) ctx.fillRect(px+i*pw/8, py, pw/8, ph);
+  /* 🪧 골대 뒤 광고판 — 「여기가 끝」이라는 경계선 */
+  ctx.fillStyle="rgba(255,255,255,.07)";
+  const adW=Math.max(3, 4*kpb);
+  ctx.fillRect(px-px*0.86, py+ph*0.10, adW, ph*0.80);
+  ctx.fillRect(W-px+px*0.86-adW, py+ph*0.10, adW, ph*0.80);
   ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=2*kpb;
-  ctx.strokeRect(pad,pad,W-2*pad,H-2*pad);
-  ctx.beginPath(); ctx.moveTo(W/2,pad); ctx.lineTo(W/2,H-pad); ctx.stroke();
-  ctx.beginPath(); ctx.arc(W/2,H/2,(H-2*pad)*0.16,0,Math.PI*2); ctx.stroke();
+  ctx.strokeRect(px,py,pw,ph);
+  ctx.beginPath(); ctx.moveTo(W/2,py); ctx.lineTo(W/2,H-py); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W/2,H/2,ph*0.16,0,Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.arc(W/2,H/2,3,0,Math.PI*2); ctx.fillStyle="#fff"; ctx.fill();
-  const boxW=(W-2*pad)*0.16, boxH=(H-2*pad)*0.5, boxY=pad+(H-2*pad-boxH)/2;
-  ctx.strokeRect(pad,boxY,boxW,boxH); ctx.strokeRect(W-pad-boxW,boxY,boxW,boxH);
-  const gaW=(W-2*pad)*0.06, gaH=(H-2*pad)*0.24, gaY=pad+(H-2*pad-gaH)/2;
-  ctx.strokeRect(pad,gaY,gaW,gaH); ctx.strokeRect(W-pad-gaW,gaY,gaW,gaH);
-  const goalH=(H-2*pad)*0.14, goalY=pad+(H-2*pad-goalH)/2;
-  const goalD=(W-2*pad)*GOAL_NET_DEPTH;              // 골 깊이 = 물리 골망 깊이와 일치
-  ctx.strokeRect(pad-goalD,goalY,goalD,goalH); ctx.strokeRect(W-pad,goalY,goalD,goalH);
+  const boxW=pw*0.16, boxH=ph*0.5, boxY=py+(ph-boxH)/2;
+  ctx.strokeRect(px,boxY,boxW,boxH); ctx.strokeRect(W-px-boxW,boxY,boxW,boxH);
+  const gaW=pw*0.06, gaH=ph*0.24, gaY=py+(ph-gaH)/2;
+  ctx.strokeRect(px,gaY,gaW,gaH); ctx.strokeRect(W-px-gaW,gaY,gaW,gaH);
+  const goalH=ph*0.14, goalY=py+(ph-goalH)/2;
+  const goalD=pw*GOAL_NET_DEPTH;                     // 골 깊이 = 물리 골망 깊이와 일치
+  ctx.strokeRect(px-goalD,goalY,goalD,goalH); ctx.strokeRect(W-px,goalY,goalD,goalH);
   /* 🥅 골망 — 그물눈. 공이 이 안에 멈춰야 골이라는 게 한눈에 보인다 */
   ctx.save();
   ctx.strokeStyle="rgba(255,255,255,.22)"; ctx.lineWidth=1;
   const mesh=Math.max(3, 3.2*kpb);
-  for(const gx0 of [pad-goalD, W-pad]){
+  for(const gx0 of [px-goalD, W-px]){
     ctx.beginPath();
     for(let x=gx0+mesh; x<gx0+goalD; x+=mesh){ ctx.moveTo(x, goalY); ctx.lineTo(x, goalY+goalH); }
     for(let y=goalY+mesh; y<goalY+goalH; y+=mesh){ ctx.moveTo(gx0, y); ctx.lineTo(gx0+goalD, y); }
     ctx.stroke();
   }
+  /* 골포스트 — 골망보다 진하게. 공이 포스트 바깥으로 지나갔는지가 분명해진다 */
+  ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=2.4*kpb;
+  ctx.beginPath();
+  ctx.moveTo(px, goalY); ctx.lineTo(px, goalY+goalH);
+  ctx.moveTo(W-px, goalY); ctx.lineTo(W-px, goalY+goalH);
+  ctx.stroke();
   ctx.restore();
 }
 function drawDotXY(ctx, cv, nx, ny, color, r){
@@ -46387,6 +46457,30 @@ const GK_SWEEP_PUSH=0.20;   // 최상급 스위퍼가 추가로 전진하는 거
 const GK_TURN_DIST=0.10;    // 목표가 이보다 멀면 몸을 돌려 달린다(스위핑), 가까우면 볼을 보며 스텝
 const POST_BOUNCE = 0.62;           // 골대를 맞고 튕겨 나가는 정도
 const GOAL_NET_DEPTH = 0.020;       // 골망 깊이 (≈2.2m) — 공은 이 안에서만 머문다
+/* 🥅 골대 뒤 아웃 공간 — ⚠ 제보 원문 「매치엔진 경기장 그래픽에서 골대 뒤에 공간을 좀 넉넉하게 넓혀서,
+   공이 골문 위로 뜨면 골대 뒤 공간으로 공이 나가게끔 해서 확실히 빗나갔다는 걸 쉽게 볼 수 있게 하자」.
+   원인: 슛 비행이 b.x 를 clamp01 로 묶어, 빗나간 슛도 골라인(1.0)에서 딱 멈춰 「들어간 건지 아닌지」
+   구분이 안 됐다. 골라인 뒤 이 값까지는 공이 나갈 수 있게 푼다.
+   ⚠ 상한은 렌더 여백 PITCH_PAD_X 안이어야 한다 — 50/(640-100)=0.0926 보다 작게 둔다. */
+const BEHIND_GOAL_MAX = 0.085;
+function clampGoalOut(x){ return x<-BEHIND_GOAL_MAX ? -BEHIND_GOAL_MAX : (x>1+BEHIND_GOAL_MAX ? 1+BEHIND_GOAL_MAX : x); }
+/* 🥅 골라인 아웃 — 공을 「골문 밖」이 한눈에 보이는 자리에 놓는다.
+   ⚠ 제보 원문 「슈팅이 옆그물 맞아서 라인 아웃 되었을때도 보면 공이 거의 골문안에 들어가있거든?
+      이것도 확실하게 눈에 띄게 분리해야지」.
+   원인: 아웃된 공을 골라인 뒤 0.008~0.012(화면 4~6px)에 뒀다 — 골망 깊이(0.020 ≈ 11px)보다
+   얕아, 그물에 꽂힌 「골」과 화면상 같은 자리였다. 좌우도 포스트 바깥 0.012(≈5px)뿐이라
+   공 반지름·포스트 두께에 묻혀 골문 안에 있는 것처럼 보였다.
+   ─ 앞뒤는 골망 뒤(0.046 ≈ 25px), 좌우는 포스트에서 확실히 떼어 놓는다(0.034 ≈ 15px).
+   ⚠ GOAL_OUT_X 는 반드시 BEHIND_GOAL_MAX 안이어야 한다 — 넘으면 캔버스 밖으로 나간다. */
+const GOAL_OUT_X = 0.046;
+const GOAL_OUT_Y = GOAL_HALF + 0.034;
+function placeGoalOut(b, gx, y){
+  b.x = (gx>0.5 ? 1+GOAL_OUT_X : -GOAL_OUT_X);
+  const _y=(y==null? b.y : y), _s=(_y>=0.5?1:-1);
+  b.y = (Math.abs(_y-0.5) < GOAL_OUT_Y) ? (0.5 + _s*GOAL_OUT_Y) : clamp01(_y);
+  b.vx=0; b.vy=0; b.vz=0; b.z=0; b.aerial=false;
+  return {x:b.x, y:b.y};
+}
 const NET_DRAG = 0.28;              // 그물에 걸린 공 — 급격히 감속하며 흔들린다
 const WALL_BOUNCE = 0.45;           // 광고판·펜스에 맞고 되튀는 정도
 
@@ -52668,10 +52762,8 @@ class MatchSim{
         if(adv2<0.045 && Math.random()<0.55){          // 골라인 코앞 — 처리하기 어렵다. 옆으로 넘긴다
           st.shotTipped=(st.shotTipped||0)+1;
           const gx2 = gk.dir>0 ? 0 : 1;
-          const sideY2 = (b.y<0.5) ? -1 : 1;
-          b.y=clamp01(0.5 + sideY2*(GOAL_HALF+0.012));
-          b.x=clamp01(gx2 + (gx2>0.5?-1:1)*0.008);
-          b.vx=0; b.vy=0; b.vz=0; b.z=0; b.aerial=false;
+          /* 🥅 골라인 코앞에서 옆으로 넘긴 공 — 골망 뒤·포스트 바깥에 놓는다 (placeGoalOut 주석) */
+          placeGoalOut(b, gx2, b.y);
           this.cornerKick(this.opp(gk.side), gx2, b.y);
           return true;
         }
@@ -53866,12 +53958,17 @@ class MatchSim{
       // 공을 회수하러 간다 — 공은 나간 자리에 그대로 있고, 키커가 "공이 있는 곳"으로 걸어간다.
       // 여기서 킥 지점으로 바로 가버리면, 선수가 공을 잡기도 전에 공이 혼자 움직여 버린다.
       moveTo(sp.out.x, sp.out.y, ph.dead);
-      b.x=Math.max(-0.020, Math.min(1.020, sp.out.x));
+      /* 🥅 골라인 뒤로 나간 공은 나간 자리 그대로 둔다 (1.020 으로 깎으면 골망 안으로 돌아간다) */
+      b.x=Math.max(-GOAL_OUT_X, Math.min(1+GOAL_OUT_X, sp.out.x));
       b.y=Math.max(-0.020, Math.min(1.020, sp.out.y)); b.z=0;
       /* ⚠ 공을 라인 밖(±1.2~1.4m)에 두자 선수 좌표는 [0,1] 클램프라 0.012 안으로
          영영 못 들어가 DEAD가 시간초과까지 늘어졌다(실측: 경기당 패스 -20%, 코너 정체).
          발 뻗으면 닿는 거리로 완화한다. */
-      const got=Math.hypot((kicker.x-sp.out.x)*PITCH_AR, kicker.y-sp.out.y) < 0.030;
+      /* ⚠ 선수 좌표는 [0,1] 클램프라 라인 밖 공까지는 영영 못 간다 — 공이 나간 자리의
+         「라인 위 최근접점」까지 오면 손을 뻗어 주운 것으로 본다. 골라인 뒤 공간을
+         넓힌 뒤(GOAL_OUT_X) 이 판정이 없으면 DEAD 가 시간초과까지 늘어진다. */
+      const _rx=clamp01(sp.out.x), _ry=clamp01(sp.out.y);
+      const got=Math.hypot((kicker.x-_rx)*PITCH_AR, kicker.y-_ry) < 0.030;
       if((sp.t>=ph.dead && got) || sp.t>ph.dead+8){      // 공에 닿아야 다음 단계로
         sp.phase="PLACE"; sp.t=0; sp.from={x:kicker.x,y:kicker.y};
       }
@@ -53926,12 +54023,15 @@ class MatchSim{
     const out = outAt || {x:b.x, y:b.y};      // 공이 나가 멈춘 자리 — 여기서부터 회수한다
     /* ⚠ 라인 밖에 멈춘 공을 clamp01로 라인 위에 되돌려 놓던 범인이 여기였다(제보 2회).
        아웃된 공은 라인 밖 ~1.4m까지 그대로 둔다 — 키커가 밖에 나가 주워 온다. */
+    /* ⚠ x 는 골라인 뒤 GOAL_OUT_X 까지 그대로 둔다 — 여기서 1.020 으로 깎아 버리면
+       골망 안으로 되돌아가 「아웃인데 골문 안」이 다시 나온다 (제보). y 는 종전대로. */
+    const clOutX=(v)=>Math.max(-GOAL_OUT_X, Math.min(1+GOAL_OUT_X, v));
     const clOut=(v)=>Math.max(-0.020, Math.min(1.020, v));
     b.setPiece={kind, kickerId:kicker.id, spot:{x:clamp01(spot.x),y:clamp01(spot.y)},
-                out:{x:clOut(out.x), y:clOut(out.y)},
+                out:{x:clOutX(out.x), y:clOut(out.y)},
                 phase:"DEAD", t:0, from:{x:kicker.x, y:kicker.y}};
     b.state="SETTLED"; b.z=0; b.vx=0; b.vy=0; b.vz=0; b.inNet=false; b.aerial=false;
-    b.x=clOut(b.x); b.y=clOut(b.y);
+    b.x=clOutX(b.x); b.y=clOut(b.y);
     b.hold=99;                        // 세리머니가 끝날 때까지 킥하지 않는다
   }
   /* 볼이 라인을 넘었는지 판정하고 알맞은 방식으로 재개한다.
@@ -53984,17 +54084,9 @@ class MatchSim{
         }
         this.rollInGoal(lastSide); return true;
       }
-      /* 공을 골라인 밖 1.1m 지점에 놓는다 — 라인에 걸친 채 멈추지 않게 (제보) */
-      this.ball.x = outAt===0 ? -0.010 : 1.010;
-      let outY=y;
-      /* ⚠ 제보 — 「공이 골대 안에 들어간 것처럼 보이는데 코너킥」.
-         골라인을 넘은 공(골이 아닌 공)이 포스트 사이에 놓이면 화면상 골문 안에 있는 것처럼 보인다.
-         골이 아니라면 공은 반드시 골대 「바깥」에 있어야 한다 — 가까운 포스트 옆으로 비켜 놓는다. */
-      if(Math.abs(outY-0.5) < GOAL_HALF+0.006){
-        const sideY=(outY<0.5)?-1:1;
-        outY = 0.5 + sideY*(GOAL_HALF+0.020);
-      }
-      this.ball.y=clamp01(outY); this.ball.vx=0; this.ball.vy=0; this.ball.vz=0; this.ball.z=0;
+      /* 🥅 골라인을 넘은 공(골이 아닌 공)은 골망 뒤·포스트 바깥에 놓는다 — placeGoalOut 주석 참고.
+         (예전엔 라인 뒤 0.010 · 포스트 밖 0.020 이라 화면상 골문 안에 박힌 것처럼 보였다) */
+      const outY = placeGoalOut(this.ball, outAt, y).y;
       if(outAt===theirGoal) this.goalKick(this.opp(lastSide));   // 상대 골라인 밖 → 상대 골킥
       else this.cornerKick(this.opp(lastSide), outAt, outY);     // 자기 골라인 밖 → 상대 코너킥
       return true;
@@ -54025,11 +54117,9 @@ class MatchSim{
     const b=this.ball;
     const mine=this.side(side), dir=mine[0].dir;
     const gk=mine.find(a=>a.slot==="GK")||mine[0];
-    /* 빗나간 슛은 공이 정확히 골라인(1.0) 위에서 멈췄다 — 라인 밖 1.3m로 옮겨 회수 (제보) */
-    b.x = dir>0 ? -0.012 : 1.012;
-    b.y = clamp01(b.y); b.vx=0; b.vy=0; b.vz=0; b.z=0;
-    /* 골문 폭 안(그물 뒤)에 놓으면 골처럼 보인다 — 골대 옆으로 비껴 놓는다 */
-    if(Math.abs(b.y-0.5)<GOAL_HALF+0.010) b.y=0.5+(b.y>=0.5?1:-1)*(GOAL_HALF+0.016);
+    /* 🥅 빗나간 슛은 골라인 위에서 멈춰 있다 — 골망 뒤·포스트 바깥으로 옮겨 회수한다.
+       골문 폭 안(그물 뒤)에 놓으면 골처럼 보인다 (제보) — placeGoalOut 주석 참고 */
+    placeGoalOut(b, dir>0 ? 0 : 1, b.y);
     const out={x:b.x, y:b.y};                       // 공이 나가 멈춘 자리 — 여기서 회수한다
     const spot={x: dir>0 ? 0.06 : 0.94, y:0.5};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false;
@@ -54041,10 +54131,10 @@ class MatchSim{
   /* 코너킥 — 코너 플래그에서 박스 안으로 올린다(공중볼) */
   cornerKick(side, outAt, y){
     const b=this.ball;
-    /* 어떤 경로(아웃·선방 쳐내기·블록)로 왔든 공은 골라인을 넘어 나간 것이다 —
-       라인 위나 필드 안에 멈춰 있으면 어색하다(제보). 라인 밖 1.3m 지점으로 옮겨 회수한다. */
-    b.x = outAt===0 ? -0.012 : 1.012;
-    b.y = clamp01(b.y); b.vx=0; b.vy=0; b.vz=0; b.z=0;
+    /* 어떤 경로(아웃·선방 쳐내기·블록·옆그물)로 왔든 공은 골라인을 넘어 나간 것이다 —
+       라인 위나 골망 언저리에 멈춰 있으면 「들어간 것」처럼 보인다(제보).
+       골망 뒤·포스트 바깥으로 옮겨 회수한다 — placeGoalOut 주석 참고 */
+    placeGoalOut(b, outAt, b.y);
     const out={x:b.x, y:b.y};                       // 공이 나가 멈춘 자리 — 여기서 회수한다
     const spot={x: outAt===0 ? 0.01 : 0.99, y: y<0.5 ? 0.02 : 0.98};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false;
@@ -54423,7 +54513,9 @@ class MatchSim{
         if(g.distM<12 && type!==SHOT_TYPE.HEADER){
           const cmp=(shooter.p&&shooter.p.attr&&attr20(shooter.p.attr.cmp)/20)||0.6;
           const pressN=clamp(blk.near*0.5 + clamp(ctxNearOpp<0.05?1:0,0,1), 0, 1.5);
-          acc += (cmp-0.62)*(0.16 + pressN*0.14);           // 압박이 셀수록 침착성의 비중이 커진다
+          /* ⚠ 요청 — 「1대1 처리, 특히 침착성 비중 상향」. 0.16/0.14 → 0.22/0.19.
+             중심(0.62)은 그대로라 침착성이 낮은 선수는 그대로 손해를 본다 — 「비중」만 커진다. */
+          acc += (cmp-0.62)*(0.22 + pressN*0.19);           // 압박이 셀수록 침착성의 비중이 커진다
           acc += ((shooter.boxQuick||0.6)-0.62)*0.09;       // 순발력·민첩성 — 각을 만들 시간
         }
         /* 🎯 헤더 — 머리로 맞히는 건 발보다 어렵지만, 그 대신 대부분 골문 코앞에서 나온다.
@@ -54452,12 +54544,17 @@ class MatchSim{
         }
       }
       /* 🥅 1대1 침착 (제보: 1대1 전환율 6%) — 통로가 비고 골문이 가까우면 마무리에 여유가 있다.
-         침착성이 좋을수록 크다. (blk는 등 뒤 추격자도 세므로 「완전히 깨끗한」 1대1만 받는 보정) */
+         침착성이 좋을수록 크다. (blk는 등 뒤 추격자도 세므로 「완전히 깨끗한」 1대1만 받는 보정)
+         ⚠ 요청 원문 — 「공격수의 1대1 처리상황을 능력치비중에서 약간 상향시켜줘도될거같은데,
+            특히 침착성. 골을 약간 늘려보자구」.
+            침착성 계수 0.12 → 0.19 (능력치가 결과를 가르는 폭을 넓힌다), 결정력 0.22 → 0.26.
+            기본값(0.10)은 거의 그대로 둔다 — 못하는 공격수까지 같이 올라가면 「능력치 비중」이
+            아니라 그냥 전체 인플레다. */
       if(!isFK && !isPen && g.distM<15 && blk.list.length===0){
         const cmp11=(shooter.p&&shooter.p.attr&&attr20(shooter.p.attr.cmp)/20)||0.6;
         const fin11=(shooter.finSkill||0.6);
         /* 침착성과 골 결정력이 함께 작동한다 — 좋은 스트라이커일수록 이 장면을 놓치지 않는다 */
-        acc += 0.10 + cmp11*0.12 + (fin11-0.60)*0.22;
+        acc += 0.11 + cmp11*0.19 + (fin11-0.60)*0.26;
       }
       if(deflected) acc += (Math.random()-0.5)*0.35;      // 굴절되면 어디로 갈지 알 수 없다
       /* 🎯 명중 여부를 동전으로 정하지 않는다 (§19·§20·§57).
@@ -54553,9 +54650,11 @@ class MatchSim{
            천재성은 타이밍을 뺏는다(finSkill 에 이미 소량 반영되어 있으니 여기선 작게). */
         save -= ((shooter.finSkill||0.6)-0.62)*0.34;   // 골 결정력이 좋을수록 키퍼가 손을 못 댄다
         save -= ((shooter.flair||0.6)-0.62)*0.09;
-        /* 침착성 — 1대1에서 키퍼를 보고 반대쪽으로 밀어 넣는 능력 */
+        /* 침착성 — 1대1에서 키퍼를 보고 반대쪽으로 밀어 넣는 능력
+           ⚠ 요청 — 「1대1 처리 능력치 비중, 특히 침착성 상향」. 0.16 → 0.24.
+              침착한 공격수가 고른 코스는 키퍼가 더 못 막는다 (반대로 낮으면 정면으로 간다). */
         { const _cmp=(shooter.p&&shooter.p.attr&&attr20(shooter.p.attr.cmp)/20)||0.6;
-          save -= (_cmp-0.62)*0.16; }
+          save -= (_cmp-0.62)*0.24; }
       }
       // 직접 프리킥 — 벽 너머로 넘어오는 공은 시야가 늦게 열려 반응이 반 박자 늦다
       if(isFK) save -= 0.10;
@@ -54702,9 +54801,14 @@ class MatchSim{
          ─ 빗나간 공은 반드시 골포스트 바깥으로 흘려보낸다. 그래야 결과와 그림이 어긋나지 않는다. */
       const _wide = Math.abs(aimY-0.5) >= GOAL_HALF;        // 좌우로 벗어난 슛
       const _sd = (aimY>=0.5 ? 1 : -1);
+      /* 🥅 요청 — 「공이 골문 위로 뜨면 골대 뒤 공간으로 나가게」.
+         크로스바를 넘긴 슛은 포스트 바로 바깥을 스치듯 지나 골대 뒤까지 흘러간다.
+         좌우로 벗어난 슛은 종전대로 크게 벗어난다. 어느 쪽이든 골망(0.02)보다 훨씬 깊이
+         나가므로, 넓힌 골대 뒤 공간에서 「확실히 빗나갔다」가 눈으로 읽힌다. */
       ey = _wide ? clamp01(aimY + _sd*(0.030+Math.random()*0.025))
-                 : clamp01(0.5 + _sd*(GOAL_HALF + 0.050 + Math.random()*0.035));
-      ex = g.gx + (g.gx===1?1:-1)*(0.045+Math.random()*0.020);   // 광고판까지 확실히
+                 : clamp01(0.5 + _sd*(GOAL_HALF + 0.022 + Math.random()*0.022));
+      ex = g.gx + (g.gx===1?1:-1)*(_wide ? 0.050+Math.random()*0.022
+                                         : 0.058+Math.random()*0.020);   // 골대 뒤 공간까지
     } else if(outcome!=="BLOCK"){
       /* 골 — 그물 안 1.3m 지점이 종착점. 그물을 뚫고 나가지 않고, 라인 위에서 멈추지도 않는다 */
       ex=g.gx + (g.gx===1?1:-1)*GOAL_NET_DEPTH*0.60; ey=aimY;
@@ -54730,7 +54834,9 @@ class MatchSim{
         shooter.y=clamp01(shooter.y-(gy/gd)*step);
       }
     }
-    b.tx=clamp01(ex); b.ty=clamp01(ey);
+    /* 🥅 빗나간 슛의 착탄점은 골라인 뒤 공간이다 — clamp01 로 묶으면 골라인(1.0)에서 딱 멈춰
+       「들어간 건지 아닌지」가 구분되지 않는다 (BEHIND_GOAL_MAX 주석 참고) */
+    b.tx=clampGoalOut(ex); b.ty=clamp01(ey);
     b.power=power;
     /* 🍌 감아차기 폭을 정하는 두 값 — 골문 정면에서 얼마나 벗어나 있는가 · 얼마나 먼가 */
     const _wideK = clamp((Math.abs(shooter.y-0.5)-0.15)/0.27, 0, 1);
@@ -54772,7 +54878,8 @@ class MatchSim{
     const px=b.x, py=b.y;
     const total=b.flightT||Math.max(SIM_DT*SHOT_MIN_TICKS, b.flightLen/(SHOT_SPEED*(b.power||1)));
     const p=clamp01(b.flight/total);
-    b.x=clamp01(lerp(b.sx, b.tx, p)); b.y=clamp01(lerp(b.sy, b.ty, p));
+    /* 🥅 빗나간 슛은 골라인 뒤 공간까지 나간다 (clamp01 → clampGoalOut) — 위 BEHIND_GOAL_MAX 주석 참고 */
+    b.x=clampGoalOut(lerp(b.sx, b.tx, p)); b.y=clamp01(lerp(b.sy, b.ty, p));
     // 높이 — 출발 높이에서 목표 높이(aimZ)까지, 중력에 눌린 포물선
     const z0=b.z0||0, z1=b.aimZ||0;
     b.z=Math.max(0, lerp(z0, z1, p) + loftPeak(total)*1.2*p*(1-p));
@@ -54780,7 +54887,7 @@ class MatchSim{
     if(b.curve){
       const dx=(b.tx-b.sx)*PITCH_AR, dy=b.ty-b.sy, dl=Math.hypot(dx,dy)||1e-6;
       const bulge=b.curve*Math.sin(Math.PI*p);
-      b.x=clamp01(b.x + (-dy/dl)*bulge/PITCH_AR);
+      b.x=clampGoalOut(b.x + (-dy/dl)*bulge/PITCH_AR);
       b.y=clamp01(b.y + ( dx/dl)*bulge);
     }
     b.vx=(b.x-px)*PITCH_AR/SIM_DT; b.vy=(b.y-py)/SIM_DT;
@@ -54867,10 +54974,9 @@ class MatchSim{
         /* ⚠ 제보 — 「공이 골대 안에 들어갔는데 코너킥」.
            손끝에 걸린 공은 「골포스트 바깥」으로 넘어가야 한다. 골문 안쪽 좌표에 둔 채
            코너를 선언하면 화면상 공이 골문으로 들어간 뒤 코너가 되는 것처럼 보인다. */
-        const sideY = (b.y<0.5) ? -1 : 1;
-        b.y=clamp01(0.5 + sideY*(GOAL_HALF+0.012));    // 포스트 바깥으로 스친 자리
-        b.x=clamp01(gx + (gx>0.5?1:-1)*0.008);
-        b.vx=0; b.vy=0; b.vz=0; b.z=0; b.aerial=false;
+        /* 🥅 손끝에 걸린 공·옆그물을 맞고 나간 공 — 골망 뒤·포스트 바깥까지 확실히 빼놓는다.
+           (예전엔 라인 뒤 0.008 · 포스트 밖 0.012 라 화면상 골문 안이었다 — 제보) */
+        placeGoalOut(b, gx, b.y);
         this.cornerKick(side, gx, b.y);
         return;
       }
@@ -55589,7 +55695,12 @@ function render2DTick(now){
   const {cv,ctx}=c;
   // 연속 2D 매치엔진 — 각본 재생이 아니라 실제로 굴러간 경기를 그린다.
   if(liveSim){
-    const dt=(lastHLTick==null)?1/60:Math.min(0.25,(now-lastHLTick)/1000);
+    /* ⚠ 제보 — 「공이 패스나 슈팅으로 이동되다가 확 빨라져서 스킵되는 것처럼 보인다」.
+       한 원인이 여기였다. 화면이 한 번 버벅여 dt 가 크게 잡히면(예 0.25초) 재생이 그만큼
+       한꺼번에 밀려, 한 장의 화면에서 공이 시뮬 2~3프레임(최대 13m)을 건너뛰었다.
+       ─ 한 프레임이 밀 수 있는 시간을 1/24초로 묶는다. 버벅이면 「건너뛰는」 대신
+         재생이 아주 살짝 느려질 뿐이다 (장면 길이는 몇 초짜리라 티가 나지 않는다). */
+    const dt=(lastHLTick==null)?1/60:Math.min(1/24,(now-lastHLTick)/1000);
     lastHLTick=now;
     /* ⚠ 제보 — 「코너킥 준비 중에 일시정지를 눌렀더니 상대가 세리머니를 하고 있다. 재생하니 진짜 골」.
        하이라이트는 이미 굴러간 장면을 되감아 보여 주는 것이라, 시뮬(liveSim)은 그 장면의 끝
@@ -55602,9 +55713,22 @@ function render2DTick(now){
       else drawSimWatch(cv, liveSim);
       syncGoalPanel(liveSim);
     } else {
-      // 하이라이트 사이 — 경기는 뒤에서 빨리 감기는 중. 마지막 장면을 어둡게 남겨 둔다.
-      drawSimWatch(cv, liveSim);
-      syncGoalPanel(liveSim);
+      /* 🎞️ 하이라이트 사이 — 경기는 뒤에서 빨리 감기는 중.
+         ⚠ 제보(공이 스킵된다) — 예전에는 여기서 「지금 굴러가는 그라운드」를 그대로 그렸다.
+            빨리 감기는 한 화면 프레임에 수십 틱을 굴리므로 공이 프레임마다 순간이동했다.
+            마지막으로 본 프레임을 그대로 붙잡아 둔다 — 정지 화면이라 튀지 않는다. */
+      /* 첫 장면이 나오기 전(킥오프~첫 하이라이트)도 같은 구간이다 — 그때는 지금 프레임 하나를
+         집어 붙잡는다. 한 번만 집으므로 그 뒤로는 움직이지 않는다. */
+      if(!liveHoldF){ try{ const _bf=liveSim.buf; if(_bf && _bf.length) liveHoldF=_bf[_bf.length-1]; }catch(e){} }
+      if(liveHoldF){
+        try{ drawHighlightFrame(cv, {frames:[liveHoldF, liveHoldF], i:0, acc:0, isReplay:false}); }
+        catch(e){ drawSimWatch(cv, liveSim); }
+        /* 붙잡아 둔 화면에는 득점 패널을 띄우지 않는다 — 아직 보여 주지 않은 골을 미리 알릴 수 있다 */
+        if(goalPanelShownFor!==null){ goalPanelShownFor=null; hideGoalPanel(); }
+      } else {
+        drawSimWatch(cv, liveSim);
+        syncGoalPanel(liveSim);
+      }
       const ctx=cv.getContext&&cv.getContext("2d");
       if(ctx && !livePaused){ ctx.fillStyle="rgba(6,10,14,0.55)"; ctx.fillRect(0,0,cv.width,cv.height); }
     }
@@ -58542,7 +58666,7 @@ function startLive(M, tag){
     try{ show("squad"); }catch(e){ try{ show("home"); }catch(e2){} }
     return;
   }
-  liveSimHalf=false; liveHL=null; lastHLTick=null; goalPanelShownFor=null; hideGoalPanel();
+  liveSimHalf=false; liveHL=null; liveHoldF=null; lastHLTick=null; goalPanelShownFor=null; hideGoalPanel();
   if(revealTimer){ clearTimeout(revealTimer); revealTimer=null; } revealQueue=[]; // 이전 경기의 잔여 공개 큐 정리
   current2DScene=null;
   VIEW="match";
@@ -59070,6 +59194,7 @@ function startHighlight(){
     s.evlog.length=0; for(const e of keptEv) s.evlog.push(e);
     s.hl=pending;                                   // 이 장면 재생이 끝나면 곧바로 PK 장면이 시작된다
   } else { s.buf.length=0; s.caps.length=0; s.evlog.length=0; }   // 다음 장면을 위해 비운다
+  liveHoldF=null;                 // 🎞️ 새 장면이 시작된다 — 붙잡아 둔 프레임을 놓아 준다
   setMatchMode(MATCH_MODE.HIGHLIGHT);
   // ⚠ 여기서 "골"·"결정적 기회" 같은 장면 종류를 띄우면 결과를 미리 알려주는 꼴이다.
   //    무슨 일이 벌어지는지는 화면과 해설로만 알게 한다.
@@ -59115,6 +59240,8 @@ function endHighlight(){
       return;
     }
   }
+  /* 🎞️ 방금까지 보던 마지막 프레임을 붙잡아 둔다 — 다음 장면이 시작될 때까지 화면은 여기서 멈춘다 */
+  try{ if(liveHL && liveHL.frames && liveHL.frames.length) liveHoldF=liveHL.frames[liveHL.frames.length-1]; }catch(e){ liveHoldF=null; }
   liveHL=null;
   setMatchMode(MATCH_MODE.TEXT);
   const pm=document.getElementById("pitchMode");
@@ -61109,7 +61236,7 @@ async function pvpSetNick(v){
 /* 원격 문자열 소독 — 상대 팩·이벤트는 남의 브라우저가 만든 데이터다. 표시 전에 씻는다. */
 function pvpClean(s, n){ return String(s==null?"":s).replace(/<[^>]*>/g,"").replace(/[<>&"'`]/g,"").slice(0, n||20); }
 /* ⚔️ 대전 진행 중인가 — 대기열·연결·로비·경기. done 은 끝난 상태라 풀린다. */
-function pvpBusy(){ return !!(PVP && ["queue","room","connecting","lobby","match"].indexOf(PVP.stage)>=0); }
+function pvpBusy(){ return !!PVP_BUSY || !!(PVP && ["queue","room","connecting","lobby","match"].indexOf(PVP.stage)>=0); }
 let PVP_NAVLOCK=false;
 /* ⚠ 제보 — 「온라인 매칭을 할 때는 다른 메뉴들은 비활성화」. 상태가 바뀔 때만 건드려서
    부임 절차 잠금(applyNavLock) 등 다른 잠금 체계와 싸우지 않는다. */
@@ -61152,11 +61279,26 @@ function pvpId(){
 
 /* ── Firebase RTDB REST — SDK 없이 fetch/EventSource 로만 쓴다 ───────────── */
 function fbU(path){ return PVP_FB.replace(/\/+$/,"")+"/pvp/"+path+".json"; }
-async function fbGet(p){ try{ const r=await fetch(fbU(p)); return r.ok? await r.json() : null; }catch(e){ return null; } }
-async function fbSet(p,v){ try{ const r=await fetch(fbU(p),{method:"PUT",body:JSON.stringify(v)}); return r.ok; }catch(e){ return false; } }
-async function fbPatch(p,v){ try{ const r=await fetch(fbU(p),{method:"PATCH",body:JSON.stringify(v)}); return r.ok; }catch(e){ return false; } }
-async function fbPush(p,v){ try{ const r=await fetch(fbU(p),{method:"POST",body:JSON.stringify(v)}); if(!r.ok) return null; return (await r.json()).name; }catch(e){ return null; } }
-async function fbDel(p){ try{ await fetch(fbU(p),{method:"DELETE"}); }catch(e){} }
+/* ⏱️ 안전장치 ① — 응답 없는 요청은 반드시 끊는다.
+   ⚠ 제보 원문 「온라인 대전에서 매칭이 안될때, 공개방 들어갈때 가끔 먹통이 되는 현상이
+      생기던데, 안전장치를 마련해줄래?」
+   원인: fetch 에 시간 제한이 없었다. 서버·와이파이가 응답을 멈추면 await 가 영영 끝나지
+   않고, 화면은 「방에 입장하는 중…」에서 굳은 채 아무 일도 일어나지 않는다(=먹통).
+   ─ 9초 안에 답이 없으면 실패로 처리한다. 실패는 각 호출부가 이미 다루고 있다. */
+const FB_TIMEOUT=9000;
+function fbFetch(u, init){
+  let ac=null, to=null;
+  try{ ac=new AbortController(); }catch(e){ ac=null; }
+  const opt=Object.assign({}, init||{});
+  if(ac){ opt.signal=ac.signal; to=setTimeout(()=>{ try{ ac.abort(); }catch(e){} }, FB_TIMEOUT); }
+  const done=()=>{ try{ if(to) clearTimeout(to); }catch(e){} };
+  return fetch(u, opt).then(r=>{ done(); return r; }, e=>{ done(); throw e; });
+}
+async function fbGet(p){ try{ const r=await fbFetch(fbU(p)); return r.ok? await r.json() : null; }catch(e){ return null; } }
+async function fbSet(p,v){ try{ const r=await fbFetch(fbU(p),{method:"PUT",body:JSON.stringify(v)}); return r.ok; }catch(e){ return false; } }
+async function fbPatch(p,v){ try{ const r=await fbFetch(fbU(p),{method:"PATCH",body:JSON.stringify(v)}); return r.ok; }catch(e){ return false; } }
+async function fbPush(p,v){ try{ const r=await fbFetch(fbU(p),{method:"POST",body:JSON.stringify(v)}); if(!r.ok) return null; return (await r.json()).name; }catch(e){ return null; } }
+async function fbDel(p){ try{ await fbFetch(fbU(p),{method:"DELETE"}); }catch(e){} }
 /* 실시간 수신 — RTDB 의 text/event-stream. put/patch 이벤트로 트리 변화가 흘러온다 */
 function fbStream(p, onChange){
   const url=fbU(p);
@@ -61366,6 +61508,7 @@ function pvpReset(keepLog){
   try{ if(PVP&&PVP.pc) PVP.pc.close(); }catch(e){}
   try{ if(PVP&&PVP.snapT) clearInterval(PVP.snapT); }catch(e){}
   try{ if(PVP&&PVP.helloT) clearInterval(PVP.helloT); }catch(e){}
+  try{ if(PVP&&PVP.guardIv) clearInterval(PVP.guardIv); }catch(e){}   // ⏱️ 연결 감시견 (제보: 먹통)
   try{ if(PVP&&PVP.awayIv) clearInterval(PVP.awayIv); }catch(e){}
   try{ const ov=document.getElementById("pvpAwayOv"); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }catch(e){}
   try{ const ov2=document.getElementById("pvpHtOv"); if(ov2&&ov2.parentNode) ov2.parentNode.removeChild(ov2); }catch(e){}
@@ -61380,21 +61523,57 @@ function pvpReset(keepLog){
   try{ pvpNavSync(); }catch(e){}   // ⚔️ 메뉴 잠금 해제 (제보 — 매칭 중 메뉴 비활성화)
 }
 function pvpCode(){ const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let s=""; for(let i=0;i<6;i++) s+=A[Math.floor(Math.random()*A.length)]; return s; }
+/* ⏱️ 안전장치 ② — 진입 절차 중복 실행 차단 (제보: 공개방 입장 시 먹통).
+   pvpQuick·pvpMakeRoom·pvpJoinRoom 은 맨 앞에서 `PVP` 만 봤는데, PVP 는 서버 응답을
+   기다리는 동안에도 계속 null 이다. 그 틈에 버튼을 한 번 더 누르면 두 절차가 동시에 돌며
+   서로의 PVP 를 덮어써, 살아남은 쪽이 없는 방을 바라보게 된다(=먹통).
+   ─ 절차가 끝날 때까지 잠근다. */
+/* ⚠ var — pvpBusy() 가 이 줄보다 위(61236)에 있어 let 이면 TDZ 사고가 날 수 있다 */
+var PVP_BUSY=0;
+function pvpEnterLock(){ if(PVP_BUSY||PVP) return false; PVP_BUSY=1; try{ pvpNavSync(); }catch(e){} return true; }
+function pvpEnterFree(){ PVP_BUSY=0; try{ pvpNavSync(); }catch(e){} try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
+/* ⏱️ 안전장치 ③ — 「연결 중」에서 멈추면 스스로 빠져나온다.
+   상대가 방에 있는 것까지는 확인됐는데 P2P 가 끝내 안 붙는 경우(포트 차단·상대가 창을 닫음·
+   시그널 유실)가 있다. 예전에는 배너만 돌 뿐, 유저가 취소를 누르기 전까지 영영 그대로였다.
+   ⚠ 상대를 기다리는 단계(대기열·빈 공개 방)에는 걸지 않는다 — 그건 정상적인 기다림이다. */
+const PVP_CONN_TO=35000;
+function pvpConnGuard(ms){
+  if(!PVP) return;
+  try{ if(PVP.guardIv) clearInterval(PVP.guardIv); }catch(e){}
+  PVP.connDL=Date.now()+(ms||PVP_CONN_TO);
+  PVP.guardIv=setInterval(()=>{
+    try{
+      if(!PVP || !PVP.guardIv) return;
+      const done=(PVP.stage==="match"||PVP.stage==="done"||(PVP.stage==="lobby"&&PVP.oppPack));
+      if(done){ clearInterval(PVP.guardIv); PVP.guardIv=null; return; }
+      if(Date.now() < PVP.connDL) return;
+      clearInterval(PVP.guardIv); PVP.guardIv=null;
+      pvpAbort("상대와 연결하지 못했습니다 — 잠시 뒤 다시 시도해 주세요.");
+    }catch(e){}
+  }, 2000);
+}
 function pvpSt(msg){ if(PVP) PVP.msg=msg; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
 
 /* 방 만들기 (친구 초대) — 나 = 호스트 */
 async function pvpMakeRoom(pub){
-  if(!pvpOn()||PVP) return;
-  if(!pvpNetGate()) return;          // 🌐 제보 — 연결이 끊겨 있으면 방을 열 수 없다
-  const code=pvpCode();
-  PVP={stage:"room", role:"host", room:code, myId:pvpId(), pub:pub?1:0, msg:"방을 만드는 중…"};
-  const t=userTeam()||{};
-  let st10=30; try{ st10=Math.round(teamStarVal(t)*10); }catch(e){}
-  const ok=await fbSet("rooms/"+code, {h:{id:PVP.myId, n:t.short||"?", nick:pvpNick(), tn:String(t.name||"").slice(0,16), sv:st10, ver:PVP_VER},
-                                       pub:pub?1:0, st:"wait", t:Date.now()});
-  if(!ok){ pvpReset(); PVP=null; flash("⚔️ 서버에 연결하지 못했습니다.","warn"); show("pvp"); return; }
-  pvpSt("방 코드: "+code+(pub?" — 공개 방입니다. 목록에서 상대가 들어올 수 있습니다":" — 상대가 입장하면 자동으로 연결됩니다"));
-  pvpWatchRoom();
+  if(!pvpOn()) return;
+  if(!pvpEnterLock()) return;        // ⏱️ 중복 클릭 차단 (제보: 먹통)
+  try{
+    if(!pvpNetGate()) return;        // 🌐 제보 — 연결이 끊겨 있으면 방을 열 수 없다
+    const code=pvpCode();
+    PVP={stage:"room", role:"host", room:code, myId:pvpId(), pub:pub?1:0, msg:"방을 만드는 중…"};
+    const t=userTeam()||{};
+    let st10=30; try{ st10=Math.round(teamStarVal(t)*10); }catch(e){}
+    const ok=await fbSet("rooms/"+code, {h:{id:PVP.myId, n:t.short||"?", nick:pvpNick(), tn:String(t.name||"").slice(0,16), sv:st10, ver:PVP_VER},
+                                         pub:pub?1:0, st:"wait", t:Date.now()});
+    if(!ok){ pvpReset(); PVP=null; flash("⚔️ 서버에 연결하지 못했습니다.","warn"); show("pvp"); return; }
+    pvpSt("방 코드: "+code+(pub?" — 공개 방입니다. 목록에서 상대가 들어올 수 있습니다":" — 상대가 입장하면 자동으로 연결됩니다"));
+    pvpWatchRoom();
+  }catch(e){
+    /* ⏱️ 어떤 이유로든 절차가 터지면 배너를 남기지 않고 메뉴로 돌려보낸다 (제보: 먹통) */
+    try{ pvpReset(); }catch(_){} PVP=null;
+    try{ flash("⚔️ 방을 만들지 못했습니다 — 다시 시도해 주세요.","warn"); show("pvp"); }catch(_){}
+  }finally{ pvpEnterFree(); }
 }
 /* ═══ 🌐 온라인 대전 라운지 — 연결 상태 · 접속 인원 · 로비 채팅 · 닉네임 장부 ═══════
    ⚠ 제보 원문 — 「온라인 대전에서 인터넷 연결이 안되어있으면 인터넷 연결이 되어있지않습니다
@@ -61485,10 +61664,41 @@ function pvpLiveStop(){
   PVP_LIVE=null;
   try{ fbDel("live/"+pvpId()); }catch(e){}
 }
+/* 🔭 접속 목록용 선발 스냅샷 — 접속 표시(live/{id})에 함께 실어 보낸다.
+   ⚠ 요청 원문 「접속중인 유저에서 유저 닉네임 클릭하면 지금은 1대1 대전 신청만 가능하잖아.
+      여기에 추가로 상대 포메이션 보기 해서 상대 스쿼드 베스트 11 포메이션을 볼 수 있게 해줘」.
+   ⚠ 전체 스쿼드 패키지(pvpPack)는 20명 + 전 능력치라 20초마다 올리기엔 너무 크다.
+      그림에 필요한 11명의 이름·등번호·배치 자리만 담는다 (≈0.5KB).
+   ⚠ 20초마다 bestXI 를 다시 도는 것도 낭비다 — 60초 캐시를 둔다. */
+let PVP_FPK=null, PVP_FPK_T=0;
+function pvpFormPack(){
+  try{
+    if(PVP_FPK && Date.now()-PVP_FPK_T < 60000) return PVP_FPK;
+    const t=userTeam(); if(!t) return null;
+    const xi=(bestXI(t)||[]).slice(0,11); if(!xi.length) return null;
+    let sl={}; try{ sl=computeRenderSlots(t, xi)||{}; }catch(e){}
+    let sv=30; try{ sv=Math.round(teamStarVal(t)*10); }catch(e){}
+    let fm=""; try{ fm=formationLabel(t, xi)||""; }catch(e){}
+    PVP_FPK={
+      tn:String(t.name||"").slice(0,16), ts:String(t.short||"").slice(0,8),
+      c:/^#[0-9a-fA-F]{3,8}$/.test(t.col||"")?t.col:"#2a6ee8",
+      fm:String(fm).slice(0,14), sv:sv,
+      p:xi.map(p=>({n:String(p.name||"").slice(0,10), no:clamp(Math.round(p.no||0),0,99),
+                    s:(sl[p.id]&&SLOT_XY[sl[p.id]])?sl[p.id]:null,
+                    po:(["GK","DF","MF","FW"].indexOf(p.pos)>=0?p.pos:"MF"),
+                    o:clamp(Math.round(p.ovr||60),40,99)}))
+    };
+    PVP_FPK_T=Date.now();
+    return PVP_FPK;
+  }catch(e){ return null; }
+}
+/* 스쿼드·전술이 바뀌면 캐시를 버린다 — 낡은 포메이션을 보여 주면 안 된다 */
+function pvpFormPackDirty(){ PVP_FPK=null; PVP_FPK_T=0; }
 async function pvpLiveBeat(){
   if(!pvpOn() || !PVP_LIVE) return;
   const inMatch=(typeof PVP!=="undefined") && PVP && (PVP.stage==="match"||PVP.stage==="lobby") ? 1 : 0;   // ⚔️ 대전 중 표식
-  const ok=await fbSet("live/"+pvpId(), {n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER, m:inMatch});
+  const _f=pvpFormPack();
+  const ok=await fbSet("live/"+pvpId(), {n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER, m:inMatch, f:_f||null});
   if(!ok){ if(PVP_NET!==false){ PVP_NET=false; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} } return; }
   if(PVP_NET!==true){ PVP_NET=true; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
   /* 닉네임 점유도 함께 갱신한다 — 계속 쓰는 사람의 이름은 풀리지 않는다 */
@@ -61502,7 +61712,8 @@ function pvpLiveApply(tree){
     const age=now-(e.t||0);
     if(age>PVP_LIVE_PURGE){ try{ fbDel("live/"+id); }catch(_){} continue; }
     if(age>PVP_LIVE_TTL) continue;
-    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m});
+    /* 🔭 상대 포메이션 보기 — 접속 표시에 실려 온 선발 스냅샷을 행에 달아 둔다 (요청) */
+    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m, f:(e.f&&typeof e.f==="object")?e.f:null});
   }
   rows.sort((a,b)=> a.me? -1 : b.me? 1 : String(a.n).localeCompare(String(b.n),"ko"));
   PVP_LIVE.list=rows; PVP_LIVE.n=rows.length;
@@ -61529,24 +61740,76 @@ function pvpLiveHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 확인할 수 없습니다.</p>`;
   const L=PVP_LIVE;
   if(!L || !L.list) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
-  /* ⚔️ 개발 노트 — 「접속중에 나오는 유저들 닉네임 클릭해서 1대1 대전 신청 박스 나오게」 */
+  /* ⚔️ 개발 노트 — 「접속중에 나오는 유저들 닉네임 클릭해서 1대1 대전 신청 박스 나오게」
+     🔭 요청 — 「여기에 추가로 상대 포메이션 보기 해서 상대 스쿼드 베스트 11 포메이션을 볼 수
+        있게 해줘」. 이제 클릭하면 「신청 / 포메이션 보기」 메뉴가 뜬다.
+     ⚠ 대전 중인 감독도 클릭은 되게 바꾼다 — 신청은 못 해도 포메이션은 볼 수 있어야 한다. */
+  const _uid=(r)=>String(r.id).replace(/[^\w-]/g,"");
   const chips=L.list.slice(0,80).map(r=>
     r.me
     ? `<span style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--gold);color:#0d1117">${r.n} (나)</span>`
     : r.m
-    /* 🔴 대전 중 — 신청을 받을 수 없으니 클릭도 걸지 않는다 (개발 노트) */
-    ? `<span title="${r.n} 감독은 지금 경기 중입니다" style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#26161a;color:#ff9d95;border:1px solid #6e2a30;opacity:.9">${r.n} <b style="font-size:10px">🔴 대전중</b></span>`
-    : `<span class="clickable" title="클릭하면 ${r.n} 감독에게 1:1 대전을 신청합니다" onclick="pvpChallenge('${String(r.id).replace(/[^\w-]/g,"")}','${r.n.replace(/'/g,"")}')"
+    ? `<span class="clickable" title="${r.n} 감독은 지금 경기 중입니다 — 포메이션은 볼 수 있습니다" onclick="pvpUserMenu('${_uid(r)}')"
+        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#26161a;color:#ff9d95;border:1px solid #6e2a30;opacity:.9;cursor:pointer">${r.n} <b style="font-size:10px">🔴 대전중</b></span>`
+    : `<span class="clickable" title="클릭하면 ${r.n} 감독에게 1:1 대전 신청 · 포메이션 보기를 고를 수 있습니다" onclick="pvpUserMenu('${_uid(r)}')"
         style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#1b222b;color:var(--fg);border:1px solid #2a3441;cursor:pointer">⚔️ ${r.n}</span>`).join("");
   return `<div><b style="color:var(--green)">🟢 지금 ${L.n}명 접속 중</b>`
     + (L.n>80?` <span class="small" style="opacity:.7">(80명까지 표시)</span>`:"")
     + `</div><div style="margin-top:5px;line-height:1.9">${chips||`<span class="small" style="opacity:.6">아직 아무도 없습니다.</span>`}</div>`
-    + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임을 클릭하면 그 감독에게 <b>1:1 대전 신청</b>이 갑니다.</p>`:"");
+    + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임을 클릭하면 <b>1:1 대전 신청</b>과 <b>🔭 포메이션 보기</b>를 고를 수 있습니다.</p>`:"");
 }
 /* ═══ ⚔️ 1:1 대전 신청 — 개발 노트: 「접속중 유저 닉네임 클릭 → 대전 신청 박스 → 대전」 ═══
    비공개 방을 만들어 두고, 상대의 접속 표시(live/{id})에 초대장(inv)을 얹는다.
    상대 화면은 live 스트림으로 초대장을 받아 수락/거절 팝업을 띄운다 —
    수락하면 그 방 코드로 입장(pvpJoinRoom), 거절하면 방에 dec 표식을 남겨 신청자에게 알린다. */
+/* 🔭 접속자 메뉴 — ⚠ 요청 원문 「접속중인 유저에서 유저 닉네임 클릭하면 지금은 1대1 대전
+   신청만 가능하잖아. 여기에 추가로 상대 포메이션 보기 해서 상대 스쿼드 베스트 11 포메이션을
+   볼 수 있게 해줘」. 클릭 한 번에 바로 신청이 가던 자리를 두 갈래 메뉴로 바꾼다. */
+function pvpUserMenu(id){
+  try{
+    const L=PVP_LIVE; if(!L||!L.list) return;
+    const r=L.list.find(x=>x.id===id);
+    if(!r || r.me) return;
+    const F=r.f;
+    const sub = F ? `<span class="small" style="opacity:.8">${pvpClean(F.tn||F.ts||"",16)} · <b style="color:var(--gold)">${pvpClean(F.fm||"",14)}</b> · ★${((F.sv||30)/10).toFixed(1)}</span>`
+                  : `<span class="small" style="opacity:.6">스쿼드 정보가 아직 도착하지 않았습니다</span>`;
+    const opts=[], acts=[];
+    if(!r.m){ opts.push("⚔️ 1:1 대전 신청"); acts.push(()=>pvpChallenge(r.id, r.n)); }
+    opts.push(F ? "🔭 상대 포메이션 보기" : "🔭 포메이션 보기 (정보 없음)");
+    acts.push(()=>pvpShowForm(r.id));
+    showChoice(`<b style="font-size:15px">${pvpClean(r.n,8)}</b> 감독`
+      + (r.m?` <span class="small" style="color:#ff9d95">— 지금 경기 중</span>`:``)
+      + `\n${sub}`, opts, (i)=>{ try{ acts[i] && acts[i](); }catch(e){} });
+  }catch(e){}
+}
+/* 🔭 상대 선발 11명 그림 — 로비의 pvpFormPitch 와 같은 그리기 방식을 그대로 쓴다.
+   ⚠ 상대가 보낸 값이다 — 전부 소독해서 넘긴다. */
+function pvpShowForm(id){
+  try{
+    const L=PVP_LIVE; if(!L||!L.list) return;
+    const r=L.list.find(x=>x.id===id); if(!r) return;
+    const F=r.f;
+    if(!F || !Array.isArray(F.p) || !F.p.length){
+      showConfirm(`<b>🔭 ${pvpClean(r.n,8)} 감독의 포메이션</b>\n\n아직 스쿼드 정보가 도착하지 않았습니다.\n<span class="small">상대가 ⚔️ 메뉴에 머무는 동안 20초 안에 올라옵니다 — 잠시 뒤 다시 눌러 보세요.</span>`,
+        null, {okLabel:"닫기", cancelLabel:""});
+      return;
+    }
+    const col=/^#[0-9a-fA-F]{3,8}$/.test(F.c||"")?F.c:"#2a6ee8";
+    const pk={ tac:{formation:String(F.fm||"").slice(0,14)},
+               pl:F.p.slice(0,11).map(q=>({
+                 n:pvpClean(q.n,10)||"선수",
+                 no:clamp(Math.round(q.no||0),0,99),
+                 sl:(typeof q.s==="string" && SLOT_XY[q.s])?q.s:null,
+                 pos:(["GK","DF","MF","FW"].indexOf(q.po)>=0?q.po:"MF")
+               })) };
+    const avg=(function(){ let s=0,c=0; for(const q of F.p){ const v=Math.round(q.o||0); if(v>0){ s+=v; c++; } } return c?Math.round(s/c):0; })();
+    showConfirm(`<b style="font-size:15px">🔭 ${pvpClean(r.n,8)} 감독의 선발</b>
+      <div class="small" style="margin:3px 0 8px;opacity:.85">${pvpClean(F.tn||F.ts||"",16)} · <b style="color:var(--gold)">${pvpClean(F.fm||"",14)}</b> · ★${((F.sv||30)/10).toFixed(1)}${avg?` · 선발 평균 ${avg}`:""}</div>
+      <div style="display:flex;justify-content:center">${pvpFormPitch(pk, col, "베스트 11")}</div>
+      <p class="small" style="margin:8px 0 0;opacity:.7">상대가 ⚔️ 메뉴에 접속해 있는 동안 20초마다 갱신됩니다. 실제 경기에서는 상대가 전술을 바꿀 수 있습니다.</p>`,
+      null, {okLabel:"닫기", cancelLabel:""});
+  }catch(e){}
+}
 function pvpChallenge(id, nick){
   if(!pvpOn()) return;
   if(!pvpNetGate()) return;
@@ -61735,22 +61998,42 @@ async function pvpRoomsRefresh(force){
 }
 /* 코드로 입장 — 나 = 게스트 */
 async function pvpJoinRoom(code){
-  if(!pvpOn()||PVP) return;
-  if(!pvpNetGate()) return;          // 🌐 제보 — 연결이 끊겨 있으면 들어가지 못한다
-  code=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
-  if(code.length<6){ flash("방 코드 6자리를 입력하세요.","warn"); return; }
-  const room=await fbGet("rooms/"+code);
-  if(!room || !room.h){ flash("그 코드의 방이 없습니다.","warn"); return; }
-  if(room.g){ flash("이미 다른 상대가 입장한 방입니다.","warn"); return; }
-  if((room.h.ver||0)!==PVP_VER){ flash("상대와 게임 버전이 다릅니다 — 같은 버전으로 맞춰 주세요.","warn"); return; }
-  PVP={stage:"room", role:"guest", room:code, myId:pvpId(), msg:"방에 입장하는 중…"};
-  await fbPatch("rooms/"+code, {g:{id:PVP.myId, n:(userTeam()||{}).short||"?", ver:PVP_VER}, st:"paired"});
-  pvpWatchRoom();
-  pvpRtcStart();          // 게스트가 offer 를 만든다
+  if(!pvpOn()) return;
+  if(!pvpEnterLock()) return;        // ⏱️ 중복 클릭 차단 — 공개 방 목록에서 연타하면 절차가 겹쳤다 (제보: 먹통)
+  try{
+    if(!pvpNetGate()) return;        // 🌐 제보 — 연결이 끊겨 있으면 들어가지 못한다
+    code=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+    if(code.length<6){ flash("방 코드 6자리를 입력하세요.","warn"); return; }
+    const room=await fbGet("rooms/"+code);
+    /* ⏱️ fbGet 은 시간 초과·오프라인이면 null 을 준다 — 「방이 없다」와 구분해 안내한다 */
+    if(!room || !room.h){ flash(PVP_NET===false?"연결이 끊겼습니다 — 잠시 뒤 다시 시도해 주세요.":"그 코드의 방이 없습니다.","warn"); return; }
+    if(room.g){ flash("이미 다른 상대가 입장한 방입니다.","warn"); return; }
+    if((room.h.ver||0)!==PVP_VER){ flash("상대와 게임 버전이 다릅니다 — 같은 버전으로 맞춰 주세요.","warn"); return; }
+    PVP={stage:"room", role:"guest", room:code, myId:pvpId(), msg:"방에 입장하는 중…"};
+    const ok=await fbPatch("rooms/"+code, {g:{id:PVP.myId, n:(userTeam()||{}).short||"?", ver:PVP_VER}, st:"paired"});
+    /* ⚠ 예전에는 이 결과를 안 봤다 — 입장 기록이 서버에 안 남았는데도 그 방을 계속 지켜보며
+       영영 「입장하는 중…」에 머물렀다 (제보: 공개방 들어갈 때 먹통) */
+    if(!ok){ pvpReset(); PVP=null; flash("⚔️ 방에 입장하지 못했습니다 — 다시 시도해 주세요.","warn"); show("pvp"); return; }
+    pvpWatchRoom();
+    pvpConnGuard();         // ⏱️ 상대가 있는 방이다 — 여기서부터는 시간 안에 붙어야 한다
+    pvpRtcStart();          // 게스트가 offer 를 만든다
+  }catch(e){
+    try{ pvpReset(); }catch(_){} PVP=null;
+    try{ flash("⚔️ 방에 입장하지 못했습니다 — 다시 시도해 주세요.","warn"); show("pvp"); }catch(_){}
+  }finally{ pvpEnterFree(); }
 }
 /* 빠른 대전 — 대기열 */
 async function pvpQuick(){
-  if(!pvpOn()||PVP) return;
+  if(!pvpOn()) return;
+  if(!pvpEnterLock()) return;        // ⏱️ 중복 클릭 차단 (제보: 매칭이 안 될 때 먹통)
+  try{ await pvpQuick_(); }
+  catch(e){
+    try{ pvpReset(); }catch(_){} PVP=null;
+    try{ flash("⚔️ 매칭을 시작하지 못했습니다 — 다시 시도해 주세요.","warn"); show("pvp"); }catch(_){}
+  }
+  finally{ pvpEnterFree(); }
+}
+async function pvpQuick_(){
   if(!pvpNetGate()) return;          // 🌐 제보 — 연결이 끊겨 있으면 들어가지 못한다
   const me={id:pvpId(), n:(userTeam()||{}).short||"?", st:Math.round((function(){try{return teamStarVal(userTeam())*10}catch(e){return 30}})()), t:Date.now(), ver:PVP_VER};
   PVP={stage:"queue", role:null, myId:me.id, msg:"상대를 찾는 중…"};
@@ -61774,6 +62057,7 @@ async function pvpQuick(){
     /* ⚠ 여기서 지우면 안 된다 — 상대 스트림이 재접속 중이면 room 표시를 영영 못 본다.
        삭제는 상대(대기자) 본인이 room 을 확인한 뒤에 하고, 유령 항목은 TTL 청소가 걷어간다. */
     pvpWatchRoom();
+    pvpConnGuard();      // ⏱️ 상대를 찾았다 — 여기서부터는 시간 안에 붙어야 한다 (제보: 먹통)
     pvpRtcStart();
     return;
   }
@@ -61789,6 +62073,7 @@ async function pvpQuick(){
       fbDel("queue/"+key);
       pvpSt("상대를 찾았습니다 — 연결 중…");
       pvpWatchRoom();
+      pvpConnGuard();    // ⏱️ 짝이 지어졌다 — 여기서부터는 시간 안에 붙어야 한다 (제보: 먹통)
     }
   });
 }
@@ -61806,7 +62091,12 @@ function pvpWatchRoom(){
         return;
       }
       if(PVP.role==="host"){
-        if(room.g && !PVP.pc && PVP.stage==="room"){ pvpSt("상대 입장 — 연결 중…"); }
+        if(room.g && !PVP.pc && PVP.stage==="room"){
+          pvpSt("상대 입장 — 연결 중…");
+          /* ⏱️ 상대가 들어온 뒤로는 무한정 기다리지 않는다 (제보: 공개방 먹통).
+             빈 방에서 상대를 기다리는 동안에는 감시를 걸지 않는다 — 그건 정상적인 기다림이다. */
+          if(!PVP.guardIv) pvpConnGuard();
+        }
         if(room.sdpOffer && !PVP.answered){
           PVP.answered=1;
           await pvpRtcAnswer(room.sdpOffer);
@@ -63069,7 +63359,9 @@ function pvpView(){
           <td class="small">${x.host?"홈":"원정"}</td><td class="small">${x.s}</td></tr>`).join("")}
       </table></div>`:`<p class="small">아직 온라인 대전 기록이 없습니다.</p>`}</div>`;
   })();
-  const WAITING = !!(PVP && (PVP.stage==="queue"||PVP.stage==="room"||PVP.stage==="connecting"));
+  /* ⏱️ PVP_BUSY — 서버 응답을 기다리는 「진입 절차 진행 중」도 대기로 친다.
+     예전에는 이 구간에 버튼이 살아 있어 연타로 절차가 겹쳤다 (제보: 먹통) */
+  const WAITING = !!(PVP && (PVP.stage==="queue"||PVP.stage==="room"||PVP.stage==="connecting")) || !!PVP_BUSY;
   if(!PVP || WAITING){
     /* 서버 미설정 빌드: 시작 버튼 대신 안내만 (전적은 그대로 보인다) */
     if(!pvpOn()) return `<h2>⚔️ 온라인 대전</h2><div class="msg warn">이 빌드에는 온라인 서버가 설정되어 있지 않습니다.</div>${logHtml}`;
