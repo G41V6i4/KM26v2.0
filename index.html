@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1017-->
+<!--B:20260823-1029-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -27114,6 +27114,8 @@ function show(v){
   try{ banCtxSync(); }catch(e){}         // 🟥 제보 — 다음 경기 대회 기준으로 출전정지를 다시 잡는다
   try{ document.body.classList.toggle("pvpMenu", v==="pvp"); }catch(e){}   // ⚔️ 제보 — 모바일 진행 버튼 숨김
   try{ chatBoxSync(); }catch(e){}        // 💬 제보 — 채팅창 스크롤바·높이 복원
+  /* 💬 요청 — 화면을 다시 그린 직후엔 늘 최신 줄이 보이게 (글꼴·높이가 잡힌 뒤 한 번 더) */
+  try{ chatBoxesBottom(); setTimeout(()=>{ try{ chatBoxesBottom(); }catch(e){} }, 60); }catch(e){}
   try{ pvpPresenceSync(v); }catch(e){}   // 🌐 제보 — ⚔️ 메뉴에 있는 동안만 접속 인원에 잡힌다
   navPush(v);              // 🖱️ 트랙패드 뒤로가기 제스처를 위해 방문 기록을 남긴다
   try{ boardFlush(); }catch(e){}   // 🪑 미뤄 둔 구단주 경고·통첩 — 한가해졌으면 지금 띄운다 (제보)
@@ -62114,6 +62116,12 @@ function pvpFormPackDirty(){ PVP_FPK=null; PVP_FPK_T=0; }
 async function pvpLiveBeat(){
   if(!pvpOn() || !PVP_LIVE) return;
   const inMatch=(typeof PVP!=="undefined") && PVP && (PVP.stage==="match"||PVP.stage==="lobby") ? 1 : 0;   // ⚔️ 대전 중 표식
+  /* 🟡 ⚠ 요청 — 「유저 표시되는 곳에 '매칭중' 표시도 나오게 해 줘. 지금은 대전중만 나온다」.
+     대기열·방 대기·연결 중이 전부 「붙을 수 없는 상태」인데 표식이 없어서, 그 감독에게
+     1:1 신청을 보내면 조용히 삼켜지고 90초 뒤에야 「응답 없음」으로 끝났다.
+     ⚠ 옛 판과 섞여도 안전하게 새 칸(q)에 담는다 — 옛 판은 이 값을 그냥 무시한다. */
+  const inQueue=(typeof PVP!=="undefined") && PVP && !inMatch
+                && ["queue","room","connecting"].indexOf(PVP.stage)>=0 ? 1 : 0;
   const _f=pvpFormPack();
   /* ⚔️ ⚠ 제보 원문 — 「1대1 대전 신청하면 상대방한테 아무것도 안 뜬다」.
      원인 ① 1:1 신청은 상대의 접속 표시에 초대장을 얹는 방식(live/{id}.inv)인데,
@@ -62121,7 +62129,7 @@ async function pvpLiveBeat(){
             예전에는 live 를 상시 연결로 듣고 있어 초대장이 밀리초 만에 도착했기 때문에
             덮이기 전에 처리됐다. 상시 연결을 주기 조회로 바꾸면서 이 경합이 드러났다.
      ─ 심장박동은 fbPatch(=칸 안의 값만 갱신)로 바꾼다. 초대장은 받는 쪽이 직접 지운다. */
-  const _rec={n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER, m:inMatch, f:_f||null};
+  const _rec={n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER, m:inMatch, q:inQueue, f:_f||null};
   let ok=await fbPatch("live/"+pvpId(), _rec);
   /* ⚠ 보안 규칙이 부분 갱신을 막는 환경도 있다 — 그럴 땐 통째로 쓰는 옛 방식으로 되살린다.
      (통째로 쓰면 초대장이 지워지므로, 지우기 전에 들고 있다가 도로 얹는다) */
@@ -62184,7 +62192,7 @@ function pvpLiveApply(tree, invOnly){
     /* 🔭 상대 포메이션 보기 — 접속 표시에 실려 온 선발 스냅샷을 행에 달아 둔다 (요청) */
     /* 🔢 버전 — ⚠ 요청 「온라인 대전 화면에서 현재 버전이 다른지 바로 알 수 있게. 지금은
        매칭해야 버전이 다른지 알 수 있잖아」. 심장박동에 이미 ver 이 실려 온다. */
-    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m, v:(e.ver|0),
+    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m, q:!!e.q, v:(e.ver|0),
                f:(e.f&&typeof e.f==="object")?e.f:null});
   }
   if(!invOnly){
@@ -62196,6 +62204,15 @@ function pvpLiveApply(tree, invOnly){
   /* ⚔️ 내 접속 표시에 초대장(inv)이 얹혀 있으면 — 1:1 대전 신청이 온 것이다 (개발 노트) */
   try{
     const meE=(tree||{})[mine], inv=meE && meE.inv;
+    /* 🟡 내가 이미 매칭·경기 중이면 초대장을 그냥 버리지 않고 곧바로 거절을 알린다.
+       예전에는 조용히 무시해서, 신청한 쪽이 90초를 기다린 뒤에야 「응답 없음」을 봤다 (요청). */
+    if(inv && inv.room && inv.from && inv.from!==mine
+       && (Date.now()-(inv.t||0) < 90000)
+       && (PVP || (typeof liveM!=="undefined" && liveM))){
+      const _rm=String(inv.room).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+      try{ fbSet("live/"+mine+"/inv", null); }catch(e){}
+      try{ fbPatch("rooms/"+_rm, {dec:1, decWhy:"busy"}); }catch(e){}
+    }
     if(inv && inv.room && inv.from && inv.from!==mine
        && PVP_LIVE.invSeen!==inv.room
        && (Date.now()-(inv.t||0) < 90000)
@@ -62264,6 +62281,9 @@ function pvpLiveHtml(){
     : r.m
     ? `<span class="clickable" title="${r.n} 감독은 지금 경기 중입니다 — 포메이션은 볼 수 있습니다" onclick="pvpUserMenu('${_uid(r)}')"
         style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#26161a;color:#ff9d95;border:1px solid #6e2a30;opacity:.9;cursor:pointer">${pvpTierMini(r.n)} ${r.n} <b style="font-size:10px">🔴 대전중</b></span>`
+    : r.q
+    ? `<span class="clickable" title="${r.n} 감독은 지금 상대를 찾는 중입니다 — 신청을 받을 수 없습니다. 포메이션은 볼 수 있습니다" onclick="pvpUserMenu('${_uid(r)}')"
+        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#2a2416;color:#ffd479;border:1px solid #6e5f2a;opacity:.95;cursor:pointer">${pvpTierMini(r.n)} ${r.n} <b style="font-size:10px">🟡 매칭중</b></span>`
     : `<span class="clickable" title="클릭하면 ${r.n} 감독에게 1:1 대전 신청 · 포메이션 보기를 고를 수 있습니다" onclick="pvpUserMenu('${_uid(r)}')"
         style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#1b222b;color:var(--fg);border:1px solid #2a3441;cursor:pointer">${pvpTierMini(r.n)} ⚔️ ${r.n}</span>`).join("");
   return `<div><b style="color:var(--green)">🟢 지금 ${L.n}명 접속 중</b>`
@@ -62341,6 +62361,14 @@ function pvpChallenge(id, nick){
       return;
     }
   }catch(e){}
+  /* 🟡 상대가 이미 매칭 중·경기 중이면 신청을 보내지 않는다 — 보내 봐야 삼켜진다 (요청) */
+  try{
+    const _s=((PVP_LIVE&&PVP_LIVE.list)||[]).find(x=>x.id===id);
+    if(_s && (_s.m || _s.q)){
+      gameAlert(`${pvpClean(nick,8)||"상대"} 감독은 지금 ${_s.m?"경기 중":"상대를 찾는 중"}입니다.\n\n지금은 1:1 신청을 받을 수 없습니다 — 잠시 뒤에 다시 시도해 주세요.`);
+      return;
+    }
+  }catch(e){}
   nick=pvpClean(nick,8)||"상대";
   showConfirm(`<b>⚔️ 1:1 대전 신청</b>\n\n<b>${nick}</b> 감독에게 대전을 신청할까요?\n${pvpH2HLine(nick)}\n<span class="small">상대가 수락하면 바로 매치 로비로 이동합니다 · 90초 안에 응답이 없으면 자동으로 거둡니다.</span>`,
     ()=>{ pvpChallengeGo(id, nick); }, {okLabel:"⚔️ 신청한다", cancelLabel:"그만둔다"});
@@ -62387,7 +62415,12 @@ function pvpTalkApply(tree){
   rows.sort((a,b)=>a.t-b.t);
   PVP_TALK.rows=rows.slice(-PVP_TALK_SHOW);
   const el=document.getElementById("pvpTalk");
-  if(el){ el.innerHTML=pvpTalkHtml(); try{ chatBoxSync(); }catch(e){} try{ el.scrollTop=el.scrollHeight; }catch(e){} }
+  if(el){
+    const stick=(el.scrollHeight-el.scrollTop-el.clientHeight)<=60 || !PVP_TALK._drew;
+    el.innerHTML=pvpTalkHtml(); PVP_TALK._drew=1;
+    try{ chatBoxSync(); }catch(e){}
+    chatBoxBottom(el, stick);
+  }
 }
 function pvpTalkHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있습니다.</p>`;
@@ -62632,7 +62665,9 @@ function pvpWatchRoom(){
       /* ⚔️ 1:1 대전 신청 거절 — 상대가 팝업에서 「거절한다」를 눌렀다 (개발 노트) */
       if(room && room.dec && PVP.role==="host" && PVP.duel && !PVP.pc){
         try{ if(PVP.invTO){ clearTimeout(PVP.invTO); PVP.invTO=null; } }catch(e){}
-        pvpAbort(`⚔️ ${PVP.duel} 감독이 대전 신청을 거절했습니다.`);
+        pvpAbort(room.decWhy==="busy"
+          ? `⚔️ ${PVP.duel} 감독은 지금 다른 매칭·경기 중입니다 — 신청을 받을 수 없습니다.`
+          : `⚔️ ${PVP.duel} 감독이 대전 신청을 거절했습니다.`);
         return;
       }
       if(PVP.role==="host"){
@@ -63598,6 +63633,30 @@ function pvpChatHtml(){
 }
 /* 💬 채팅창 높이 기억 — ⚠ 제보(크기 조절). 화면을 다시 그려도 감독이 맞춰 둔 높이를 지킨다.
    .chatBox 를 단 상자면 무엇이든 여기서 한꺼번에 돌본다. */
+/* 💬 ⚠ 요청 원문 — 「매칭 후에나 뭔가 행동을 하고 나면 채팅창이 최신순이 아니라 바로
+   과거 쪽으로 올라가더라. 수정해 줘」.
+   원인: 화면이 다시 그려지면 채팅 상자가 새로 만들어지고, 새 상자의 스크롤은 맨 위(가장 오래된 줄)에서
+      시작한다. 새 줄이 올 때만 맨 아래로 내리고 있어서, 다시 그려진 직후에는 과거가 보인 채로 멈춰 있었다.
+   ─ 상자를 그릴 때마다 맨 아래로 내린다. 다만 사용자가 위로 올려 옛 대화를 읽는 중이면
+     새 줄이 와도 끌어내리지 않는다(60px 여유). */
+function chatBoxBottom(el, force){
+  try{
+    if(typeof el==="string") el=document.getElementById(el);
+    if(!el) return;
+    if(!force){
+      const gap=(el.scrollHeight||0)-(el.scrollTop||0)-(el.clientHeight||0);
+      if(gap>60) return;                       // 위로 올려 읽는 중 — 건드리지 않는다
+    }
+    el.scrollTop=el.scrollHeight;
+  }catch(e){}
+}
+/* 화면에 있는 모든 채팅 상자를 맨 아래로 (그린 직후 한 번) */
+function chatBoxesBottom(){
+  try{
+    const list=document.querySelectorAll ? document.querySelectorAll(".chatBox") : [];
+    for(let i=0;i<list.length;i++) chatBoxBottom(list[i], true);
+  }catch(e){}
+}
 function chatBoxSync(){
   try{
     const list=document.querySelectorAll ? document.querySelectorAll(".chatBox") : [];
@@ -63609,6 +63668,7 @@ function chatBoxSync(){
       let h=0;
       if(id){ try{ h=parseInt(localStorage.getItem("klm2026_cbH_"+id),10)||0; }catch(e){} }
       el.style.height=((h>60&&h<2000)?h:def)+"px";
+      chatBoxBottom(el, true);                 // 💬 새로 그린 상자는 최신 줄부터 (요청)
       if(id && typeof ResizeObserver!=="undefined"){
         try{
           const ro=new ResizeObserver(()=>{ try{
@@ -64722,7 +64782,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1017";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1029";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
