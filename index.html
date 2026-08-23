@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-0909-->
+<!--B:20260823-0922-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -62008,7 +62008,7 @@ function pvpPresenceSync(v){
 }
 function pvpLiveStart(){
   if(PVP_LIVE){ pvpLiveBeat(); return; }
-  PVP_LIVE={es:null, esT:null, esR:null, esK:null, esV:null, iv:null, list:null, n:0};
+  PVP_LIVE={es:null, esT:null, esR:null, iv:null, list:null, n:0};
   PVP_TALK=PVP_TALK||{rows:null, at:0};
   PVP_RES=PVP_RES||{rows:null};
   pvpLiveBeat();
@@ -62016,12 +62016,15 @@ function pvpLiveStart(){
   try{ PVP_LIVE.esT=fbStream("talk", (tree)=>{ try{ pvpTalkApply(tree); }catch(e){} }); }catch(e){}
   try{ PVP_LIVE.esR=fbStream("results", (tree)=>{ try{ pvpResApply(tree); }catch(e){} }); }catch(e){}
   /* 🔄 ⚠ 요청 — 「랭킹들 변경되는 게 있을 때마다 갱신되게 해 줘」.
-     15초 주기로 긁어 오던 것을 실시간 수신으로 바꾼다. 주간 랭킹(rank)이나 시즌 티어(tier)에
-     누가 한 줄이라도 올리면 그 순간 두 표를 다시 그린다.
-     ⚠ 한 경기가 끝나면 rank·tier 가 잇따라 바뀐다 — 매번 전체를 다시 읽으면 낭비이므로
-        350ms 안에 몰아서 한 번만 새로 고친다. */
-  try{ PVP_LIVE.esK=fbStream("rank", ()=>{ try{ pvpRankPoke(); }catch(e){} }); }catch(e){}
-  try{ PVP_LIVE.esV=fbStream("tier", ()=>{ try{ pvpRankPoke(); }catch(e){} }); }catch(e){}
+     ⚠ 제보 — 이걸 rank·tier 전용 스트림 두 개로 붙였더니 온라인 연결이 끊기기 시작했다.
+        브라우저는 한 서버에 열어 둘 수 있는 연결 수가 정해져 있는데(HTTP/1.1 기준 6개),
+        live·talk·results 로 이미 세 개를 쓰고 있었다. 거기에 둘을 더 얹으니 남는 자리가
+        없어져, 정작 매칭·방 입장에 쓰는 일반 요청이 자리를 못 잡고 시한(9초)에 걸렸다.
+     ⚠ Firebase 무료 요금제는 동시 접속 수 자체에 상한(100)이 있다. 한 사람이 스트림을
+        셋에서 다섯으로 늘리면 수용 인원이 33명에서 20명으로 줄어든다 — 사람이 몰리면
+        새로 들어오는 쪽부터 연결이 거부된다.
+     ─ 새 연결을 열지 않는다. 랭킹이 바뀌는 순간은 「경기가 끝났을 때」뿐이고, 그건 이미
+       results 스트림이 알고 있다. 그 신호에 얹어서 두 표를 다시 그린다. */
   PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); }catch(e){} }, PVP_LIVE_MS);
 }
 function pvpLiveStop(){
@@ -62029,8 +62032,6 @@ function pvpLiveStop(){
   try{ if(PVP_LIVE.es)  PVP_LIVE.es.close(); }catch(e){}
   try{ if(PVP_LIVE.esT) PVP_LIVE.esT.close(); }catch(e){}
   try{ if(PVP_LIVE.esR) PVP_LIVE.esR.close(); }catch(e){}
-  try{ if(PVP_LIVE.esK) PVP_LIVE.esK.close(); }catch(e){}
-  try{ if(PVP_LIVE.esV) PVP_LIVE.esV.close(); }catch(e){}
   try{ if(PVP_RANK && PVP_RANK.poke){ clearTimeout(PVP_RANK.poke); PVP_RANK.poke=null; } }catch(e){}
   try{ if(PVP_LIVE.iv)  clearInterval(PVP_LIVE.iv); }catch(e){}
   PVP_LIVE=null;
@@ -62344,6 +62345,9 @@ function pvpResApply(tree){
   }
   rows.sort((a,b)=>b.t-a.t);
   PVP_RES.rows=rows.slice(0, PVP_RES_SHOW);
+  /* 🔄 경기가 끝나면 주간 랭킹·시즌 티어도 함께 바뀐다 — 같은 신호로 두 표를 새로 고친다
+     (전용 스트림을 따로 열지 않는 이유는 pvpLiveStart 의 주석 참고) */
+  try{ if(PVP_RES._n!==rows.length || (rows[0]&&rows[0].k!==PVP_RES._top)){ PVP_RES._n=rows.length; PVP_RES._top=rows[0]?rows[0].k:null; pvpRankPoke(); } }catch(e){}
   const el=document.getElementById("pvpRes");
   if(el) el.innerHTML=pvpResHtml();
 }
@@ -63981,6 +63985,7 @@ function pvpTierPost(r){
       return fbSet("tier/"+key, rec).then(ok2=>{
         /* 규칙을 아직 안 올려 쓰기가 막혔다면 화면이 그 사실을 알려 준다 */
         try{ PVP_TIER.wr = (ok2===false) ? false : true; }catch(e){}
+        try{ pvpRankPoke(); }catch(e){}      // 🔄 내 티어가 바뀌었으니 표도 새로 그린다
         return ok2;
       });
     }).catch(()=>{});
@@ -64547,7 +64552,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-0909";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-0922";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
