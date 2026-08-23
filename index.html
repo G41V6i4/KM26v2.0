@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1123-->
+<!--B:20260823-1149-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -47563,6 +47563,7 @@ const CORNER_SHORT_P=0.12;  // 코너를 짧게 빼서 다시 만드는 비율 (
    경기는 뒤에서 빠르게 굴러간다. 결정적 장면이 나오면 그 앞 빌드업부터 되감아
    실시간으로 보여주고, 끝나면 다시 빨리 감는다. 그래서 "녹화 버퍼"가 필요하다. */
 const HL_BUF_MAX=260;       // 링버퍼 길이 (0.2초 × 260 ≈ 52초 분량)
+const HL_MAX_STEP=2;        // 🎾 한 번의 화면 갱신에 재생헤드가 밀 수 있는 최대 칸 수 (제보: 공이 스킵된다)
 const CARD_FX_SEC=4.2;      // 🟥 카드를 들어 올린 뒤 화면에 남는 시간(초)
 const HL_CAP_MAX=90;        // 해설 자막 링버퍼 길이
 const HL_LEAD=11.0;         // 리드인 기본값 (종류별 값이 없을 때의 폴백)
@@ -53017,11 +53018,25 @@ class MatchSim{
           this.cornerKick(this.opp(gk.side), gx2, b.y);
           return true;
         }
-        const away2 = (gk.dir>0) ? 0 : Math.PI;        // 골문 반대(앞) 방향
-        const ang2 = away2 + (Math.random()-0.5)*1.5;  // 앞쪽으로 부채꼴
+        /* 🧤 ⚠ 제보 원문 — 「하이라이트에서 키퍼가 펀칭인지 걷어내기인지 사이드 터치라인으로
+           일부러 라인아웃 시키더라. 이게 자주 나온다」.
+           원인: 펀칭 방향을 「골문 반대쪽 ±43° 부채꼴」로만 뽑고, 그 끝이 경기장 안인지는
+              보지 않았다. 그런데 펀칭이 나오는 공은 대부분 크로스라, 공은 이미 포스트 옆
+              (터치라인에서 5~8m)에 있다. 거기서 바깥쪽으로 43° 를 잡으면 12~20m 중
+              옆으로만 13m 가 나가 그대로 라인 밖이다. 그래서 자주 보였다.
+           ─ 부채꼴로 각을 뽑되 「떨어질 지점」을 먼저 계산하고, 터치라인 안쪽 4m 로 당긴 뒤
+             그 지점을 향해 친다. 실제 펀칭도 위험지역 밖으로 넓고 높게 쳐내지,
+             일부러 라인 밖으로 버리지 않는다. */
+        const sgn2 = (gk.dir>0) ? 1 : -1;              // 골문 반대(앞) 방향
+        const sp2  = (Math.random()-0.5)*1.5;          // 앞쪽으로 부채꼴
+        const D2   = (12+Math.random()*8)/ISO_TO_M;
+        let tx2 = clamp(b.x + sgn2*Math.cos(sp2)*D2/PITCH_AR, 0.03, 0.97);
+        let ty2 = clamp(b.y + Math.sin(sp2)*D2, 0.055, 0.945);   // 터치라인에서 4m 안쪽
+        const ang2  = Math.atan2(ty2-b.y, (tx2-b.x)*PITCH_AR);
+        const runM2 = Math.hypot((tx2-b.x)*PITCH_AR, ty2-b.y)*ISO_TO_M;
         this.evl("CLEAR", gk, {gk:1, punch:1});
         this.cap(gk.side, COMM.lvClear, {p:this.nm(gk)}, true);
-        this.launchLoose(b.x, b.y, ang2, 12+Math.random()*8, this.opp(gk.side), true);
+        this.launchLoose(b.x, b.y, ang2, Math.max(9, runM2), this.opp(gk.side), true);
       } else {
         st.shotCaught=(st.shotCaught||0)+1;
         this.giveTo(gk, {noTouch:true});               // 캐치 — 손으로 잡는다(퍼스트터치 아님)
@@ -59541,8 +59556,20 @@ function advanceHighlight(dtSec){
   hl.lastAdv=nowMs();
   // 리플레이는 일부러 느리게 — 무슨 일이 있었는지 눈으로 따라갈 수 있게
   const rate = HL_RATE * liveMul() * (hl.isReplay ? HL_REPLAY_RATE*0.5*replayMulUI() : 1); // 슬로모 — 기본 2배속 상쇄 × 사용자 다시보기 배속
-  hl.acc += Math.min(dtSec, 0.5)*rate;                // 한 번에 너무 많이 건너뛰지 않게 (탭 복귀 시 순간이동 방지)
-  while(hl.acc>=SIM_DT && hl.i<hl.frames.length-1){ hl.acc-=SIM_DT; hl.i++; }
+  /* 🎾 ⚠ 제보 원문 — 「매치엔진에서 공이 막 스킵되면서 라인 아웃되는 경우가 간헐적으로 보인다」.
+     원인: 재생헤드를 「흐른 시간 × 배속」만큼 한 번에 밀고 있었다. 화면이 한 번 버벅이면
+        (다른 탭에서 돌아왔을 때·GC·모바일 프레임 하락) dtSec 이 0.5초까지 튀는데,
+        2배속이면 그 한 번의 호출로 재생헤드가 다섯 칸(=시뮬 1초) 앞으로 뛴다.
+        프레임 사이 보간은 「다음 한 칸」만 이어 주므로, 그렇게 뛴 만큼은 그냥 순간이동으로 보인다.
+        날아가던 공은 틱당 최대 11m 라, 다섯 칸이면 50m 를 건너뛴다 — 그 사이에 라인을 넘으면
+        「공이 확 튀더니 아웃」이 된다.
+     ─ 한 번의 화면 갱신으로는 최대 두 칸까지만 민다. 넘치는 시간은 버린다(느리게 재생될 뿐
+       장면이 잘리지는 않는다). 60fps 기준 2배속이 필요로 하는 양은 0.07칸이라 평소에는
+       이 상한에 닿지도 않는다 — 버벅인 그 순간에만 작동한다. */
+  hl.acc += Math.min(dtSec, 0.12)*rate;               // 한 번에 너무 많이 건너뛰지 않게 (탭 복귀 시 순간이동 방지)
+  let _adv=0;
+  while(hl.acc>=SIM_DT && hl.i<hl.frames.length-1 && _adv<HL_MAX_STEP){ hl.acc-=SIM_DT; hl.i++; _adv++; }
+  if(hl.acc>SIM_DT) hl.acc=SIM_DT;                    // 밀린 시간은 쌓아 두지 않는다
   // 재생헤드가 지난 해설만 공개한다 — 화면보다 글이 앞서 결과를 알려 버리지 않게
   const ph=hl.frames[hl.i].t;
   revealEventsUpTo(ph);
@@ -65017,7 +65044,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1123";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1149";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
