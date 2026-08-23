@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1440-->
+<!--B:20260823-1453-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -63181,6 +63181,11 @@ function pvpLobbySquadSync(){
 function pvpOnMsg(raw){
   let m=null; try{ m=JSON.parse(raw); }catch(e){ return; }
   if(!PVP||!m||!m.t) return;
+  /* ⚠ 제보(포메이션 미반영)에서 드러난 것 — 한 통을 처리하다 예외가 나면 그 뒤 처리가
+     통째로 끊긴다. 통신 자체가 무너지지 않게 감싼다. */
+  try{ return pvpOnMsg_(m); }catch(e){ try{ console.warn("pvp msg", m&&m.t, e); }catch(_){} }
+}
+function pvpOnMsg_(m){
   if(m.t==="hello"){
     if((m.ver||0)!==PVP_VER){ pvpSend({t:"bye", why:"ver"}); pvpAbort("상대와 게임 버전이 다릅니다."); return; }
     const first=!PVP.oppPack;
@@ -63298,19 +63303,26 @@ function pvpOnMsg(raw){
     }
     return;
   }
+  /* ⚔️ ⚠ 제보 원문 — 「하프타임에 포메이션을 5-3-2 로 바꿨는데 시작하고 보니 예전 포메이션이더라」.
+     원인: 게스트가 보내는 전술 변경(포메이션·자리·역할·교체·지시)을 호스트가 받을 때
+        `PVP.tacEdit==="opp"` 인지만 봤다. 그런데 하프타임 동시 편집을 넣으면서,
+        호스트도 자기 전술창을 열고 있으면 그 칸이 "me" 가 되고 상대 편집은 별도 표식(tacOppOn)
+        으로 옮겨 두게 바꿨다 — 그래서 그 경우 게스트가 보낸 변경이 전부 조용히 버려졌다.
+        하프타임에는 양쪽이 동시에 여는 것이 정상이라, 사실상 매번 무시된 셈이다.
+     ─ 「상대가 전술창을 열고 있는가」를 한 곳에서 판정한다 (tacEdit==="opp" 이거나 tacOppOn). */
   if((m.t==="tacsl"||m.t==="tacrl") && PVP.role==="host"){
-    if(PVP.tacEdit!=="opp") return;
+    if(!pvpOppEditing()) return;
     pvpApplySlots(PVP.awayT, m.t==="tacsl"?m.sl:null, m.t==="tacrl"?m.rl:null);
     return;
   }
   if(m.t==="tacf" && PVP.role==="host"){
-    if(PVP.tacEdit!=="opp") return;                       // 전술창을 연 동안에만 바꿀 수 있다
+    if(!pvpOppEditing()) return;                          // 전술창을 연 동안에만 바꿀 수 있다
     pvpApplyForm(PVP.awayT, String(m.f||""));
     pvpSend(Object.assign({t:"tacst", ok:1}, pvpSideState("a")));
     return;
   }
   if(m.t==="sub" && PVP.role==="host"){
-    if(PVP.tacEdit!=="opp") return;
+    if(!pvpOppEditing()) return;
     const r=pvpApplySub("a", clamp(m.out|0,0,99), clamp(m.in|0,0,99));
     pvpSend(Object.assign({t:"tacst", ok:1, why:r.ok?"":(r.why||"교체 실패")}, pvpSideState("a")));
     return;
@@ -63888,6 +63900,23 @@ function pvpDuty(roleKey, d){
     return list.indexOf(v)>=0 ? v : list[0];
   }catch(e){ return "S"; }
 }
+/* ⚔️ ⚠ 제보 원문 — 「온라인 대전 전술 수정에서 포메이션을 5-3-2 로 바꿔도 반영이 안 된다」.
+   원인: 게스트가 보낸 포메이션 변경을 호스트가 `pvpApplyForm(...)` 으로 처리하는데,
+      **그 함수가 아예 없었다.** 호출하는 자리만 있고 정의가 없어, 받을 때마다
+      ReferenceError 로 그 메시지 처리가 중단됐다 — 포메이션은 물론 그 뒤에 붙는
+      확인 응답(tacst)까지 함께 날아갔다. 게스트의 포메이션 변경은 한 번도 반영된 적이 없다.
+   ─ 함수를 만든다. 목록에 있는 포메이션만 받아들이고, 적용 뒤 굴러가는 엔진에 즉시 반영한다. */
+function pvpApplyForm(t, f){
+  try{
+    const fn=String(f||"").slice(0,12);
+    if(!t || !t.tactic || !FORMATION_SHAPE[fn]) return false;
+    if(t.tactic.formation===fn) return true;
+    applyFormation(t, fn);
+    if(typeof liveM!=="undefined" && liveM) liveM.xiDirty=true;
+    if(typeof liveSim!=="undefined" && liveSim) liveSim.resyncSquads();
+    return true;
+  }catch(e){ return false; }
+}
 function pvpApplySlots(t, sl, rl){
   try{
     if(!t || !t.tactic) return;
@@ -63906,6 +63935,11 @@ function pvpApplySlots(t, sl, rl){
   }catch(e){}
 }
 /* 반대편 블라인드 — 「상대방이 전술을 수정중입니다」 */
+/* ⚔️ 상대가 지금 전술창을 열고 있는가 — 경기 중에는 tacEdit="opp",
+   하프타임 동시 편집에서는 내 창이 열려 있으므로 tacOppOn 으로 표시된다 (제보) */
+function pvpOppEditing(){
+  try{ return !!(PVP && (PVP.tacEdit==="opp" || PVP.tacOppOn)); }catch(e){ return false; }
+}
 function pvpTacBlind(on){
   try{
     let ov=document.getElementById("pvpTacBl");
@@ -65230,7 +65264,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1440";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1453";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
