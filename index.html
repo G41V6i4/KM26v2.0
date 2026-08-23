@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-0953-->
+<!--B:20260823-1003-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -62035,10 +62035,12 @@ function pvpPresenceSync(v){
 }
 function pvpLiveStart(){
   if(PVP_LIVE){ pvpLiveBeat(); return; }
-  PVP_LIVE={es:null, esT:null, esR:null, iv:null, ivInv:null, list:null, n:0};
+  PVP_LIVE={es:null, esT:null, esR:null, iv:null, ivFast:null, list:null, n:0};
   PVP_TALK=PVP_TALK||{rows:null, at:0};
   PVP_RES=PVP_RES||{rows:null};
-  pvpLiveBeat();
+  /* ⚠ 제보 — 「'나'가 늦게 뜬다」. 심장박동은 비동기라, 기다리지 않고 목록을 읽으면
+     내 칸이 아직 서버에 없다. 박동이 끝난 뒤에 읽는다. */
+  try{ Promise.resolve(pvpLiveBeat()).then(()=>{ try{ pvpLivePoll(); pvpResPoll(); }catch(e){} }); }catch(e){}
   /* ⚠ 제보 원문 — 「여전히 매칭에서 연결이 끊긴다. 심지어 모바일에서도 끊긴다」.
      원인: 상시 연결(EventSource)을 너무 많이 열고 있었다.
        ⚔️ 메뉴에 서 있기만 해도 live·talk·results 로 3개, 매칭에 들어가면 queue 나 rooms 까지
@@ -62053,7 +62055,6 @@ function pvpLiveStart(){
        · results(전적) — 경기가 끝날 때만 바뀐다 → 주기 조회로
        상시 연결이 3개에서 1개로 줄어, 매칭이 쓸 자리가 넉넉해진다. */
   try{ PVP_LIVE.esT=fbStream("talk", (tree)=>{ try{ pvpTalkApply(tree); }catch(e){} }); }catch(e){}
-  try{ pvpLivePoll(); }catch(e){}
   /* 🔄 ⚠ 요청 — 「랭킹들 변경되는 게 있을 때마다 갱신되게 해 줘」.
      ⚠ 제보 — 이걸 rank·tier 전용 스트림 두 개로 붙였더니 온라인 연결이 끊기기 시작했다.
         브라우저는 한 서버에 열어 둘 수 있는 연결 수가 정해져 있는데(HTTP/1.1 기준 6개),
@@ -62064,9 +62065,8 @@ function pvpLiveStart(){
         새로 들어오는 쪽부터 연결이 거부된다.
      ─ 새 연결을 열지 않는다. 랭킹이 바뀌는 순간은 「경기가 끝났을 때」뿐이고, 그건 이미
        results 스트림이 알고 있다. 그 신호에 얹어서 두 표를 다시 그린다. */
-  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLivePoll(); pvpLiveBeat(); }catch(e){} }, PVP_LIVE_MS);
-  PVP_LIVE.ivInv=setInterval(()=>{ try{ pvpInvPoll(); }catch(e){} }, PVP_INV_MS);
-  try{ pvpInvPoll(); }catch(e){}
+  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); pvpResPoll(); }catch(e){} }, PVP_LIVE_MS);
+  PVP_LIVE.ivFast=setInterval(()=>{ try{ pvpLivePoll(); }catch(e){} }, PVP_POLL_MS);
 }
 function pvpLiveStop(){
   if(!PVP_LIVE) return;
@@ -62075,7 +62075,7 @@ function pvpLiveStop(){
   try{ if(PVP_LIVE.esR) PVP_LIVE.esR.close(); }catch(e){}
   try{ if(PVP_RANK && PVP_RANK.poke){ clearTimeout(PVP_RANK.poke); PVP_RANK.poke=null; } }catch(e){}
   try{ if(PVP_LIVE.iv)  clearInterval(PVP_LIVE.iv); }catch(e){}
-  try{ if(PVP_LIVE.ivInv) clearInterval(PVP_LIVE.ivInv); }catch(e){}
+  try{ if(PVP_LIVE.ivFast) clearInterval(PVP_LIVE.ivFast); }catch(e){}
   PVP_LIVE=null;
   try{ fbDel("live/"+pvpId()); }catch(e){}
 }
@@ -62125,26 +62125,24 @@ async function pvpLiveBeat(){
   /* 닉네임 점유도 함께 갱신한다 — 계속 쓰는 사람의 이름은 풀리지 않는다 */
   try{ const k=pvpNickKey(); if(k) fbPatch("nicks/"+k, {t:Date.now()}); }catch(e){}
 }
-/* ⚔️ 초대장 감시 — 내 칸 하나만 짧은 주기로 본다. 아주 작은 조회라 회선 부담이 없고,
-   상시 연결을 늘리지 않으면서도 1:1 신청이 곧바로 뜬다 (제보). */
-const PVP_INV_MS=4000;
-async function pvpInvPoll(){
-  if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
-  if(PVP) return;                                    // 이미 매칭·경기 중이면 초대는 받지 않는다
-  try{ if(typeof liveM!=="undefined" && liveM) return; }catch(e){}
-  const mine=pvpId(); if(!mine) return;
-  try{
-    const me=await fbGet("live/"+mine+"/inv");
-    if(me) pvpLiveApply({[mine]:{n:pvpNick(), t:Date.now(), inv:me}}, true);
-  }catch(e){}
+/* 🔌 상시 연결 대신 주기 조회 (제보 — 상시 연결이 많아 매칭이 끊겼다).
+   ⚠ 제보 원문 — 「원래는 바로바로 접속 중인 감독에 '나'도 잘 표시됐는데 늦게 뜬다.
+      접속 목록도 좀 빠르게 갱신되게 해 달라. 이건 매칭과는 상관없잖아」.
+   맞는 말이다 — 부담은 「상시 연결 수」에서 오지 조회 주기에서 오지 않는다.
+   접속 목록은 5초마다, 전적은 바뀔 일이 드무니 20초마다 본다.
+   1:1 초대장(live/{내id}.inv)도 이 5초 조회에 함께 실려 온다. */
+const PVP_POLL_MS=5000;
+function pvpPollSkip(){
+  try{ return !!(typeof pvpBusy==="function" && pvpBusy() && (typeof VIEW==="undefined" || VIEW!=="pvp")); }catch(e){ return false; }
 }
-/* 🔌 상시 연결 대신 주기 조회 — 접속자 목록과 전적을 한 번씩 읽어 온다 (제보) */
 async function pvpLivePoll(){
   if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
-  /* 경기 중에는 심장박동만 남기고 목록 조회는 쉰다 — 화면에 보이지도 않고,
-     대전 신호와 회선을 다투면 그쪽이 밀린다 (제보) */
-  try{ if(typeof pvpBusy==="function" && pvpBusy() && (typeof VIEW==="undefined" || VIEW!=="pvp")) return; }catch(e){}
-  try{ const t=await fbGet("live");    if(PVP_LIVE) pvpLiveApply(t||{}); }catch(e){}
+  if(pvpPollSkip()) return;      // 경기 중에는 심장박동만 — 대전 신호와 회선을 다투지 않게
+  try{ const t=await fbGet("live"); if(PVP_LIVE) pvpLiveApply(t||{}); }catch(e){}
+}
+async function pvpResPoll(){
+  if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
+  if(pvpPollSkip()) return;
   try{ const r=await fbGet("results"); if(PVP_LIVE) pvpResApply(r||{}); }catch(e){}
 }
 function pvpLiveApply(tree, invOnly){
@@ -62165,7 +62163,7 @@ function pvpLiveApply(tree, invOnly){
     rows.sort((a,b)=> a.me? -1 : b.me? 1 : String(a.n).localeCompare(String(b.n),"ko"));
     PVP_LIVE.list=rows; PVP_LIVE.n=rows.length;
     const el=document.getElementById("pvpLive");
-    if(el) el.innerHTML=pvpLiveHtml();
+    if(el){ const h=pvpLiveHtml(); if(el.innerHTML!==h) el.innerHTML=h; }
   }
   /* ⚔️ 내 접속 표시에 초대장(inv)이 얹혀 있으면 — 1:1 대전 신청이 온 것이다 (개발 노트) */
   try{
@@ -64688,7 +64686,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-0953";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1003";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
