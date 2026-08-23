@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1049-->
+<!--B:20260823-1100-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -61469,7 +61469,19 @@ function pickDayPlan(i){
    비워 두면 ⚔️ 온라인 대전 메뉴가 숨는다. 설정 방법은 「온라인대전_설정가이드.md」 참고. */
 const PVP_FB="https://kleagueonline-default-rtdb.asia-southeast1.firebasedatabase.app/";
 const PVP_VER=6;                 // 프로토콜 버전 — 다르면 매칭을 거절한다 (v6: 역할 능숙도·전담 키커·주장 · v5: 선발·배치·역할 · v4: 주심 좌표)
-const PVP_STUN=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
+/* 🌐 P2P 연결 경로.
+   ⚠ 제보 — 「매칭이 안 된다」. 서버(방·신호)는 멀쩡한데 붙지 않는 경우가 있는데,
+      원인은 대개 STUN 만으로는 뚫리지 않는 회선이다. 통신사 공유 주소(CGNAT)나
+      대칭형 NAT 뒤에서는 서로의 공인 주소를 알아도 직접 연결이 성립하지 않는다.
+   ─ 직접 연결이 실패했을 때만 쓰이는 중계(TURN)를 함께 둔다. 평소에는 쓰이지 않고,
+      직접 붙을 수 없을 때에만 경기 데이터가 이 중계를 거친다. */
+const PVP_STUN=[
+  {urls:"stun:stun.l.google.com:19302"},
+  {urls:"stun:stun1.l.google.com:19302"},
+  {urls:"turn:openrelay.metered.ca:80",  username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443", username:"openrelayproject", credential:"openrelayproject"},
+  {urls:"turn:openrelay.metered.ca:443?transport=tcp", username:"openrelayproject", credential:"openrelayproject"}
+];
 const PVP_SNAP_MS=33;            // 상태 스냅샷 전송 간격 (30Hz — 제보: 프레임 동일화)
 const PVP_PLAYOUT=120;           // 게스트 재생 지연 기준(ms) — 적응형 재생 시계의 목표 리드 (제보: 뚝뚝 끊김)
 const PVP_QUEUE_TTL=90;          // 대기열 항목 유효 시간(초)
@@ -62229,7 +62241,9 @@ async function pvpDiag(){
       return false;
     }
   };
-  const me=pvpId(), code="ZZ"+String(Math.floor(Math.random()*9000)+1000);
+  /* ⚠ 시험용 방 코드도 실제와 똑같이 만든다 — 예전에는 여기서 0·1 이 섞인 코드를 만들어
+     보안 규칙(대문자와 2~9만 허용)에 걸렸고, 멀쩡한 서버를 「막혔다」고 잘못 알렸다. */
+  const me=pvpId(), code=pvpCode();
   L.push(`빌드 ${GAME_BUILD} · 버전 v${PVP_VER} · 내 id ${me}`);
   await step("접속자 읽기", "live");
   await step("내 접속 표시 쓰기", "live/"+me, {method:"PATCH", body:JSON.stringify({n:String(pvpNick()||"감독").slice(0,8), t:Date.now(), ver:PVP_VER})});
@@ -62238,6 +62252,34 @@ async function pvpDiag(){
   await step("방 읽기(시험)", "rooms/"+code);
   await step("방 지우기(시험)", "rooms/"+code, {method:"DELETE"});
   await step("티어 읽기", "tier");
+  /* 실제 매칭이 쓰는 쓰기들 — 대기열 등록·신호 전달까지 그대로 흉내 낸다 */
+  const qk="ZZdiag"+Math.floor(Math.random()*100000);
+  await step("대기열 등록(시험)", "queue/"+qk, {method:"PUT", body:JSON.stringify({id:me, n:"?", st:30, t:Date.now(), ver:PVP_VER})});
+  await step("대기열 지우기(시험)", "queue/"+qk, {method:"DELETE"});
+  const code2=pvpCode();
+  await step("방 만들기2(시험)", "rooms/"+code2, {method:"PUT", body:JSON.stringify({h:{id:me, n:"?", nick:String(pvpNick()||"감독").slice(0,8), ver:PVP_VER}, pub:0, duel:1, to:me, st:"wait", t:Date.now()})});
+  await step("신호 전달(시험)", "rooms/"+code2, {method:"PATCH", body:JSON.stringify({sdpOffer:"{\"type\":\"offer\"}"})});
+  await step("방 지우기2(시험)", "rooms/"+code2, {method:"DELETE"});
+  /* 🌐 P2P — 서버가 멀쩡해도 여기서 막히면 「방은 만들어졌는데 연결이 안 되는」 상태가 된다.
+     공인 주소(srflx)를 하나도 못 얻으면 상대와 직접 붙을 길이 없다. */
+  const ice=await new Promise((res)=>{
+    let host=0, srflx=0, relay=0, done=false;
+    try{
+      const pc=new RTCPeerConnection({iceServers:PVP_STUN});
+      pc.createDataChannel("t");
+      const fin=()=>{ if(done) return; done=true; try{ pc.close(); }catch(e){} res({host,srflx,relay}); };
+      pc.onicecandidate=(e)=>{
+        if(!e.candidate){ fin(); return; }
+        const c=String(e.candidate.candidate||"");
+        if(/ typ host/.test(c)) host++;
+        else if(/ typ srflx/.test(c)) srflx++;
+        else if(/ typ relay/.test(c)) relay++;
+      };
+      pc.createOffer().then(o=>pc.setLocalDescription(o)).catch(()=>fin());
+      setTimeout(fin, 7000);
+    }catch(e){ res({host:0,srflx:0,relay:0}); }
+  });
+  L.push((ice.srflx>0?"✅":"❌")+` 공인 주소 확보(STUN) — 내부 ${ice.host}개 · 공인 ${ice.srflx}개${ice.relay?` · 중계 ${ice.relay}개`:""}`);
   /* 상시 연결이 열리는지 */
   const es=await new Promise((res)=>{
     let done=false, s=null;
@@ -62250,7 +62292,10 @@ async function pvpDiag(){
     }catch(e){ res("실패"); }
   });
   L.push((es==="열림"?"✅":"❌")+" 상시 연결(채팅) — "+es);
-  const hint = L.some(x=>/HTTP 40[12]|HTTP 429/.test(x))
+  const iceBad = L.some(x=>/공인 주소 확보\(STUN\) — .*공인 0개/.test(x));
+  const hint = iceBad
+    ? "\n\n⚠ 서버는 정상인데 <b>공인 주소를 하나도 못 얻었습니다</b>. 방화벽·회사망·일부 모바일 회선이 STUN(UDP 19302)을 막으면 상대와 직접 연결할 수 없습니다 — 방은 만들어지지만 붙지 않습니다. 다른 망(휴대폰 테더링 등)에서 한 번 시험해 주세요."
+    : L.some(x=>/HTTP 40[12]|HTTP 429/.test(x))
     ? "\n\n⚠ 401 은 보안 규칙에 막힌 것이고, 402·429 는 요금제 한도(동시 접속·내려받기)를 넘긴 것입니다. Firebase 콘솔의 사용량 화면을 확인해 주세요."
     : L.some(x=>/응답 없음/.test(x))
     ? "\n\n⚠ 서버가 응답하지 않습니다 — 그물 상태이거나 데이터베이스가 잠시 막혀 있습니다."
@@ -64911,7 +64956,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1049";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1100";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
