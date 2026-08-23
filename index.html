@@ -19114,7 +19114,20 @@ function drawSimWatch(cv, simOverride){
        제 몸집보다 멀리 뛰는 점은 이어져 보이지 않는다 — 스트로보처럼 툭툭 끊겨 보인다.
        실제 중계 화면이 그렇듯 지나온 자리를 옅게 이어 그려 하나의 궤적으로 읽히게 한다.
        공이 느리면 잔상 길이가 0에 수렴하므로 평소 화면은 그대로다. */
-  const _bx=IX(s.ball), _by=IY(s.ball);
+  /* 🎞️ 빨리 감기 중의 공 — 한 화면 프레임에 시뮬 수십 틱이 굴러 공이 순간이동한다(제보).
+     JUMP 임계값(0.26)을 넘으면 보간이 아예 꺼져 스트로보처럼 튄다.
+     ─ 화면에 남아 있는 자리(_ffx)에서 지금 자리로 매 프레임 조금씩 끌어당긴다.
+       0.3 이면 10프레임(≈0.16초)에 따라붙으므로, 「휙 훑고 지나간다」로 읽힌다. */
+  let _bx, _by;
+  if(liveFF && !simOverride){
+    const b0=s.ball, FFA=0.30;
+    if(b0._ffx===undefined || Math.hypot((b0.x-b0._ffx)*PITCH_AR, b0.y-b0._ffy) > 0.90){ b0._ffx=b0.x; b0._ffy=b0.y; }
+    b0._ffx += (b0.x-b0._ffx)*FFA; b0._ffy += (b0.y-b0._ffy)*FFA;
+    _bx=b0._ffx; _by=b0._ffy;
+  } else {
+    if(s.ball._ffx!==undefined){ s.ball._ffx=undefined; s.ball._ffy=undefined; }
+    _bx=IX(s.ball); _by=IY(s.ball);
+  }
   (function(){
     try{
       const b=s.ball, tr=(b._tr=b._tr||[]);
@@ -44182,7 +44195,10 @@ let liveHL=null, lastHLTick=null;
      15m 이상 튀고 최대 59m. 부드러운 장면 → 공이 튀는 구간 → 다시 장면, 이게 「스킵」이다.
    ─ 장면 사이에는 마지막으로 「본」 프레임을 그대로 붙잡아 둔다. 공이 튀지 않고, 아직 보여
      주지 않은 장면을 미리 흘리지도 않는다. */
-let liveHoldF=null;
+/* 🎞️ 하이라이트 사이 빨리 감기 중인가 — ⚠ 제보 원문 「하이라이트 장면 뒤에는 블라인드
+   처리되면서 선수들이 막 움직이면서 스킵되잖아? 예전에는 선수들이 다같이 막 움직이면서
+   빠르게 지나갔는데, 지금은 몇몇 선수들만 움직이네? … 약간 어색하달까?」 */
+let liveFF=false;
 let tacApplyTimer=null;                 // "전술 반영 중" 표시 타이머
 const TAC_APPLY_MS=1600;                // 지시가 전달되는 데 걸리는 시간(ms)
 /* 하이라이트 공개 큐 — 한 분(tick) 안에 여러 사건이 동시에 쏟아져도 한 장면씩 순서대로 재생한다. */
@@ -55797,21 +55813,18 @@ function render2DTick(now){
       syncGoalPanel(liveSim);
     } else {
       /* 🎞️ 하이라이트 사이 — 경기는 뒤에서 빨리 감기는 중.
-         ⚠ 제보(공이 스킵된다) — 예전에는 여기서 「지금 굴러가는 그라운드」를 그대로 그렸다.
-            빨리 감기는 한 화면 프레임에 수십 틱을 굴리므로 공이 프레임마다 순간이동했다.
-            마지막으로 본 프레임을 그대로 붙잡아 둔다 — 정지 화면이라 튀지 않는다. */
-      /* 첫 장면이 나오기 전(킥오프~첫 하이라이트)도 같은 구간이다 — 그때는 지금 프레임 하나를
-         집어 붙잡는다. 한 번만 집으므로 그 뒤로는 움직이지 않는다. */
-      if(!liveHoldF){ try{ const _bf=liveSim.buf; if(_bf && _bf.length) liveHoldF=_bf[_bf.length-1]; }catch(e){} }
-      if(liveHoldF){
-        try{ drawHighlightFrame(cv, {frames:[liveHoldF, liveHoldF], i:0, acc:0, isReplay:false}); }
-        catch(e){ drawSimWatch(cv, liveSim); }
-        /* 붙잡아 둔 화면에는 득점 패널을 띄우지 않는다 — 아직 보여 주지 않은 골을 미리 알릴 수 있다 */
-        if(goalPanelShownFor!==null){ goalPanelShownFor=null; hideGoalPanel(); }
-      } else {
-        drawSimWatch(cv, liveSim);
-        syncGoalPanel(liveSim);
-      }
+         ⚠ 제보 원문 「하이라이트 장면 뒤에는 블라인드 처리되면서 선수들이 막 움직이면서
+            스킵되잖아? 예전에는 선수들이 다같이 막 움직이면서 빠르게 지나갔는데, 지금은
+            몇몇 선수들만 움직이네? … 약간 어색하달까?」
+         원인: 「공이 스킵된다」를 잡으려고 마지막 프레임 한 장을 붙잡아 그렸는데,
+         그 프레임에 기록돼 있던 선수만 고정되고 그 뒤에 교체로 들어온 선수는 실시간
+         좌표 그대로 뛰었다 — 22명 중 몇 명만 움직이는 화면이 됐다.
+         ─ 다시 「지금 굴러가는 그라운드」를 통째로 그린다(전원이 함께 빨리 감긴다).
+           원래 문제였던 공만 따로 손본다 — drawSimWatch 의 liveFF 분기 참고. */
+      liveFF=true;
+      try{ drawSimWatch(cv, liveSim); } finally { liveFF=false; }
+      /* 아직 보여 주지 않은 골을 미리 알리지 않는다 — 빨리 감기 구간에서는 득점 패널을 띄우지 않는다 */
+      if(goalPanelShownFor!==null){ goalPanelShownFor=null; hideGoalPanel(); }
       const ctx=cv.getContext&&cv.getContext("2d");
       if(ctx && !livePaused){ ctx.fillStyle="rgba(6,10,14,0.55)"; ctx.fillRect(0,0,cv.width,cv.height); }
     }
@@ -58749,7 +58762,7 @@ function startLive(M, tag){
     try{ show("squad"); }catch(e){ try{ show("home"); }catch(e2){} }
     return;
   }
-  liveSimHalf=false; liveHL=null; liveHoldF=null; lastHLTick=null; goalPanelShownFor=null; hideGoalPanel();
+  liveSimHalf=false; liveHL=null; liveFF=false; lastHLTick=null; goalPanelShownFor=null; hideGoalPanel();
   if(revealTimer){ clearTimeout(revealTimer); revealTimer=null; } revealQueue=[]; // 이전 경기의 잔여 공개 큐 정리
   current2DScene=null;
   VIEW="match";
@@ -59277,7 +59290,6 @@ function startHighlight(){
     s.evlog.length=0; for(const e of keptEv) s.evlog.push(e);
     s.hl=pending;                                   // 이 장면 재생이 끝나면 곧바로 PK 장면이 시작된다
   } else { s.buf.length=0; s.caps.length=0; s.evlog.length=0; }   // 다음 장면을 위해 비운다
-  liveHoldF=null;                 // 🎞️ 새 장면이 시작된다 — 붙잡아 둔 프레임을 놓아 준다
   setMatchMode(MATCH_MODE.HIGHLIGHT);
   // ⚠ 여기서 "골"·"결정적 기회" 같은 장면 종류를 띄우면 결과를 미리 알려주는 꼴이다.
   //    무슨 일이 벌어지는지는 화면과 해설로만 알게 한다.
@@ -59324,7 +59336,6 @@ function endHighlight(){
     }
   }
   /* 🎞️ 방금까지 보던 마지막 프레임을 붙잡아 둔다 — 다음 장면이 시작될 때까지 화면은 여기서 멈춘다 */
-  try{ if(liveHL && liveHL.frames && liveHL.frames.length) liveHoldF=liveHL.frames[liveHL.frames.length-1]; }catch(e){ liveHoldF=null; }
   liveHL=null;
   setMatchMode(MATCH_MODE.TEXT);
   const pm=document.getElementById("pitchMode");
