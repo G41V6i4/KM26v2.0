@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--B:20260823-0909-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -62007,13 +62008,20 @@ function pvpPresenceSync(v){
 }
 function pvpLiveStart(){
   if(PVP_LIVE){ pvpLiveBeat(); return; }
-  PVP_LIVE={es:null, esT:null, esR:null, iv:null, list:null, n:0};
+  PVP_LIVE={es:null, esT:null, esR:null, esK:null, esV:null, iv:null, list:null, n:0};
   PVP_TALK=PVP_TALK||{rows:null, at:0};
   PVP_RES=PVP_RES||{rows:null};
   pvpLiveBeat();
   try{ PVP_LIVE.es =fbStream("live", (tree)=>{ try{ pvpLiveApply(tree); }catch(e){} }); }catch(e){}
   try{ PVP_LIVE.esT=fbStream("talk", (tree)=>{ try{ pvpTalkApply(tree); }catch(e){} }); }catch(e){}
   try{ PVP_LIVE.esR=fbStream("results", (tree)=>{ try{ pvpResApply(tree); }catch(e){} }); }catch(e){}
+  /* 🔄 ⚠ 요청 — 「랭킹들 변경되는 게 있을 때마다 갱신되게 해 줘」.
+     15초 주기로 긁어 오던 것을 실시간 수신으로 바꾼다. 주간 랭킹(rank)이나 시즌 티어(tier)에
+     누가 한 줄이라도 올리면 그 순간 두 표를 다시 그린다.
+     ⚠ 한 경기가 끝나면 rank·tier 가 잇따라 바뀐다 — 매번 전체를 다시 읽으면 낭비이므로
+        350ms 안에 몰아서 한 번만 새로 고친다. */
+  try{ PVP_LIVE.esK=fbStream("rank", ()=>{ try{ pvpRankPoke(); }catch(e){} }); }catch(e){}
+  try{ PVP_LIVE.esV=fbStream("tier", ()=>{ try{ pvpRankPoke(); }catch(e){} }); }catch(e){}
   PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); }catch(e){} }, PVP_LIVE_MS);
 }
 function pvpLiveStop(){
@@ -62021,6 +62029,9 @@ function pvpLiveStop(){
   try{ if(PVP_LIVE.es)  PVP_LIVE.es.close(); }catch(e){}
   try{ if(PVP_LIVE.esT) PVP_LIVE.esT.close(); }catch(e){}
   try{ if(PVP_LIVE.esR) PVP_LIVE.esR.close(); }catch(e){}
+  try{ if(PVP_LIVE.esK) PVP_LIVE.esK.close(); }catch(e){}
+  try{ if(PVP_LIVE.esV) PVP_LIVE.esV.close(); }catch(e){}
+  try{ if(PVP_RANK && PVP_RANK.poke){ clearTimeout(PVP_RANK.poke); PVP_RANK.poke=null; } }catch(e){}
   try{ if(PVP_LIVE.iv)  clearInterval(PVP_LIVE.iv); }catch(e){}
   PVP_LIVE=null;
   try{ fbDel("live/"+pvpId()); }catch(e){}
@@ -63720,7 +63731,10 @@ function pvpTierMini(nick, withLp){
   if(!(PVP_TIER && PVP_TIER.rows)) return "";
   const r=pvpTierFind(nick);
   if(!r) return `<span class="tierMini" style="color:#6b7480;border-color:#2a3441" title="이번 시즌 기록 없음">–</span>`;
-  if(r.placing) return `<span class="tierMini" style="color:var(--gold);border-color:#7a5f1e" title="배치고사 ${r.pl|0}/${TIER_PLACE_N} — 다섯 판을 마치면 티어가 정해집니다">🎯<b>${r.pl|0}</b></span>`;
+  if(r.placing){
+    const E=pvpPlaceEst(r);
+    return `<span class="tierMini" style="color:var(--gold);border-color:#7a5f1e" title="배치고사 ${r.pl|0}/${TIER_PLACE_N}${E?` — 지금 성적이면 ${E.label} 예상`:""}">🎯<b>${r.pl|0}</b>${E?`<span style="color:${E.t.c};opacity:.9">${E.t.ic}</span>`:""}</span>`;
+  }
   const T=pvpTierOf(r.lp);
   const dv=(T.t.k==="master")?"":PVP_DIV[T.div];
   return `<span class="tierMini" style="color:${T.t.c};border-color:${T.t.c}55" title="${T.label} · ${r.lp} LP · ${r.w}승 ${r.d}무 ${r.l}패">`
@@ -63891,6 +63905,15 @@ function pvpTierNorm(c){
 function pvpPlaceLp(mmr, pp){
   return Math.max(0, Math.round(TIER_PLACE_BASE + (mmr||0) + (pp||0)*TIER_PLACE_MUL));
 }
+/* 🔮 요청 — 「배치라고 표시되는 자리 옆에 추정 티어를 넣어 줘」.
+   지금까지의 배치 성적을 다섯 판 기준으로 늘려 잡고, MMR 을 얹어 「이대로면 여기」를 보여 준다.
+   한 판도 안 치른 감독은 MMR 만으로 잡는다 (주간 랭킹 성적). */
+function pvpPlaceEst(r){
+  if(!r) return null;
+  const pl=Math.max(0, r.pl|0), pp=r.pp|0, mm=r.mm|0;
+  const proj = pl>0 ? pp*(TIER_PLACE_N/pl) : 0;
+  return pvpTierOf(pvpPlaceLp(mm, proj));
+}
 /* 🩹 티어 기록이 없을 때 — 주간 랭킹 성적으로 MMR 을 되살린다.
    ⚠ 요청 — 「티어리스트 MMR 을 현재 주간 랭킹에서 가져오고 거기에 맞게 티어를 재배치하자」.
    기록이 통째로 날아가도 라운지가 텅 비지 않고, 그동안의 성적이 티어로 다시 잡힌다. */
@@ -63963,7 +63986,16 @@ function pvpTierPost(r){
     }).catch(()=>{});
   }catch(e){}
 }
-let PVP_RANK={rows:null, at:0};
+let PVP_RANK={rows:null, at:0, poke:null};
+/* 🔄 서버 쪽 랭킹이 바뀌었다는 신호 — 잇따른 변경을 한 번으로 묶어 새로 고친다 (요청) */
+function pvpRankPoke(){
+  try{
+    if(PVP_RANK.poke) return;
+    /* 바쁜 라운지에서 초당 몇 번씩 전부 다시 읽지 않게 최소 간격을 둔다 */
+    const wait=Math.max(350, 3000-(Date.now()-PVP_RANK.at));
+    PVP_RANK.poke=setTimeout(()=>{ PVP_RANK.poke=null; try{ pvpRankRefresh(true); }catch(e){} }, wait);
+  }catch(e){}
+}
 async function pvpRankRefresh(force){
   if(!pvpOn() || PVP_NET===false) return;
   const now=Date.now();
@@ -64004,7 +64036,7 @@ async function pvpRankRefresh(force){
       seen[k]=1;
       if(!c.p && !(c.w+c.d+c.l)) continue;      // 이번 시즌 활동도 이월분도 없으면 뺀다
       trows.push({k, n:pvpClean(c.n||e.n,8)||"감독", lp:c.p, w:c.w, d:c.d, l:c.l, hi:c.hi, me:k===mineKey, pv:c.pv,
-                  pl:c.pl, placing:(c.pl<TIER_PLACE_N)});
+                  pl:c.pl, pp:c.pp, mm:Math.max(c.p|0, c.mm|0), placing:(c.pl<TIER_PLACE_N)});
     }
     /* 🩹 티어 기록이 없는 감독은 주간 랭킹 성적으로 자리를 잡아 준다
        (⚠ 요청 — 「티어리스트 MMR 을 현재 주간 랭킹에서 가져오고 거기에 맞게 티어를 재배치하자」) */
@@ -64012,7 +64044,7 @@ async function pvpRankRefresh(force){
       if(seen[r.k]) continue;
       const sd=pvpTierSeed(r); if(!sd || !sd.p) continue;
       trows.push({k:r.k, n:r.n, lp:sd.p, w:sd.w, d:sd.d, l:sd.l, hi:sd.p, me:r.k===mineKey, seed:1,
-                  pl:0, placing:true});
+                  pl:0, pp:0, mm:sd.p, placing:true});
     }
     /* 🛟 내 기록만은 이 기기에 남겨 둔 값으로도 지킨다 — 서버가 비어도 내 티어는 안 사라진다 */
     try{
@@ -64028,6 +64060,12 @@ async function pvpRankRefresh(force){
         else if(m.lp<lo && !m.seed) m.lp=lo;
       }
     }catch(e){}
+    /* 🎯 배치 중인 감독의 MMR 이 비어 있으면 주간 랭킹 성적으로 메운다 — 추정 티어의 밑감 */
+    for(const t of trows){
+      if(!t.placing || t.mm) continue;
+      const w=rows.find(x=>x.k===t.k); const sd=w?pvpTierSeed(w):null;
+      if(sd) t.mm=sd.p|0;
+    }
     /* 🎯 배치 중인 감독은 순위에 끼지 않는다 — 표 아래에 따로 선다 */
     trows.sort((a,b)=> (a.placing?1:0)-(b.placing?1:0) || b.lp-a.lp || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
     PVP_TIER.rows=trows;
@@ -64076,7 +64114,10 @@ function pvpTierHtml(){
       <div style="font-size:34px;line-height:1">🎯</div>
       <div style="flex:1;min-width:170px">
         <div style="font-size:18px;font-weight:800;color:var(--gold)">배치고사 ${myPl} / ${TIER_PLACE_N}</div>
-        <div class="small" style="opacity:.85">${TIER_PLACE_N-myPl}경기를 더 치르면 티어가 정해집니다</div>
+        <div class="small" style="opacity:.85">${TIER_PLACE_N-myPl}경기를 더 치르면 티어가 정해집니다${(function(){
+          const r=(R.rows||[]).find(x=>x.me); const E=r?pvpPlaceEst(r):null;
+          return E?` · <b style="color:${E.t.c}">${E.t.ic} ${E.label} 예상</b>`:"";
+        })()}</div>
         <div style="display:flex;gap:5px;margin-top:7px">
           ${Array.from({length:TIER_PLACE_N},(_,i)=>`<div style="flex:1;height:9px;border-radius:999px;background:${i<myPl?"var(--gold)":"#161b22"};border:1px solid var(--line)"></div>`).join("")}
         </div>
@@ -64109,12 +64150,15 @@ function pvpTierHtml(){
       /* 👑 챌린저 — 마스터 중 시즌 상위 3명 (자리에 대한 칭호라 인원이 늘면 자연히 어려워진다) */
       const ch=(i<3 && t.t.k==="master" && !r.placing);
       /* 🎯 배치 중인 감독 — 순위·LP 대신 배치 진행도를 적는다 */
-      if(r.placing) return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""} style="opacity:.8">
+      if(r.placing){
+        const E=pvpPlaceEst(r);
+        return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""} style="opacity:.8">
       <td style="font-weight:800;opacity:.5">–</td>
       <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
-      <td class="small" style="color:var(--gold);font-weight:700;white-space:nowrap">🎯 배치 ${r.pl|0}/${TIER_PLACE_N}</td>
-      <td class="small" style="opacity:.6">–</td>
-      <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;
+      <td class="small" style="white-space:nowrap"><span style="color:var(--gold);font-weight:700">🔮 배치 ${r.pl|0}/${TIER_PLACE_N}</span>
+        ${E?`<br><span style="color:${E.t.c};opacity:.85" title="지금 성적이 이어진다면 배치가 끝났을 때 받을 티어입니다">${E.t.ic} ${E.label} 예상</span>`:""}</td>
+      <td class="small" style="opacity:.6">${E?`<span style="opacity:.75">~${pvpPlaceLp(r.mm|0, (r.pl|0)>0?(r.pp|0)*(TIER_PLACE_N/(r.pl|0)):0)}</span>`:"–"}</td>
+      <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;}
       return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
       <td style="font-weight:800">${medal(i)}</td>
       <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
@@ -64320,7 +64364,8 @@ function pvpView(){
     if(!pvpOn()) return `<h2>⚔️ 온라인 대전</h2><div class="msg warn">이 빌드에는 온라인 서버가 설정되어 있지 않습니다.</div>${logHtml}`;
     if(PVP_NET===null){ try{ setTimeout(()=>{ try{ pvpNetCheck(); }catch(e){} }, 30); }catch(e){} }
     return `<h2>⚔️ 온라인 대전 <span class="small">— 실시간 P2P 친선전 (베타)</span>
-      <span class="tierMini" style="color:var(--gold);border-color:#e3b34155;vertical-align:middle;margin-left:6px" title="내 게임 버전 — 같은 버전끼리만 매칭됩니다">v${PVP_VER}</span></h2>
+      <span class="tierMini" style="color:var(--gold);border-color:#e3b34155;vertical-align:middle;margin-left:6px" title="내 게임 버전 — 같은 버전끼리만 매칭됩니다&#10;빌드 ${GAME_BUILD}">v${PVP_VER}</span>
+      <span class="small" style="opacity:.45;font-weight:400;margin-left:5px;vertical-align:middle">빌드 ${GAME_BUILD}</span></h2>
     ${WAITING?pvpWaitBanner():""}
     <div class="msg info">내 스쿼드로 다른 감독과 실시간으로 붙습니다. <b>순수 친선</b> — 컨디션·부상·성장에 영향이 없고 전적만 남습니다.<br>
       <span class="small">경기 중 <b>📋 전술</b> 버튼을 누르면 <b>리그와 똑같은 전술 화면</b>이 열립니다 — 교체·포메이션·역할·세부 지시를 그대로 다룹니다.
@@ -64493,6 +64538,120 @@ function pvpView(){
   return `<h2>⚔️ 온라인 대전</h2><div class="card"><p>경기 진행 중…</p></div>`;
 }
 
+/* ═══ 🆕 자동 업데이트 ═════════════════════════════════════════════════
+   ⚠ 요청 원문 — 「자동으로 버전 업 되게는 할 수 없나? 이게 깃허브 페이지로 적용되는 건데」.
+   깃허브 페이지는 index.html 을 브라우저·CDN 캐시에 얹어 준다. 새 판을 올려도 이미 열어 둔
+   사람은 옛 판을 계속 붙들고 있고, 그 상태로는 온라인 대전 버전이 어긋나 매칭도 안 된다.
+   ─ 새 파일을 통째로 내려받아 비교하지 않는다(4MB). 같은 주소에 HEAD 만 던져
+     ETag / Last-Modified / Content-Length 를 본다 — 배포하면 이 값이 바뀐다.
+   ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
+     무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
+   ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
+const GAME_BUILD="20260823-0909";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const UPD_EVERY=10*60*1000;        // 확인 주기
+const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
+let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
+function updUrl(){ try{ return location.href.split("#")[0].split("?")[0]; }catch(e){ return location.href; } }
+/* 서버에 올라가 있는 파일의 빌드 표식 — 앞 1KB 만 잘라 읽는다 (4MB 를 내려받지 않는다).
+   ⚠ 이게 핵심이다. 헤더(ETag)만 보면 「내 브라우저가 캐시에서 옛 파일을 꺼내 쓰는 중」인
+      경우를 못 잡는다 — 지금 돌아가는 코드의 GAME_BUILD 와 직접 견주어야 확실하다. */
+async function updServerBuild(){
+  try{
+    if(!/^https?:/i.test(location.protocol)) return null;      // 파일로 연 경우 — 확인할 서버가 없다
+    const r=await fetch(updUrl()+"?_u="+Date.now(), {cache:"no-store", headers:{Range:"bytes=0-1023"}});
+    if(!r.ok && r.status!==206) return null;
+    const txt=(await r.text()).slice(0,4096);
+    const m=txt.match(/<!--B:([\w.\-]+)-->/);
+    return m ? m[1] : null;
+  }catch(e){ return null; }
+}
+async function updStamp(){
+  try{
+    if(!/^https?:/i.test(location.protocol)) return null;
+    const r=await fetch(updUrl()+"?_u="+Date.now(), {method:"HEAD", cache:"no-store"});
+    if(!r.ok) return null;
+    const h=r.headers;
+    return (h.get("etag")||"") + "|" + (h.get("last-modified")||"") + "|" + (h.get("content-length")||"");
+  }catch(e){ return null; }
+}
+/* 지금 새로고침해도 되는 상태인가 — 경기·대전 중에는 안 된다 */
+function updSafe(){
+  try{
+    if(typeof liveM!=="undefined" && liveM && !liveM.done) return false;
+    if(typeof PVP!=="undefined" && PVP) return false;
+    if(typeof inLiveTactics!=="undefined" && inLiveTactics) return false;
+    return true;
+  }catch(e){ return false; }
+}
+async function updApply(){
+  if(UPD.busy) return; UPD.busy=true;
+  try{ saveGame(); }catch(e){}
+  try{ await fetch(updUrl(), {cache:"reload"}); }catch(e){}        // 브라우저 캐시를 새 파일로 갈아끼운다
+  try{ if(window.caches){ const ks=await caches.keys(); for(const k of ks) await caches.delete(k); } }catch(e){}
+  try{ location.reload(); }catch(e){ location.href=updUrl()+"?_u="+Date.now(); }
+}
+function updLater(){
+  UPD.snooze=Date.now()+UPD_SNOOZE;
+  const el=document.getElementById("updBar"); if(el&&el.parentNode) el.parentNode.removeChild(el);
+}
+function updBanner(){
+  let el=document.getElementById("updBar");
+  if(!el){
+    el=document.createElement("div"); el.id="updBar";
+    el.style.cssText="position:fixed;left:0;right:0;bottom:0;z-index:9999;padding:11px 14px;"
+      +"background:linear-gradient(180deg,#1a2432,#121a24);border-top:2px solid var(--gold);"
+      +"box-shadow:0 -6px 22px rgba(0,0,0,.45);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center";
+    document.body.appendChild(el);
+  }
+  const auto=updSafe();
+  el.innerHTML=`<span style="font-weight:800;color:var(--gold)">🆕 새 버전이 나왔습니다</span>
+    <span class="small" style="opacity:.85">새로고침하면 최신 판으로 이어집니다 — 진행 상황은 자동 저장됩니다.
+      ${auto?`<b id="updCnt">10</b>초 뒤 자동으로 적용됩니다.`:"경기가 끝나면 적용해 주세요."}</span>
+    <button class="mini sel" style="border-color:var(--gold);color:var(--gold)" onclick="updApply()">지금 적용</button>
+    <button class="mini" onclick="updLater()">나중에</button>`;
+  if(auto){
+    let n=10;
+    if(UPD.cnt) clearInterval(UPD.cnt);
+    UPD.cnt=setInterval(()=>{
+      if(!document.getElementById("updBar") || !updSafe()){ clearInterval(UPD.cnt); UPD.cnt=null; return; }
+      n--; const c=document.getElementById("updCnt"); if(c) c.textContent=String(n);
+      if(n<=0){ clearInterval(UPD.cnt); UPD.cnt=null; updApply(); }
+    }, 1000);
+  }
+}
+async function updCheck(force){
+  const now=Date.now();
+  if(!force && now-UPD.at<30000) return;
+  UPD.at=now;
+  /* ① 서버 파일의 빌드 표식과 지금 돌아가는 코드를 직접 견준다 (가장 확실) */
+  const sb=await updServerBuild();
+  if(sb){
+    if(sb===GAME_BUILD) { UPD.tag=null; return; }
+    if(UPD.seen===sb && Date.now()<UPD.snooze) return;
+    UPD.seen=sb;
+    try{ updBanner(); }catch(e){}
+    return;
+  }
+  /* ② 표식을 못 읽으면(부분 내려받기 차단 등) 응답 헤더가 바뀌는지로 대신 본다 */
+  const tag=await updStamp();
+  if(!tag) return;
+  if(!UPD.tag){ UPD.tag=tag; return; }          // 첫 확인 — 기준값만 잡는다
+  if(tag===UPD.tag) return;                     // 그대로다
+  if(UPD.seen===tag && Date.now()<UPD.snooze) return;
+  UPD.seen=tag;
+  try{ updBanner(); }catch(e){}
+}
+function updInit(){
+  try{
+    updCheck(true);
+    if(UPD.timer) clearInterval(UPD.timer);
+    UPD.timer=setInterval(()=>{ try{ updCheck(); }catch(e){} }, UPD_EVERY);
+    /* 탭으로 돌아왔을 때도 한 번 — 자리를 비운 사이에 새 판이 올라갔을 수 있다 */
+    document.addEventListener("visibilitychange", ()=>{
+      if(!document.hidden && Date.now()-UPD.at>5*60*1000) { try{ updCheck(); }catch(e){} }
+    });
+  }catch(e){}
+}
 applyFontScale();
 try{ if(pvpOn()){ const b=document.querySelector('[data-v="pvp"]'); if(b) b.style.display=""; } }catch(e){}
 try{ fsInit(); }catch(e){}   // 전체화면 버튼 상태 동기화 + 자동 복귀 무장
@@ -64503,6 +64662,7 @@ try{ persistRefresh(); }catch(e){}      // 🔒 저장소 영구 보존 상태 �
    부팅 흐름을 막지 않도록 잠깐 뒤에 비동기로 확인한다. */
 try{ setTimeout(()=>{ try{ idbSyncCheck(); }catch(e){} }, 900); }catch(e){}
 try{ navInit(); }catch(e){}             // 🖱️ 트랙패드 뒤로가기 제스처 (맥북 두 손가락 스와이프)
+try{ updInit(); }catch(e){}             // 🆕 새 판이 올라오면 알려 주고, 안전할 때 자동 적용 (요청)
 /* 저장이 아예 막힌 환경(시크릿 모드 등)이면 처음부터 알려 준다 — 몇 시즌 진행한 뒤에
    알게 되는 것이 최악이다. */
 try{
