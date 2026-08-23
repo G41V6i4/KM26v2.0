@@ -1927,15 +1927,24 @@ function compInfo(k){
 function compName(k){ return compInfo(k).n; }      // 정식 명칭 (스폰서 포함)
 function compShort(k){ return compInfo(k).s; }     // 짧은 표기
 function uidRefOf(i){ return UID_REF + i; }
+/* 🏃 선수가 나갈 수 있는 라인 밖 범위 — ⚠ 요청 원문 「지금 매치엔진에서 골라인 밖으로
+   선수가 나가질 못하던데, 선수도 자유롭게 라인밖으로 나가게 해줘」.
+   예전에는 모든 선수 좌표가 clamp01 로 [0,1]에 묶여 있어, 나간 공을 주우러 갈 때도
+   라인 위에 붙어 서서 손만 뻗는 그림이 됐다(스로인은 아예 라인을 밟고 던졌다).
+   ⚠ 렌더 여백(PITCH_PAD_X/Y) 안이어야 한다 — 넘으면 캔버스 밖으로 잘린다.
+      가로 0.032×540px ≈ 17px < 50 · 세로 0.030×360px ≈ 11px < 30 (둘 다 공·선수 반지름 여유 포함) */
+var PLAY_OUT_X=0.032, PLAY_OUT_Y=0.030;
+function clampPx(v){ return v<-PLAY_OUT_X ? -PLAY_OUT_X : (v>1+PLAY_OUT_X ? 1+PLAY_OUT_X : v); }
+function clampPy(v){ return v<-PLAY_OUT_Y ? -PLAY_OUT_Y : (v>1+PLAY_OUT_Y ? 1+PLAY_OUT_Y : v); }
 /* 🚶 한 틱에 사람이 낼 수 있는 만큼만 옮긴다 — 그 이상은 화면에서 순간이동으로 보인다(제보).
    목표까지 멀면 그쪽으로 maxM 만큼만 다가간다. */
 function stepToward(a, tx, ty, maxM){
   if(!a) return;
   const dx=(tx-a.x)*PITCH_AR, dy=ty-a.y;
   const d=Math.hypot(dx,dy)*ISO_TO_M;
-  if(d<=maxM || d<1e-6){ a.x=clamp01(tx); a.y=clamp01(ty); return; }
+  if(d<=maxM || d<1e-6){ a.x=clampPx(tx); a.y=clampPy(ty); return; }
   const k=(maxM/ISO_TO_M)/Math.hypot(dx,dy);
-  a.x=clamp01(a.x+dx*k/PITCH_AR); a.y=clamp01(a.y+dy*k);
+  a.x=clampPx(a.x+dx*k/PITCH_AR); a.y=clampPy(a.y+dy*k);
 }
 function uidHash(str){                       // FNV-1a 32bit — 짧고 충돌이 드물다
   let h=0x811c9dc5;
@@ -14553,8 +14562,20 @@ function renewPersuade(kind){
     affAdd(p, -bad, "설득 실패");
     p.morale=clamp(p.morale-(kind==="pressure"?6:2),20,99);
     if(kind==="pressure" && (p.pers||0)===3) p.unhappy=Math.min(3,(p.unhappy||0)+1);
+    /* ⚠ 제보 원문 — 「18세선수 재계약하는데 3년뒤에 팀이어디있을지보여드리겠다 그멘트
+       날리니까 선수가 3년뒤에 저는 서른이 넘습니다 이러고 거절하는 버그가 있슴다..ㅋㅋㅋ」
+       원인: 거절 대사를 나이와 무관하게 뽑았다. 「3년 뒤 서른」은 스물일곱 이상만 할 수 있는 말이다. */
+    const _age=G.season-(p.by||2000);
+    const _visionNo = _age>=27
+      ? [`"좋은 말씀이지만, 저는 지금 뛰어야 합니다."`,`"3년 뒤에 저는 서른이 넘습니다."`,
+         `"그 그림이 완성될 때쯤이면 저는 은퇴를 생각할 나이입니다."`]
+      : _age<=22
+      ? [`"좋은 말씀이지만, 저는 지금 뛰어야 합니다."`,`"3년을 기다리기엔 제가 너무 어립니다. 지금 배우고 싶습니다."`,
+         `"그림은 좋은데... 그 안에 제 자리가 보이질 않습니다."`]
+      : [`"좋은 말씀이지만, 저는 지금 뛰어야 합니다."`,`"계획은 알겠습니다. 다만 제 전성기는 지금입니다."`,
+         `"그 그림, 저 없이도 그려질 것 같은데요."`];
     RENEW={pid:p.id, done:"no", noRetry:true, say:pick(
-      kind==="vision"?[`"좋은 말씀이지만, 저는 지금 뛰어야 합니다."`,`"3년 뒤에 저는 서른이 넘습니다."`]
+      kind==="vision"?_visionNo
      :kind==="respect"?[`"필요하다고 하시면서 왜 저를 안 쓰셨습니까."`,`"말씀은 감사하지만 마음은 정했습니다."`]
      :[`"대체하시죠. 저도 갈 곳은 있습니다."`,`"...지금 그 말씀, 잊지 않겠습니다."`]),
       hint:`설득 실패 — 감독 호감도 ${bad} 하락${kind==="pressure"?" · 관계가 크게 상했습니다":""}`};
@@ -41695,8 +41716,11 @@ function moveWant(p, buyer){
      공개 이적 요청은 「나를 내보내 달라」는 선언이다. 그래 놓고 마음이 바뀌면
      감독 입장에서는 손쓸 방법이 없다. 요청 중에는 웬만하면 간다.
      ─ 다만 지금 있는 곳보다 확실히 못한 팀이면 그때는 재고할 수 있다. */
-  if(wantsOut(p)){
-    want=Math.max(want, gap>=-4 ? 92 : 74);
+  const _wlv=wantsOutLv(p);
+  if(_wlv>0){
+    /* 단계가 낮으면 「알아봐 달라」, 높으면 「보내 달라」 — 그래도 회의에서 이적 요청으로
+       보고된 선수는 협상에서도 최소한 이야기는 듣는다 (제보: 말과 행동이 어긋남) */
+    want=Math.max(want, (gap>=-4 ? 92 : 74) - (3-_wlv)*7);
     if(p.sulk>0) want=Math.max(want, 95);      // 태업까지 간 선수는 붙잡을 수 없다
   }
   return clamp(want, 2, 98);
@@ -41713,19 +41737,32 @@ function allowOut(p, why){
 }
 function clearAllowOut(p){ if(p) delete p.okOut; }
 function allowedOut(p){ return !!(p && p.okOut && p.okOut.s===G.season && !p.noMove); }
-/* 지금 「내보내 달라」고 말하고 있는 상태인가 */
-function wantsOut(p){
-  if(!p) return false;
-  if(p.noMove) return false;
-  if(allowedOut(p)) return true;                       // 감독이 이미 보내 주기로 했다
-  return (p.unhappy||0)>=3 && String(p.uWhy||"").includes("이적 요청");
+/* 지금 「내보내 달라」고 말하고 있는 상태인가
+   ⚠ 제보 원문 — 「선수 팔때 타구단 협상하고 설득해도 안간다 태업하고 불만표출 하는데
+      동시에 스태프회의에는 그 선수가 새로운도전을 원한다 이적을 알아봐달라 라고 올라옵니다..」
+   원인: 스태프 회의는 「불만 1단계 이상 + 사유가 이적 요청」이면 안건으로 올린다(staffAgenda·
+   grieveKey). 그런데 여기서는 「3단계」를 요구했다. 이적설로 붙은 1~2단계 이적 요청은
+   회의에서는 "이적을 알아봐 달라"고 말하면서, 실제 협상에서는 남고 싶다고 거절하는
+   앞뒤가 안 맞는 상태가 됐다.
+   ─ 두 곳이 같은 것을 보게 한다. 단계는 「얼마나 절실한가」로만 쓴다(wantsOutLv). */
+function wantsOutLv(p){
+  if(!p || p.noMove) return 0;
+  if(allowedOut(p)) return 3;                          // 감독이 이미 보내 주기로 했다
+  if(!String(p.uWhy||"").includes("이적 요청")) return 0;
+  return clamp(Math.round(p.unhappy||0), 0, 3);
 }
+function wantsOut(p){ return wantsOutLv(p)>0; }
 /* 거부 확률(%) — 화면에 그대로 보여 준다 */
 function moveRefuseP(p, buyer){ return Math.round(100-moveWant(p, buyer)); }
 /* 협상 화면에 띄울 한 줄 — 이 선수가 지금 어떤 마음인지 */
 function moveMoodLine(p, buyer){
   if(!p) return "";
-  if(wantsOut(p)) return `🚪 <b>본인이 이적을 요청한 상태</b>입니다 — 웬만한 조건이면 받아들입니다.`;
+  {
+    const lv=wantsOutLv(p);
+    if(lv>0) return lv>=3
+      ? `🚪 <b>본인이 이적을 요청한 상태</b>입니다 — 웬만한 조건이면 받아들입니다.`
+      : `🚪 <b>새 도전을 원하고 있습니다</b> (요청 ${lv}/3) — 이야기를 들어 볼 마음이 있습니다. (거절 가능성 ${moveRefuseP(p, buyer)}%)`;
+  }
   if(p.noMove)    return `🛡️ <b>잔류를 선언한 선수</b>입니다 — 설득이 매우 어렵습니다.`;
   const r=moveRefuseP(p, buyer);
   return r>=55 ? `🙅 지금 팀에 만족하고 있습니다 (거절 가능성 ${r}%)`
@@ -45013,7 +45050,11 @@ function cvK(cv){ return cv.width/640; }   // 캔버스 해상도 배율 — 모
    ─ 예전에는 상하좌우 여백이 똑같이 18px 이었다. 골망 깊이만으로 그 여백이 거의 다 차서,
      빗나간 슛(골라인 뒤 4~7m)이 화면 밖으로 나가 그냥 사라졌다. 좌우 여백을 크게 벌려
      골대 뒤 「경기장 밖」을 실제로 그린다 — 공이 거기까지 굴러 나가는 게 눈에 보인다. */
-const PITCH_PAD_X=50, PITCH_PAD_Y=14;      // 640 기준 px (cvK 로 배율)
+/* ⚠ 요청 원문 — 「지금 매치엔진에서 골라인 밖으로 선수가 나가질 못하던데, 선수도 자유롭게
+   라인밖으로 나가게 해줘. 스로인 던지는 라인 있잖아. 거기도 양쪽으로 공간 넉넉하게 해서
+   선수가 스로인 할 수 있게 해줘.」
+   ─ 위아래 여백 14 → 30. 터치라인 밖에 선 선수(반지름 ≈8px)가 잘리지 않는다. */
+const PITCH_PAD_X=50, PITCH_PAD_Y=30;      // 640 기준 px (cvK 로 배율)
 function pitchToCanvasXY(cv, nx, ny){
   const k=cvK(cv), px=PITCH_PAD_X*k, py=PITCH_PAD_Y*k;
   const w=cv.width-2*px, h=cv.height-2*py;
@@ -46555,7 +46596,7 @@ function kickSpin(from, type, o){
    ⚠ 이걸 푸는 이유: 예전에는 공이 목표까지 lerp 로 미끄러져 갔다. 그러면 볼 물리·바운스·
       퍼스트터치는 물리 기반인데 정작 날아오는 공만 스크립트라, 도착 속도가 가짜였다.
       여기서 초기 속도만 정확히 주면 그 뒤는 전부 stepBallPhysics 가 굴린다. */
-function solveLaunch(b, T, aerial){
+function solveLaunch(b, T, aerial, z0){
   const dx=(b.tx-b.x)*PITCH_AR, dy=b.ty-b.y;
   const D=Math.hypot(dx,dy);
   const N=Math.max(1, Math.round(T/SIM_DT));
@@ -46564,9 +46605,12 @@ function solveLaunch(b, T, aerial){
   const sum = (1-Math.pow(m,N))/(1-m);
   const v0 = D/Math.max(1e-6, SIM_DT*sum);
   if(D>1e-6){ b.vx=(dx/D)*v0; b.vy=(dy/D)*v0; } else { b.vx=0; b.vy=0; }
-  /* 수직 — T초 뒤 정확히 땅에 닿는 초기 상승 속도 (최고점 = loftPeak(T)) */
-  b.vz = aerial ? GRAVITY*T/2 : 0;
-  b.z  = aerial ? 0.0006 : 0;
+  /* 수직 — T초 뒤 정확히 땅에 닿는 초기 상승 속도 (최고점 = loftPeak(T))
+     🤾 z0 를 주면 그 높이에서 출발한다 (스로인 — 머리 위에서 놓는다).
+        z(T)=z0+vz·T−g·T²/2=0  →  vz = g·T/2 − z0/T */
+  const _z0 = (aerial && z0>0) ? z0 : (aerial ? 0.0006 : 0);
+  b.z  = _z0;
+  b.vz = aerial ? Math.max(GRAVITY*T*0.18, GRAVITY*T/2 - _z0/T) : 0;
 }
 /* 모든 킥의 공통 초기화 — 여기를 거치지 않은 공은 없다 */
 function resolveKick(b, from, type, o){
@@ -46578,7 +46622,7 @@ function resolveKick(b, from, type, o){
   b.spin = o.spin!==undefined ? o.spin : kickSpin(from, type, o);
   b._kickBy = from ? from.id : null;
   /* 여기서 공을 「던진다」 — 이후의 모든 움직임은 볼 물리가 맡는다 */
-  solveLaunch(b, b.flightT||0.6, !!b.aerial);
+  solveLaunch(b, b.flightT||0.6, !!b.aerial, o.z0);
   /* 🍌 감아 차기 — 직선으로 조준해 놓고 마그누스로 휘면 목표를 벗어나기만 한다.
      실제 크로스처럼 「빗겨 차서 감아 들어오게」: 마그누스가 비행 동안 돌릴 각의 절반만큼
      초기 속도를 반대로 돌려 두면, 눈에 보이는 바나나 궤적으로 목표에 도착한다. */
@@ -47367,6 +47411,10 @@ const SIM_REF_TRAIL=0.085;    // 주심이 볼에서 유지하는 거리
 /* 세트피스 이격 거리 — 상대는 공에서 이만큼 떨어져 있어야 한다 (경기 규칙) */
 const SETPIECE_KEEPOUT={corner:9.15, freeKick:9.15, goalKick:9.15, throwIn:2.0, penalty:9.15};
 const SETPIECE_BACK=0.055;   // 킥 전에 공 뒤로 물러나는 거리
+/* 🤾 스로인 — 라인 밖 거리(공·선수가 서는 자리)와 던지기 전 반 발 물러나는 폭 (요청) */
+const THROW_OUT_Y=0.012;     // ≈0.8m 라인 밖
+const THROW_STEP =0.014;     // ≈1.0m 더 물러났다가 앞으로 나오며 던진다
+const THROW_HAND_Z=2.15/ISO_TO_M;   // 🤾 머리 위에서 놓는 높이 (≈2.15m)
 /* ══════════════════════════════════════════════════════════════════
    ⚽ CROSS SYSTEM — 크로스는 "선수에게 보내는 공"이 아니라
       "공격수가 유리하게 만날 수 있는 공간에 보내는 공"이다.
@@ -51134,8 +51182,8 @@ class MatchSim{
           const mx2=(sx2-a.x)*PITCH_AR, my2=sy2-a.y, ml2=Math.hypot(mx2,my2);
           if(ml2>SP_ARRIVE){
             const step2=Math.min(ml2-SP_ARRIVE*0.5, SPD.SPRINT*SIM_DT);
-            a.x=clamp01(a.x+(mx2/ml2)*step2/PITCH_AR);
-            a.y=clamp01(a.y+(my2/ml2)*step2);
+            a.x=clampPx(a.x+(mx2/ml2)*step2/PITCH_AR);
+            a.y=clampPy(a.y+(my2/ml2)*step2);
             /* ⚠ 제보 — 몸 방향이 한 틱에 홱 뒤집혀 휙휙 도는 것처럼 보였다.
                세트피스 이동에서도 회전은 회전 속도의 제약을 받는다. */
             turnToward(a, Math.atan2(my2,mx2), 1.0);
@@ -51174,8 +51222,8 @@ class MatchSim{
               const lim0=(wantSpd>(a.spd||0)) ? acc0*SIM_DT : acc0*DECEL_MUL*SIM_DT;
               a.spd=(a.spd||0)+clamp(wantSpd-(a.spd||0), -lim0, lim0);
               const step=Math.min(ml0, a.spd*SIM_DT);
-              a.x=clamp01(a.x+Math.cos(a.face)*step/PITCH_AR);
-              a.y=clamp01(a.y+Math.sin(a.face)*step);
+              a.x=clampPx(a.x+Math.cos(a.face)*step/PITCH_AR);
+              a.y=clampPy(a.y+Math.sin(a.face)*step);
             }
             a.vx=a.x-ox0; a.vy=a.y-oy0;
             continue;
@@ -51631,8 +51679,8 @@ class MatchSim{
             const lim=(wantSpd>(a.spd||0)) ? acc*SIM_DT : acc*DECEL_MUL*SIM_DT;
             a.spd=(a.spd||0)+clamp(wantSpd-(a.spd||0), -lim, lim);
             const step=Math.min(ml, a.spd*SIM_DT);
-            a.x=clamp01(a.x+Math.cos(runDir)*step/PITCH_AR);
-            a.y=clamp01(a.y+Math.sin(runDir)*step);
+            a.x=clampPx(a.x+Math.cos(runDir)*step/PITCH_AR);
+            a.y=clampPy(a.y+Math.sin(runDir)*step);
           } else a.spd=Math.max(0, (a.spd||0)-ACCEL_BASE*DECEL_MUL*SIM_DT);
           a.vx=a.x-ox; a.vy=a.y-oy;
           continue;
@@ -51711,8 +51759,8 @@ class MatchSim{
           const lim=(wantSpd>(a.spd||0)) ? acc*SIM_DT : acc*DECEL_MUL*SIM_DT;
           a.spd = (a.spd||0) + clamp(wantSpd-(a.spd||0), -lim, lim);
           const step=Math.min(ml, a.spd*SIM_DT);
-          a.x=clamp01(a.x+Math.cos(a.face)*step/PITCH_AR);
-          a.y=clamp01(a.y+Math.sin(a.face)*step);
+          a.x=clampPx(a.x+Math.cos(a.face)*step/PITCH_AR);
+          a.y=clampPy(a.y+Math.sin(a.face)*step);
         }
         a.vx=a.x-ox; a.vy=a.y-oy;
       }
@@ -51735,7 +51783,7 @@ class MatchSim{
           if(d>=R) continue;
           if(d<1e-5){ dx=(o.dir||1)*1; dy=0.2; d=Math.hypot(dx,dy); }
           const push=(R-d)/d;
-          o.x=clamp01(o.x+dx*push/PITCH_AR); o.y=clamp01(o.y+dy*push);
+          o.x=clampPx(o.x+dx*push/PITCH_AR); o.y=clampPy(o.y+dy*push);
           o.vx=0; o.vy=0; o.spd=Math.min(o.spd||0, SPD.JOG*0.5);
         }
       }
@@ -52593,9 +52641,17 @@ class MatchSim{
     b.isCross=false; b.offsideAt=null;              // 스로인은 오프사이드 없음
     b.tx=clamp01(opt.to.x); b.ty=clamp01(opt.to.y);
     b.flight=0; b.flightLen=opt.dist;
-    b.flightT=clamp(0.40 + opt.dist*ISO_TO_M*0.048, 0.55, 2.0);  // 손으로 던진 공은 느리다
-    resolveKick(b, carrier, KICK.THROW);
+    /* 🤾 ⚠ 요청 원문 — 「스로인된 공이 지금은 프리킥 차듯 패스처럼 되던데, 이것도
+       포물선으로 높게 떨어지게 해줘」.
+       원인: 체공 시간이 짧아(15m에 1.1초) 포물선 최고점이 1m도 안 됐다 — 화면에서는
+       땅으로 깔려 가는 패스와 구분이 안 된다.
+       ─ 체공을 늘리고(최고점 = GRAVITY·T²/8), 출발 높이를 머리 위로 올린다. */
+    /* 실측 튜닝 — 0.075 배율은 20m 스로인의 최고점이 10m까지 솟았다(포환던지기).
+       실제 스로인은 1.3~1.8초 체공에 최고점 4~5m다. */
+    b.flightT=clamp(0.60 + opt.dist*ISO_TO_M*0.055, 0.85, 1.90);
+    resolveKick(b, carrier, KICK.THROW, {z0:THROW_HAND_Z});
     b._opt=opt; b._passer=carrier;
+    b._thrownOut=1;                                 // 🤾 라인 밖에서 출발한 공 (필드에 들어올 때까지 아웃 판정 유예)
     b.isThrow=false;                                // 던졌으니 해제
     st.powerSum+=b.power;
   }
@@ -52855,9 +52911,13 @@ class MatchSim{
     if(b.z<=0) b.aerial=false;                 // 땅에 닿았으면 더는 공중볼이 아니다
     // 비행 중 라인을 넘으면 그 순간 아웃 — 도착까지 기다리면 공이 피치 밖에 떠 있게 된다
     if(b.x<0 || b.x>1 || b.y<0 || b.y>1){
-      if(this.outOfPlay(b.x, b.y, b._passer.side)){ this.stats[b._passer.side].lost++; return; }
-      b.x=clamp01(b.x); b.y=clamp01(b.y);
-    }
+      /* 🤾 스로인은 터치라인 「밖」에서 던진다(요청) — 공이 필드 안으로 들어오기 전까지
+         아웃 판정을 하면, 던지는 순간 바로 다시 스로인이 되는 무한 고리가 된다. */
+      if(!b._thrownOut){
+        if(this.outOfPlay(b.x, b.y, b._passer.side)){ this.stats[b._passer.side].lost++; return; }
+        b.x=clamp01(b.x); b.y=clamp01(b.y);
+      }
+    } else if(b._thrownOut) b._thrownOut=0;      // 필드 안으로 들어왔다 — 이제부터 정상 판정
     // 경로 차단 — 지나가는 공에 상대 몸이 겹치면 커트한다. 머리 위로 뜬 공은 건드릴 수 없다.
     const oKey=this.opp(b._passer.side);
     if(b.z < CTRL_Z) for(const o of this.side(oKey)){
@@ -53941,9 +54001,21 @@ class MatchSim{
     const ph=SETPIECE_PHASES[sp.kind]||SETPIECE_PHASES.freeKick;
     sp.t+=SIM_DT;
     // 공 뒤쪽(자기 골문 쪽) 지점 — 여기서 물러났다가 달려온다
-    const back = sp.kind==="throwIn" ? SETPIECE_BACK*0.4 : SETPIECE_BACK;   // 스로인은 살짝만 물러난다
-    const backX=clamp01(sp.spot.x - kicker.dir*back);
-    const backY=clamp01(sp.spot.y + (sp.spot.y<0.5?0.02:-0.02));
+    /* 🤾 ⚠ 요청 원문 — 「선수가 지금 스로인 할때 바둑알의 모습을 보면 마치 프리킥차듯
+       움직이거든? 스로인을 표현하려면 제자리에서 던지거나, 약간 뒤로 물러갔다가 앞으로
+       움직이면서 던지게끔 해야겠지?」
+       원인: 스로인도 프리킥과 같은 「공 뒤(골문 쪽)로 물러났다 옆에서 달려든다」를 썼다.
+       ─ 스로인은 터치라인에 수직이다. 라인 바깥으로 반 발 물러났다가, 라인을 향해
+         똑바로 걸어 나오며 던진다. 좌우로 도는 런업이 사라진다. */
+    let backX, backY;
+    if(sp.kind==="throwIn"){
+      const outS=(sp.spot.y<0.5) ? -1 : 1;            // 밖으로 나가는 방향
+      backX=sp.spot.x;                                 // 좌우로 돌지 않는다 — 제자리
+      backY=clampPy(sp.spot.y + outS*THROW_STEP);      // 라인 바깥으로 반 발
+    } else {
+      backX=clamp01(sp.spot.x - kicker.dir*SETPIECE_BACK);
+      backY=clamp01(sp.spot.y + (sp.spot.y<0.5?0.02:-0.02));
+    }
     const moveTo=(tx,ty,dur)=>{
       const k=clamp01(sp.t/Math.max(0.05,dur));
       let nx=lerp(sp.from.x, tx, k), ny=lerp(sp.from.y, ty, k);
@@ -53952,7 +54024,8 @@ class MatchSim{
       const cap=SPD.SPRINT*SIM_DT;
       if(d>cap){ nx=kicker.x+(dx/d)*cap/PITCH_AR; ny=kicker.y+(dy/d)*cap; }
       if(d>1e-6) kicker.face=Math.atan2(dy,dx);       // 가는 방향을 바라본다
-      kicker.x=clamp01(nx); kicker.y=clamp01(ny);
+      /* 🏃 라인 밖까지 나갈 수 있다 (요청) — 스로인은 터치라인 「밖」에서 던져야 한다 */
+      kicker.x=clampPx(nx); kicker.y=clampPy(ny);
     };
     if(sp.phase==="DEAD"){
       // 공을 회수하러 간다 — 공은 나간 자리에 그대로 있고, 키커가 "공이 있는 곳"으로 걸어간다.
@@ -53967,7 +54040,10 @@ class MatchSim{
       /* ⚠ 선수 좌표는 [0,1] 클램프라 라인 밖 공까지는 영영 못 간다 — 공이 나간 자리의
          「라인 위 최근접점」까지 오면 손을 뻗어 주운 것으로 본다. 골라인 뒤 공간을
          넓힌 뒤(GOAL_OUT_X) 이 판정이 없으면 DEAD 가 시간초과까지 늘어진다. */
-      const _rx=clamp01(sp.out.x), _ry=clamp01(sp.out.y);
+      /* ⚠ 선수가 라인 밖으로 나갈 수 있게 된 뒤(clampPx/clampPy) 이 판정을 clamp01 로 두면,
+         라인 밖까지 걸어 나온 선수가 「라인 위 기준점」에서는 오히려 멀어져 DEAD 가
+         시간초과까지 늘어졌다(실측 422프레임). 선수가 실제로 갈 수 있는 지점으로 잰다. */
+      const _rx=clampPx(sp.out.x), _ry=clampPy(sp.out.y);
       const got=Math.hypot((kicker.x-_rx)*PITCH_AR, kicker.y-_ry) < 0.030;
       if((sp.t>=ph.dead && got) || sp.t>ph.dead+8){      // 공에 닿아야 다음 단계로
         sp.phase="PLACE"; sp.t=0; sp.from={x:kicker.x,y:kicker.y};
@@ -53977,10 +54053,10 @@ class MatchSim{
     if(sp.phase==="PLACE"){
       // 공을 들고(굴리며) 킥 지점까지 옮긴다 — 이제 공은 키커를 따라간다.
       moveTo(sp.spot.x, sp.spot.y, ph.place);
-      b.x=clamp01(kicker.x); b.y=clamp01(kicker.y); b.z=0;
+      b.x=clamp01(kicker.x); b.y=clampPy(kicker.y); b.z=0;   // 🤾 라인 밖에 선 스로어를 따라간다
       const arrived=Math.hypot((kicker.x-sp.spot.x)*PITCH_AR, kicker.y-sp.spot.y)<0.010;
       if((sp.t>=ph.place && arrived) || sp.t>ph.place+8){
-        b.x=clamp01(sp.spot.x); b.y=clamp01(sp.spot.y);   // 정확히 스팟에 놓는다
+        b.x=clamp01(sp.spot.x); b.y=clampPy(sp.spot.y);   // 정확히 스팟에 놓는다 (스로인은 라인 밖)
         sp.phase="BACKOFF"; sp.t=0; sp.from={x:kicker.x,y:kicker.y};
       }
       return;
@@ -54010,7 +54086,10 @@ class MatchSim{
         }
       }
     }
-    b.x=clamp01(sp.spot.x); b.y=clamp01(sp.spot.y); b.z=0;   // 물러났다 달려오는 동안 공은 스팟에 그대로
+    /* 🤾 스로인은 라인 밖 스팟이다 — clampPy 로 그 자리를 지킨다 (요청) */
+    b.x=clamp01(sp.spot.x); b.y=clampPy(sp.spot.y);
+    /* 🤾 던지기 직전에는 공이 손에 들려 있다 — 머리 위 높이에 둔다 (예전엔 바닥에 굴렀다) */
+    b.z=(sp.kind==="throwIn" && sp.phase==="APPROACH") ? THROW_HAND_Z*0.75 : 0;
   }
   /* 세트피스 시작 — 키커를 지정하고 세리머니를 건다 */
   beginSetPiece(kind, kicker, spot, outAt){
@@ -54027,7 +54106,8 @@ class MatchSim{
        골망 안으로 되돌아가 「아웃인데 골문 안」이 다시 나온다 (제보). y 는 종전대로. */
     const clOutX=(v)=>Math.max(-GOAL_OUT_X, Math.min(1+GOAL_OUT_X, v));
     const clOut=(v)=>Math.max(-0.020, Math.min(1.020, v));
-    b.setPiece={kind, kickerId:kicker.id, spot:{x:clamp01(spot.x),y:clamp01(spot.y)},
+    /* 🤾 스로인 스팟은 터치라인 「밖」이다 — clamp01 로 깎으면 라인 위로 되돌아온다 (요청) */
+    b.setPiece={kind, kickerId:kicker.id, spot:{x:clamp01(spot.x),y:clampPy(spot.y)},
                 out:{x:clOutX(out.x), y:clOut(out.y)},
                 phase:"DEAD", t:0, from:{x:kicker.x, y:kicker.y}};
     b.state="SETTLED"; b.z=0; b.vx=0; b.vy=0; b.vz=0; b.inNet=false; b.aerial=false;
@@ -54097,7 +54177,10 @@ class MatchSim{
   throwIn(side, at){
     const b=this.ball;
     const out={x:b.x, y:b.y};                       // 공이 나가 멈춘 자리
-    const spot={x:clamp01(at.x), y: at.y<0.5?0.004:0.996};   // 공은 터치라인 위에 놓는다
+    /* 🤾 ⚠ 요청 — 「스로인 던지는 라인 있잖아. 거기도 양쪽으로 공간 넉넉하게 해서 선수가
+       스로인 할 수 있게 해줘」. 실제 스로인은 라인 「밖」에서 던진다 — 라인 위(0.004)에
+       세우면 선수 몸이 필드 안에 들어와 있는 그림이 된다. */
+    const spot={x:clamp01(at.x), y: at.y<0.5? -THROW_OUT_Y : 1+THROW_OUT_Y};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false;
     let best=null,bd=1e9;
     for(const a of this.side(side)){
