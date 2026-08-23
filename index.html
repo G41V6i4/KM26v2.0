@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1243-->
+<!--B:20260823-1307-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20247,10 +20247,20 @@ function edImport(input){
             if(typeof obj.mgr.fan==="number") G.trust.fans=clamp(Math.round(obj.mgr.fan),0,100);
             if(typeof obj.mgr.pressRel==="number") G.press.rel=clamp(Math.round(obj.mgr.pressRel),0,100);
           }
+          /* ⚠ 제보 — 「덮어쓰기 완료 · 966명 적용이라고 뜨는데 이름이 그대로다」.
+             에디터 데이터 파일(전체 덮어쓰기)과 이름 패치 파일은 서로 다른 파일이다.
+             전자는 능력치·소속 같은 값을 덮어쓰는 파일이라, 만든 사람이 가명 상태에서 뽑았으면
+             이름은 하나도 안 바뀐다 — 그런데 화면은 「966명 적용」만 말하니 이름 패치를 넣은 줄 안다.
+             ─ 이름이 한 글자도 안 바뀌었으면 그 사실과 함께 「이름 파일은 따로 있다」를 알려 준다. */
+          const _rnN=(Array.isArray(ED_RENAMES)?ED_RENAMES.length:0);
           try{ renameEverywhere(ED_RENAMES); }catch(e){}
           ED_RENAMES=null;
           saveGame();
-          showConfirm(`<b>✅ 덮어쓰기 완료</b>\n\n· 팀 ${tOk}개 · 선수 ${pOk}명 적용${pMiss?` · <span style="color:var(--gold)">${pMiss}건 건너뜀</span>`:""}\n${edMissBox(dbMiss, "이 세이브에서 찾지 못한 선수입니다 — 이적·방출·시즌 차이거나 파일이 예전 버전일 수 있습니다.")}`,
+          const _noRn = (pOk>0 && _rnN===0)
+            ? `<div class="msg info" style="margin:8px 0">ℹ️ <b>이 파일에는 이름 변경이 없습니다.</b>
+                <span class="small">능력치·소속 같은 값만 담긴 <b>에디터 데이터 파일</b>입니다.
+                선수·구단 이름을 바꾸려면 <b>이름 파일</b>(적용할 때 「📛 이름 패치를 적용합니다」라고 뜨는 파일)이 따로 필요합니다.</span></div>` : "";
+          showConfirm(`<b>✅ 덮어쓰기 완료</b>\n${_noRn}\n· 팀 ${tOk}개 · 선수 ${pOk}명 적용${pMiss?` · <span style="color:var(--gold)">${pMiss}건 건너뜀</span>`:""}\n${edMissBox(dbMiss, "이 세이브에서 찾지 못한 선수입니다 — 이적·방출·시즌 차이거나 파일이 예전 버전일 수 있습니다.")}`,
             ()=>show("editor"), {okLabel:"확인", cancelLabel:""});
         }, {okLabel:"덮어쓴다", cancelLabel:"취소", danger:true});
     }catch(err){
@@ -61717,21 +61727,53 @@ async function fbPatch(p,v){ try{ const r=await fbFetch(fbU(p),{method:"PATCH",b
 async function fbPush(p,v){ try{ const r=await fbFetch(fbU(p),{method:"POST",body:JSON.stringify(v)}); if(!r.ok) return null; return (await r.json()).name; }catch(e){ return null; } }
 async function fbDel(p){ try{ await fbFetch(fbU(p),{method:"DELETE"}); }catch(e){} }
 /* 실시간 수신 — RTDB 의 text/event-stream. put/patch 이벤트로 트리 변화가 흘러온다 */
+/* ⚠ 제보 원문 — 「온라인 대전에서 유저 표시가 등록된 이름으로 잘 나오다가 다 「감독」으로 바뀐다」.
+   원인: 실시간 수신이 보내는 두 가지 알림 — put(그 자리를 통째로 갈아끼움)과
+      patch(그 자리 안의 「바뀐 값만」 갱신) — 을 **똑같이** 처리하고 있었다.
+      put 이든 patch 든 `state[칸] = 받은값` 으로 덮어썼다.
+      접속 신호를 fbSet(PUT)에서 fbPatch 로 바꾼 뒤로 이게 터졌다 —
+      20초마다 오는 심장박동에서 실제로 바뀌는 값은 시각(t) 하나뿐이라,
+      서버는 `{"t":1787…}` 만 patch 로 보낸다. 그런데 우리는 그걸 통째로 덮어써서
+      그 감독의 칸에 n(닉네임)·ver·m 이 전부 사라졌다.
+      → 처음 한 번은 전체(put)를 받아 이름이 제대로 보이고, 20초 뒤 첫 심장박동부터
+        모두가 이름 없는 칸이 되어 「감독」(대체 이름)으로 표시된다. 정확히 제보 그대로다.
+      ⚠ 같은 이유로 방(rooms)에서도 신호(sdpOffer 등)를 patch 로 보내면 방 정보가 날아갈 수 있었다.
+   ─ patch 는 「합치기」로 처리한다. 값이 null 이면 그 칸만 지운다. put 만 통째 교체다. */
 function fbStream(p, onChange){
   const url=fbU(p);
   const es=new EventSource(url);
   const state={};                       // 스트림이 재구성해 주는 최신 트리
-  const apply=(path, data)=>{
-    if(path==="/"||path===""){ for(const k in state) delete state[k]; if(data&&typeof data==="object") Object.assign(state, data); else if(data!=null) state._=data; }
-    else{
+  const merge=(o, k, data)=>{
+    /* patch — 받은 값들만 얹는다. 원래 있던 다른 값은 지키고, null 인 항목만 지운다 */
+    if(data===null || typeof data!=="object" || Array.isArray(data)){
+      if(data===null) delete o[k]; else o[k]=data;
+      return;
+    }
+    const cur=(o[k] && typeof o[k]==="object" && !Array.isArray(o[k])) ? o[k] : {};
+    for(const kk in data){ if(data[kk]===null) delete cur[kk]; else cur[kk]=data[kk]; }
+    o[k]=cur;
+  };
+  const apply=(path, data, isPatch)=>{
+    if(path==="/"||path===""){
+      if(isPatch && data && typeof data==="object"){
+        for(const k in data){ if(data[k]===null) delete state[k]; else state[k]=data[k]; }
+      } else {
+        for(const k in state) delete state[k];
+        if(data&&typeof data==="object") Object.assign(state, data); else if(data!=null) state._=data;
+      }
+    } else {
       const ks=path.replace(/^\//,"").split("/");
       let o=state; for(let i=0;i<ks.length-1;i++){ o[ks[i]]=o[ks[i]]||{}; o=o[ks[i]]; }
-      if(data==null) delete o[ks[ks.length-1]]; else o[ks[ks.length-1]]=data;
+      const k=ks[ks.length-1];
+      if(isPatch) merge(o, k, data);
+      else if(data==null) delete o[k];
+      else o[k]=data;
     }
     try{ onChange(state); }catch(e){}
   };
-  const h=(e)=>{ try{ const d=JSON.parse(e.data); apply(d.path, d.data); }catch(_){}};
-  es.addEventListener("put", h); es.addEventListener("patch", h);
+  const h=(e, isPatch)=>{ try{ const d=JSON.parse(e.data); apply(d.path, d.data, isPatch); }catch(_){}};
+  es.addEventListener("put",   (e)=>h(e,false));
+  es.addEventListener("patch", (e)=>h(e,true));
   return es;
 }
 
@@ -65080,7 +65122,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1243";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1307";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
