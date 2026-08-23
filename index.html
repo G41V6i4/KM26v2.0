@@ -1035,8 +1035,11 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
       별점이 접히는 열(fmOpt)에 묶여 있었다. 교체를 고르는 기준 그 자체이므로 접으면 안 된다.
       ─ 별은 항상 남기고, 대신 별 글자를 줄이고 드롭다운을 더 좁혀 자리를 만든다. */
 @media (max-width:760px){
-  .fmRoleSel{max-width:84px; font-size:10px; padding:2px 2px;}
-  .fmRoleSel.duty{max-width:40px;}
+  /* ⚠ 이 미디어 쿼리보다 「뒤에」 있는 .fmRoleSel{max-width:176px} 이 같은 무게로 덮어써서,
+     폰에서 드롭다운이 전혀 안 좁아졌다(실측 420px 화면에서 역할 열 폭 178px).
+     그 바람에 표가 582px로 벌어져 능력·포지션·나이가 화면 밖으로 밀렸다 — 제보의 뿌리. */
+  .fmRoleSel{max-width:84px !important; font-size:10px !important; padding:2px 2px !important;}
+  .fmRoleSel.duty{max-width:44px !important;}
   .fmTable .fmName{min-width:74px; font-size:11.5px;}
   table.fmTable td, table.fmTable th{padding:8px 2px !important; font-size:12px;}
   .fmTable .fmOpt{display:none;}
@@ -1044,8 +1047,10 @@ table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:
   .fmSlot{font-size:10.5px; padding:4px 3px !important;}
   .fmCond{font-size:12.5px; font-weight:800;}
   .fmAge{font-size:11px;}
-  .fmSubLbl{font-size:0;}                 /* 「교체 대기」 글자는 접고 칸만 남긴다 */
-  .fmSubLbl::after{content:"대기"; font-size:10.5px; color:#8b949e;}
+  /* ⚠ 제보(화면에 「교체 대기대기」) — .fmSubLbl(0,1,0) 이 위의
+     table.fmTable td(0,1,2) 에 밀려 font-size:0 이 안 먹었다. 같은 무게로 올린다. */
+  table.fmTable td.fmSubLbl{font-size:0 !important;}
+  table.fmTable td.fmSubLbl::after{content:"대기"; font-size:10.5px; color:#8b949e;}
 }
 /* 🎂 나이 — 「어느 자리에 누가 몇 살이라 몇 년 안에 보강해야 하는가」를 전술판에서 바로 읽는다(제보) */
 .fmAge{text-align:center;font-weight:600;font-size:12px;color:var(--sub);}   /* 나이는 참고값 — 색·굵기로 눈길을 끌지 않는다 */
@@ -2128,6 +2133,26 @@ function dispPot(p){
   if(!p) return 0;
   const direct=90 + (((p.pot||p.ovr||65)-38))*POT_MAP_K;
   return clamp(Math.round(Math.max(dispOvr(p), direct)), 90, 200);
+}
+/* 🌱 성장 전망 — ⚠ 제보 원문 「선수 종합 능력이 잠재 능력 끝까지 성장 했는데도 유스 탭에서
+   성장 전망이 3칸이 남는 일이 있습니다. … 종합 능력 200, 잠재 능력 200 으로 프로필 기준으로는
+   이미 성장을 마쳤습니다. (나이는 19세) 그런데 유스 탭에서의 성장 전망은 3칸이 남았습니다.
+   … 종합 능력 / 잠재 능력 대비해서 유스 탭의 성장 전망을 그대로 칸수로 표현이 되게 교정
+   해주시면 감사하겠습니다」.
+   원인: 유스 탭은 칸수를 「내부 눈금」(p.pot − p.ovr · 38~96)으로 셌다. 그런데 프로필에 찍히는
+   종합·잠재는 「화면 눈금」(dispOvr·dispPot · 90~200)이다. 두 화면이 서로 다른 자를 쓰고 있었다.
+     예) 내부 ovr 87 / pot 96 → 내부 격차 9 → 3칸.
+         같은 선수의 화면 값은 dispOvr 200(상한) · dispPot 200 → 프로필상 「성장 완료」.
+   ⚠ 어빌 재배치(제보의 추측)는 「성장 전망」이 아니다 — 그건 총량이 아니라 배분의 문제이고,
+      화면 종합(포지션 가중 CA)이 상한 200에 닿은 선수는 그 자를 기준으로 더 오를 곳이 없다.
+   ─ 프로필과 같은 자로 잰다. 남은 폭(화면 눈금)도 숫자로 함께 적어 눈으로 대조할 수 있게 한다.
+     한 칸 = 화면 눈금 6점 (예전 내부 3점과 같은 굵기 — 내부 3 × 110/58 ≈ 5.7).
+     0점이면 「완성」, 1점이라도 남았으면 최소 한 칸은 그린다. */
+function growthGap(p){
+  if(!p) return {now:0, cap:0, gap:0, bars:0};
+  const now=dispOvr(p), cap=dispPot(p);
+  const gap=Math.max(0, cap-now);
+  return {now, cap, gap, bars: gap>0 ? clamp(Math.ceil(gap/6), 1, 8) : 0};
 }
 /* 화면 눈금(90~200)으로 받은 잠재력을 내부 눈금으로 되돌린다 (직접 매핑의 역함수) */
 function potFromDisp(p, dv){
@@ -24228,7 +24253,7 @@ function stkSplit(s, k){
     if(sh2 && sh2.q>0){ sh2.q=Math.round(sh2.q*k); sh2.avg=Math.max(1, sh2.avg/k); }
     for(const o of stkOrders()) if(o.sid===s.id){ o.px=Math.max(1, Math.round(o.px/k)); o.q=Math.round(o.q*k); }
     s.splitAt=G.day||0;
-    stkLog("split", `✂️ <b>${s.n}</b> 액면분할 1:${k} — 주가 ${s.p.toLocaleString()}원으로 조정 (보유 주식 수는 ${k}배)`, s.id);
+    stkLog("split", `✂️ <b>${s.n}</b> 액면분할 1:${k} — 주가 ${stkWon(s.p)}원으로 조정 (보유 주식 수는 ${k}배)`, s.id);
     stkPing(s, `✂️ <b>${s.n}</b> 액면분할 1:${k} — 보유 수량이 ${k}배로 늘고 단가는 ${k}분의 1이 됩니다.`, "info");
   }catch(e){}
 }
@@ -24363,6 +24388,21 @@ function moneyEok(a){
   a=+a||0;
   if(Math.abs(a)>=10000) return (a/10000).toFixed(2)+"조";
   return a.toFixed(2)+"억";
+}
+/* 💹 주가·평단가처럼 「원 단위 그대로 읽는 값」의 표기.
+   ⚠ 제보 원문 — 「전체 주식 종목의 주가나 시총을 보면 단위가 커질 때에도 단순 숫자로 나열되어
+      있어 (예를 들어 시가 총액 7,298,506,428 등) 단위를 가늠하기가 쉽지 않습니다.
+      '보유 종목' 박스의 '평단가' 또한 그렇습니다. 주식 주가, 시가총액, '보유 종목' 박스의
+      '평단가' 또한 '조' 단위가 있게 된다면 '조' 단위까지, '억' 단위로 셀 수 있다면 '억' 단위를
+      반영하는 '단위 체계'를 '내 자산' 탭의 '순자산', '보유 현금'처럼 도입해 주시면 감사하겠습니다」.
+   ─ 억을 넘으면 억·조로 접는다. 그 아래는 원 단위 그대로 둔다 —
+     45,300원짜리 주가를 「4.53만」으로 바꾸면 오히려 읽기 나빠진다(stkMoney 는 만 단위로 접는다).
+   ⚠ 조는 소수 둘째 자리, 억은 값이 클수록 자리를 줄여 자릿수가 들쭉날쭉하지 않게 한다. */
+function stkWon(w){
+  w=+w||0; const a=Math.abs(w);
+  if(a>=1e12) return (w/1e12).toFixed(2)+"조";
+  if(a>=1e8)  return (w/1e8).toFixed(a>=1e10?0:2)+"억";
+  return Math.round(w).toLocaleString();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -24770,8 +24810,8 @@ function stkOrderTick(){
       M.stkInv[s.id]=h;
       M.spent=Math.round((M.spent+cost/1e8)*100)/100;
       stkTxAdd({k:"buy", sid:s.id, n:s.n, q:o.q, px, amt:cost, auto:1});
-      stkLog("order", `📋 ${s.n} ${o.q.toLocaleString()}주 <b>예약 매수 체결</b> — ${px.toLocaleString()}원 (${stkMoney(cost)})`, s.id);
-      try{ notify(`📋 <b>${s.n}</b> 예약 매수 체결 — ${o.q.toLocaleString()}주 @${px.toLocaleString()}원`,"good"); }catch(e){}
+      stkLog("order", `📋 ${s.n} ${o.q.toLocaleString()}주 <b>예약 매수 체결</b> — ${stkWon(px)}원 (${stkMoney(cost)})`, s.id);
+      try{ notify(`📋 <b>${s.n}</b> 예약 매수 체결 — ${o.q.toLocaleString()}주 @${stkWon(px)}원`,"good"); }catch(e){}
     } else {
       const h=(M.stkInv&&M.stkInv[s.id])||null;
       if(!h || h.q<=0){ O.splice(i,1); continue; }
@@ -24783,8 +24823,8 @@ function stkOrderTick(){
       M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e4)/1e4;
       h.q-=q; if(h.q<=0) delete M.stkInv[s.id];
       stkTxAdd({k:"sell", sid:s.id, n:s.n, q, px, amt:net, real, auto:1});
-      stkLog("order", `📋 ${s.n} ${q.toLocaleString()}주 <b>예약 매도 체결</b> — ${px.toLocaleString()}원 (실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억)`, s.id);
-      try{ notify(`📋 <b>${s.n}</b> 예약 매도 체결 — ${q.toLocaleString()}주 @${px.toLocaleString()}원 · 실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억`, real>=0?"good":"warn"); }catch(e){}
+      stkLog("order", `📋 ${s.n} ${q.toLocaleString()}주 <b>예약 매도 체결</b> — ${stkWon(px)}원 (실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억)`, s.id);
+      try{ notify(`📋 <b>${s.n}</b> 예약 매도 체결 — ${q.toLocaleString()}주 @${stkWon(px)}원 · 실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억`, real>=0?"good":"warn"); }catch(e){}
     }
     O.splice(i,1);
   }
@@ -24883,7 +24923,7 @@ function stkChart2(s){
   for(let i=0;i<=3;i++){
     const v=lo+sp*i/3, yy=y(v);
     grid+=`<line x1="${pad}" y1="${yy.toFixed(1)}" x2="${W-pad}" y2="${yy.toFixed(1)}" stroke="#21262d" stroke-width="1"/>
-           <text x="${W-pad-2}" y="${(yy-2).toFixed(1)}" fill="#6b7480" font-size="9" text-anchor="end">${Math.round(v).toLocaleString()}</text>`;
+           <text x="${W-pad-2}" y="${(yy-2).toFixed(1)}" fill="#6b7480" font-size="9" text-anchor="end">${stkWon(v)}</text>`;
   }
   const first=D[0][3], last=D[D.length-1][3];
   const chg=(last-first)/first*100;
@@ -24899,7 +24939,7 @@ function stkChart2(s){
     <div class="small" style="display:flex;gap:10px;color:var(--sub);margin-top:2px;flex-wrap:wrap">
       <span>거래량</span>
       ${STK_MA?'<span style="color:#e3b341">— 5일</span><span style="color:#7ee2a8">— 20일</span><span style="color:#a78bfa">— 60일</span>':""}
-      <span style="margin-left:auto">${lo.toLocaleString()} ~ ${hi.toLocaleString()}원</span>
+      <span style="margin-left:auto">${stkWon(lo)} ~ ${stkWon(hi)}원</span>
     </div>`;
 }
 
@@ -25056,7 +25096,7 @@ function stkTipCard(){
           <span class="stkTier" style="color:${t.k==="up"?"#f85149":"#58a6ff"};border-color:${t.k==="up"?"#f8514966":"#58a6ff66"}">${t.k==="up"?"호재":"악재"}</span></div>
         <div class="small" style="color:var(--sub)">${dateLabel(t.d)} · ${SRC.n} ·
           신뢰도 <b style="color:${relC}">${t.rel}%</b> · ${res}${own?' · <b style="color:var(--gold)">보유 중</b>':""}
-          ${s?` · 현재 ${s.p.toLocaleString()}원`:""}</div>
+          ${s?` · 현재 ${stkWon(s.p)}원`:""}</div>
       </div></div>`;
   };
   return `<div class="card"><h3>🕵️ 도는 이야기
@@ -25502,7 +25542,7 @@ function stkShortOpen(){
   H[s.id]=h;
   stkPushMom(s, -1, F.imp);
   stkTxAdd({k:"short", sid:s.id, n:s.n, q, px:F.px, amt:net});
-  try{ meLog(`📉 ${s.n} ${q.toLocaleString()}주 공매도 (@${F.px.toLocaleString()} · ${stkMoney(net)})`); }catch(e){}
+  try{ meLog(`📉 ${s.n} ${q.toLocaleString()}주 공매도 (@${stkWon(F.px)} · ${stkMoney(net)})`); }catch(e){}
   STK_QTY=""; saveGame(); show("mylife");
 }
 function stkShortCover(){
@@ -25749,9 +25789,9 @@ function stkIpoTick(){
         stkTxAdd({k:"ipo", sid:s.id, n:s.n, q:P.got, px:P.px, amt:P.got*P.px});
       }
       const chg=(s.p-P.px)/P.px*100;
-      stkLog(chg>=0?"good":"bad", `🆕 <b>${s.n}</b> 신규 상장 — 공모가 ${P.px.toLocaleString()}원 · 시초가 ${s.p.toLocaleString()}원 (${chg>=0?"+":""}${chg.toFixed(0)}%)`, s.id);
+      stkLog(chg>=0?"good":"bad", `🆕 <b>${s.n}</b> 신규 상장 — 공모가 ${stkWon(P.px)}원 · 시초가 ${stkWon(s.p)}원 (${chg>=0?"+":""}${chg.toFixed(0)}%)`, s.id);
       if(P.got>0){
-        try{ notify(`🆕 <b>${s.n}</b> 상장 — 시초가 ${s.p.toLocaleString()}원 (공모가 대비 ${chg>=0?"+":""}${chg.toFixed(0)}%) · 배정 ${P.got.toLocaleString()}주`, chg>=0?"good":"warn"); }catch(e){}
+        try{ notify(`🆕 <b>${s.n}</b> 상장 — 시초가 ${stkWon(s.p)}원 (공모가 대비 ${chg>=0?"+":""}${chg.toFixed(0)}%) · 배정 ${P.got.toLocaleString()}주`, chg>=0?"good":"warn"); }catch(e){}
       }
       S.ipo=null;
       return;
@@ -25786,8 +25826,8 @@ function stkIpoTick(){
            :                  8000+Math.round(Math.random()*32000);
     const sh=Math.round((0.3+Math.random()*3)*1e12/px/1e5)*1e5;
     S.ipo={n, sec, tier, px, sh, d:G.day||0, close:(G.day||0)+5, list:(G.day||0)+9, want:0, got:0, rate:0, done:0};
-    stkLog("ipo", `🆕 <b>${n}</b> 신규 상장 공모 — 공모가 ${px.toLocaleString()}원 · 청약 5일간`);
-    try{ notify(`🆕 <b>${n}</b> 공모 청약이 시작됐습니다 — 공모가 ${px.toLocaleString()}원 · 5일 안에 신청하세요.`,"info"); }catch(e){}
+    stkLog("ipo", `🆕 <b>${n}</b> 신규 상장 공모 — 공모가 ${stkWon(px)}원 · 청약 5일간`);
+    try{ notify(`🆕 <b>${n}</b> 공모 청약이 시작됐습니다 — 공모가 ${stkWon(px)}원 · 5일 안에 신청하세요.`,"info"); }catch(e){}
   }
 }
 function stkIpoApply(){
@@ -25837,7 +25877,7 @@ function stkQtyEchoHtml(s){
     + `${overHold?` <span style="color:#f85149">— 보유 ${h?h.q.toLocaleString()+"주":"없음"}</span>`
                  :` <span style="color:${real>=0?"#f85149":"#58a6ff"}">실현 ${real>=0?"+":""}${stkMoney(real)}</span>`}`
     + ` <span style="opacity:.7">(수수료 ${(STK_FEE*100).toFixed(2)}% · 매도세 ${(STK_TAX*100).toFixed(2)}%)</span>`
-    + (_fb.imp>0.005 ? `<br><span style="color:#ff9d5c">💥 시장충격 <b>${(_fb.imp*100).toFixed(1)}%</b> — 이 종목 하루 거래대금(${stkMoney(stkTurnover(s))})에 비해 주문이 큽니다. 매수는 ${_fb.px.toLocaleString()}원, 매도는 ${_fs.px.toLocaleString()}원에 체결됩니다.</span>` : "");
+    + (_fb.imp>0.005 ? `<br><span style="color:#ff9d5c">💥 시장충격 <b>${(_fb.imp*100).toFixed(1)}%</b> — 이 종목 하루 거래대금(${stkMoney(stkTurnover(s))})에 비해 주문이 큽니다. 매수는 ${stkWon(_fb.px)}원, 매도는 ${stkWon(_fs.px)}원에 체결됩니다.</span>` : "");
 }
 function stkQtyBtn(kind){
   const s=stkById(STK_SEL); if(!s) return;
@@ -25883,7 +25923,7 @@ function stkBuy(){
   stkPushMom(s, +1, F.imp);                     // 내가 밀어 올린 값은 시장에 남는다
   stkTxAdd({k:"buy", sid:s.id, n:s.n, q, px:F.px, amt:cost});
   if(F.imp>0.01) stkLog("slip", `💥 <b>${s.n}</b> 매수 체결가가 시세보다 <b>${(F.imp*100).toFixed(1)}%</b> 높았습니다 — 물량이 호가를 밀어 올렸습니다`, s.id);
-  try{ meLog(`📈 ${s.n} ${q.toLocaleString()}주 매수 (${F.px.toLocaleString()}원 · ${stkMoney(cost)})`); }catch(e){}
+  try{ meLog(`📈 ${s.n} ${q.toLocaleString()}주 매수 (${stkWon(F.px)}원 · ${stkMoney(cost)})`); }catch(e){}
   STK_QTY=""; saveGame(); show("mylife");
 }
 function stkSell(){
@@ -25933,7 +25973,7 @@ function stkChart(s, w, h){
     <circle cx="${x(H.length-1).toFixed(1)}" cy="${y(H[H.length-1]).toFixed(1)}" r="3" fill="${col}"/>
   </svg>
   <div class="small" style="display:flex;justify-content:space-between;color:var(--sub);margin-top:2px">
-    <span>${H.length}일 전 ${lo.toLocaleString()}~${hi.toLocaleString()}원</span>
+    <span>${H.length}일 전 ${stkWon(lo)}~${stkWon(hi)}원</span>
     <span style="color:${col}">${up?"▲":"▼"} 기간 ${(((H[H.length-1]-H[0])/H[0])*100).toFixed(1)}%</span></div>`;
 }
 /* 미니 스파크라인 — 목록 줄에 붙인다 */
@@ -25977,7 +26017,7 @@ function stkRow(s){
     </div>
     ${stkSpark(s)}
     <div class="stkP">
-      <b style="color:${col}">${s.p.toLocaleString()}</b>
+      <b style="color:${col}">${stkWon(s.p)}</b>
       <span class="small" style="color:${col}">${ch>=0?"+":""}${ch.toFixed(2)}%</span>
     </div>
     <button class="mini slStar ${stkIsFav(s.id)?"on":""}" onclick="stkToggleFav(${s.id},event)">${stkIsFav(s.id)?"⭐":"☆"}</button>
@@ -26007,27 +26047,27 @@ function stkPanel(){
         >${stkIsFav(s.id)?"⭐":"☆"}</button>
       <button class="mini" onclick="event.stopPropagation();stkClose()">✕ 닫기</button></h3>
     <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
-      <span style="font-size:30px;font-weight:800;color:${col}">${s.p.toLocaleString()}</span>
-      <span style="color:${col};font-weight:700">${ch>=0?"▲":"▼"} ${Math.abs(s.p-s.pc).toLocaleString()} (${ch>=0?"+":""}${ch.toFixed(2)}%)</span>
+      <span style="font-size:30px;font-weight:800;color:${col}">${stkWon(s.p)}</span>
+      <span style="color:${col};font-weight:700">${ch>=0?"▲":"▼"} ${stkWon(Math.abs(s.p-s.pc))} (${ch>=0?"+":""}${ch.toFixed(2)}%)</span>
     </div>
     ${s.warn?`<div class="msg warn" style="margin:6px 0">⚠️ <b>관리종목</b>으로 지정된 상태입니다. 상장폐지되면 투자금 전액을 잃습니다.</div>`:""}
     ${stkChart2(s)}
     <div class="stkGrid">
-      <div><span>시가</span><b>${s.o.toLocaleString()}</b></div>
-      <div><span>고가</span><b style="color:#f85149">${s.hi.toLocaleString()}</b></div>
-      <div><span>저가</span><b style="color:#58a6ff">${s.lo.toLocaleString()}</b></div>
-      <div><span>전일종가</span><b>${s.pc.toLocaleString()}</b></div>
+      <div><span>시가</span><b>${stkWon(s.o)}</b></div>
+      <div><span>고가</span><b style="color:#f85149">${stkWon(s.hi)}</b></div>
+      <div><span>저가</span><b style="color:#58a6ff">${stkWon(s.lo)}</b></div>
+      <div><span>전일종가</span><b>${stkWon(s.pc)}</b></div>
       <div><span>거래량</span><b>${s.vol.toLocaleString()}</b></div>
       <div><span>시가총액</span><b>${stkMoney(stkCap(s))}</b></div>
       <div><span>상장주식수</span><b>${(s.sh/1e4).toLocaleString()}만</b></div>
       <div><span>PER</span><b>${per==null?'<span style="color:var(--red)">적자</span>':per}</b></div>
       <div><span>PBR</span><b>${pbr==null?"-":pbr}</b></div>
-      <div><span>EPS</span><b>${s.eps.toLocaleString()}</b></div>
-      <div><span>BPS</span><b>${s.bps.toLocaleString()}</b></div>
+      <div><span>EPS</span><b>${stkWon(s.eps)}</b></div>
+      <div><span>BPS</span><b>${stkWon(s.bps)}</b></div>
       <div><span>배당수익률</span><b style="color:${s.div?"var(--green)":"var(--sub)"}">${s.div?s.div+"%":"—"}</b></div>
     </div>
     ${h?`<div class="msg info" style="margin:8px 0">
-      보유 <b>${h.q.toLocaleString()}주</b> · 평균단가 <b>${h.avg.toLocaleString()}원</b> · 평가액 <b>${stkMoney(h.q*s.p)}</b>
+      보유 <b>${h.q.toLocaleString()}주</b> · 평균단가 <b>${stkWon(h.avg)}원</b> · 평가액 <b>${stkMoney(h.q*s.p)}</b>
       · 평가손익 <b style="color:${h.q*(s.p-h.avg)>=0?"#f85149":"#58a6ff"}">${h.q*(s.p-h.avg)>=0?"+":""}${stkMoney(h.q*(s.p-h.avg))}
         (${(((s.p-h.avg)/h.avg)*100).toFixed(2)}%)</b></div>`:""}
     <div class="stkOrder">
@@ -26048,7 +26088,7 @@ function stkPanel(){
         <button class="mini" style="flex:1;padding:9px;border-color:#a78bfa;color:#c4b5fd" onclick="stkShortOpen()">📉 공매도</button>
         <button class="mini" style="flex:1;padding:9px;border-color:${sh?"#7ee2a8":"#30363d"};color:${sh?"#7ee2a8":"#6b7480"}" onclick="stkShortCover()">📈 숏커버</button>
       </div>
-      ${sh?`<div class="msg warn" style="margin:7px 0 0">📉 공매도 잔고 <b>${sh.q.toLocaleString()}주</b> · 평균 매도가 <b>${sh.avg.toLocaleString()}원</b>
+      ${sh?`<div class="msg warn" style="margin:7px 0 0">📉 공매도 잔고 <b>${sh.q.toLocaleString()}주</b> · 평균 매도가 <b>${stkWon(sh.avg)}원</b>
         · 평가손익 <b style="color:${(sh.avg-s.p)*sh.q>=0?"#f85149":"#58a6ff"}">${(sh.avg-s.p)*sh.q>=0?"+":""}${stkMoney((sh.avg-s.p)*sh.q)}</b>
         <span class="small">(주가가 오르면 손실이 계속 불어납니다)</span></div>`:""}`; })()}
     ${stkOrderBox(s)}
@@ -26074,7 +26114,7 @@ function stkOrderPut(kind){
   if(kind==="buy" && px>=s.p) { flash("매수 예약은 현재가보다 낮은 값에 겁니다.","warn"); return; }
   if(kind==="sell" && px<=s.p){ flash("매도 예약은 현재가보다 높은 값에 겁니다.","warn"); return; }
   if(stkOrderAdd(s.id, kind, px, q, STK_ODAY)){
-    flash(`📋 ${s.n} ${kind==="buy"?"매수":"매도"} 예약 — ${px.toLocaleString()}원 ${q.toLocaleString()}주`,"good");
+    flash(`📋 ${s.n} ${kind==="buy"?"매수":"매도"} 예약 — ${stkWon(px)}원 ${q.toLocaleString()}주`,"good");
     STK_OPX=""; STK_QTY=""; show("mylife");
   }
 }
@@ -26103,7 +26143,7 @@ function stkOrderBox(s){
     ${mine.length?`<div style="margin-top:7px">${mine.map(o=>`
       <div class="stkOrdRow">
         <span style="color:${o.k==="buy"?"#ff8080":"#9ecbff"};font-weight:700">${o.k==="buy"?"매수":"매도"}</span>
-        <span><b>${o.px.toLocaleString()}</b>원 · ${o.q.toLocaleString()}주</span>
+        <span><b>${stkWon(o.px)}</b>원 · ${o.q.toLocaleString()}주</span>
         <span class="small" style="color:var(--sub)">D-${Math.max(0,o.exp-(G.day||0))}</span>
         <button class="mini" onclick="stkOrderDel(${o.id})">취소</button>
       </div>`).join("")}</div>`:""}
@@ -26153,7 +26193,7 @@ function stkView(){
     ${held.map(({s,q,avg})=>{ const d=(s.p-avg)/avg*100, c=d>=0?"#f85149":"#58a6ff";
       return `<div class="stkRow" onclick="stkOpen(${s.id})">
         <div class="stkMain"><div class="stkN"><b>${s.n}</b></div>
-          <div class="small" style="color:var(--sub)">${q.toLocaleString()}주 · 평단 ${avg.toLocaleString()} · 평가 ${stkMoney(q*s.p)}</div></div>
+          <div class="small" style="color:var(--sub)">${q.toLocaleString()}주 · 평단 ${stkWon(avg)} · 평가 ${stkMoney(q*s.p)}</div></div>
         ${stkSpark(s)}
         <div class="stkP"><b style="color:${c}">${d>=0?"+":""}${d.toFixed(1)}%</b>
           <span class="small" style="color:${c}">${d>=0?"+":""}${stkMoney(q*(s.p-avg))}</span></div>
@@ -26195,9 +26235,9 @@ function stkSubView(){
           <div class="stkMain">
             <div class="stkN"><b>${s.n}</b>
               <span class="stkTier" style="color:${o.k==="buy"?"#ff8080":"#9ecbff"};border-color:${o.k==="buy"?"#f8514966":"#58a6ff66"}">${o.k==="buy"?"매수":"매도"} 예약</span></div>
-            <div class="small" style="color:var(--sub)">지정가 <b>${o.px.toLocaleString()}</b>원 · ${o.q.toLocaleString()}주 · 예상 ${stkMoney(o.px*o.q)}</div>
+            <div class="small" style="color:var(--sub)">지정가 <b>${stkWon(o.px)}</b>원 · ${o.q.toLocaleString()}주 · 예상 ${stkMoney(o.px*o.q)}</div>
           </div>
-          <div class="stkP"><b class="small">현재 ${s.p.toLocaleString()}</b>
+          <div class="stkP"><b class="small">현재 ${stkWon(s.p)}</b>
             <span class="small" style="color:${Math.abs(gap)<3?"var(--gold)":"var(--sub)"}">${gap>=0?"+":""}${gap.toFixed(1)}% · D-${Math.max(0,o.exp-(G.day||0))}</span></div>
           <button class="mini" onclick="event.stopPropagation();stkOrderDel(${o.id})">취소</button>
         </div>`;}).join("")
@@ -26287,7 +26327,7 @@ function stkSubView(){
           const held=(x.hold!=null)?(x.hold>=365?`${(x.hold/365).toFixed(1)}년`:`${x.hold}일`):"—";
           return `<tr ${x.sid?`class="clickable" onclick="stkOpen(${x.sid})"`:""}>
             <td><b>${x.n||"-"}</b>${x.k!=="sell"?` <span class="small" style="color:var(--sub)">${x.k==="cover"?"숏커버":"강제청산"}</span>`:""}</td>
-            <td class="small">${x.bavg?x.bavg.toLocaleString():"—"} → ${x.px?x.px.toLocaleString():"—"}원</td>
+            <td class="small">${x.bavg?stkWon(x.bavg):"—"} → ${x.px?stkWon(x.px):"—"}원</td>
             <td class="small">${held}</td>
             <td class="small">${x.q?x.q.toLocaleString()+"주":"—"}</td>
             <td style="color:${col};font-weight:800">${ret!=null?((ret>=0?"+":"")+(ret*100).toFixed(1)+"%"):"—"}</td>
@@ -26335,7 +26375,7 @@ function stkShortCard(){
       return `<div class="stkRow" onclick="stkOpen(${s.id})">
         <div class="stkMain"><div class="stkN"><b>${s.n}</b>
           <span class="stkTier" style="color:#a78bfa;border-color:#a78bfa66">공매도</span></div>
-          <div class="small" style="color:var(--sub)">${q.toLocaleString()}주 · 매도가 ${avg.toLocaleString()} · 현재 ${s.p.toLocaleString()}</div></div>
+          <div class="small" style="color:var(--sub)">${q.toLocaleString()}주 · 매도가 ${stkWon(avg)} · 현재 ${stkWon(s.p)}</div></div>
         ${stkSpark(s)}
         <div class="stkP"><b style="color:${c}">${d>=0?"+":""}${d.toFixed(1)}%</b>
           <span class="small" style="color:${c}">${d>=0?"+":""}${stkMoney((avg-s.p)*q)}</span></div>
@@ -31127,6 +31167,13 @@ function fmAgeCell(p){
   const a=G.season-(p.by||2000);
   return `<td class="fmAge">${a}</td>`;
 }
+/* ⚠ 제보 원문 — 「선수교체시 이름이 몇몇은 안보여요」.
+   원인: 전술판 표에서 이름(.fmName) 열이 다섯 번째에 있었다. 폰(420px)에서 표는 582px라
+   이름 열이 x=385~459 — 화면 밖이다. 스크롤해야 겨우 보였다. 반면 「그 외 명단」은
+   별도 스크롤 박스라 좁게 접혀 이름이 보였다 → 「몇몇만 보인다」.
+   .fmName 은 이미 position:sticky; left:0 으로 「맨 앞에 붙어 따라다니게」 만들어 둔 열이다
+   (경기 중 표 fmLiveTable 은 실제로 맨 앞에 둔다). 여기만 순서가 옛날 그대로였다.
+   ─ 이름을 맨 앞으로 옮겨 두 표의 열 순서를 맞춘다. */
 function fmSquadRow(t, p, slotLabel, slot, idx){
   const rd=getRole(t,p,slot);
   const R=ROLE_BY_KEY[rd.r];
@@ -31143,6 +31190,9 @@ function fmSquadRow(t, p, slotLabel, slot, idx){
   return `<tr class="fmTr rowPick ${selSwap===p.id?'picked':''} ${swapFitCls(t,p)}"
       onclick="swapSel(${p.id})" oncontextmenu="showPlayerInfoPopup(event,${p.id})"
       draggable="true" ondragstart="dragP(event,${p.id})" ondragover="overP(event)" ondragleave="leaveP(event)" ondrop="dropP(event,${p.id})">
+    <td class="fmName">
+      <span class="sqNo">${p.no||"-"}</span>
+      <b class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${p.id})">${nmF(p)}</b></td>
     <td class="fmSlot">${slotLabel}</td>
     <td onclick="event.stopPropagation()"><select class="fmRoleSel" onchange="fmSetRole(${p.id},this.value)">
       ${opts.map(r=>`<option value="${r.k}" ${r.k===rd.r?"selected":""}>${r.k} · ${r.n}</option>`).join("")}
@@ -31151,9 +31201,6 @@ function fmSquadRow(t, p, slotLabel, slot, idx){
       ${(R?R.duty:["S"]).map(d=>`<option value="${d}" ${d===rd.d?"selected":""}>${DUTY_N[d]||d}</option>`).join("")}
     </select></td>
     <td class="fmStars">${roleStarsFor(t,p,slot).replace(/ title="[^"]*"/,"")}</td>
-    <td class="fmName">
-      <span class="sqNo">${p.no||"-"}</span>
-      <b class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${p.id})">${nmF(p)}</b></td>
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
     ${fmAgeCell(p)}
     ${bodyCell(p.cond)}
@@ -31284,8 +31331,26 @@ function sqSort(scope, key){
   const st=scope==="bench"?BENCH_SORT:REST_SORT;
   if(st.k===key) st.d=-st.d;
   else { st.k=key; st.d=(key==="name"||key==="pos")?1:-1; }   // 이름·포지션은 오름차순부터, 수치는 높은 순부터
-  try{ if(typeof inLiveTactics!=="undefined" && inLiveTactics && liveM){ renderLiveTactics(); return; } }catch(e){}
-  refreshTactics();
+  /* ⚠ 제보 원문 — 「선수교체시 나이 차순 누르고 교체시 라인선택 오류」.
+     폰에서는 나이·컨디션 머리글이 화면 밖이라 표를 오른쪽으로 밀어야 누를 수 있다.
+     그런데 누르는 순간 표를 통째로 다시 그리면서 가로 스크롤이 0으로 튕겨,
+     같은 자리에 있던 손가락 밑의 열·행이 바뀌어 엉뚱한 칸을 고르게 됐다.
+     ─ 보고 있던 자리를 그대로 유지한 채 다시 그린다. */
+  let _sx=0, _sy=0, _ry=0;
+  try{
+    const sc=document.querySelector(".tblScroll");
+    if(sc){ _sx=sc.scrollLeft; _sy=sc.scrollTop; }
+    const rs=document.querySelector(".tblScroll div[style*='overflow-y']");
+    if(rs) _ry=rs.scrollTop;
+  }catch(e){}
+  const _restore=()=>{ try{
+    const sc=document.querySelector(".tblScroll");
+    if(sc){ sc.scrollLeft=_sx; sc.scrollTop=_sy; }
+    const rs=document.querySelector(".tblScroll div[style*='overflow-y']");
+    if(rs && _ry) rs.scrollTop=_ry;
+  }catch(e){} };
+  try{ if(typeof inLiveTactics!=="undefined" && inLiveTactics && liveM){ renderLiveTactics(); _restore(); return; } }catch(e){}
+  refreshTactics(); _restore();
 }
 function sqTh(scope, key, label, colspan, opt){
   const st=scope==="bench"?BENCH_SORT:REST_SORT;
@@ -31303,12 +31368,14 @@ function sqHeadRow(scope, sticky){
   /* ⚠ 머리글은 본문 subRow 와 열 개수·접힘(fmOpt)이 정확히 같아야 한다.
      예전에는 본문만 별점·경고·반응·평점 네 칸이 폰에서 접히고 머리글은 그대로여서,
      좁은 화면에서 라벨이 통째로 네 칸씩 밀려 보였다(제보 — 「그 외 명단이 개판」).
-       본문 : 슬롯 · (대기 colspan2) · 별 · 이름 · 포지션 · 나이 · 컨디션 · 경고* · 반응* · 평점*
-       (*표시가 폰에서 접히는 열) */
+       본문 : 이름 · 슬롯 · (대기 colspan2) · 별 · 포지션 · 나이 · 컨디션 · 경고* · 반응* · 평점*
+       (*표시가 폰에서 접히는 열)
+     ⚠ 이름이 맨 앞이다 (제보 「선수교체시 이름이 몇몇은 안보여요」 — 아래 fmSquadRow 주석 참고) */
   const tds=[
+    sqTh(scope,"name","선수"),
     sqTh(scope,"idx",scope==="bench"?"슬롯":"기본"),
     `<td colspan="2" style="${st}"></td>`,
-    sqTh(scope,"star","능력"), sqTh(scope,"name","선수"), sqTh(scope,"pos","포지션"),
+    sqTh(scope,"star","능력"), sqTh(scope,"pos","포지션"),
     sqTh(scope,"age","나이"), sqTh(scope,"cond","컨디션"),
     `<td class="fmOpt" style="${st}"></td>`,
     sqTh(scope,"mood","반응",null,true), sqTh(scope,"rt","평점",null,true)
@@ -31452,10 +31519,10 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
       ${cls==="out"?`oncontextmenu="showPlayerInfoPopup(event,${p.id})"`
         :`onclick="swapSel(${p.id})" oncontextmenu="showPlayerInfoPopup(event,${p.id})"
           draggable="true" ondragstart="dragP(event,${p.id})" ondragover="overP(event)" ondragleave="leaveP(event)" ondrop="dropP(event,${p.id})"`}>
-    <td class="fmSlot sub">${lbl}</td><td colspan="2" class="small fmSubLbl">${note}</td>
-    <td class="fmStars">${prefStars(p).replace(/ title="[^"]*"/,"")}</td>
     <td class="fmName">
       <span class="sqNo">${p.no||"-"}</span><b class="clickable" onclick="event.stopPropagation();openPlayerMenu(event,${p.id})">${nmF(p)}</b></td>
+    <td class="fmSlot sub">${lbl}</td><td colspan="2" class="small fmSubLbl">${note}</td>
+    <td class="fmStars">${prefStars(p).replace(/ title="[^"]*"/,"")}</td>
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
     ${fmAgeCell(p)}
     ${bodyCell(p.cond)}
@@ -31463,8 +31530,8 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
     <td class="fmOpt"><span class="fmReact ${moodTag(p).c}">${moodTag(p).t}</span></td>
     <td class="fmRt fmOpt">${p.apps?(p.seasonRating||0).toFixed(2):"-"}</td></tr>`;
   const emptyBenchRows = (t.tactic&&t.tactic.benchManual)   // 어떤 정렬에서도 빈 자리는 빈 자리로 보인다
-    ? Array.from({length:Math.max(0,9-mb.length)},(_,k)=>`<tr class="fmTr sub"><td class="fmSlot sub">S${mb.length+k+1}</td>
-        <td colspan="10" class="small" style="color:var(--sub)">빈 자리 — 그 외 명단에서 ⬆ 벤치로 채울 수 있습니다</td></tr>`).join("")
+    ? Array.from({length:Math.max(0,9-mb.length)},(_,k)=>`<tr class="fmTr sub"><td class="fmName"></td><td class="fmSlot sub">S${mb.length+k+1}</td>
+        <td colspan="9" class="small" style="color:var(--sub)">빈 자리 — 그 외 명단에서 ⬆ 벤치로 채울 수 있습니다</td></tr>`).join("")
     : "";
   const bench=squadViewSort(mb, BENCH_SORT).map(([p,i])=>subRow(p, "S"+(i+1),
     /* ⚠ 제보 — 「자리를 바꾸는 버튼이 갑자기 없어졌다」.
@@ -31504,7 +31571,7 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
         onclick="autoPickXI();selSwap=null;refreshTactics()">🔄 자동 선발</button>
     </div>
     ${FMTAB==="kick"?kickerPanel(t, xi):`<div class="tblScroll"><table class="fmTable">
-      <tr><th>선발</th><th>역할</th><th>임무</th><th>능력</th><th>선수</th><th>포지션</th><th>나이</th><th>컨디션</th><th class="fmOpt">경고</th><th class="fmOpt">반응</th><th class="fmOpt">평점</th></tr>
+      <tr><th>선수</th><th>선발</th><th>역할</th><th>임무</th><th>능력</th><th>포지션</th><th>나이</th><th>컨디션</th><th class="fmOpt">경고</th><th class="fmOpt">반응</th><th class="fmOpt">평점</th></tr>
       ${rows}
       <tr class="fmDiv"><td colspan="11"><span class="fmSecLbl clickable" title="눌러서 접기/펼치기" onclick="G.opt=G.opt||{};G.opt.foldBench=${G.opt&&G.opt.foldBench?"false":"true"};saveGame();refreshTactics()">${G.opt&&G.opt.foldBench?"▸":"▾"} 🪑 교체 명단 (${mb.length}/9)${t.tactic&&t.tactic.benchManual?` <span class="small" style="color:var(--gold)">직접 편성</span>`:""}</span>${G.opt&&G.opt.foldBench?"":benchSortBtns()}${
         (G.opt&&G.opt.foldBench)||matchBench(t).some(p=>p.pos==="GK") ? ""
@@ -38351,7 +38418,11 @@ function youth(){
     return `<tr class="${cls}"><td class="clickable" onclick="openPlayerMenu(event,${p.id})">${nmF(p)}${pTags(p)}</td>
    <td class="small">${where}</td><td class="pos-${p.pos}">${p.pos}</td><td>${G.season-p.by}세</td>
    <td>${abilityStars(p)}</td><td>${potentialStars(p)}</td>
-   <td>${"▮".repeat(clamp(Math.round(((p.pot||0)-(p.ovr||0))/3),0,8))||"완성"}</td></tr>`;}).join("")}
+   <td>${(function(){ const g=growthGap(p);
+     return g.bars
+       ? `<span title="현재 ${g.now} → 잠재 ${g.cap} (남은 폭 ${g.gap})">${"▮".repeat(g.bars)} <span class="small" style="opacity:.7">+${g.gap}</span></span>`
+       : `<span title="현재 ${g.now} = 잠재 ${g.cap} — 더 오를 곳이 없습니다" style="color:var(--gold)">완성</span>`;
+   })()}</td></tr>`;}).join("")}
     </table></div></div>`;
 }
 /* ---------- 기록실 ---------- */
