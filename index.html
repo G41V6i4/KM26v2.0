@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-0922-->
+<!--B:20260823-0942-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1650,6 +1650,7 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .tierMini{ display:inline-block; padding:0 4px; border-radius:5px; border:1px solid;
   font-size:10.5px; font-weight:800; line-height:15px; vertical-align:middle; background:rgba(0,0,0,.22); }
 .tierMini b{ font-weight:800; margin-left:1px; }
+.tierIc{ vertical-align:-.22em; }
 .fmNmLink{ text-decoration:underline; text-decoration-style:dotted; text-decoration-thickness:1px;
   text-underline-offset:3px; cursor:pointer; }
 .fmNmLink:hover{ color:var(--gold); text-decoration-style:solid; }
@@ -31229,11 +31230,34 @@ function fmAgeCell(p){
    .fmName 은 이미 position:sticky; left:0 으로 「맨 앞에 붙어 따라다니게」 만들어 둔 열이다
    (경기 중 표 fmLiveTable 은 실제로 맨 앞에 둔다). 여기만 순서가 옛날 그대로였다.
    ─ 이름을 맨 앞으로 옮겨 두 표의 열 순서를 맞춘다. */
+/* ⛔ ⚠ 제보 원문 — 「'스쿼드' 탭에 가면 이 선수가 출장 정지를 몇 회 당했는지 바로 알 수 있는데
+   '전술' 탭은 이 부분이 미구현이다. 전술 탭에서도 출장 정지가 몇 회 남았는지 알 수 있게 해 달라」.
+   징계 장부는 대회별로 따로 있다 — 리그(ban) · EACL(banE) · 클럽월드컵(banC).
+   지금 다음 경기 기준으로 실제로 못 뛰는 것부터 앞에 적고, 다른 대회 징계는 뒤에 덧붙인다. */
+function banLabel(p, brief){
+  if(!p) return "";
+  const parts=[];
+  const now=(typeof banNow==="function") ? banNow(p) : (p.ban||0);
+  if(p.ban>0)  parts.push(`출장정지 ${p.ban}경기`);
+  if(p.banE>0) parts.push(`${(typeof eaclShort==="function"?eaclShort():"EACL")} ${p.banE}경기`);
+  if(p.banC>0) parts.push(`${(typeof cwcShort==="function"?cwcShort():"클럽월드컵")} ${p.banC}경기`);
+  if(!parts.length) return "";
+  if(brief) return now>0 ? parts[0] : parts.join(" · ");
+  return parts.join(" · ") + (now>0 ? "" : " (다음 경기에는 뛸 수 있습니다)");
+}
+/* 전술판 상태 칸 — 부상·징계·경고누적을 아이콘과 설명으로 */
+function fmStateCell(p){
+  if(p.inj>0) return `<span style="color:#f85149" title="부상 ${p.inj}주">🚑</span>`;
+  const bl=banLabel(p);
+  if(bl) return `<span style="color:#f85149" title="${bl}">⛔<b style="font-size:10px;margin-left:1px">${(p.ban||p.banE||p.banC)|0}</b></span>`;
+  if(p._yc>=1) return `<span style="color:#d29922" title="경고 ${p._yc}장 — 한 장 더 받으면 출장정지">▣</span>`;
+  return '<span style="color:#3fb950">✓</span>';
+}
 function fmSquadRow(t, p, slotLabel, slot, idx){
   const rd=getRole(t,p,slot);
   const R=ROLE_BY_KEY[rd.r];
   const opts=rolesSortedFor(p, slot);      // 🎓 익숙한 역할이 위로
-  const warn = p.ban>0 ? '<span style="color:#f85149">✕</span>' : (p._yc>=1?'<span style="color:#d29922">▣</span>':'<span style="color:#3fb950">✓</span>');
+  const warn = fmStateCell(p);   // ⛔ 징계는 남은 경기 수까지 (제보)
   const A=affLabel(aff(p));
   const mt=moodTag(p);
   const react=`<span class="fmReact ${mt.c}">${mt.t}</span>`;
@@ -31581,7 +31605,7 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
     <td class="fmPos pos-${p.pos}">${prefSlotOf(p)}</td>
     ${fmAgeCell(p)}
     ${bodyCell(p.cond)}
-    <td class="fmOpt">${p.ban>0?'<span style="color:#f85149">✕</span>':p.inj>0?'<span style="color:#f85149">🚑</span>':'<span style="color:#3fb950">✓</span>'}</td>
+    <td class="fmOpt">${fmStateCell(p)}</td>
     <td class="fmOpt"><span class="fmReact ${moodTag(p).c}">${moodTag(p).t}</span></td>
     <td class="fmRt fmOpt">${p.apps?(p.seasonRating||0).toFixed(2):"-"}</td></tr>`;
   const emptyBenchRows = (t.tactic&&t.tactic.benchManual)   // 어떤 정렬에서도 빈 자리는 빈 자리로 보인다
@@ -31606,7 +31630,7 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
        onclick="event.stopPropagation();benchPin(${p.id})">⬆ 벤치</button>`, "rest")).join("");
   const restNav = `<span class="small" style="margin-left:auto">${restAll.length}명${restAll.length>7?" · 스크롤":""}</span>`;
   const outRows=[...(sulking||[]), ...(injured||[]).filter(p=>!(p.sulk>0))]
-    .map(p=>subRow(p, "✕", p.sulk>0?`태업 ${p.sulk}R`:(p.inj>0?`부상 ${p.inj}주`:"출장정지"), "out")).join("");
+    .map(p=>subRow(p, "✕", p.sulk>0?`태업 ${p.sulk}R`:(p.inj>0?`부상 ${p.inj}주`:(banLabel(p)||"출장정지")), "out")).join("");
   return `<div class="fmTableWrap">
     <div class="fmTabs">
       <span class="fmTab ${FMTAB==="kick"?"":"on"} clickable" onclick="FMTAB='info';refreshTactics()">👁 선발 정보</span>
@@ -60781,8 +60805,10 @@ function stepDay(){
     if(G.injBack && G.injBack.n){
       const Q=G.injBack; G.injBack=null;
       const txt=Q.list.slice(0,5).map(x=>`<b>${x.nm}</b>(${POS_KO[x.pos]||x.pos} · ${x.w}주)`).join(" · ");
+      /* ⚠ 제보 원문 — 「부상자 복귀 팝업 뒤에 스쿼드 탭으로 가는데, 보통 포메이션을 확인하고
+         선수를 갈아 끼우려면 전술 탭으로 가는 게 일반적이다. 전술 탭으로 갈지 물어봐 달라」. */
       prgPush(`💪 <b>부상 복귀 ${Q.n}명</b> — ${txt}${Q.n>5?` 외 ${Q.n-5}명`:""}`
-        +`<span class="small"> · 선발·교체 명단에 다시 넣을지 확인하세요</span>`, "prgStop");
+        +`<span class="small"> · <b>전술</b> 탭에서 선발·교체 명단에 다시 넣을지 확인하세요</span>`, "prgStop");
       saveGame(); stopProgress({kind:"injback"}); return;
     }
   }catch(e){}
@@ -61072,7 +61098,7 @@ function stopProgress(s){
     if(go){ go.textContent="📊 순위표 확인 ▶"; go.style.display=""; }
     if(st) st.textContent="닫기";
   } else if(s.kind==="injback"){
-    if(go){ go.textContent="💪 스쿼드 확인 ▶"; go.style.display=""; }
+    if(go){ go.textContent="💪 전술판 열기 ▶"; go.style.display=""; }   // 제보 — 스쿼드가 아니라 전술 탭
     const sk=$("#prgSkip"); if(sk) sk.style.display="";
   } else if(s.kind==="army"){
     if(go){ go.textContent="🎖️ 스쿼드 확인 ▶"; go.style.display=""; }
@@ -61097,7 +61123,8 @@ function resolveStop(s){
   if(s.kind==="joboffer"){ show("home"); window.scrollTo(0,0); return; }   // 무직 홈 = 제의 카드가 있는 화면
   if(s.kind==="dun"){ VIEW="home"; $("#main").innerHTML=stkDunView(); window.scrollTo(0,0); return; }
   if(s.kind==="split"){ try{ TBLTAB="league"; }catch(e){} show("table"); window.scrollTo(0,0); return; }
-  if(s.kind==="army"||s.kind==="injback"){ show("squad"); return; }
+  if(s.kind==="injback"){ show("tactics"); window.scrollTo(0,0); return; }   // 제보 — 포메이션을 보고 갈아 끼우는 자리
+  if(s.kind==="army"){ show("squad"); return; }
   if(s.kind==="loan"){ try{ lcTab=s.tab||"offer"; }catch(e){} show("loancenter"); return; }
   if(s.kind==="suitApology"){ show("media"); suitApologyPopup(); return; }
   if(s.kind==="suitVerdict"){ show("media"); sueVerdict(); return; }
@@ -62012,9 +62039,21 @@ function pvpLiveStart(){
   PVP_TALK=PVP_TALK||{rows:null, at:0};
   PVP_RES=PVP_RES||{rows:null};
   pvpLiveBeat();
-  try{ PVP_LIVE.es =fbStream("live", (tree)=>{ try{ pvpLiveApply(tree); }catch(e){} }); }catch(e){}
+  /* ⚠ 제보 원문 — 「여전히 매칭에서 연결이 끊긴다. 심지어 모바일에서도 끊긴다」.
+     원인: 상시 연결(EventSource)을 너무 많이 열고 있었다.
+       ⚔️ 메뉴에 서 있기만 해도 live·talk·results 로 3개, 매칭에 들어가면 queue 나 rooms 까지
+       4~5개다. 브라우저는 한 서버당 동시 연결에 상한이 있고(HTTP/1.1 기준 6개), Firebase
+       무료 요금제는 프로젝트 전체 동시 접속에 상한(100)이 있다.
+       → 사람당 5개면 스무 명이 한계다. 그 위로는 새로 여는 연결부터 거부되는데,
+         하필 매칭·방 입장이 그 새 연결이라 「연결이 끊겼습니다」로 나타난다.
+         (모바일은 상한이 더 빡빡해 먼저 무너진다.)
+     ─ 정말로 즉시성이 필요한 것만 상시 연결로 남긴다.
+       · talk(채팅) — 한 박자만 늦어도 대화가 안 되므로 스트림 유지
+       · live(접속자) — 어차피 20초 심장박동이라 스트림일 이유가 없다 → 주기 조회로
+       · results(전적) — 경기가 끝날 때만 바뀐다 → 주기 조회로
+       상시 연결이 3개에서 1개로 줄어, 매칭이 쓸 자리가 넉넉해진다. */
   try{ PVP_LIVE.esT=fbStream("talk", (tree)=>{ try{ pvpTalkApply(tree); }catch(e){} }); }catch(e){}
-  try{ PVP_LIVE.esR=fbStream("results", (tree)=>{ try{ pvpResApply(tree); }catch(e){} }); }catch(e){}
+  try{ pvpLivePoll(); }catch(e){}
   /* 🔄 ⚠ 요청 — 「랭킹들 변경되는 게 있을 때마다 갱신되게 해 줘」.
      ⚠ 제보 — 이걸 rank·tier 전용 스트림 두 개로 붙였더니 온라인 연결이 끊기기 시작했다.
         브라우저는 한 서버에 열어 둘 수 있는 연결 수가 정해져 있는데(HTTP/1.1 기준 6개),
@@ -62025,7 +62064,7 @@ function pvpLiveStart(){
         새로 들어오는 쪽부터 연결이 거부된다.
      ─ 새 연결을 열지 않는다. 랭킹이 바뀌는 순간은 「경기가 끝났을 때」뿐이고, 그건 이미
        results 스트림이 알고 있다. 그 신호에 얹어서 두 표를 다시 그린다. */
-  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); }catch(e){} }, PVP_LIVE_MS);
+  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); pvpLivePoll(); }catch(e){} }, PVP_LIVE_MS);
 }
 function pvpLiveStop(){
   if(!PVP_LIVE) return;
@@ -62076,6 +62115,15 @@ async function pvpLiveBeat(){
   if(PVP_NET!==true){ PVP_NET=true; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
   /* 닉네임 점유도 함께 갱신한다 — 계속 쓰는 사람의 이름은 풀리지 않는다 */
   try{ const k=pvpNickKey(); if(k) fbPatch("nicks/"+k, {t:Date.now()}); }catch(e){}
+}
+/* 🔌 상시 연결 대신 주기 조회 — 접속자 목록과 전적을 한 번씩 읽어 온다 (제보) */
+async function pvpLivePoll(){
+  if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
+  /* 경기 중에는 심장박동만 남기고 목록 조회는 쉰다 — 화면에 보이지도 않고,
+     대전 신호와 회선을 다투면 그쪽이 밀린다 (제보) */
+  try{ if(typeof pvpBusy==="function" && pvpBusy() && (typeof VIEW==="undefined" || VIEW!=="pvp")) return; }catch(e){}
+  try{ const t=await fbGet("live");    if(PVP_LIVE) pvpLiveApply(t||{}); }catch(e){}
+  try{ const r=await fbGet("results"); if(PVP_LIVE) pvpResApply(r||{}); }catch(e){}
 }
 function pvpLiveApply(tree){
   if(!PVP_LIVE) return;
@@ -63727,7 +63775,7 @@ function pvpTierTag(nick){
   const r=pvpTierFind(nick); if(!r) return "";
   if(r.placing) return ` <span class="small" style="color:var(--gold);font-weight:700">🎯 배치 ${r.pl|0}/${TIER_PLACE_N}</span>`;
   const T=pvpTierOf(r.lp);
-  return ` <span class="small" style="color:${T.t.c};font-weight:700">${T.label} · ${r.lp} LP</span>`;
+  return ` <span class="small" style="color:${T.t.c};font-weight:700">${pvpTierLbl(T,13)} · ${r.lp} LP</span>`;
 }
 /* 🏅 칩·표 안에 들어가는 작은 배지 — 아이콘 + 단계. 자리가 좁으니 이름은 툴팁으로 */
 function pvpTierMini(nick, withLp){
@@ -63737,12 +63785,12 @@ function pvpTierMini(nick, withLp){
   if(!r) return `<span class="tierMini" style="color:#6b7480;border-color:#2a3441" title="이번 시즌 기록 없음">–</span>`;
   if(r.placing){
     const E=pvpPlaceEst(r);
-    return `<span class="tierMini" style="color:var(--gold);border-color:#7a5f1e" title="배치고사 ${r.pl|0}/${TIER_PLACE_N}${E?` — 지금 성적이면 ${E.label} 예상`:""}">🎯<b>${r.pl|0}</b>${E?`<span style="color:${E.t.c};opacity:.9">${E.t.ic}</span>`:""}</span>`;
+    return `<span class="tierMini" style="color:var(--gold);border-color:#7a5f1e" title="배치고사 ${r.pl|0}/${TIER_PLACE_N}${E?` — 지금 성적이면 ${E.label} 예상`:""}">🎯<b>${r.pl|0}</b>${E?pvpTierSvg(E.t.k,E.div,12):""}</span>`;
   }
   const T=pvpTierOf(r.lp);
   const dv=(T.t.k==="master")?"":PVP_DIV[T.div];
   return `<span class="tierMini" style="color:${T.t.c};border-color:${T.t.c}55" title="${T.label} · ${r.lp} LP · ${r.w}승 ${r.d}무 ${r.l}패">`
-       + `${T.t.ic}${dv?`<b>${dv}</b>`:""}${withLp?` <span style="opacity:.8">${r.lp}</span>`:""}</span>`;
+       + `${pvpTierSvg(T.t.k,T.div,13)}${dv?`<b>${dv}</b>`:""}${withLp?` <span style="opacity:.8">${r.lp}</span>`:""}</span>`;
 }
 function pvpH2HLine(nick){
   const h=pvpH2H(nick);
@@ -63813,6 +63861,64 @@ function pvpSeasonNum(){ return Math.floor(Date.now()/PVP_TIER_SEASON); }
 /* 사람이 읽는 시즌 번호 — 2026-01-01 을 시즌 1 로 잡는다 (절대 시각 나눗셈이라 모두 같은 값) */
 const PVP_TIER_EPOCH=Math.floor(Date.UTC(2026,0,1)/(28*24*60*60*1000));
 function pvpTierSeasonNo(){ return Math.floor(Date.now()/PVP_TIER_SEASON)-PVP_TIER_EPOCH+1; }
+/* 🎖️ 티어 문장(紋章) — 이모지 대신 직접 그린다.
+   ⚠ 요청 — 「티어 아이콘들 좀 멋지게 만들어 줄래?」
+   기기마다 제멋대로 그려지는 이모지(🥉⚪🏅)를 버리고, 금속 질감 그라데이션 방패와
+   왕관을 SVG 로 그린다. 크기를 지정할 수 있어 큰 카드에서도 뭉개지지 않는다.
+   ─ 단계(Ⅲ·Ⅱ·Ⅰ)는 방패 아래 보석 개수로 읽힌다 — 많을수록 위다. */
+const TIER_ART={
+  bronze:    {a:"#f0c096", b:"#b06a33", c:"#5e3313", g:"#ffe2c4"},
+  silver:    {a:"#ffffff", b:"#aeb9c6", c:"#5d6773", g:"#ffffff"},
+  gold:      {a:"#fff0b8", b:"#e3b341", c:"#8a610a", g:"#fff8dc"},
+  plat:      {a:"#ccfbf2", b:"#3fb9a8", c:"#155e54", g:"#e9fffb"},
+  dia:       {a:"#dceeff", b:"#79c0ff", c:"#1f5b96", g:"#f2f9ff"},
+  master:    {a:"#f4e3ff", b:"#d2a8ff", c:"#6b3ba8", g:"#fdf5ff"},
+  challenger:{a:"#fff1c2", b:"#ffab5c", c:"#a34a14", g:"#fff8e2"}
+};
+function pvpTierSvg(k, div, size){
+  const A=TIER_ART[k]||TIER_ART.bronze, s=+size||14, id="tgr_"+k;
+  const crown=(k==="master"||k==="challenger");
+  const glow=crown?`filter:drop-shadow(0 0 3px ${A.b}88) drop-shadow(0 1px 2px rgba(0,0,0,.5))`
+                  :`filter:drop-shadow(0 1px 2px rgba(0,0,0,.55))`;
+  let body;
+  if(crown){
+    body=`<path d="M3.2 18.6 L1.7 6.9 6.8 10.6 12 2.9 17.2 10.6 22.3 6.9 20.8 18.6 Z"
+            fill="url(#${id})" stroke="${A.c}" stroke-width="1.2" stroke-linejoin="round"/>
+          <rect x="3.4" y="19.9" width="17.2" height="4.4" rx="1.7"
+            fill="url(#${id})" stroke="${A.c}" stroke-width="1.2"/>
+          <path d="M12 9.6 l1.3 2.65 2.93.43 -2.12 2.06.5 2.9 -2.61-1.37 -2.61 1.37 .5-2.9 -2.12-2.06 2.93-.43 Z"
+            fill="${A.g}" fill-opacity=".95" stroke="${A.c}" stroke-width=".45" stroke-linejoin="round"/>
+          <path d="M12 3.6 L15.4 8.6 12 7.4 8.6 8.6 Z" fill="#fff" fill-opacity=".22"/>
+          <path d="M7.4 22.05 l1.15 1.4 -1.15 1.4 -1.15 -1.4 Z" fill="${A.g}" fill-opacity=".85"/>
+          <path d="M12 22.05 l1.15 1.4 -1.15 1.4 -1.15 -1.4 Z" fill="${A.g}" fill-opacity=".85"/>
+          <path d="M16.6 22.05 l1.15 1.4 -1.15 1.4 -1.15 -1.4 Z" fill="${A.g}" fill-opacity=".85"/>`;
+  } else {
+    const n=Math.max(1, Math.min(3, (div|0)+1));
+    let pips="";
+    for(let i=0;i<n;i++){
+      const x=12+(i-(n-1)/2)*3.7;
+      pips+=`<path d="M${x} 18.1 l1.35 1.7 -1.35 1.7 -1.35 -1.7 Z" fill="${A.g}" fill-opacity=".92" stroke="${A.c}" stroke-width=".45"/>`;
+    }
+    body=`<path d="M12 1.5 L21.7 5.2 V13.9 c0 6.2 -4.2 10.4 -9.7 12.5 C6.5 24.3 2.3 20.1 2.3 13.9 V5.2 Z"
+            fill="url(#${id})" stroke="${A.c}" stroke-width="1.25" stroke-linejoin="round"/>
+          <path d="M12 4.3 L19.1 7.0 V13.9 c0 4.6 -3.1 7.9 -7.1 9.6 C8 21.8 4.9 18.5 4.9 13.9 V7.0 Z"
+            fill="none" stroke="${A.g}" stroke-opacity=".40" stroke-width="1"/>
+          <path d="M12 3.3 L19.9 6.3 V9.2 c-2.7 1.95 -5.3 2.8 -7.9 2.8 -2.6 0 -5.2-.85 -7.9-2.8 V6.3 Z"
+            fill="#ffffff" fill-opacity=".20"/>
+          <path d="M12 6.4 l1.5 3.05 3.37.49 -2.44 2.37.58 3.35 -3.01-1.58 -3.01 1.58 .58-3.35 -2.44-2.37 3.37-.49 Z"
+            fill="${A.g}" fill-opacity=".95" stroke="${A.c}" stroke-width=".5" stroke-linejoin="round"/>
+          ${pips}`;
+  }
+  return `<svg class="tierIc" width="${s}" height="${Math.round(s*28/24)}" viewBox="0 0 24 28" style="${glow}" aria-hidden="true">`
+       + `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0.35" y2="1">`
+       + `<stop offset="0" stop-color="${A.a}"/><stop offset=".42" stop-color="${A.b}"/><stop offset="1" stop-color="${A.c}"/>`
+       + `</linearGradient></defs>${body}</svg>`;
+}
+/* 문장 + 이름 — 화면에 찍는 정식 표기 */
+function pvpTierLbl(T, size){
+  if(!T) return "";
+  return pvpTierSvg(T.t.k, T.div, size||14)+" "+T.label;
+}
 const PVP_TIERS=[
   {k:"bronze", n:"브론즈",   ic:"🥉", c:"#c08457", lo:0,    hi:200},
   {k:"silver", n:"실버",     ic:"⚪", c:"#c9d1d9", lo:200,  hi:450},
@@ -63828,12 +63934,12 @@ function pvpTierOf(lp){
   let T=PVP_TIERS[0];
   for(const t of PVP_TIERS) if(lp>=t.lo) T=t;
   if(T.k==="master"){
-    return {t:T, div:0, label:`${T.ic} ${T.n}`, lp, need:null, prog:1, nextAt:null};
+    return {t:T, div:0, label:T.n, lp, need:null, prog:1, nextAt:null};
   }
   const span=(T.hi-T.lo)/3;
   const di=clamp(Math.floor((lp-T.lo)/span), 0, 2);
   const segLo=T.lo+span*di, segHi=segLo+span;
-  return {t:T, div:di, label:`${T.ic} ${T.n} ${PVP_DIV[di]}`, lp,
+  return {t:T, div:di, label:`${T.n} ${PVP_DIV[di]}`, lp,
           need:Math.ceil(segHi-lp), prog:clamp((lp-segLo)/span, 0, 1), nextAt:Math.round(segHi)};
 }
 /* 한 경기의 LP 변동 — 결과 · 전력차 · 몰수 */
@@ -63854,8 +63960,8 @@ function pvpTierSeasonCheck(myLp){
     const lastLp=+(localStorage.getItem("klm2026_pvpTierLp")||0);
     if(seen && seen!==cur && lastLp>0){
       const T=pvpTierOf(lastLp);
-      try{ notify(`🏅 <b>지난 시즌 마감</b> — <b style="color:${T.t.c}">${T.label}</b> (${Math.round(lastLp)} LP)로 마쳤습니다. 새 시즌이 시작됐습니다!`,"good"); }catch(e){}
-      try{ localStorage.setItem("klm2026_pvpTierBest", JSON.stringify({s:seen, lp:Math.round(lastLp), label:T.label, c:T.t.c})); }catch(e){}
+      try{ notify(`🏅 <b>지난 시즌 마감</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,14)}</b> (${Math.round(lastLp)} LP)로 마쳤습니다. 새 시즌이 시작됐습니다!`,"good"); }catch(e){}
+      try{ localStorage.setItem("klm2026_pvpTierBest", JSON.stringify({s:seen, lp:Math.round(lastLp), label:T.label, c:T.t.c, k:T.t.k, dv:T.div})); }catch(e){}
     }
     localStorage.setItem("klm2026_pvpTierSeason", cur);
     if(myLp!=null) localStorage.setItem("klm2026_pvpTierLp", String(Math.round(myLp)));
@@ -63970,15 +64076,15 @@ function pvpTierPost(r){
       try{
         if(placedNow){
           const T=pvpTierOf(lp);
-          notify(`🎯 <b>배치 완료</b> — <b style="color:${T.t.c}">${T.label}</b> (${lp} LP)`, "good");
+          notify(`🎯 <b>배치 완료</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, "good");
         } else if(pl<TIER_PLACE_N){
           notify(`🎯 <b>배치 ${pl}/${TIER_PLACE_N}</b> — ${TIER_PLACE_N-pl}경기 더 치르면 티어가 정해집니다 <span class="small">(이번 판 ${dLp>=0?"+":""}${dLp})</span>`, dLp>=0?"info":"warn");
         } else {
           const T=pvpTierOf(lp), T0=pvpTierOf(Math.max(0, lp-dLp));
           if(T.t.k!==T0.t.k || T.div!==T0.div){
-            notify(`🏅 <b>${dLp>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${T.label}</b> (${lp} LP)`, dLp>=0?"good":"warn");
+            notify(`🏅 <b>${dLp>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, dLp>=0?"good":"warn");
           } else {
-            notify(`🏅 시즌 LP <b>${dLp>=0?"+":""}${dLp}</b> → ${lp} LP <span class="small">(${T.label})</span>`, dLp>=0?"info":"warn");
+            notify(`🏅 시즌 LP <b>${dLp>=0?"+":""}${dLp}</b> → ${lp} LP <span class="small">(${pvpTierLbl(T,13)})</span>`, dLp>=0?"info":"warn");
           }
         }
       }catch(e){}
@@ -63995,6 +64101,10 @@ let PVP_RANK={rows:null, at:0, poke:null};
 /* 🔄 서버 쪽 랭킹이 바뀌었다는 신호 — 잇따른 변경을 한 번으로 묶어 새로 고친다 (요청) */
 function pvpRankPoke(){
   try{
+    /* ⚠ 제보 — 대전 중에도 이 갱신이 돌아 서버 요청이 겹쳤다. 표가 화면에 떠 있고
+       경기·매칭 중이 아닐 때만 새로 고친다 — 안 보이는 표를 갱신할 이유가 없다. */
+    if(typeof pvpBusy==="function" && pvpBusy()) return;
+    if(!document.getElementById("pvpRank") && !document.getElementById("pvpTier")) return;
     if(PVP_RANK.poke) return;
     /* 바쁜 라운지에서 초당 몇 번씩 전부 다시 읽지 않게 최소 간격을 둔다 */
     const wait=Math.max(350, 3000-(Date.now()-PVP_RANK.at));
@@ -64003,6 +64113,8 @@ function pvpRankPoke(){
 }
 async function pvpRankRefresh(force){
   if(!pvpOn() || PVP_NET===false) return;
+  /* ⚔️ 대전이 굴러가는 중에는 랭킹을 긁지 않는다 — 매칭·신호와 회선을 다투지 않게 (제보) */
+  try{ if(typeof pvpBusy==="function" && pvpBusy()) return; }catch(e){}
   const now=Date.now();
   if(!force && now-PVP_RANK.at<15000) return;
   PVP_RANK.at=now;
@@ -64104,7 +64216,7 @@ function pvpTierHtml(){
   const leftMs=(Math.floor(Date.now()/PVP_TIER_SEASON)+1)*PVP_TIER_SEASON - Date.now();
   const leftD=Math.max(0, Math.ceil(leftMs/86400000));
   const last=pvpTierLast();
-  const lastLine=last?`<p class="small" style="margin:6px 0 0;opacity:.75">지난 시즌 마감 — <b style="color:${last.c||"var(--gold)"}">${last.label}</b> (${last.lp} LP)</p>`:"";
+  const lastLine=last?`<p class="small" style="margin:6px 0 0;opacity:.75">지난 시즌 마감 — <b style="color:${last.c||"var(--gold)"}">${last.k?pvpTierSvg(last.k,last.dv|0,13)+" ":""}${last.label}</b> (${last.lp} LP)</p>`:"";
   if(!pvpNickClaimed())
     return `<p class="small" style="opacity:.75">🎫 <b>닉네임을 저장</b>하면 티어가 매겨집니다 — 이름 없는 성적은 세울 자리가 없습니다.</p>${lastLine}`;
   if(!R.rows) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
@@ -64121,7 +64233,7 @@ function pvpTierHtml(){
         <div style="font-size:18px;font-weight:800;color:var(--gold)">배치고사 ${myPl} / ${TIER_PLACE_N}</div>
         <div class="small" style="opacity:.85">${TIER_PLACE_N-myPl}경기를 더 치르면 티어가 정해집니다${(function(){
           const r=(R.rows||[]).find(x=>x.me); const E=r?pvpPlaceEst(r):null;
-          return E?` · <b style="color:${E.t.c}">${E.t.ic} ${E.label} 예상</b>`:"";
+          return E?` · <b style="color:${E.t.c}">${pvpTierLbl(E,13)} 예상</b>`:"";
         })()}</div>
         <div style="display:flex;gap:5px;margin-top:7px">
           ${Array.from({length:TIER_PLACE_N},(_,i)=>`<div style="flex:1;height:9px;border-radius:999px;background:${i<myPl?"var(--gold)":"#161b22"};border:1px solid var(--line)"></div>`).join("")}
@@ -64135,7 +64247,7 @@ function pvpTierHtml(){
   const bar=`<div style="height:9px;border-radius:999px;background:#161b22;border:1px solid var(--line);overflow:hidden;margin-top:6px">
       <div style="height:100%;width:${Math.round(T.prog*100)}%;background:linear-gradient(90deg,${T.t.c}88,${T.t.c});border-radius:999px"></div></div>`;
   const mine=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <div style="font-size:34px;line-height:1">${T.t.ic}</div>
+      <div style="line-height:1">${pvpTierSvg(T.t.k,T.div,46)}</div>
       <div style="flex:1;min-width:150px">
         <div style="font-size:18px;font-weight:800;color:${T.t.c}">${T.t.n}${T.t.k==="master"?"":" "+PVP_DIV[T.div]}</div>
         <div class="small" style="opacity:.85"><b>${my?my.lp:0} LP</b>${T.need!=null?` · 다음 단계까지 ${T.need} LP`:" · 최고 티어"}${R.rank?` · 시즌 ${R.rank}위`:""}</div>
@@ -64161,13 +64273,13 @@ function pvpTierHtml(){
       <td style="font-weight:800;opacity:.5">–</td>
       <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
       <td class="small" style="white-space:nowrap"><span style="color:var(--gold);font-weight:700">🔮 배치 ${r.pl|0}/${TIER_PLACE_N}</span>
-        ${E?`<br><span style="color:${E.t.c};opacity:.85" title="지금 성적이 이어진다면 배치가 끝났을 때 받을 티어입니다">${E.t.ic} ${E.label} 예상</span>`:""}</td>
+        ${E?`<br><span style="color:${E.t.c};opacity:.85" title="지금 성적이 이어진다면 배치가 끝났을 때 받을 티어입니다">${pvpTierLbl(E,13)} 예상</span>`:""}</td>
       <td class="small" style="opacity:.6">${E?`<span style="opacity:.75">~${pvpPlaceLp(r.mm|0, (r.pl|0)>0?(r.pp|0)*(TIER_PLACE_N/(r.pl|0)):0)}</span>`:"–"}</td>
       <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;}
       return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
       <td style="font-weight:800">${medal(i)}</td>
       <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
-      <td class="small" style="color:${t.t.c};font-weight:700;white-space:nowrap">${ch?"👑 챌린저":t.label}${r.seed?`<span class="small" style="opacity:.6" title="티어 기록이 없어 주간 랭킹 성적으로 자리를 잡았습니다 — 다음 경기부터 정식으로 쌓입니다"> ·추정</span>`:""}</td>
+      <td class="small" style="color:${t.t.c};font-weight:700;white-space:nowrap">${ch?pvpTierSvg("challenger",0,14)+" 챌린저":pvpTierLbl(t,14)}${r.seed?`<span class="small" style="opacity:.6" title="티어 기록이 없어 주간 랭킹 성적으로 자리를 잡았습니다 — 다음 경기부터 정식으로 쌓입니다"> ·추정</span>`:""}</td>
       <td><b style="color:var(--green)">${r.lp}</b></td>
       <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;}).join("")}
   </table></div>`:`<p class="small" style="margin-top:8px;opacity:.6">이번 시즌에 아직 경기를 마친 감독이 없습니다 — 1위 자리가 비어 있습니다.</p>`;
@@ -64552,7 +64664,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-0922";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-0942";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
@@ -64560,15 +64672,24 @@ function updUrl(){ try{ return location.href.split("#")[0].split("?")[0]; }catch
 /* 서버에 올라가 있는 파일의 빌드 표식 — 앞 1KB 만 잘라 읽는다 (4MB 를 내려받지 않는다).
    ⚠ 이게 핵심이다. 헤더(ETag)만 보면 「내 브라우저가 캐시에서 옛 파일을 꺼내 쓰는 중」인
       경우를 못 잡는다 — 지금 돌아가는 코드의 GAME_BUILD 와 직접 견주어야 확실하다. */
+/* ⚠ 제보 — 「최근 패치 이후 매칭·모바일에서 연결이 끊긴다」.
+   원인 후보 하나가 여기였다. 부분 내려받기(Range)를 서버·중계기가 무시하고 200 을 주면
+   `await r.text()` 가 4.5MB 짜리 게임 파일을 통째로 받는다. 모바일에서는 그 한 번이
+   회선을 몇 초씩 잡아먹어 대전 신호·스트림이 함께 무너진다.
+   ─ 206(부분 응답)이 아니면 몸통을 읽지 않고 곧바로 버린다. 6초 시한도 건다. */
 async function updServerBuild(){
+  let ac=null, to=null;
   try{
     if(!/^https?:/i.test(location.protocol)) return null;      // 파일로 연 경우 — 확인할 서버가 없다
-    const r=await fetch(updUrl()+"?_u="+Date.now(), {cache:"no-store", headers:{Range:"bytes=0-1023"}});
-    if(!r.ok && r.status!==206) return null;
+    try{ ac=new AbortController(); to=setTimeout(()=>{ try{ ac.abort(); }catch(e){} }, 6000); }catch(e){ ac=null; }
+    const r=await fetch(updUrl()+"?_u="+Date.now(),
+      Object.assign({cache:"no-store", headers:{Range:"bytes=0-1023"}}, ac?{signal:ac.signal}:{}));
+    if(r.status!==206){ try{ if(r.body&&r.body.cancel) r.body.cancel(); }catch(e){} return null; }
     const txt=(await r.text()).slice(0,4096);
     const m=txt.match(/<!--B:([\w.\-]+)-->/);
     return m ? m[1] : null;
   }catch(e){ return null; }
+  finally{ try{ if(to) clearTimeout(to); }catch(e){} }
 }
 async function updStamp(){
   try{
@@ -64626,6 +64747,8 @@ function updBanner(){
 }
 async function updCheck(force){
   const now=Date.now();
+  /* ⚔️ 경기·대전이 굴러가는 중에는 확인 자체를 미룬다 — 회선을 나눠 쓰면 신호가 밀린다 (제보) */
+  if(!updSafe()) return;
   if(!force && now-UPD.at<30000) return;
   UPD.at=now;
   /* ① 서버 파일의 빌드 표식과 지금 돌아가는 코드를 직접 견준다 (가장 확실) */
