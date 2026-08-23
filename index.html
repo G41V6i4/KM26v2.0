@@ -1645,6 +1645,10 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 </div>
 <style>
 /* 이름을 눌러 정보 패널을 여는 곳 — 누를 수 있다는 걸 밑줄로 알린다 */
+/* 🏅 티어 미니 배지 — 접속 목록 칩·랭킹 표에 들어가는 작은 등급 표시 (요청) */
+.tierMini{ display:inline-block; padding:0 4px; border-radius:5px; border:1px solid;
+  font-size:10.5px; font-weight:800; line-height:15px; vertical-align:middle; background:rgba(0,0,0,.22); }
+.tierMini b{ font-weight:800; margin-left:1px; }
 .fmNmLink{ text-decoration:underline; text-decoration-style:dotted; text-decoration-thickness:1px;
   text-underline-offset:3px; cursor:pointer; }
 .fmNmLink:hover{ color:var(--gold); text-decoration-style:solid; }
@@ -14077,6 +14081,11 @@ function startNewSeason(){
           p.inj=0; p.injUntil=null; delete p.injW0;
         }
       }
+      /* 🎁 선물 쿨다운 도장도 새 달력으로 옮긴다 — 안 그러면 「220일 남음」이 된다 (제보) */
+      if(typeof p._giftAt==="number"){
+        const g=p._giftAt-365;
+        if(g+GIFT_COOL>0) p._giftAt=g; else delete p._giftAt;
+      }
       /* 🟨 대회(EACL·CWC) 징계는 그 시즌 에디션과 함께 끝난다 — 새 대회로 이월되지 않는다.
          (리그 잔여 징계는 실제 규정처럼 이월 유지 · 제보 — CWC발 유령 EACL 정지 차단의 이중 안전망) */
       delete p.banE; delete p.banENew; delete p.banC; delete p.banCNew;
@@ -23930,7 +23939,19 @@ function meBuyGiftN(k, n){
 }
 /* ⚠ (p._giftAt)||-999 는 0일차에 준 선물을 "안 준 것"으로 만들었다 — 0 이 falsy 라서.
    시즌 첫날 선물이 쿨다운을 안 먹던 원인. */
-function giftCoolLeft(p){ const d=(p&&typeof p._giftAt==="number")?p._giftAt:-999; return Math.max(0, d+GIFT_COOL-(G.day||0)); }
+/* ⚠ 제보 원문 — 「선수한테 선물보내는거 21일마다라고 되어있는데, 1년 뒤로 떠요. 220일 이렇게요」.
+   원인: _giftAt 은 「그 시즌 달력의 며칠째」다. 새 시즌이 되면 달력이 0일로 돌아가는데
+   지난 시즌 막바지(예: 199일)의 도장이 그대로 남아 199+21−0 = 220일로 계산됐다.
+   (부상 injUntil 과 같은 종류의 사고다)
+   ─ 시즌 전환에서 도장을 새 달력으로 옮기고, 여기서도 안전망을 둔다 —
+     남은 날이 쿨다운(21일)보다 크면 있을 수 없는 값이므로 「지난 도장」으로 보고 0으로 친다.
+     이미 꼬인 세이브도 불러오는 즉시 정상으로 보인다. */
+function giftCoolLeft(p){
+  const d=(p&&typeof p._giftAt==="number")?p._giftAt:-999;
+  const left=d+GIFT_COOL-(G.day||0);
+  if(left>GIFT_COOL) return 0;          // 묵은 도장 — 있을 수 없는 값
+  return Math.max(0, left);
+}
 /* 선물 주기 — 선수 화면과 쇼핑 화면 양쪽에서 부른다 */
 function meGiveGift(pid, k){
   if(G.jobless){ gameAlert("맡고 있는 팀이 없습니다 — 선물은 내 선수에게만 보낼 수 있습니다."); return; }
@@ -61740,7 +61761,7 @@ function pvpReset(keepLog){
   try{ if(PVP&&PVP.snapT) clearInterval(PVP.snapT); }catch(e){}
   try{ if(PVP&&PVP.helloT) clearInterval(PVP.helloT); }catch(e){}
   try{ if(PVP&&PVP.guardIv) clearInterval(PVP.guardIv); }catch(e){}   // ⏱️ 연결 감시견 (제보: 먹통)
-  try{ if(PVP&&PVP.awayIv) clearInterval(PVP.awayIv); }catch(e){}
+  try{ pvpAwayStop(); }catch(e){}      // ⏸ 자리 비움 안내·타이머 (제보: 일반 경기에 따라온다)
   try{ const ov=document.getElementById("pvpAwayOv"); if(ov&&ov.parentNode) ov.parentNode.removeChild(ov); }catch(e){}
   try{ const ov2=document.getElementById("pvpHtOv"); if(ov2&&ov2.parentNode) ov2.parentNode.removeChild(ov2); }catch(e){}
   try{ if(PVP&&PVP.tacIv) clearInterval(PVP.tacIv); }catch(e){}
@@ -61979,16 +62000,16 @@ function pvpLiveHtml(){
   const _uid=(r)=>String(r.id).replace(/[^\w-]/g,"");
   const chips=L.list.slice(0,80).map(r=>
     r.me
-    ? `<span style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--gold);color:#0d1117">${r.n} (나)</span>`
+    ? `<span style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--gold);color:#0d1117">${pvpTierMini(r.n)} ${r.n} (나)</span>`
     : r.m
     ? `<span class="clickable" title="${r.n} 감독은 지금 경기 중입니다 — 포메이션은 볼 수 있습니다" onclick="pvpUserMenu('${_uid(r)}')"
-        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#26161a;color:#ff9d95;border:1px solid #6e2a30;opacity:.9;cursor:pointer">${r.n} <b style="font-size:10px">🔴 대전중</b></span>`
+        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#26161a;color:#ff9d95;border:1px solid #6e2a30;opacity:.9;cursor:pointer">${pvpTierMini(r.n)} ${r.n} <b style="font-size:10px">🔴 대전중</b></span>`
     : `<span class="clickable" title="클릭하면 ${r.n} 감독에게 1:1 대전 신청 · 포메이션 보기를 고를 수 있습니다" onclick="pvpUserMenu('${_uid(r)}')"
-        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#1b222b;color:var(--fg);border:1px solid #2a3441;cursor:pointer">⚔️ ${r.n}</span>`).join("");
+        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#1b222b;color:var(--fg);border:1px solid #2a3441;cursor:pointer">${pvpTierMini(r.n)} ⚔️ ${r.n}</span>`).join("");
   return `<div><b style="color:var(--green)">🟢 지금 ${L.n}명 접속 중</b>`
     + (L.n>80?` <span class="small" style="opacity:.7">(80명까지 표시)</span>`:"")
     + `</div><div style="margin-top:5px;line-height:1.9">${chips||`<span class="small" style="opacity:.6">아직 아무도 없습니다.</span>`}</div>`
-    + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임을 클릭하면 <b>1:1 대전 신청</b>과 <b>🔭 포메이션 보기</b>를 고를 수 있습니다.</p>`:"");
+    + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임 앞은 <b>이번 시즌 티어</b>입니다. 닉네임을 클릭하면 <b>1:1 대전 신청</b>과 <b>🔭 포메이션 보기</b>를 고를 수 있습니다.</p>`:"");
 }
 /* ═══ ⚔️ 1:1 대전 신청 — 개발 노트: 「접속중 유저 닉네임 클릭 → 대전 신청 박스 → 대전」 ═══
    비공개 방을 만들어 두고, 상대의 접속 표시(live/{id})에 초대장(inv)을 얹는다.
@@ -63174,15 +63195,33 @@ function pvpAwaySync(){
   }
   pvpAwayOverlay(!!PVP.awayOpp);
 }
+/* ⚠ 제보 원문 — 「온라인대전하다가 상대 나간후 일반 돌리면 상대 나갔다는 표시가 계속 나와요」.
+   원인: 이 오버레이의 1초 타이머(draw)가 「화면이 다시 그려져 사라졌으면 다시 붙인다」로 되어 있는데,
+   붙이는 자리를 #pitch2d 로 찾는다 — 그건 리그 경기 화면의 캔버스와 같은 id 다.
+   그리고 대전이 끝난 뒤(stage "done")에는 메뉴 잠금이 풀려 다른 화면으로 갈 수 있는데,
+   PVP 객체와 이 타이머는 「로비로」를 누르기 전까지 살아 있다.
+   ─ 그 상태로 리그 경기를 시작하면, 타이머가 리그 경기 캔버스에 상대 이탈 안내를 다시 붙였다.
+   ⚠ 타이머 손잡이를 PVP 안에만 두면 PVP=null 이 된 뒤에는 끌 수조차 없다 — 밖에 따로 둔다. */
+let PVP_AWAY_IV=null;
+function pvpAwayStop(){
+  try{ if(PVP_AWAY_IV){ clearInterval(PVP_AWAY_IV); PVP_AWAY_IV=null; } }catch(e){}
+  try{ if(PVP && PVP.awayIv){ clearInterval(PVP.awayIv); PVP.awayIv=null; } }catch(e){}
+  try{ if(PVP){ PVP.awayT0=null; PVP.awayOpp=false; } }catch(e){}
+  try{ const o=document.getElementById("pvpAwayOv"); if(o&&o.parentNode) o.parentNode.removeChild(o); }catch(e){}
+}
+/* 지금 「온라인 대전 경기가 실제로 굴러가는 중」인가 — 오버레이를 붙여도 되는 유일한 상태 */
+function pvpAwayLive(){
+  try{
+    return !!(PVP && PVP.stage==="match" && PVP.awayOpp
+              && liveM && liveM.opts && liveM.opts.pvp);
+  }catch(e){ return false; }
+}
 function pvpAwayOverlay(on){
   try{
     let ov=document.getElementById("pvpAwayOv");
-    if(!on){
-      if(ov&&ov.parentNode) ov.parentNode.removeChild(ov);
-      if(PVP&&PVP.awayIv){ clearInterval(PVP.awayIv); PVP.awayIv=null; }
-      if(PVP) PVP.awayT0=null;
-      return;
-    }
+    if(!on){ pvpAwayStop(); return; }
+    /* 대전 경기 중이 아니면 절대 붙이지 않는다 (제보: 일반 경기에 따라온다) */
+    if(!pvpAwayLive()){ pvpAwayStop(); return; }
     const cv=document.getElementById("pitch2d")||document.getElementById("pvpCv");
     const wrap=cv&&cv.parentNode; if(!wrap) return;
     if(!ov){
@@ -63193,7 +63232,8 @@ function pvpAwayOverlay(on){
     }
     if(!PVP.awayT0) PVP.awayT0=Date.now();
     const draw=()=>{
-      if(!PVP || !PVP.awayOpp) return;
+      /* ⚠ 대전 경기가 끝났거나 다른 화면으로 넘어갔으면 스스로 멈춘다 (제보) */
+      if(!pvpAwayLive()){ pvpAwayStop(); return; }
       let el=document.getElementById("pvpAwayOv");
       if(!el){ pvpAwayOverlay(true); return; }   // 화면 재렌더로 지워졌으면 다시 붙인다
       const sec=Math.floor((Date.now()-PVP.awayT0)/1000);
@@ -63205,7 +63245,8 @@ function pvpAwayOverlay(on){
     };
     draw();
     if(PVP.awayIv) clearInterval(PVP.awayIv);
-    PVP.awayIv=setInterval(draw, 1000);
+    if(PVP_AWAY_IV) clearInterval(PVP_AWAY_IV);
+    PVP.awayIv=PVP_AWAY_IV=setInterval(draw, 1000);
   }catch(e){}
 }
 function pvpHalftime(){
@@ -63342,6 +63383,7 @@ function pvpAnnounceEnd(){
 }
 function pvpFinish(M){
   if(!PVP) return;
+  try{ pvpAwayStop(); }catch(e){}     // ⏸ 자리 비움 안내는 경기와 함께 끝난다 (제보)
   try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
   if(PVP.forfeited){ return; }   // ⚠ 몰수 확정 — 전적·결과는 이미 적혔다
   const hg=M.hg||0, ag=M.ag||0;
@@ -63423,7 +63465,7 @@ function pvpRematchGo(){
   /* ① 굴러가던 경기 흔적을 지운다 */
   try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
   try{ if(PVP.watchT){ cancelAnimationFrame(PVP.watchT); PVP.watchT=null; } }catch(e){}
-  try{ if(PVP.awayIv){ clearInterval(PVP.awayIv); PVP.awayIv=null; } }catch(e){}
+  try{ pvpAwayStop(); }catch(e){}
   try{ if(PVP.tacIv){ clearInterval(PVP.tacIv); PVP.tacIv=null; } }catch(e){}
   try{ if(PVP.tacBlIv){ clearInterval(PVP.tacBlIv); PVP.tacBlIv=null; } }catch(e){}
   try{ if(PVP.tacTO){ clearTimeout(PVP.tacTO); PVP.tacTO=null; } }catch(e){}
@@ -63485,17 +63527,30 @@ function pvpSeriesAdd(my, op){
     if(my>op) PVP.series.w++; else if(my<op) PVP.series.l++; else PVP.series.d++;
   }catch(e){}
 }
-/* 🏅 상대의 이번 시즌 티어 — 이미 받아 둔 시즌 순위표에서 찾는다 (추가 통신 없음) */
-function pvpTierTag(nick){
+/* 🏅 이번 시즌 티어 조회 — 이미 받아 둔 시즌 순위표에서 찾는다 (추가 통신 없음) */
+function pvpTierFind(nick){
   try{
-    const key=pvpNickKeyOf(nick||""); if(!key) return "";
-    const rows=(PVP_TIER&&PVP_TIER.rows)||null; if(!rows) return "";
+    const key=pvpNickKeyOf(nick||""); if(!key) return null;
+    const rows=(PVP_TIER&&PVP_TIER.rows)||null; if(!rows) return null;
     /* 키로 먼저 찾고, 없으면 표시 이름으로 — 장부 키와 표기가 어긋난 옛 기록도 잡는다 */
-    const r=rows.find(x=>x.k===key) || rows.find(x=>pvpNickKeyOf(x.n)===key);
-    if(!r) return "";
-    const T=pvpTierOf(r.lp);
-    return ` <span class="small" style="color:${T.t.c};font-weight:700">${T.label} · ${r.lp} LP</span>`;
-  }catch(e){ return ""; }
+    return rows.find(x=>x.k===key) || rows.find(x=>pvpNickKeyOf(x.n)===key) || null;
+  }catch(e){ return null; }
+}
+function pvpTierTag(nick){
+  const r=pvpTierFind(nick); if(!r) return "";
+  const T=pvpTierOf(r.lp);
+  return ` <span class="small" style="color:${T.t.c};font-weight:700">${T.label} · ${r.lp} LP</span>`;
+}
+/* 🏅 칩·표 안에 들어가는 작은 배지 — 아이콘 + 단계. 자리가 좁으니 이름은 툴팁으로 */
+function pvpTierMini(nick, withLp){
+  /* 아직 시즌 표를 못 받았으면 아무것도 그리지 않는다 — 전원에게 「–」가 붙으면 오해를 준다 */
+  if(!(PVP_TIER && PVP_TIER.rows)) return "";
+  const r=pvpTierFind(nick);
+  if(!r) return `<span class="tierMini" style="color:#6b7480;border-color:#2a3441" title="이번 시즌 기록 없음">–</span>`;
+  const T=pvpTierOf(r.lp);
+  const dv=(T.t.k==="master")?"":PVP_DIV[T.div];
+  return `<span class="tierMini" style="color:${T.t.c};border-color:${T.t.c}55" title="${T.label} · ${r.lp} LP · ${r.w}승 ${r.d}무 ${r.l}패">`
+       + `${T.t.ic}${dv?`<b>${dv}</b>`:""}${withLp?` <span style="opacity:.8">${r.lp}</span>`:""}</span>`;
 }
 function pvpH2HLine(nick){
   const h=pvpH2H(nick);
@@ -63670,6 +63725,8 @@ async function pvpRankRefresh(force){
     try{ pvpTierSeasonCheck(mine?mine.lp:null); }catch(e){}
     const te=document.getElementById("pvpTier");
     if(te) te.innerHTML=pvpTierHtml();
+    /* 🏅 접속 목록 칩에도 티어가 붙는다 — 티어를 막 받아 왔으면 그 목록도 다시 그린다 (요청) */
+    try{ const le=document.getElementById("pvpLive"); if(le) le.innerHTML=pvpLiveHtml(); }catch(e){}
   }
   const el=document.getElementById("pvpRank");
   if(el) el.innerHTML=pvpRankHtml();
@@ -63704,9 +63761,11 @@ function pvpTierHtml(){
     </div>`;
   /* 시즌 순위표 */
   const medal=(i)=> i===0?"🥇" : i===1?"🥈" : i===2?"🥉" : `<span style="opacity:.6">${i+1}</span>`;
-  const board=R.rows.length?`<div class="tblScroll" style="margin-top:10px"><table>
+  /* 🏅 요청 — 「시즌 티어표에서도 유저들 등급 쫘락 볼 수 있게」. 15명에서 자르지 않고
+     전원을 담되, 길어지면 표 안에서 스크롤한다. */
+  const board=R.rows.length?`<div class="tblScroll" style="margin-top:10px;max-height:46vh;overflow-y:auto"><table>
     <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>티어</th><th>LP</th><th>전적</th></tr>
-    ${R.rows.slice(0,15).map((r,i)=>{ const t=pvpTierOf(r.lp);
+    ${R.rows.map((r,i)=>{ const t=pvpTierOf(r.lp);
       /* 👑 챌린저 — 마스터 중 시즌 상위 3명 (자리에 대한 칭호라 인원이 늘면 자연히 어려워진다) */
       const ch=(i<3 && t.t.k==="master");
       return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
@@ -63728,11 +63787,13 @@ function pvpRankHtml(){
   const leftMs=(Math.floor(Date.now()/PVP_RANK_WEEK)+1)*PVP_RANK_WEEK - Date.now();
   const leftD=Math.max(0, Math.ceil(leftMs/86400000));
   const medal=(i)=> i===0?"🥇" : i===1?"🥈" : i===2?"🥉" : `<span style="opacity:.6">${i+1}</span>`;
+  /* 🏅 요청 — 「주간 랭킹에서도 유저의 시즌 티어를 볼 수 있게」 */
   return `<div class="tblScroll"><table>
-    <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>포인트</th><th>전적</th></tr>
+    <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>티어</th><th>포인트</th><th>전적</th></tr>
     ${R.rows.slice(0,15).map((r,i)=>`<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
       <td style="font-weight:800">${medal(i)}</td>
       <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
+      <td>${pvpTierMini(r.n)}</td>
       <td><b style="color:var(--green)">${r.p}</b></td>
       <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`).join("")}
   </table></div>
@@ -63750,6 +63811,7 @@ function pvpDropped(){
 }
 function pvpAbort(msg){
   const inMatch=PVP&&PVP.stage==="match";
+  try{ pvpAwayStop(); }catch(e){}     // ⏸ (제보)
   try{ if(PVP&&PVP.watchT) cancelAnimationFrame(PVP.watchT); }catch(e){}
   pvpReset();
   try{ flash("⚔️ "+(msg||"대전이 종료됐습니다."),"warn"); }catch(e){}
@@ -63764,6 +63826,7 @@ function pvpAbort(msg){
 function pvpForfeitWin(why){
   if(!PVP || PVP.stage!=="match" || PVP.forfeited || PVP.ended) return false;   // ⚔️ 종료 뒤 이탈은 몰수가 아니다
   PVP.forfeited=1;
+  try{ pvpAwayStop(); }catch(e){}     // ⏸ 자리 비움 안내를 확실히 끈다 (제보: 일반 경기에 따라온다)
   const iH=PVP.role==="host";
   try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
   try{ if(PVP.watchT) cancelAnimationFrame(PVP.watchT); }catch(e){}
