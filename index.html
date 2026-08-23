@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1029-->
+<!--B:20260823-1037-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -61895,6 +61895,7 @@ function pvpDecodeSnap(buf){
 function pvpReset(keepLog){
   try{ if(PVP&&PVP.es) PVP.es.close(); }catch(e){}
   try{ if(PVP&&PVP.esQ) PVP.esQ.close(); }catch(e){}
+  try{ if(PVP&&PVP.reIv) clearInterval(PVP.reIv); }catch(e){}   // ⚡ 대기열 재훑기 (제보: 빠른 대전이 늦다)
   try{ if(PVP&&PVP.pc) PVP.pc.close(); }catch(e){}
   try{ if(PVP&&PVP.snapT) clearInterval(PVP.snapT); }catch(e){}
   try{ if(PVP&&PVP.helloT) clearInterval(PVP.helloT); }catch(e){}
@@ -62154,7 +62155,7 @@ async function pvpLiveBeat(){
    접속 목록은 5초마다, 전적은 바뀔 일이 드무니 20초마다 본다.
    1:1 초대장(live/{내id}.inv)도 이 5초 조회에 함께 실려 온다. */
 const PVP_POLL_MS=5000;
-const PVP_INV_MS=2000;      // ⚔️ 초대장은 내 칸 하나만 보므로 아주 짧게 봐도 부담이 없다
+const PVP_INV_MS=3000;      // ⚔️ 초대장은 내 칸 하나만 보므로 아주 짧게 봐도 부담이 없다
 /* ⚔️ ⚠ 제보 — 「1대1 매칭이 여전히 안 된다」. 초대장은 목록 조회에 얹혀 오는데,
    목록이 큰 편이라 주기를 짧게 하기 어렵다. 초대장만 따로, 내 칸 하나만 2초마다 본다.
    (조회 한 번에 수십 바이트다 — 상시 연결이 아니므로 동시 접속 수에 영향이 없다) */
@@ -62163,9 +62164,44 @@ async function pvpInvPoll(){
   if(PVP) return;
   try{ if(typeof liveM!=="undefined" && liveM) return; }catch(e){}
   const mine=pvpId(); if(!mine) return;
+  /* 주 경로 — 나를 지목한 방이 있는가 (읽기만 한다) */
+  try{
+    const rooms=await fbGet("rooms")||{};
+    const now=Date.now();
+    for(const code in rooms){
+      const r=rooms[code];
+      if(!r || !r.h || r.g || r.st!=="wait" || r.dec) continue;
+      if(String(r.to||"")!==String(mine)) continue;
+      if(now-(r.t||0) > 90000) continue;
+      pvpInvShow(code, pvpClean(r.h.nick,8)||"감독", (r.h.ver|0));
+      break;
+    }
+  }catch(e){}
+  /* 옛 경로 — 옛 판을 쓰는 상대가 접속 표시에 얹어 준 초대장 */
   try{
     const iv=await fbGet("live/"+mine+"/inv");
     if(iv) pvpLiveApply({[mine]:{n:pvpNick(), t:Date.now(), inv:iv}}, true);
+  }catch(e){}
+}
+/* ⚔️ 초대 팝업 — 두 경로(방 지목 · 접속 표시)가 같은 자리로 모인다 */
+function pvpInvShow(code, nick, ver){
+  try{
+    const rm=String(code).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+    if(!rm || !PVP_LIVE) return;
+    if(PVP_LIVE.invSeen===rm) return;
+    if(PVP) return;
+    try{ if(typeof liveM!=="undefined" && liveM) return; }catch(e){}
+    PVP_LIVE.invSeen=rm;
+    if(ver && ver!==PVP_VER){
+      try{ fbPatch("rooms/"+rm, {dec:1, decWhy:"ver"}); }catch(e){}
+      try{ flash(`⚔️ ${nick} 감독의 신청 — 게임 버전이 달라(v${ver}) 붙을 수 없습니다.`,"warn"); }catch(e){}
+      return;
+    }
+    try{ fbSet("live/"+pvpId()+"/inv", null); }catch(e){}
+    showConfirm(`<b>⚔️ 1:1 대전 신청이 왔습니다!</b>\n\n<b>${nick}</b> 감독이 지금 대전을 원합니다.\n받아들이시겠습니까?`,
+      ()=>{ try{ pvpJoinRoom(rm); }catch(e){} },
+      {okLabel:"⚔️ 받아들인다", cancelLabel:"거절한다",
+       onCancel:()=>{ try{ fbPatch("rooms/"+rm, {dec:1}); }catch(e){} }});
   }catch(e){}
 }
 function pvpPollSkip(){
@@ -62214,16 +62250,10 @@ function pvpLiveApply(tree, invOnly){
       try{ fbPatch("rooms/"+_rm, {dec:1, decWhy:"busy"}); }catch(e){}
     }
     if(inv && inv.room && inv.from && inv.from!==mine
-       && PVP_LIVE.invSeen!==inv.room
        && (Date.now()-(inv.t||0) < 90000)
        && !PVP && (typeof liveM==="undefined" || !liveM)){
-      PVP_LIVE.invSeen=inv.room;
       try{ fbSet("live/"+mine+"/inv", null); }catch(e){}   // 초대장은 한 번만 — 바로 지운다
-      const nm=pvpClean(inv.n,8)||"감독", rm=String(inv.room).toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
-      showConfirm(`<b>⚔️ 1:1 대전 신청이 왔습니다!</b>\n\n<b>${nm}</b> 감독이 지금 대전을 원합니다.\n받아들이시겠습니까?`,
-        ()=>{ try{ pvpJoinRoom(rm); }catch(e){} },
-        {okLabel:"⚔️ 받아들인다", cancelLabel:"거절한다",
-         onCancel:()=>{ try{ fbPatch("rooms/"+rm, {dec:1}); }catch(e){} }});
+      pvpInvShow(inv.room, pvpClean(inv.n,8)||"감독", 0);
     }
   }catch(e){}
 }
@@ -62379,8 +62409,19 @@ async function pvpChallengeGo(id, nick){
   PVP={stage:"room", role:"host", room:code, myId:pvpId(), pub:0, duel:nick, msg:`⚔️ ${nick} 감독의 수락을 기다리는 중…`};
   const t=userTeam()||{};
   let st10=30; try{ st10=Math.round(teamStarVal(t)*10); }catch(e){}
+  /* ⚔️ ⚠ 제보 — 「1대1 신청이 여전히 안 간다」.
+     여태 초대는 「상대의 접속 표시 칸(live/{상대id})에 초대장을 얹는」 방식 하나뿐이었다.
+     이 경로는 깨질 구멍이 많다 —
+       · 상대가 그 순간 화면을 떠나 칸이 지워져 있으면, 새로 만들어지는 칸에 n·t 가 없어
+         보안 규칙의 검사에 걸려 쓰기 자체가 거부된다 (조용히 실패)
+       · 상대의 심장박동이 칸을 통째로 갈아끼우면 초대장이 지워진다
+       · 남의 칸에 쓰는 일이라 규칙이 조금만 달라도 막힌다
+     ─ 이제 「방에 받는 사람을 적어 두는」 방식을 주 경로로 쓴다(to). 방은 내가 만든 내 칸이고,
+       받는 쪽은 그냥 읽기만 하면 된다 — 남의 칸에 쓰지 않으니 막힐 구멍이 없다.
+       옛 판을 쓰는 상대를 위해 예전 경로(live.inv)도 함께 남긴다. */
   const ok=await fbSet("rooms/"+code, {h:{id:PVP.myId, n:t.short||"?", nick:pvpNick(), tn:String(t.name||"").slice(0,16), sv:st10, ver:PVP_VER},
-                                       pub:0, duel:1, st:"wait", t:Date.now()});
+                                       pub:0, duel:1, to:String(id).slice(0,24), toN:String(nick).slice(0,8),
+                                       st:"wait", t:Date.now()});
   if(!ok){ PVP=null; try{ flash("⚔️ 서버에 연결하지 못했습니다.","warn"); }catch(e){} show("pvp"); return; }
   const invOk=await fbPatch("live/"+id, {inv:{room:code, from:pvpId(), n:String(pvpNick()||"감독").slice(0,8), t:Date.now()}});
   /* ⚠ 제보 — 「신청해도 상대에게 안 뜬다」. 초대장이 정말 꽂혔는지 되읽어 확인한다.
@@ -62644,9 +62685,46 @@ async function pvpQuick_(){
   if(!key){ pvpReset(); flash("⚔️ 서버에 연결하지 못했습니다.","warn"); show("pvp"); return; }
   PVP.qEntry=key;
   pvpSt("대기열에 등록했습니다 — 다음 감독이 들어오면 바로 붙습니다 (내 전력 "+(me.st/10).toFixed(1)+"성 · 전력 제한 없음)");
+  /* ⚡ ⚠ 제보 — 「빠른 대전도 잘 안 잡히는 느낌. 동시에 하면 되는데 뭔가 늦다」.
+     원인: 줄을 설 때 딱 한 번만 대기열을 훑는다. 두 사람이 거의 같은 순간에 누르면
+        둘 다 「빈 대기열」을 보고 나란히 줄만 서 버린다 — 그 뒤로는 아무도 다시 안 훑으므로
+        제3의 감독이 들어올 때까지 둘 다 하염없이 기다린다.
+     ─ 줄을 선 뒤에도 4초마다 다시 훑는다. 양쪽이 동시에 서로를 고르면 방이 두 개 생기므로,
+       키가 큰 쪽만 짝을 짓는다(딱 한 쪽만 움직인다). */
+  PVP.reIv=setInterval(async ()=>{
+    try{
+      if(!PVP || PVP.stage!=="queue" || !PVP.qEntry) return;
+      const q2=await fbGet("queue")||{};
+      if(!PVP || PVP.stage!=="queue") return;
+      if(q2[PVP.qEntry] && q2[PVP.qEntry].room) return;      // 이미 누가 나를 골랐다
+      const now2=Date.now();
+      let pick=null, pd=1e9;
+      for(const k in q2){
+        const e=q2[k];
+        if(!e || e.id===me.id || e.room) continue;
+        if((e.ver||0)!==PVP_VER) continue;
+        if(now2-(e.t||0) > PVP_QUEUE_TTL*1000) continue;
+        if(k >= PVP.qEntry) continue;                        // 키가 큰 쪽만 짝을 짓는다
+        const d=Math.abs((e.st||30)-me.st);
+        if(d<pd){ pd=d; pick=k; }
+      }
+      if(!pick) return;
+      const code2=pvpCode();
+      try{ clearInterval(PVP.reIv); PVP.reIv=null; }catch(_){}
+      try{ if(PVP.esQ) PVP.esQ.close(); }catch(_){}
+      const myKey=PVP.qEntry;
+      PVP.role="guest"; PVP.room=code2; PVP.stage="room"; PVP.qEntry=null; PVP.msg="상대를 찾았습니다 — 연결 중…";
+      await fbSet("rooms/"+code2, {h:{id:q2[pick].id, n:q2[pick].n, ver:PVP_VER}, g:{id:me.id, n:me.n, ver:PVP_VER}, st:"paired", t:Date.now()});
+      await fbPatch("queue/"+pick, {room:code2});
+      try{ fbDel("queue/"+myKey); }catch(_){}
+      pvpSt("상대를 찾았습니다 — 연결 중…");
+      pvpWatchRoom(); pvpConnGuard(); pvpRtcStart();
+    }catch(e){}
+  }, 4000);
   PVP.esQ=fbStream("queue/"+key, (st)=>{
     if(st && st.room && PVP && PVP.stage==="queue"){
       PVP.role="host"; PVP.room=st.room; PVP.stage="room"; PVP.qEntry=null;
+      try{ if(PVP.reIv){ clearInterval(PVP.reIv); PVP.reIv=null; } }catch(e){}
       try{ PVP.esQ.close(); }catch(e){}
       fbDel("queue/"+key);
       pvpSt("상대를 찾았습니다 — 연결 중…");
@@ -64782,7 +64860,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1029";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1037";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
