@@ -50363,6 +50363,7 @@ class MatchSim{
       this._cardFx={id:f.id, k:"R", side:f.side, nm:nm, ps:(f.slot||""), tm:_tm3,
                     t:this.t, min:Math.floor(this.clock/60)};
       this.sentOff.push({id:f.id, side:f.side, t:this.t, min:Math.floor(this.clock/60),
+                         lbl:(()=>{ try{ return this.clockLabel(); }catch(e){ return null; } })(),
                          name:nm, pos:(f.p&&f.p.pos)||"", slot:f.slot||"", team:_tm3, second:!!second});
       this.retireAgents(a=>a.id===f.id, "red");
       const fx=this.entryOf(f);
@@ -52981,16 +52982,30 @@ class MatchSim{
   /* 골킥 롱킥 — 하프라인 너머 공중볼 투쟁 지점으로 높고 길게 찬다.
      상대 발밑으로 배달되는 "패스 미스"가 아니라, 떨어지는 지점에서 헤더 경합이 벌어진다.
      키퍼의 골킥(kic) 능력이 좋을수록 원하는 지점에 더 정확히 떨어진다. */
+  /* 🥾 ⚠ 제보 원문 — 「키퍼 골킥 → 상대방 수비진영에 애매하게 떨어지며 공격수가 가로채
+     단독 찬스 → 놓치거나 넣음, 이 현상이 정말 많다. 골킥 상황에서 수비수와 공격수가
+     공중볼 경합이 나오게끔 하는 게 더 축구 같지 않을까?」
+     원인 ① 낙하점을 「우리 편 아무나」 기준으로 잡고 최대 0.14(≈10m) 를 흩뿌렸다.
+            아무도 없는 애매한 자리에 떨어지니 먼저 뛰어든 한 명이 그냥 주워 갔다.
+     원인 ② 경합 판정(aerialDuel)은 낙하점 반경 3.9m 안에 두 명 이상 있어야 성립한다.
+            긴 골킥은 그 반경 안에 한 명만 들어오는 일이 잦아 경합 자체가 안 열렸다.
+     ─ 목표를 「곁에 상대가 붙어 있는 제공권 좋은 선수」로 잡고, 흩뿌림을 줄여 그 머리 위로
+       떨어뜨린다. 경합 반경도 넓혀 커버하러 온 수비수가 반드시 다툼에 끼게 한다. */
   launchGoalKick(carrier, mates){
     const b=this.ball, st=this.stats[carrier.side];
     const adv=m=> carrier.dir>0 ? m.x : 1-m.x;
     const cands=(mates||this.side(carrier.side)).filter(m=>m.slot!=="GK" && adv(m)>0.42 && adv(m)<0.68);
+    const opps=this.side(this.opp(carrier.side)).filter(o=>o.slot!=="GK");
     let tgt=null, best=-1;
     for(const m of cands){
-      const v=(m.bravery||0.5)*0.5 + adv(m)*0.6 + Math.random()*0.30;
+      /* 곁에 상대가 있는가 — 경합이 성립하는 공이어야 「축구」다 */
+      let od=9; for(const o of opps) od=Math.min(od, Math.hypot((o.x-m.x)*PITCH_AR, o.y-m.y));
+      const contested=clamp(1-od/0.13, 0, 1);
+      const v=(m.headSkill||0.5)*0.55 + (m.bravery||0.5)*0.25 + adv(m)*0.45
+              + contested*0.50 + Math.random()*0.22;
       if(v>best){ best=v; tgt=m; }
     }
-    const acc=clamp(0.14 - (carrier.gkKick||0.5)*0.10, 0.03, 0.14);   // 골킥 능력 → 낙하 오차
+    const acc=clamp(0.085 - (carrier.gkKick||0.5)*0.055, 0.020, 0.085);   // 골킥 능력 → 낙하 오차 (머리 위로 떨어뜨린다)
     /* 낙하점 상한 — 상대 진영 70%선. 0.92까지 열어 두니 바운드가 골문까지 굴러
        「키퍼 득점」이 자주 나왔다(제보). 실제 골킥도 상대 박스까지는 못 보낸다. */
     /* 🧤 특성 — 「골킥을 길게 찬다」는 낙하점이 더 멀리 나간다 */
@@ -52999,7 +53014,7 @@ class MatchSim{
     const tx0 = tgt ? tgt.x + carrier.dir*0.02 + (Math.random()-0.5)*acc
                     : carrier.x + carrier.dir*(0.46+Math.random()*0.10);
     const tx = carrier.dir>0 ? clamp(tx0, 0.08, capX) : clamp(tx0, capX, 0.92);
-    const ty = clamp01((tgt ? tgt.y : 0.28+Math.random()*0.44) + (Math.random()-0.5)*acc*2.2);
+    const ty = clamp01((tgt ? tgt.y : 0.28+Math.random()*0.44) + (Math.random()-0.5)*acc*1.5);
     b.state="PASS"; b.fromId=carrier.id; b.toId=null; b.ownerId=null;
     b.aerial=true; b.offsideAt=null; b.power=1.65;
     b.tx=tx; b.ty=ty;
@@ -53739,6 +53754,7 @@ class MatchSim{
       this.markHighlight("red", f.side, HL_W.red);
       let _tm2=""; try{ _tm2=this.rec(f.side).team.short||""; }catch(e){}
       this.sentOff.push({id:f.id, side:f.side, t:this.t, min:Math.floor(this.clock/60),
+                         lbl:(()=>{ try{ return this.clockLabel(); }catch(e){ return null; } })(),
                          name:f.p?f.p.name:"", pos:(f.p&&f.p.pos)||"", slot:f.slot||"",
                          team:_tm2, second:((f.yellows||0)>=2)});
       /* 🎬 하이라이트에서 「퇴장당한 그 선수」가 보여야 한다 — 그리기용으로 남겨 둔다.
@@ -55485,9 +55501,13 @@ class MatchSim{
     const b=this.ball;
     const atkSide = b._passer ? b._passer.side : null;
     const setPieceBall = !!(b._spBall || b.isCross);
+    /* 🥾 키퍼가 하늘로 띄운 긴 공(골킥·롱킥) — 체공 시간이 길어 커버 수비수도 낙하점에 닿는다.
+       경합 반경을 넓혀 「혼자 주워 단독 찬스」가 아니라 헤딩 다툼이 되게 한다 (제보). */
+    const gkBall = !!(b._passer && b._passer.slot==="GK" && b.aerial);
+    const _R = AERIAL_RANGE*(gkBall ? 1.9 : 1);
     const near=this.agents.filter(a=>a.slot!=="GK" && a._down!==undefined ? (!a._down || a._down<=this.t) : true)
       // 큰 선수는 조금 더 멀리서도 머리를 갖다 댄다 — 도달 반경에 신장을 반영한다
-      .filter(a=>Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y) < AERIAL_RANGE*(1+((a.body&&a.body.tall)||0)*0.10));
+      .filter(a=>Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y) < _R*(1+((a.body&&a.body.tall)||0)*0.10));
     if(near.length<2) return null;
     let best=null, bs=-1;
     for(const a of near){
@@ -55498,7 +55518,7 @@ class MatchSim{
             수비는 마크하며 반응하는 쪽이라 첫 접촉을 내주는 일이 잦다.
             (제보 — PL 기준 수비수 득점이 전체의 10~15%, 헤더골 중 30~40%인데 우리는 0이었다) */
       let sc=(a.headSkill*0.78 + (a.aerialPos||0.6)*0.22)*(0.60+(a.bravery||0.6)*0.20)*(0.6+Math.random()*0.8);
-      if(atkSide && a.side===atkSide) sc *= setPieceBall ? 1.55 : 1.12;
+      if(atkSide && a.side===atkSide) sc *= setPieceBall ? 1.55 : (gkBall ? 0.90 : 1.12);
       if(sc>bs){ bs=sc; best=a; }
     }
     if(!best) best=near[0];
@@ -58950,21 +58970,51 @@ function liveLayout(M, tag){
 /* ═══ 🟥 퇴장 명단 ══════════════════════════════════════════════════
    ⚠ 제보 — 「퇴장이 나오면 어느 팀의 어느 포지션 누구인지 한 켠에 적혀야 상황이 읽힌다」.
    화면이 도달한 시점까지의 퇴장만 보여 준다(스포 방지). */
+/* 🟥 ⚠ 제보 원문 — 「경기 도중 후반 추가 시간에 누군가 퇴장 당할 때는 퇴장 정보가 담긴
+   우측 상단의 박스가 뜨지 않는다. 후반 추가 시간에도 퇴장 정보 박스가 나오게 해 달라」.
+   원인 ① 이 목록은 「화면(재생헤드)이 도달한 시점까지」만 보여 준다 — 스포 방지 장치다.
+          그런데 추가시간 퇴장은 그 장면이 다 재생되기도 전에 종료 휘슬이 울리는 일이 잦다.
+          휘슬이 울리면 시뮬은 멈추고 재생헤드도 더 이상 전진하지 않으므로, 필터가 영영
+          그 퇴장을 가린 채 화면이 굳었다.
+        → 경기가 끝났고 재생 중인 장면도 없으면 더 감출 것이 없다. 필터를 푼다.
+   원인 ② 「건너뛰기」로 마무리하면 분 단위 엔진(stepMinute)이 남은 시간을 처리한다.
+          그 퇴장은 liveSim.sentOff 가 아니라 출전 기록(sd.list[].red)에만 적히는데,
+          옛 경로가 `!liveSim` 일 때만 돌게 막혀 있어 목록에서 통째로 빠졌다.
+        → 경기가 끝난 뒤에는 두 곳을 합쳐 본다(이름 기준 중복 제거). */
 function liveSentOffHtml(){
   const M=liveM; if(!M) return "";
+  const _over = !!(M.done && !liveHL);      // 휘슬이 울렸고 재생 중인 장면도 없다 — 감출 것이 없다
   let list=[];
   try{
     if(liveSim && Array.isArray(liveSim.sentOff) && liveSim.sentOff.length){
       let cut=liveSim.t;
       if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) cut=liveHL.frames[liveHL.i].t;
+      if(_over) cut=Infinity;
       list=liveSim.sentOff.filter(x=>x.t<=cut+1e-6).map(x=>({
-        side:x.side, min:x.min!=null?x.min:Math.round((x.t||0)/60),
+        side:x.side, min:(x.lbl!=null?x.lbl:(x.min!=null?x.min:Math.round((x.t||0)/60))),
         name:x.name||"", ps:x.slot||x.pos||"", second:!!x.second}));
     }
   }catch(e){}
   /* 분 단위 엔진(옛 경로) — 출전 기록에서 읽는다.
-     ⚠ 연속 엔진일 때는 절대 여기로 오면 안 된다. 재생헤드 필터로 목록이 비었을 때
-        이 경로를 타면 아직 화면에 안 나온 퇴장까지 통째로 새어 나간다(스포). */
+     ⚠ 연속 엔진이 굴러가는 중에는 절대 여기로 오면 안 된다. 재생헤드 필터로 목록이 비었을 때
+        이 경로를 타면 아직 화면에 안 나온 퇴장까지 통째로 새어 나간다(스포).
+        경기가 끝난 뒤(_over)에는 스포가 성립하지 않으므로 빠진 것을 여기서 채운다. */
+  if(_over && liveSim){
+    try{
+      const seen=new Set(list.map(x=>x.side+"|"+x.name));
+      for(const key of ["h","a"]){
+        const sd=M[key]; if(!sd||!Array.isArray(sd.list)) continue;
+        for(const x of sd.list){
+          if(!x || !x.red) continue;
+          const nm=(x.p&&x.p.name)||"";
+          if(seen.has(key+"|"+nm)) continue;
+          seen.add(key+"|"+nm);
+          list.push({side:key, min:x.off!=null?x.off:M.min, name:nm,
+                     ps:(x.slot||(x.p&&x.p.pos)||""), second:false});
+        }
+      }
+    }catch(e){}
+  }
   if(!list.length && !liveSim){
     try{
       for(const key of ["h","a"]){
@@ -58976,7 +59026,10 @@ function liveSentOffHtml(){
     }catch(e){}
   }
   if(!list.length) return "";
-  list.sort((a,b)=>(a.min||0)-(b.min||0));
+  /* 「90+2」 같은 전광판 글자도 섞이므로 앞뒤 숫자를 합쳐 정렬 기준을 만든다 */
+  const _ord=(v)=>{ const s=String(v==null?0:v); const m=s.match(/(\d+)(?:\+(\d+))?/);
+                    return m ? (+m[1])*100 + (+(m[2]||0)) : 0; };
+  list.sort((a,b)=>_ord(a.min)-_ord(b.min));
   const row=(x)=>{
     const t=(x.side==="h")?M.home:M.away;
     const left=(()=>{ try{ return liveSim ? liveSim.agents.filter(a=>a.side===x.side).length : null; }catch(e){ return null; } })();
@@ -59019,8 +59072,9 @@ function syncSentOffPanel(){
     if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && PVP.role==="host" && liveSim){
       let cut=liveSim.t;
       if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) cut=liveHL.frames[liveHL.i].t;
+      if(liveM.done && !liveHL) cut=Infinity;   // 🟥 휘슬 뒤에는 감출 것이 없다 (추가시간 퇴장 제보)
       const list=(liveSim.sentOff||[]).filter(x=>x.t<=cut+1e-6).slice(0,8).map(x=>({
-        s:x.side, m:(x.min!=null?x.min:Math.round((x.t||0)/60)), n:String(x.name||"").slice(0,12), p:String(x.slot||x.pos||"").slice(0,4)}));
+        s:x.side, m:(x.lbl!=null?x.lbl:(x.min!=null?x.min:Math.round((x.t||0)/60))), n:String(x.name||"").slice(0,12), p:String(x.slot||x.pos||"").slice(0,4)}));
       const j=JSON.stringify(list);
       if(PVP._offJ!==j){ PVP._offJ=j; if(list.length) pvpSend({t:"offl", list}); }
     }
@@ -59087,6 +59141,10 @@ function liveTick(){
   // ⚠ 연속 엔진에서는 scored(시뮬 상태)로 반짝이면 안 된다 — 골 장면이 재생되기 전에 전광판이
   //    먼저 번쩍여 스포일러가 된다. 번쩍임은 revealScore(=화면이 그 골에 도달한 순간)가 담당한다.
   if(!liveSim || scored || liveM.min!==mBefore || liveM.done || liveHL) syncLive(liveSim ? false : scored);
+  /* 🟥 제보 — 추가시간 퇴장이 옆 칸에 안 뜬다. 위 갱신은 「분이 바뀌었을 때」가 주 조건이라
+     퇴장과 종료 휘슬이 같은 분 안에 몰리면 한 번도 돌지 않을 수 있다. 퇴장 명단만은 매 틱 맞춘다
+     (내용이 그대로면 DOM 을 건드리지 않으므로 비용이 없다). */
+  else if(liveSim){ try{ syncSentOffPanel(); }catch(e){} }
   if(liveM.htBreak){ liveM.htBreak=false;
     if(liveM.opts&&liveM.opts.pvp){ pvpHalftime(); return; }
     livePaused=true; showHalftimeTalk(liveM); return; }
@@ -61514,6 +61572,16 @@ function fbFetch(u, init){
   return fetch(u, opt).then(r=>{ done(); return r; }, e=>{ done(); throw e; });
 }
 async function fbGet(p){ try{ const r=await fbFetch(fbU(p)); return r.ok? await r.json() : null; }catch(e){ return null; } }
+/* 🔎 ⚠ 제보 — 「규칙을 올렸는데도 “티어 장부에 접근하지 못했습니다”가 뜬다」.
+   원인: fbGet 은 ① 요청 실패 ② 갈래가 비어 있음 을 똑같이 null 로 돌려준다.
+      RTDB 는 데이터가 하나도 없는 경로에 대해 정직하게 null 을 준다 —
+      그래서 규칙을 올린 직후(아직 아무도 티어를 쌓지 않은 상태)에도 「접근 실패」로 읽혔다.
+   ─ 성공 여부와 값을 따로 돌려주는 판을 둔다. */
+async function fbGetX(p){
+  try{ const r=await fbFetch(fbU(p)); if(!r.ok) return {ok:false, val:null};
+       return {ok:true, val:await r.json()}; }
+  catch(e){ return {ok:false, val:null}; }
+}
 async function fbSet(p,v){ try{ const r=await fbFetch(fbU(p),{method:"PUT",body:JSON.stringify(v)}); return r.ok; }catch(e){ return false; } }
 async function fbPatch(p,v){ try{ const r=await fbFetch(fbU(p),{method:"PATCH",body:JSON.stringify(v)}); return r.ok; }catch(e){ return false; } }
 async function fbPush(p,v){ try{ const r=await fbFetch(fbU(p),{method:"POST",body:JSON.stringify(v)}); if(!r.ok) return null; return (await r.json()).name; }catch(e){ return null; } }
@@ -63642,6 +63710,7 @@ function pvpTierFind(nick){
 }
 function pvpTierTag(nick){
   const r=pvpTierFind(nick); if(!r) return "";
+  if(r.placing) return ` <span class="small" style="color:var(--gold);font-weight:700">🎯 배치 ${r.pl|0}/${TIER_PLACE_N}</span>`;
   const T=pvpTierOf(r.lp);
   return ` <span class="small" style="color:${T.t.c};font-weight:700">${T.label} · ${r.lp} LP</span>`;
 }
@@ -63651,6 +63720,7 @@ function pvpTierMini(nick, withLp){
   if(!(PVP_TIER && PVP_TIER.rows)) return "";
   const r=pvpTierFind(nick);
   if(!r) return `<span class="tierMini" style="color:#6b7480;border-color:#2a3441" title="이번 시즌 기록 없음">–</span>`;
+  if(r.placing) return `<span class="tierMini" style="color:var(--gold);border-color:#7a5f1e" title="배치고사 ${r.pl|0}/${TIER_PLACE_N} — 다섯 판을 마치면 티어가 정해집니다">🎯<b>${r.pl|0}</b></span>`;
   const T=pvpTierOf(r.lp);
   const dv=(T.t.k==="master")?"":PVP_DIV[T.div];
   return `<span class="tierMini" style="color:${T.t.c};border-color:${T.t.c}55" title="${T.label} · ${r.lp} LP · ${r.w}승 ${r.d}무 ${r.l}패">`
@@ -63711,6 +63781,14 @@ function pvpRankWk(off){ return "w"+(Math.floor(Date.now()/PVP_RANK_WEEK)+(off|0
       규칙을 아직 안 올렸으면 쓰기가 실패하는데, 그때는 화면이 그 사실을 알려 준다. */
 const TIER_CARRY=0.5;              // 시즌이 바뀔 때 이월되는 LP 비율
 const TIER_SEED_PER_PT=7;          // 주간 랭킹 1점 ≈ LP 7 (승 3점 = 21LP ≈ 승 한 판)
+/* 🎯 ⚠ 요청 원문 — 「일반 게임들은 배치고사를 보고 거기에 MMR 을 더해서 티어가 배치되잖아.
+   우리도 그렇게 하자」.
+   배치 5경기 동안에는 티어를 매기지 않고 성적만 모아 둔다. 다섯 판을 마치면
+      시작 LP = 기본치 + MMR(주간 랭킹·이월분) + 배치 성적 × 배수
+   로 한 번에 자리를 잡는다. 시즌이 바뀌면 배치도 다시 본다 (이월분이 MMR 로 들어간다). */
+const TIER_PLACE_N=5;              // 배치 경기 수
+const TIER_PLACE_BASE=100;         // 배치 기본치 — 전패해도 브론즈에서 시작
+const TIER_PLACE_MUL=2.5;          // 배치 한 판의 무게 (정식 경기의 2.5배)
 const PVP_TIER_SEASON=28*24*60*60*1000;
 function pvpTierSeasonKey(off){ return "s"+(Math.floor(Date.now()/PVP_TIER_SEASON)+(off|0)); }   // (구버전 자리 — 이전 기록 회수용)
 function pvpSeasonNum(){ return Math.floor(Date.now()/PVP_TIER_SEASON); }
@@ -63790,15 +63868,28 @@ function pvpRankPost(r){
 /* 🧬 기록 하나를 「지금 시즌 기준」으로 맞춘다 — 시즌이 바뀌었으면 소프트 리셋해서 돌려준다 */
 function pvpTierNorm(c){
   const s=pvpSeasonNum();
-  const o={ n:"", p:0, w:0, d:0, l:0, hi:0, s, pv:0, t:0 };
+  const o={ n:"", p:0, w:0, d:0, l:0, hi:0, s, pv:0, t:0, pl:0, pp:0, mm:0 };
   if(!c || typeof c!=="object") return o;
   o.n=String(c.n||"").slice(0,8); o.t=c.t|0; o.pv=c.pv|0;
   const cs=(typeof c.s==="number")?c.s:null;
-  if(cs===s){ o.p=Math.max(0,c.p|0); o.w=c.w|0; o.d=c.d|0; o.l=c.l|0; o.hi=Math.max(c.hi|0,o.p); return o; }
-  /* 지난 시즌 기록 — 절반만 안고 새 시즌을 시작한다 (완전 초기화 금지) */
+  if(cs===s){
+    o.p=Math.max(0,c.p|0); o.w=c.w|0; o.d=c.d|0; o.l=c.l|0; o.hi=Math.max(c.hi|0,o.p);
+    /* 🎯 배치 — 옛 기록에는 pl 이 없다. 이미 경기를 치른 감독을 다시 배치로 돌려보내지 않는다 */
+    o.pl = (c.pl!=null) ? Math.max(0,c.pl|0) : ((c.w|0)+(c.d|0)+(c.l|0) ? TIER_PLACE_N : 0);
+    o.pp = c.pp|0; o.mm = c.mm|0;
+    return o;
+  }
+  /* 지난 시즌 기록 — 절반만 안고 새 시즌을 시작한다 (완전 초기화 금지).
+     🎯 새 시즌에는 배치를 다시 본다. 이월분은 「지난 시즌 MMR」로 따로 들고 있다가
+        배치가 끝날 때 시작 LP 에 얹는다 — 표시 LP 는 배치가 끝나야 정해진다. */
   const carried=Math.max(0, Math.round((c.p|0)*TIER_CARRY));
-  o.p=carried; o.hi=carried; o.pv=Math.max(0,c.p|0); o.w=0; o.d=0; o.l=0;
+  o.p=0; o.hi=0; o.pv=Math.max(0,c.p|0); o.w=0; o.d=0; o.l=0;
+  o.pl=0; o.pp=0; o.mm=carried;
   return o;
+}
+/* 🎯 배치가 끝날 때 시작 LP 를 계산한다 — MMR(주간 랭킹·지난 시즌 이월) + 배치 성적 */
+function pvpPlaceLp(mmr, pp){
+  return Math.max(0, Math.round(TIER_PLACE_BASE + (mmr||0) + (pp||0)*TIER_PLACE_MUL));
 }
 /* 🩹 티어 기록이 없을 때 — 주간 랭킹 성적으로 MMR 을 되살린다.
    ⚠ 요청 — 「티어리스트 MMR 을 현재 주간 랭킹에서 가져오고 거기에 맞게 티어를 재배치하자」.
@@ -63830,18 +63921,38 @@ function pvpTierPost(r){
         /* ③ 그래도 없으면 이 기기에 남겨 둔 마지막 LP 로 (내 것만 — 남의 것은 손대지 않는다) */
         try{ const lo=+(localStorage.getItem("klm2026_pvpTierLp")||0); if(!c.p && lo>0) { c.p=lo; c.hi=lo; } }catch(e){}
       }
-      const lp=Math.max(0, c.p+dLp);
+      /* 🎯 배치고사 — 다섯 판을 마치기 전에는 티어를 매기지 않고 성적만 모은다 */
+      const wasPlacing = c.pl < TIER_PLACE_N;
+      let lp, pl=c.pl, pp=c.pp, placedNow=false;
+      if(wasPlacing){
+        pl=c.pl+1; pp=c.pp+dLp;
+        if(pl>=TIER_PLACE_N){
+          /* MMR — ① 이번 시즌에 이미 쌓인 LP ② 지난 시즌 이월분 ③ 주간 랭킹 성적 */
+          let mmr=Math.max(c.p|0, c.mm|0);
+          if(!mmr){ try{ const sd=pvpTierSeed(((PVP_RANK&&PVP_RANK.rows)||[]).find(x=>x.k===key)); if(sd) mmr=sd.p|0; }catch(e){} }
+          lp=pvpPlaceLp(mmr, pp); placedNow=true;
+        } else lp=c.p;                     // 배치 중 — 표시 LP 는 아직 없다
+      } else lp=Math.max(0, c.p+dLp);
       const rec={ n:String(pvpNick()||"감독").slice(0,8), p:lp,
         w:c.w+(r.my>r.op?1:0), d:c.d+(r.my===r.op?1:0), l:c.l+(r.my<r.op?1:0),
-        hi:Math.max(c.hi, lp), s:pvpSeasonNum(), pv:c.pv, t:Date.now() };
+        hi:Math.max(c.hi, lp), s:pvpSeasonNum(), pv:c.pv, t:Date.now(),
+        pl, pp, mm:c.mm };
       try{ localStorage.setItem("klm2026_pvpTierLp", String(lp)); }catch(e){}
-      try{ PVP_TIER.my={lp, w:rec.w, d:rec.d, l:rec.l, hi:rec.hi, dLp}; }catch(e){}
+      try{ localStorage.setItem("klm2026_pvpTierPl", pl+"/"+pp); }catch(e){}
+      try{ PVP_TIER.my={lp, w:rec.w, d:rec.d, l:rec.l, hi:rec.hi, dLp, pl, pp}; }catch(e){}
       try{
-        const T=pvpTierOf(lp), T0=pvpTierOf(Math.max(0, lp-dLp));
-        if(T.t.k!==T0.t.k || T.div!==T0.div){
-          notify(`🏅 <b>${dLp>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${T.label}</b> (${lp} LP)`, dLp>=0?"good":"warn");
+        if(placedNow){
+          const T=pvpTierOf(lp);
+          notify(`🎯 <b>배치 완료</b> — <b style="color:${T.t.c}">${T.label}</b> (${lp} LP)`, "good");
+        } else if(pl<TIER_PLACE_N){
+          notify(`🎯 <b>배치 ${pl}/${TIER_PLACE_N}</b> — ${TIER_PLACE_N-pl}경기 더 치르면 티어가 정해집니다 <span class="small">(이번 판 ${dLp>=0?"+":""}${dLp})</span>`, dLp>=0?"info":"warn");
         } else {
-          notify(`🏅 시즌 LP <b>${dLp>=0?"+":""}${dLp}</b> → ${lp} LP <span class="small">(${T.label})</span>`, dLp>=0?"info":"warn");
+          const T=pvpTierOf(lp), T0=pvpTierOf(Math.max(0, lp-dLp));
+          if(T.t.k!==T0.t.k || T.div!==T0.div){
+            notify(`🏅 <b>${dLp>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${T.label}</b> (${lp} LP)`, dLp>=0?"good":"warn");
+          } else {
+            notify(`🏅 시즌 LP <b>${dLp>=0?"+":""}${dLp}</b> → ${lp} LP <span class="small">(${T.label})</span>`, dLp>=0?"info":"warn");
+          }
         }
       }catch(e){}
       return fbSet("tier/"+key, rec).then(ok2=>{
@@ -63882,37 +63993,47 @@ async function pvpRankRefresh(force){
   PVP_RANK.rows=rows;
   /* 🏅 시즌 티어 — 별도 갈래(tier)에서 읽는다. 없으면 주간 랭킹으로 MMR 을 되살린다 */
   {
-    const tAll=await fbGet("tier");
-    PVP_TIER.wr = (tAll!==null);          // null = 규칙을 아직 안 올렸거나 통신 실패
+    const _t=await fbGetX("tier");
+    const tAll=_t.val;
+    /* ⚠ 「비어 있음」과 「못 읽음」은 다르다 — 읽기가 성공했으면 값이 null 이어도 정상이다 (제보) */
+    PVP_TIER.wr = _t.ok ? true : false;
     const seen={}, trows=[];
     for(const k in (tAll||{})){
       const e=(tAll||{})[k]; if(!e || typeof e!=="object") continue;
       const c=pvpTierNorm(e);
       seen[k]=1;
       if(!c.p && !(c.w+c.d+c.l)) continue;      // 이번 시즌 활동도 이월분도 없으면 뺀다
-      trows.push({k, n:pvpClean(c.n||e.n,8)||"감독", lp:c.p, w:c.w, d:c.d, l:c.l, hi:c.hi, me:k===mineKey, pv:c.pv});
+      trows.push({k, n:pvpClean(c.n||e.n,8)||"감독", lp:c.p, w:c.w, d:c.d, l:c.l, hi:c.hi, me:k===mineKey, pv:c.pv,
+                  pl:c.pl, placing:(c.pl<TIER_PLACE_N)});
     }
     /* 🩹 티어 기록이 없는 감독은 주간 랭킹 성적으로 자리를 잡아 준다
        (⚠ 요청 — 「티어리스트 MMR 을 현재 주간 랭킹에서 가져오고 거기에 맞게 티어를 재배치하자」) */
     for(const r of rows){
       if(seen[r.k]) continue;
       const sd=pvpTierSeed(r); if(!sd || !sd.p) continue;
-      trows.push({k:r.k, n:r.n, lp:sd.p, w:sd.w, d:sd.d, l:sd.l, hi:sd.p, me:r.k===mineKey, seed:1});
+      trows.push({k:r.k, n:r.n, lp:sd.p, w:sd.w, d:sd.d, l:sd.l, hi:sd.p, me:r.k===mineKey, seed:1,
+                  pl:0, placing:true});
     }
     /* 🛟 내 기록만은 이 기기에 남겨 둔 값으로도 지킨다 — 서버가 비어도 내 티어는 안 사라진다 */
     try{
       const lo=+(localStorage.getItem("klm2026_pvpTierLp")||0);
       if(lo>0 && mineKey){
         const m=trows.find(x=>x.k===mineKey);
-        if(!m) trows.push({k:mineKey, n:pvpClean(pvpNick(),8)||"감독", lp:lo, w:0,d:0,l:0, hi:lo, me:true, local:1});
+        if(!m){
+          /* 🎯 이 기기에 남은 배치 진행도도 함께 살린다 (서버가 비어 있을 때) */
+          let _pl=TIER_PLACE_N; try{ const s=String(localStorage.getItem("klm2026_pvpTierPl")||""); if(s) _pl=parseInt(s.split("/")[0],10)|0; }catch(e){}
+          trows.push({k:mineKey, n:pvpClean(pvpNick(),8)||"감독", lp:lo, w:0,d:0,l:0, hi:lo, me:true, local:1,
+                      pl:_pl, placing:(_pl<TIER_PLACE_N)});
+        }
         else if(m.lp<lo && !m.seed) m.lp=lo;
       }
     }catch(e){}
-    trows.sort((a,b)=> b.lp-a.lp || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
+    /* 🎯 배치 중인 감독은 순위에 끼지 않는다 — 표 아래에 따로 선다 */
+    trows.sort((a,b)=> (a.placing?1:0)-(b.placing?1:0) || b.lp-a.lp || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
     PVP_TIER.rows=trows;
     const mine=trows.find(x=>x.me)||null;
-    PVP_TIER.my = mine ? {lp:mine.lp, w:mine.w, d:mine.d, l:mine.l, hi:mine.hi} : (PVP_TIER.my||null);
-    PVP_TIER.rank = mine ? (trows.indexOf(mine)+1) : null;
+    PVP_TIER.my = mine ? {lp:mine.lp, w:mine.w, d:mine.d, l:mine.l, hi:mine.hi, pl:mine.pl|0} : (PVP_TIER.my||null);
+    PVP_TIER.rank = (mine && !mine.placing) ? (trows.filter(x=>!x.placing).indexOf(mine)+1) : null;
     try{ pvpTierSeasonCheck(mine?mine.lp:null); }catch(e){}
     /* 🔁 옛 자리(rank/s…)에 남아 있던 내 기록을 새 자리로 한 번 옮긴다 */
     try{
@@ -63948,6 +64069,23 @@ function pvpTierHtml(){
   const my=R.my;
   const T=pvpTierOf(my?my.lp:0);
   const games=my?(my.w+my.d+my.l):0;
+  const myPl=my?(my.pl|0):0;
+  const placing=(myPl<TIER_PLACE_N);
+  /* 🎯 배치고사 카드 — 다섯 판을 채우기 전에는 티어 대신 배치 진행도를 보여 준다 */
+  const placeCard=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="font-size:34px;line-height:1">🎯</div>
+      <div style="flex:1;min-width:170px">
+        <div style="font-size:18px;font-weight:800;color:var(--gold)">배치고사 ${myPl} / ${TIER_PLACE_N}</div>
+        <div class="small" style="opacity:.85">${TIER_PLACE_N-myPl}경기를 더 치르면 티어가 정해집니다</div>
+        <div style="display:flex;gap:5px;margin-top:7px">
+          ${Array.from({length:TIER_PLACE_N},(_,i)=>`<div style="flex:1;height:9px;border-radius:999px;background:${i<myPl?"var(--gold)":"#161b22"};border:1px solid var(--line)"></div>`).join("")}
+        </div>
+      </div>
+      <div class="small" style="text-align:right;min-width:110px;opacity:.9">
+        ${games?`${my.w}승 ${my.d}무 ${my.l}패`:"아직 경기 없음"}
+      </div>
+    </div>
+    <p class="small" style="margin:7px 0 0;opacity:.75">배치가 끝나면 <b>기본 ${TIER_PLACE_BASE} LP + MMR(주간 랭킹·지난 시즌 이월) + 배치 성적×${TIER_PLACE_MUL}</b> 으로 시작 티어가 한 번에 정해집니다.</p>`;
   const bar=`<div style="height:9px;border-radius:999px;background:#161b22;border:1px solid var(--line);overflow:hidden;margin-top:6px">
       <div style="height:100%;width:${Math.round(T.prog*100)}%;background:linear-gradient(90deg,${T.t.c}88,${T.t.c});border-radius:999px"></div></div>`;
   const mine=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -63969,7 +64107,14 @@ function pvpTierHtml(){
     <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>티어</th><th>LP</th><th>전적</th></tr>
     ${R.rows.map((r,i)=>{ const t=pvpTierOf(r.lp);
       /* 👑 챌린저 — 마스터 중 시즌 상위 3명 (자리에 대한 칭호라 인원이 늘면 자연히 어려워진다) */
-      const ch=(i<3 && t.t.k==="master");
+      const ch=(i<3 && t.t.k==="master" && !r.placing);
+      /* 🎯 배치 중인 감독 — 순위·LP 대신 배치 진행도를 적는다 */
+      if(r.placing) return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""} style="opacity:.8">
+      <td style="font-weight:800;opacity:.5">–</td>
+      <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
+      <td class="small" style="color:var(--gold);font-weight:700;white-space:nowrap">🎯 배치 ${r.pl|0}/${TIER_PLACE_N}</td>
+      <td class="small" style="opacity:.6">–</td>
+      <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;
       return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
       <td style="font-weight:800">${medal(i)}</td>
       <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
@@ -63979,12 +64124,14 @@ function pvpTierHtml(){
   </table></div>`:`<p class="small" style="margin-top:8px;opacity:.6">이번 시즌에 아직 경기를 마친 감독이 없습니다 — 1위 자리가 비어 있습니다.</p>`;
   /* ⚠ tier 갈래에 쓰지 못하면(보안 규칙 미배포) 그 사실을 알려 준다 — 조용히 안 쌓이면 최악이다 */
   const wrWarn = (PVP_TIER.wr===false)
-    ? `<div class="msg warn" style="margin:8px 0 0">⚠ <b>티어 장부에 접근하지 못했습니다.</b>
-        <span class="small">Firebase 보안 규칙에 <b>tier</b> 갈래가 아직 없을 수 있습니다 — 설정 가이드 2번을 다시 올려 주세요. 그때까지 티어는 이 기기에만 남습니다.</span></div>` : "";
-  return mine + board + lastLine + wrWarn
+    ? `<div class="msg warn" style="margin:8px 0 0">⚠ <b>티어 기록을 서버에 저장하지 못하고 있습니다.</b>
+        <span class="small">시즌 티어가 저장되는 <b>tier</b> 칸을 읽고 쓸 수 없다는 뜻입니다. 대개는 <b>Firebase 보안 규칙에 tier 갈래가 아직 없어서</b>이고(설정 가이드 2번을 다시 올려 주세요), 잠깐 통신이 끊겨도 나올 수 있습니다.
+        그동안에도 경기는 정상이며 내 LP·배치 진행도는 이 기기에 안전하게 남습니다 — 규칙만 올리면 그대로 이어집니다.</span>
+        <div style="margin-top:6px"><button class="mini" onclick="pvpRankRefresh(true)">🔄 다시 확인</button></div></div>` : "";
+  return (placing?placeCard:mine) + board + lastLine + wrWarn
     + `<p class="small" style="margin-top:6px;opacity:.65">승 +22 · 무 +6 · 패 −14 를 기본으로, <b>상대 스쿼드가 셀수록 승리가 더 값지고</b> 약한 상대에게 지면 더 깎입니다 (몰수는 ±18). LP 는 0 아래로 내려가지 않습니다.<br>
       시즌 ${pvpTierSeasonNo()} — <b>${leftD}일</b> 남았습니다. 시즌이 끝나도 <b>LP 의 절반은 그대로 이월</b>되고, 마감 티어가 기록으로 남습니다.<br>
-      <span style="opacity:.85">티어 장부가 비어 있는 감독은 <b>주간 랭킹 성적</b>으로 자리를 잡아 드립니다 (1점 ≈ ${TIER_SEED_PER_PT} LP).</span></p>`;
+      <span style="opacity:.85">🎯 <b>배치고사 ${TIER_PLACE_N}경기</b> — 시즌마다 처음 다섯 판은 티어를 매기지 않고 성적만 모읍니다. 다섯 판을 마치면 <b>기본 ${TIER_PLACE_BASE} LP + MMR + 배치 성적×${TIER_PLACE_MUL}</b> 로 자리를 잡습니다. MMR 은 <b>주간 랭킹 성적</b>(1점 ≈ ${TIER_SEED_PER_PT} LP)과 지난 시즌 이월분에서 가져옵니다.</span></p>`;
 }
 function pvpRankHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
