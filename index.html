@@ -4667,9 +4667,14 @@ function fixOneGK(t, xi){
 function bestXI(t, formation, opts){
   try{ ensureSquad(t); }catch(e){}
   const frnLim = frnLimOf(t);
-  // 유저가 직접 짠 선발이 있으면 그대로 존중한다
-  if(t.isUser && G.userXI && G.userXI.length){
-    const manual = G.userXI.map(id=>t.players.find(p=>p.id===id)).filter(p=>p&&avail(p));
+  /* 유저가 직접 짠 선발이 있으면 그대로 존중한다.
+     ⚔️ 온라인 대전 클론(t.pvp)도 마찬가지다 — 감독이 로비에서 확정한 열한 명이 t.pvpXI 에
+        실려 온다. 예전에는 클론이 isUser 가 아니라 여기를 그냥 지나쳐, 능력치 순으로
+        선발을 다시 뽑았다 (제보: 처음 확정한 전술과 경기 중 전술이 다르다). */
+  const manualIds = (t.isUser && G.userXI && G.userXI.length) ? G.userXI
+                  : ((t.pvp && Array.isArray(t.pvpXI) && t.pvpXI.length===11) ? t.pvpXI : null);
+  if(manualIds){
+    const manual = manualIds.map(id=>t.players.find(p=>p.id===id)).filter(p=>p&&avail(p));
     if(manual.length===11 && manual.filter(frnQ).length<=frnLim && manual.filter(p=>p.pos==="GK").length===1) return manual;
     if(manual.length===11 && manual.filter(p=>p.pos==="GK").length>1) return fixOneGK(t, manual);
     /* ⚠ 예전엔 한 명이라도 못 뛰게 되면(부상·퇴장·태업) 손으로 짜 둔 열한 명을 통째로 버리고
@@ -61354,7 +61359,7 @@ function pickDayPlan(i){
    예: "https://klm-pvp-default-rtdb.asia-southeast1.firebasedatabase.app"
    비워 두면 ⚔️ 온라인 대전 메뉴가 숨는다. 설정 방법은 「온라인대전_설정가이드.md」 참고. */
 const PVP_FB="https://kleagueonline-default-rtdb.asia-southeast1.firebasedatabase.app/";
-const PVP_VER=4;                 // 프로토콜 버전 — 다르면 매칭을 거절한다 (v4: 주심 좌표 탑재)
+const PVP_VER=5;                 // 프로토콜 버전 — 다르면 매칭을 거절한다 (v5: 선발·배치·역할 탑재 · v4: 주심 좌표)
 const PVP_STUN=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
 const PVP_SNAP_MS=33;            // 상태 스냅샷 전송 간격 (30Hz — 제보: 프레임 동일화)
 const PVP_PLAYOUT=120;           // 게스트 재생 지연 기준(ms) — 적응형 재생 시계의 목표 리드 (제보: 뚝뚝 끊김)
@@ -61521,9 +61526,23 @@ function pvpPack(){
   let _slots={}; try{ _slots=computeRenderSlots(t, xi)||{}; }catch(e){}
   const list=[...xi, ...bench.filter(p=>!xi.includes(p))].slice(0,20)
     .filter(p=>p && p.pos);
+/* ⚔️ ⚠ 제보 원문 — 「지금 현재 온라인 대전에서 처음 확정한 전술이랑 경기중 전술이 다르게
+   나온다」.
+   원인: 패키지(pvpPack)에는 배치 자리(sl)만 담기고 「누가 선발인지」와 「역할·임무」가
+   빠져 있었다. 받는 쪽(pvpBuildTeam)은 그 sl 조차 쓰지 않고 클론을 만든 뒤
+   assignAIRoles 로 역할을 새로 깔았고, 클론은 isUser 가 아니라 bestXI 가 손으로 짠
+   열한 명 대신 능력치 순으로 선발을 다시 뽑았다.
+   ─ 결과: 로비에서 확인·수락한 그림(내 선발 / 상대 선발)과 실제 그라운드가 어긋났다.
+   ─ 선발 명단·배치 자리·역할·임무를 함께 실어 보내고, 받는 쪽이 그대로 세운다.
+   ⚠ 프로토콜이 바뀌므로 PVP_VER 을 올린다 — 옛 빌드와는 매칭되지 않는다(안내 문구가 나간다). */
+  const _xiSet=new Set(xi.map(p=>p.id));
+  const _roleOf=(p)=>{ try{ const rd=getRole(t, p, _slots[p.id]||prefSlotOf(p)); 
+    return (rd && rd.r) ? {r:rd.r, d:rd.d} : null; }catch(e){ return null; } };
   const pl=list.map(p=>({
     n:String(p.name||"").slice(0,12), pos:p.pos, pref:p.prefPos||p.pos,
     sl:(_slots[p.id]&&SLOT_XY[_slots[p.id]])?_slots[p.id]:null,
+    xi:_xiSet.has(p.id)?1:0,          // ⚔️ 감독이 확정한 선발인가 (제보: 로비와 경기가 다르다)
+    rl:_roleOf(p),                    // ⚔️ 역할·임무도 그대로 넘긴다
     by:p.by||2000, no:p.no||0, h:p.h||178, w:p.w||74, frn:p.frn?1:0,
     ovr:clamp(Math.round(p.ovr||60),40,92),
     attr:p.attr?Object.fromEntries(Object.entries(p.attr).filter(([k,v])=>typeof v==="number").map(([k,v])=>[k,clamp(Math.round(v),15,99)])):null,
@@ -61551,6 +61570,7 @@ function pvpBuildTeam(pk, idSuffix){
       if(typeof tk[k]==="number") t.tactic[k]=clamp(Math.round(tk[k]),0,4);
   }catch(e){}
   const arr=Array.isArray(pk.pl)?pk.pl.slice(0,20):[];
+  const _made=[];                      // ⚔️ 원본 항목 ↔ 만들어진 선수 (제보: 전술이 다르게 나온다)
   for(const q of arr){
     try{
       const pos=["GK","DF","MF","FW"].indexOf(q.pos)>=0?q.pos:"MF";
@@ -61568,9 +61588,27 @@ function pvpBuildTeam(pk, idSuffix){
       if(Array.isArray(q.tr)) p.traits=q.tr.filter(x=>TRAIT_BY_KEY && TRAIT_BY_KEY[x]).slice(0,6);
       p.cond=95; p.inj=0; p.ban=0; p.morale=78; p.ct=1; p.wage=0;
       t.players.push(p);
+      _made.push([q, p]);
     }catch(e){}
   }
-  try{ assignNumbers(t); assignAIRoles(t); }catch(e){}
+  /* ⚔️ 감독이 확정한 배치·역할·선발을 그대로 옮긴다 (제보: 로비 그림과 경기가 다르다).
+     ⚠ 등번호가 아니라 만들어진 선수 객체로 짝을 짓는다 — assignNumbers 가 빈 번호를
+        채우는 과정에서 번호가 달라져도 어긋나지 않는다. */
+  try{
+    t.tactic.slot=t.tactic.slot||{}; t.tactic.role=t.tactic.role||{};
+    const xiIds=[];
+    for(const [q,p] of _made){
+      if(q.sl && SLOT_XY[q.sl]) t.tactic.slot[p.id]=q.sl;
+      if(q.rl && q.rl.r && typeof ROLE_BY_KEY!=="undefined" && ROLE_BY_KEY[q.rl.r])
+        t.tactic.role[p.id]={r:q.rl.r, d:pvpDuty(q.rl.r, q.rl.d)};
+      if(q.xi) xiIds.push(p.id);
+    }
+    /* 옛 빌드 호환 — xi 표시가 없으면 예전 규칙(앞 11명이 선발)을 그대로 쓴다 */
+    if(xiIds.length!==11 && _made.length>=11) for(let i=0;i<11;i++) xiIds[i]=_made[i][1].id;
+    if(xiIds.length===11) t.pvpXI=xiIds;
+  }catch(e){}
+  /* ⚠ assignAIRoles(t) 를 그냥 부르면 방금 옮겨 놓은 역할을 덮어쓴다 — 빈 자리만 채우게 한다 */
+  try{ assignNumbers(t); assignAIRoles(t, true); }catch(e){}
   return t;
 }
 /* 소프트 치트 검사 — 팀 전력이 터무니없으면 표시해 준다 (수락/거절은 감독 몫) */
@@ -63042,13 +63080,26 @@ function pvpTacRelay(){
       const s=t.tactic.slot && t.tactic.slot[p.id];
       if(s) sl[p.no]=String(s).slice(0,4);
       const r=t.tactic.role && t.tactic.role[p.id];
-      if(r && r.r) rl[p.no]={r:String(r.r).slice(0,12), d:r.d|0};
+      if(r && r.r) rl[p.no]={r:String(r.r).slice(0,12), d:String(r.d==null?"":r.d).slice(0,3)};
     }
     if(Object.keys(sl).length) pvpSend({t:"tacsl", sl});
     if(Object.keys(rl).length) pvpSend({t:"tacrl", rl});
   }catch(e){}
 }
 /* 호스트 — 게스트가 보낸 자리 배치·역할을 상대 팀에 옮겨 담는다 */
+/* ⚔️ 임무(duty)는 "D"·"S"·"A" 같은 「문자열」이다.
+   ⚠ 제보 원문 — 「처음 확정한 전술이랑 경기중 전술이 다르게 나온다」.
+      여기가 두 번째 원인이었다 — 전송·수신 양쪽이 임무를 `d|0` 으로 다뤄
+      "S"|0 = 0 이 되어, 전술을 한 번 고칠 때마다 모든 임무가 첫 항목으로 되돌아갔다.
+   ─ 그 역할이 실제로 가질 수 있는 임무인지 보고, 아니면 그 역할의 기본 임무로 떨어뜨린다. */
+function pvpDuty(roleKey, d){
+  try{
+    const R=(typeof ROLE_BY_KEY!=="undefined") && ROLE_BY_KEY[roleKey];
+    const list=(R && Array.isArray(R.duty) && R.duty.length) ? R.duty : ["S"];
+    const v=String(d==null?"":d);
+    return list.indexOf(v)>=0 ? v : list[0];
+  }catch(e){ return "S"; }
+}
 function pvpApplySlots(t, sl, rl){
   try{
     if(!t || !t.tactic) return;
@@ -63060,7 +63111,7 @@ function pvpApplySlots(t, sl, rl){
     if(rl && typeof rl==="object"){
       t.tactic.role=t.tactic.role||{};
       for(const no in rl){ const p=byNo[no], r=rl[no];
-        if(p && r && typeof ROLE_BY_KEY!=="undefined" && ROLE_BY_KEY[r.r]) t.tactic.role[p.id]={r:r.r, d:clamp(r.d|0,0,4)}; }
+        if(p && r && typeof ROLE_BY_KEY!=="undefined" && ROLE_BY_KEY[r.r]) t.tactic.role[p.id]={r:r.r, d:pvpDuty(r.r, r.d)}; }
     }
     if(liveM) liveM.xiDirty=true;
     if(typeof liveSim!=="undefined" && liveSim) liveSim.resyncSquads();
