@@ -61380,7 +61380,7 @@ function pickDayPlan(i){
    예: "https://klm-pvp-default-rtdb.asia-southeast1.firebasedatabase.app"
    비워 두면 ⚔️ 온라인 대전 메뉴가 숨는다. 설정 방법은 「온라인대전_설정가이드.md」 참고. */
 const PVP_FB="https://kleagueonline-default-rtdb.asia-southeast1.firebasedatabase.app/";
-const PVP_VER=5;                 // 프로토콜 버전 — 다르면 매칭을 거절한다 (v5: 선발·배치·역할 탑재 · v4: 주심 좌표)
+const PVP_VER=6;                 // 프로토콜 버전 — 다르면 매칭을 거절한다 (v6: 역할 능숙도·전담 키커·주장 · v5: 선발·배치·역할 · v4: 주심 좌표)
 const PVP_STUN=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
 const PVP_SNAP_MS=33;            // 상태 스냅샷 전송 간격 (30Hz — 제보: 프레임 동일화)
 const PVP_PLAYOUT=120;           // 게스트 재생 지연 기준(ms) — 적응형 재생 시계의 목표 리드 (제보: 뚝뚝 끊김)
@@ -61565,17 +61565,36 @@ function pvpPack(){
     xi:_xiSet.has(p.id)?1:0,          // ⚔️ 감독이 확정한 선발인가 (제보: 로비와 경기가 다르다)
     rl:_roleOf(p),                    // ⚔️ 역할·임무도 그대로 넘긴다
     by:p.by||2000, no:p.no||0, h:p.h||178, w:p.w||74, frn:p.frn?1:0,
-    ovr:clamp(Math.round(p.ovr||60),40,92),
+    hg:p.hg?1:0,                      // 🌱 홈그로운 — 외국인 쿼터 계산이 어긋나지 않게
+    ft:p.foot||null,                  // 🦶 주발 — 선수 정보 화면 표시용
+    /* ⚠ 상한이 92 였다 — 내부 눈금은 96까지 간다. 최상급 선수가 대전에서만 깎였다 */
+    ovr:clamp(Math.round(p.ovr||60),40,96),
     attr:p.attr?Object.fromEntries(Object.entries(p.attr).filter(([k,v])=>typeof v==="number").map(([k,v])=>[k,clamp(Math.round(v),15,99)])):null,
     gkA:p.gkA?Object.fromEntries(Object.entries(p.gkA).filter(([k,v])=>typeof v==="number").map(([k,v])=>[k,clamp(Math.round(v),15,99)])):null,
     fam:(function(){ const f={}; try{ for(const k of FAM_POS){ const v=Math.round((p.posFam&&p.posFam[k])||0); if(v>0) f[k]=clamp(v,0,100); } }catch(e){} return f; })(),
+    /* 🎓 역할 능숙도 — 엔진이 실제로 읽는 값이다(roleFamMul: 0.55~1.00 배).
+       이게 빠져 있어서, 온라인 대전에서는 모두가 「그 역할을 처음 맡는 선수」로 뛰었다. */
+    rf:(function(){ const f={}; try{ for(const k in (p.roleFam||{})){ const v=Math.round(p.roleFam[k]||0);
+      if(v>0 && ROLE_BY_KEY[k]) f[k]=clamp(v,0,100); } }catch(e){} return f; })(),
     tr:(p.traits||[]).slice(0,6)
   }));
   const tac={}; try{ for(const k of ["formation","mentality","pass","tempo","press","line","width","counter","crossFq","longShot"]) tac[k]=t.tactic[k]; }catch(e){}
+  /* 🎯 전담 키커 — 엔진의 designatedKicker 가 team.tactic.kickers 를 읽는다.
+     안 보내면 PK·프리킥·코너를 감독이 지정한 선수가 아니라 엔진이 고른 선수가 찼다. */
+  const kk={}; try{ const K=kickersOf(t);
+    for(const k of ["pk","fk","ck","so"]) kk[k]=(K[k]||[]).map(id=>{ const q=t.players.find(x=>x.id===id); return q?(q.no||0):0; }).filter(Boolean).slice(0,5);
+  }catch(e){}
+  /* 🎖️ 주장 — 그라운드의 리더가 팀 전체의 판단력·팀워크를 끌어올린다(최대 +6%).
+     안 보내면 감독이 지정한 주장 대신 리더십 최상위 선수가 대신 섰다. */
+  let capNo=0; try{ if(t.cap && t.cap.s===G.season && t.cap.c){ const q=t.players.find(x=>x.id===t.cap.c); if(q) capNo=q.no||0; } }catch(e){}
+  /* 🧩 팀 전술 적응도(조직력) — 엔진이 famK(t) 로 읽어 패스·판단·위치선정·팀워크에 얹는다.
+     안 보내면 클론은 기본값 70 으로 붙는다 — 시즌 내내 손발을 맞춰 95까지 올려 둔 팀이
+     대전에서만 처음 만난 팀처럼 뛰었다. */
+  let fam=70; try{ fam=clamp(Math.round(famOf(t)), 0, 100); }catch(e){}
   let st=3; try{ st=Math.round(teamStarVal(t)*10)/10; }catch(e){}
   return {ver:PVP_VER, name:String(t.name||"").slice(0,16), short:String(t.short||"").slice(0,8),
           col:t.col||"#2a6ee8", mgr:pvpNick(),   // 🎫 제보 — 닉네임으로 매칭·표시
-          stars:st, tac, pl};
+          stars:st, tac, kk, capNo, fam, pl};
 }
 /* 패키지 → 클론 팀 (모든 값을 소독한다 — 상대가 보낸 데이터다) */
 function pvpBuildTeam(pk, idSuffix){
@@ -61596,8 +61615,10 @@ function pvpBuildTeam(pk, idSuffix){
     try{
       const pos=["GK","DF","MF","FW"].indexOf(q.pos)>=0?q.pos:"MF";
       const by=clamp(Math.round(q.by||2000), G.season-45, G.season-16);
-      const p=mkPlayer(String(q.n||"선수").slice(0,12), pos, by, clamp(Math.round(q.ovr||60),40,92), q.frn?1:0,
+      const p=mkPlayer(String(q.n||"선수").slice(0,12), pos, by, clamp(Math.round(q.ovr||60),40,96), q.frn?1:0,
                        {no:clamp(Math.round(q.no||0),0,99), h:clamp(Math.round(q.h||178),150,210), w:clamp(Math.round(q.w||74),50,110)});
+      if(q.hg) p.hg=1;                                              // 🌱 홈그로운 — 외국인 쿼터 계산
+      if(q.ft==="오른발"||q.ft==="왼발"||q.ft==="양발") p.foot=q.ft;   // 🦶 주발 (표시용)
       if(q.attr) for(const k in q.attr){ if(p.attr && typeof p.attr[k]==="number") p.attr[k]=clamp(Math.round(q.attr[k]),15,99); }
       if(q.gkA && p.gkA) for(const k in q.gkA){ if(typeof p.gkA[k]==="number") p.gkA[k]=clamp(Math.round(q.gkA[k]),15,99); }
       try{ syncLegacyAttrs(p.attr); if(p.gkA) syncLegacyGk(p); }catch(e){}
@@ -61605,8 +61626,15 @@ function pvpBuildTeam(pk, idSuffix){
       if(pref){ p.prefPos=pref; }
       p.posFam=initPosFam(p);
       if(q.fam) for(const k of FAM_POS){ if(typeof q.fam[k]==="number") p.posFam[k]=clamp(Math.round(q.fam[k]),0,100); }
+      /* 🎓 역할 능숙도 — 엔진이 실제로 읽는 값(roleFamMul). 안 옮기면 전원이 「처음 맡는 역할」이 된다 */
+      if(q.rf && typeof q.rf==="object"){ p.roleFam=p.roleFam||{};
+        for(const k in q.rf){ if(ROLE_BY_KEY[k] && typeof q.rf[k]==="number") p.roleFam[k]=clamp(Math.round(q.rf[k]),0,100); } }
       try{ syncPosBand(p); }catch(e){}
       if(Array.isArray(q.tr)) p.traits=q.tr.filter(x=>TRAIT_BY_KEY && TRAIT_BY_KEY[x]).slice(0,6);
+      /* ⚠ mkPlayer 는 「자기가 만든 능력치」로 ovr 을 다시 계산한다 — 그 위에 패키지의 능력치를
+         덮어썼으니 요약값만 옛 숫자로 남는다(실측 최대 3 차이). 원본 값으로 못 박는다.
+         (화면 종합 dispOvr·별점은 능력치에서 나오므로 이미 같지만, p.ovr 을 직접 보는 곳들이 있다) */
+      p.ovr=clamp(Math.round(q.ovr||p.ovr||60),40,96); p.ovrF=p.ovr;
       p.cond=95; p.inj=0; p.ban=0; p.morale=78; p.ct=1; p.wage=0;
       t.players.push(p);
       _made.push([q, p]);
@@ -61627,6 +61655,18 @@ function pvpBuildTeam(pk, idSuffix){
     /* 옛 빌드 호환 — xi 표시가 없으면 예전 규칙(앞 11명이 선발)을 그대로 쓴다 */
     if(xiIds.length!==11 && _made.length>=11) for(let i=0;i<11;i++) xiIds[i]=_made[i][1].id;
     if(xiIds.length===11) t.pvpXI=xiIds;
+    /* 🎯 전담 키커 — 등번호로 옮겨 담는다 (엔진의 designatedKicker 가 tactic.kickers 를 읽는다) */
+    const byNo={}; for(const [,p] of _made) if(p && p.no!=null) byNo[p.no]=p;
+    const K={pk:[], fk:[], ck:[], so:[]};
+    if(pk.kk && typeof pk.kk==="object") for(const kind of ["pk","fk","ck","so"]){
+      const arr=Array.isArray(pk.kk[kind])?pk.kk[kind]:[];
+      for(const no of arr.slice(0,5)){ const q=byNo[no]; if(q) K[kind].push(q.id); }
+    }
+    t.kickers=K; t.tactic.kickers=K;
+    /* 🧩 조직력 — 엔진이 famK 로 읽는다 (안 옮기면 기본값 70 으로 떨어진다) */
+    if(typeof pk.fam==="number") t.fam=clamp(Math.round(pk.fam), 0, 100);
+    /* 🎖️ 주장 — 그라운드의 리더 보정이 감독이 지정한 선수에게 붙게 한다 */
+    if(pk.capNo && byNo[pk.capNo]) t.cap={c:byNo[pk.capNo].id, s:G.season, set:true};
   }catch(e){}
   /* ⚠ assignAIRoles(t) 를 그냥 부르면 방금 옮겨 놓은 역할을 덮어쓴다 — 빈 자리만 채우게 한다 */
   try{ assignNumbers(t); assignAIRoles(t, true); }catch(e){}
@@ -61966,7 +62006,10 @@ function pvpLiveApply(tree){
     if(age>PVP_LIVE_PURGE){ try{ fbDel("live/"+id); }catch(_){} continue; }
     if(age>PVP_LIVE_TTL) continue;
     /* 🔭 상대 포메이션 보기 — 접속 표시에 실려 온 선발 스냅샷을 행에 달아 둔다 (요청) */
-    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m, f:(e.f&&typeof e.f==="object")?e.f:null});
+    /* 🔢 버전 — ⚠ 요청 「온라인 대전 화면에서 현재 버전이 다른지 바로 알 수 있게. 지금은
+       매칭해야 버전이 다른지 알 수 있잖아」. 심장박동에 이미 ver 이 실려 온다. */
+    rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m, v:(e.ver|0),
+               f:(e.f&&typeof e.f==="object")?e.f:null});
   }
   rows.sort((a,b)=> a.me? -1 : b.me? 1 : String(a.n).localeCompare(String(b.n),"ko"));
   PVP_LIVE.list=rows; PVP_LIVE.n=rows.length;
@@ -61989,6 +62032,39 @@ function pvpLiveApply(tree){
     }
   }catch(e){}
 }
+/* 🔢 버전 안내 — ⚠ 요청 원문 「온라인 대전 화면에서 현재 버전이 다른지 바로 알 수 있게 해줄래?
+   지금은 매칭해야 버전이 다른지 알 수 있잖아」.
+   접속 표시(live)에 실려 오는 ver 을 세어, 지금 라운지의 판도를 한 줄로 알려 준다.
+   ⚠ 내 버전이 뒤처졌는지 앞섰는지에 따라 해야 할 일이 다르다 — 그것까지 짚어 준다. */
+function pvpVerStat(){
+  const out={me:PVP_VER, same:0, diff:0, older:0, newer:0, max:PVP_VER, list:{}};
+  try{
+    const L=(PVP_LIVE&&PVP_LIVE.list)||null; if(!L) return out;
+    for(const r of L){
+      if(r.me) continue;
+      const v=r.v|0; if(!v) continue;
+      out.list[v]=(out.list[v]||0)+1;
+      if(v===PVP_VER) out.same++;
+      else { out.diff++; if(v>PVP_VER) out.newer++; else out.older++; }
+      if(v>out.max) out.max=v;
+    }
+  }catch(e){}
+  return out;
+}
+function pvpVerLine(){
+  const S=pvpVerStat();
+  const mine=`<span class="tierMini" style="color:var(--gold);border-color:#e3b34155" title="내 게임 버전">v${PVP_VER}</span>`;
+  if(!S.diff) return `<p class="small" style="margin:5px 0 0;opacity:.7">🔢 내 버전 ${mine}`
+    + (S.same?` · 접속 중인 감독 ${S.same}명 모두 같은 버전입니다 — 누구와도 붙을 수 있습니다.`:` · 아직 다른 감독이 없습니다.`)+`</p>`;
+  const chips=Object.keys(S.list).sort((a,b)=>b-a).map(v=>
+    `<span class="tierMini" style="color:${(+v===PVP_VER)?"var(--green)":"#ff9d5c"};border-color:${(+v===PVP_VER)?"#3fb95055":"#ff9d5c55"}">v${v}<b>×${S.list[v]}</b></span>`).join(" ");
+  return `<div class="msg ${S.newer?"warn":"info"}" style="margin:7px 0 0;padding:8px 10px">
+    <b>🔢 버전이 다른 감독이 ${S.diff}명 있습니다</b> — 버전이 다르면 <b>매칭되지 않습니다</b>.<br>
+    <span class="small">내 버전 ${mine} · 지금 라운지 ${chips}</span><br>
+    <span class="small" style="opacity:.9">${S.newer
+      ? `⬆️ <b>더 높은 버전(v${S.max})</b>을 쓰는 감독이 있습니다 — 내 게임이 옛 버전입니다. 새로고침(Ctrl+F5)하거나 최신 파일을 다시 받아 주세요.`
+      : `⬇️ 옛 버전(v${Math.min(...Object.keys(S.list).map(Number))})을 쓰는 감독이 있습니다 — 그분들이 파일을 새로 받아야 붙을 수 있습니다.`}</span></div>`;
+}
 function pvpLiveHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 확인할 수 없습니다.</p>`;
   const L=PVP_LIVE;
@@ -61998,7 +62074,13 @@ function pvpLiveHtml(){
         있게 해줘」. 이제 클릭하면 「신청 / 포메이션 보기」 메뉴가 뜬다.
      ⚠ 대전 중인 감독도 클릭은 되게 바꾼다 — 신청은 못 해도 포메이션은 볼 수 있어야 한다. */
   const _uid=(r)=>String(r.id).replace(/[^\w-]/g,"");
+  /* 🔢 버전이 다른 감독은 한눈에 — 붙을 수 없다는 걸 매칭 전에 알려 준다 (요청) */
+  const _old=(r)=>!r.me && (r.v|0) && (r.v|0)!==PVP_VER;
   const chips=L.list.slice(0,80).map(r=>
+    _old(r)
+    ? `<span class="clickable" title="${r.n} 감독은 v${r.v} 을 쓰고 있습니다 — 내 버전(v${PVP_VER})과 달라 매칭되지 않습니다" onclick="pvpUserMenu('${_uid(r)}')"
+        style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:600;background:#241c14;color:#ffb877;border:1px dashed #6e4a2a;cursor:pointer;opacity:.85">${pvpTierMini(r.n)} ${r.n} <b style="font-size:10px">🔢 v${r.v}</b>${r.m?` <b style="font-size:10px;color:#ff9d95">🔴</b>`:""}</span>`
+    :
     r.me
     ? `<span style="display:inline-block;padding:3px 9px;margin:2px 3px 0 0;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--gold);color:#0d1117">${pvpTierMini(r.n)} ${r.n} (나)</span>`
     : r.m
@@ -62009,6 +62091,7 @@ function pvpLiveHtml(){
   return `<div><b style="color:var(--green)">🟢 지금 ${L.n}명 접속 중</b>`
     + (L.n>80?` <span class="small" style="opacity:.7">(80명까지 표시)</span>`:"")
     + `</div><div style="margin-top:5px;line-height:1.9">${chips||`<span class="small" style="opacity:.6">아직 아무도 없습니다.</span>`}</div>`
+    + pvpVerLine()
     + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임 앞은 <b>이번 시즌 티어</b>입니다. 닉네임을 클릭하면 <b>1:1 대전 신청</b>과 <b>🔭 포메이션 보기</b>를 고를 수 있습니다.</p>`:"");
 }
 /* ═══ ⚔️ 1:1 대전 신청 — 개발 노트: 「접속중 유저 닉네임 클릭 → 대전 신청 박스 → 대전」 ═══
@@ -62028,12 +62111,14 @@ function pvpUserMenu(id){
                   : `<span class="small" style="opacity:.6">스쿼드 정보가 아직 도착하지 않았습니다</span>`;
     /* 🆚 상대별 전적 · 🏅 시즌 티어 — 만나는 자리마다 보여 준다 (개발 노트) */
     const h2h = pvpH2HLine(r.n) + pvpTierTag(r.n);
+    const verBad=(r.v|0) && (r.v|0)!==PVP_VER;
     const opts=[], acts=[];
-    if(!r.m){ opts.push("⚔️ 1:1 대전 신청"); acts.push(()=>pvpChallenge(r.id, r.n)); }
+    if(!r.m && !verBad){ opts.push("⚔️ 1:1 대전 신청"); acts.push(()=>pvpChallenge(r.id, r.n)); }
     opts.push(F ? "🔭 상대 포메이션 보기" : "🔭 포메이션 보기 (정보 없음)");
     acts.push(()=>pvpShowForm(r.id));
     showChoice(`<b style="font-size:15px">${pvpClean(r.n,8)}</b> 감독`
       + (r.m?` <span class="small" style="color:#ff9d95">— 지금 경기 중</span>`:``)
+      + (verBad?`\n<span class="small" style="color:#ff9d5c">🔢 <b>버전이 다릅니다</b> — 그쪽 v${r.v} · 나 v${PVP_VER}. 같은 버전이라야 붙을 수 있습니다.</span>`:``)
       + `\n${sub}\n${h2h}`, opts, (i)=>{ try{ acts[i] && acts[i](); }catch(e){} });
   }catch(e){}
 }
@@ -62070,6 +62155,14 @@ function pvpChallenge(id, nick){
   if(!pvpNetGate()) return;
   if(PVP){ try{ flash("이미 매칭이 진행 중입니다 — 먼저 취소해 주세요.","warn"); }catch(e){} return; }
   if(!id || id===pvpId()) return;
+  /* 🔢 버전이 다른 상대에게는 신청 자체를 보내지 않는다 (요청: 매칭 전에 알 수 있게) */
+  try{
+    const _r=((PVP_LIVE&&PVP_LIVE.list)||[]).find(x=>x.id===id);
+    if(_r && (_r.v|0) && (_r.v|0)!==PVP_VER){
+      gameAlert(`🔢 게임 버전이 다릅니다.\n\n${pvpClean(nick,8)||"상대"} 감독: v${_r.v}\n나: v${PVP_VER}\n\n같은 버전이라야 대전할 수 있습니다.`);
+      return;
+    }
+  }catch(e){}
   nick=pvpClean(nick,8)||"상대";
   showConfirm(`<b>⚔️ 1:1 대전 신청</b>\n\n<b>${nick}</b> 감독에게 대전을 신청할까요?\n${pvpH2HLine(nick)}\n<span class="small">상대가 수락하면 바로 매치 로비로 이동합니다 · 90초 안에 응답이 없으면 자동으로 거둡니다.</span>`,
     ()=>{ pvpChallengeGo(id, nick); }, {okLabel:"⚔️ 신청한다", cancelLabel:"그만둔다"});
@@ -62238,18 +62331,26 @@ async function pvpRoomsRefresh(force){
     if(age>PVP_ROOM_PURGE){ fbDel("rooms/"+code); continue; }   // 유령 방 청소
     if(!r.pub || r.st!=="wait" || r.g) continue;                 // 비공개·진행 중 제외
     if(age>PVP_ROOM_HIDE) continue;
-    if((r.h.ver||0)!==PVP_VER) continue;
-    rows.push({code, nick:pvpClean(r.h.nick,8)||"감독", tn:pvpClean(r.h.tn||r.h.n,16)||"?", sv:r.h.sv||30, age});
+    /* 🔢 ⚠ 요청 — 「버전이 다른지 바로 알 수 있게」. 예전에는 버전이 다른 방을 목록에서
+       조용히 빼 버려서, 분명 방을 연 사람이 있는데 목록이 비어 보였다.
+       ─ 감춰지지 않게 그대로 싣고, 「버전 다름」으로 표시하고 입장만 막는다. */
+    rows.push({code, nick:pvpClean(r.h.nick,8)||"감독", tn:pvpClean(r.h.tn||r.h.n,16)||"?", sv:r.h.sv||30, age,
+               ver:(r.h.ver||0), bad:((r.h.ver||0)!==PVP_VER)});
   }
   rows.sort((a,b)=>a.age-b.age);
   const el=document.getElementById("pvpRooms"); if(!el) return;
-  el.innerHTML = rows.length ? rows.slice(0,12).map(r=>{
+  const badN=rows.filter(r=>r.bad).length;
+  el.innerHTML = (rows.length ? rows.slice(0,12).map(r=>{
     const m=Math.floor(r.age/60000);
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1b222b">
-      <b style="color:var(--gold)">${r.nick}</b><span class="small">${r.tn} · ${(r.sv/10).toFixed(1)}★ · ${m<1?"방금":m+"분 전"}</span>
-      <button class="mini" style="margin-left:auto;padding:5px 14px" onclick="pvpJoinRoom('${r.code}')">⚔️ 입장</button></div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1b222b${r.bad?";opacity:.7":""}">
+      <b style="color:${r.bad?"#ffb877":"var(--gold)"}">${r.nick}</b><span class="small">${r.tn} · ${(r.sv/10).toFixed(1)}★ · ${m<1?"방금":m+"분 전"}</span>
+      ${r.bad
+        ? `<span class="tierMini" style="color:#ff9d5c;border-color:#ff9d5c55" title="이 방의 감독은 v${r.ver||"?"} 을 쓰고 있습니다 — 내 버전(v${PVP_VER})과 달라 입장할 수 없습니다">🔢 v${r.ver||"?"}</span>
+           <button class="mini" style="margin-left:auto;padding:5px 12px;opacity:.55" disabled title="게임 버전이 달라 입장할 수 없습니다">버전 다름</button>`
+        : `<button class="mini" style="margin-left:auto;padding:5px 14px" onclick="pvpJoinRoom('${r.code}')">⚔️ 입장</button>`}</div>`;
   }).join("")
-  : `<p class="small" style="opacity:.6">지금 대기 중인 공개 방이 없습니다 — 직접 하나 열어 보세요.</p>`;
+  : `<p class="small" style="opacity:.6">지금 대기 중인 공개 방이 없습니다 — 직접 하나 열어 보세요.</p>`)
+  + (badN?`<p class="small" style="margin:6px 0 0;color:#ff9d5c">🔢 ${badN}개 방은 <b>게임 버전이 달라</b> 들어갈 수 없습니다 — 같은 버전끼리만 붙을 수 있습니다.</p>`:"");
 }
 /* 코드로 입장 — 나 = 게스트 */
 async function pvpJoinRoom(code){
@@ -63209,11 +63310,14 @@ function pvpAwayStop(){
   try{ if(PVP){ PVP.awayT0=null; PVP.awayOpp=false; } }catch(e){}
   try{ const o=document.getElementById("pvpAwayOv"); if(o&&o.parentNode) o.parentNode.removeChild(o); }catch(e){}
 }
-/* 지금 「온라인 대전 경기가 실제로 굴러가는 중」인가 — 오버레이를 붙여도 되는 유일한 상태 */
+/* 지금 「온라인 대전 경기가 실제로 굴러가는 중」인가 — 오버레이를 붙여도 되는 유일한 상태
+   ⚠ 게스트(원정)는 엔진을 돌리지 않아 liveM 이 없다 — 대신 관전 통로(PVP.watch)로 판단한다.
+      이걸 빼면 게스트 쪽에만 자리 비움 안내가 안 뜬다. */
 function pvpAwayLive(){
   try{
-    return !!(PVP && PVP.stage==="match" && PVP.awayOpp
-              && liveM && liveM.opts && liveM.opts.pvp);
+    if(!PVP || PVP.stage!=="match" || !PVP.awayOpp) return false;
+    if(liveM && liveM.opts && liveM.opts.pvp) return true;
+    return !!(PVP.role==="guest" && PVP.watch);
   }catch(e){ return false; }
 }
 function pvpAwayOverlay(on){
@@ -63585,8 +63689,31 @@ function pvpRankWk(off){ return "w"+(Math.floor(Date.now()/PVP_RANK_WEEK)+(off|0
    ⚠ 저장은 기존 rank 갈래를 그대로 쓴다 — rank/{s시즌}/{닉네임키} = {n,p:LP,w,d,l,hi,t}.
       기존 규칙(n 문자열 8자 · p 숫자 · t 숫자)을 그대로 만족하므로
       Firebase 보안 규칙을 다시 배포할 필요가 없다. */
+/* ⚠ 제보 원문 — 「티어리스트가 왜이렇게 리셋이 잘되는거야? … 혹시 버전이 바뀌면 티어 랭킹도
+   새로 시작하는거니? … 티어랭킹을 따로 서버에서 관리하면 괜찮을까?」
+   ── 원인 세 가지 ─────────────────────────────────────────────
+   ① 티어를 주간 랭킹과 같은 rank 갈래(rank/s738/…)에 얹어 두었다. 그런데 랭킹을 불러올 때마다
+      「아는 칸이 아니면 지운다」는 청소가 돈다. 옛 빌드는 s… 칸을 모른다 —
+      그 사람이 ⚔️ 메뉴를 여는 순간 모두의 시즌 티어가 통째로 삭제됐다.
+      (버전이 바뀌어서가 아니라, 옛 버전을 쓰는 사람이 한 명만 있어도 날아갔다)
+   ② 칸 이름이 절대 시각(28일)으로 갈리므로, 시계가 어긋난 기기는 다른 칸에 쓰고
+      「모르는 칸」이 된 남의 칸을 지웠다.
+   ③ 4주마다 LP 가 0으로 완전 초기화 — 체감상 「자꾸 리셋된다」.
+   ── 수정 ────────────────────────────────────────────────────
+   · 티어를 rank 밖의 별도 갈래(tier/{닉네임키})로 옮긴다 — 옛 빌드는 이 갈래를 아예 모르므로
+     건드리지 못한다. 칸을 시즌마다 새로 만들지 않고 「한 사람당 한 칸」이라 청소할 것도 없다.
+   · 시즌 번호를 칸 이름이 아니라 기록 안(s)에 넣는다. 시즌이 바뀌면 그 사람이 다음 경기를
+     치를 때 그 칸에서 조용히 넘어간다.
+   · 시즌 전환은 완전 초기화가 아니라 「절반만 남기는」 소프트 리셋(TIER_CARRY).
+   · 기록이 없으면 주간 랭킹 성적으로 MMR 을 되살린다(요청: 「MMR 을 주간 랭킹에서 가져오고
+     거기에 맞게 티어를 재배치」) — 티어 칸이 날아가도 스스로 복구된다.
+   ⚠ 배포 전에 Firebase 규칙에 tier 갈래를 추가해야 한다 (온라인대전_설정가이드.md).
+      규칙을 아직 안 올렸으면 쓰기가 실패하는데, 그때는 화면이 그 사실을 알려 준다. */
+const TIER_CARRY=0.5;              // 시즌이 바뀔 때 이월되는 LP 비율
+const TIER_SEED_PER_PT=7;          // 주간 랭킹 1점 ≈ LP 7 (승 3점 = 21LP ≈ 승 한 판)
 const PVP_TIER_SEASON=28*24*60*60*1000;
-function pvpTierSeasonKey(off){ return "s"+(Math.floor(Date.now()/PVP_TIER_SEASON)+(off|0)); }
+function pvpTierSeasonKey(off){ return "s"+(Math.floor(Date.now()/PVP_TIER_SEASON)+(off|0)); }   // (구버전 자리 — 이전 기록 회수용)
+function pvpSeasonNum(){ return Math.floor(Date.now()/PVP_TIER_SEASON); }
 /* 사람이 읽는 시즌 번호 — 2026-01-01 을 시즌 1 로 잡는다 (절대 시각 나눗셈이라 모두 같은 값) */
 const PVP_TIER_EPOCH=Math.floor(Date.UTC(2026,0,1)/(28*24*60*60*1000));
 function pvpTierSeasonNo(){ return Math.floor(Date.now()/PVP_TIER_SEASON)-PVP_TIER_EPOCH+1; }
@@ -63660,22 +63787,53 @@ function pvpRankPost(r){
   }catch(e){}
 }
 /* 🏅 시즌 티어 갱신 — 같은 rank 갈래의 「s시즌」 칸에 LP 를 쌓는다 */
+/* 🧬 기록 하나를 「지금 시즌 기준」으로 맞춘다 — 시즌이 바뀌었으면 소프트 리셋해서 돌려준다 */
+function pvpTierNorm(c){
+  const s=pvpSeasonNum();
+  const o={ n:"", p:0, w:0, d:0, l:0, hi:0, s, pv:0, t:0 };
+  if(!c || typeof c!=="object") return o;
+  o.n=String(c.n||"").slice(0,8); o.t=c.t|0; o.pv=c.pv|0;
+  const cs=(typeof c.s==="number")?c.s:null;
+  if(cs===s){ o.p=Math.max(0,c.p|0); o.w=c.w|0; o.d=c.d|0; o.l=c.l|0; o.hi=Math.max(c.hi|0,o.p); return o; }
+  /* 지난 시즌 기록 — 절반만 안고 새 시즌을 시작한다 (완전 초기화 금지) */
+  const carried=Math.max(0, Math.round((c.p|0)*TIER_CARRY));
+  o.p=carried; o.hi=carried; o.pv=Math.max(0,c.p|0); o.w=0; o.d=0; o.l=0;
+  return o;
+}
+/* 🩹 티어 기록이 없을 때 — 주간 랭킹 성적으로 MMR 을 되살린다.
+   ⚠ 요청 — 「티어리스트 MMR 을 현재 주간 랭킹에서 가져오고 거기에 맞게 티어를 재배치하자」.
+   기록이 통째로 날아가도 라운지가 텅 비지 않고, 그동안의 성적이 티어로 다시 잡힌다. */
+function pvpTierSeed(wkRow){
+  if(!wkRow) return null;
+  const pts=wkRow.p|0;
+  const lp=Math.max(0, Math.round(pts*TIER_SEED_PER_PT));
+  return { n:wkRow.n||"감독", p:lp, w:wkRow.w|0, d:wkRow.d|0, l:wkRow.l|0, hi:lp, s:pvpSeasonNum(), pv:0, t:Date.now(), seed:1 };
+}
 function pvpTierPost(r){
   try{
     if(!pvpOn() || !r || !pvpNickClaimed()) return;
     const key=pvpNickKey(); if(!key) return;
-    const sk=pvpTierSeasonKey(0);
     /* 전력차 — 지금 붙은 상대의 스쿼드 성급(패키지에 실려 온 값) */
     let myS=3, opS=3;
     try{ if(PVP && PVP.myPack && PVP.myPack.stars) myS=+PVP.myPack.stars; }catch(e){}
     try{ if(PVP && PVP.oppPack && PVP.oppPack.stars) opS=+PVP.oppPack.stars; }catch(e){}
     const dLp=pvpTierDelta(r.my, r.op, myS, opS, !!r.ff);
-    fbGet("rank/"+sk+"/"+key).then(cur=>{
-      const c=(cur&&typeof cur==="object")?cur:{};
-      const lp=Math.max(0, (c.p|0)+dLp);
+    fbGet("tier/"+key).then(cur=>{
+      let c=pvpTierNorm(cur);
+      /* 기록이 없다 — ① 옛 자리(rank/s…)에 남아 있으면 회수 ② 그것도 없으면 주간 랭킹으로 복원 */
+      if(!cur){
+        try{
+          const seedRow=((PVP_RANK&&PVP_RANK.rows)||[]).find(x=>x.k===key);
+          const sd=pvpTierSeed(seedRow);
+          if(sd) c=pvpTierNorm(sd);
+        }catch(e){}
+        /* ③ 그래도 없으면 이 기기에 남겨 둔 마지막 LP 로 (내 것만 — 남의 것은 손대지 않는다) */
+        try{ const lo=+(localStorage.getItem("klm2026_pvpTierLp")||0); if(!c.p && lo>0) { c.p=lo; c.hi=lo; } }catch(e){}
+      }
+      const lp=Math.max(0, c.p+dLp);
       const rec={ n:String(pvpNick()||"감독").slice(0,8), p:lp,
-        w:(c.w|0)+(r.my>r.op?1:0), d:(c.d|0)+(r.my===r.op?1:0), l:(c.l|0)+(r.my<r.op?1:0),
-        hi:Math.max(c.hi|0, lp), t:Date.now() };
+        w:c.w+(r.my>r.op?1:0), d:c.d+(r.my===r.op?1:0), l:c.l+(r.my<r.op?1:0),
+        hi:Math.max(c.hi, lp), s:pvpSeasonNum(), pv:c.pv, t:Date.now() };
       try{ localStorage.setItem("klm2026_pvpTierLp", String(lp)); }catch(e){}
       try{ PVP_TIER.my={lp, w:rec.w, d:rec.d, l:rec.l, hi:rec.hi, dLp}; }catch(e){}
       try{
@@ -63686,7 +63844,11 @@ function pvpTierPost(r){
           notify(`🏅 시즌 LP <b>${dLp>=0?"+":""}${dLp}</b> → ${lp} LP <span class="small">(${T.label})</span>`, dLp>=0?"info":"warn");
         }
       }catch(e){}
-      return fbSet("rank/"+sk+"/"+key, rec);
+      return fbSet("tier/"+key, rec).then(ok2=>{
+        /* 규칙을 아직 안 올려 쓰기가 막혔다면 화면이 그 사실을 알려 준다 */
+        try{ PVP_TIER.wr = (ok2===false) ? false : true; }catch(e){}
+        return ok2;
+      });
     }).catch(()=>{});
   }catch(e){}
 }
@@ -63698,10 +63860,18 @@ async function pvpRankRefresh(force){
   PVP_RANK.at=now;
   const all=await fbGet("rank")||{};
   const wk=pvpRankWk(0), prev=pvpRankWk(-1);
-  const sk=pvpTierSeasonKey(0), sPrev=pvpTierSeasonKey(-1);
-  /* 지난주보다 오래된 주차는 청소한다 — 장부가 무한히 자라지 않게.
-     ⚠ 시즌 칸(s…)은 남긴다 — 같은 갈래를 쓰지만 수명이 4주다 (개발 노트: 티어 시즌제) */
-  for(const k in all){ if(k!==wk && k!==prev && k!==sk && k!==sPrev){ try{ fbDel("rank/"+k); }catch(e){} } }
+  /* 🧹 청소 — ⚠ 제보(티어가 자꾸 리셋된다)의 뿌리가 여기였다.
+     예전에는 「내가 아는 칸이 아니면 지운다」였다. 옛 빌드는 시즌 칸(s…)을 모르므로,
+     그 사람이 ⚔️ 메뉴를 여는 순간 모두의 시즌 티어가 통째로 삭제됐다.
+     (버전이 바뀌어서가 아니라, 옛 버전을 쓰는 사람이 한 명만 있어도 날아갔다.
+      시계가 어긋난 기기도 같은 사고를 냈다)
+     ─ 이제 「주차 칸(w…) 중, 이번 주도 지난주도 아닌 것」만 지운다.
+       모르는 이름의 칸은 무슨 일이 있어도 건드리지 않는다. */
+  for(const k in all){
+    if(k===wk || k===prev) continue;
+    if(!/^w\d+$/.test(k)) continue;                 // w… 가 아니면 남의 것 — 손대지 않는다
+    try{ fbDel("rank/"+k); }catch(e){}
+  }
   const cur=all[wk]||{}, mineKey=pvpNickKey();
   const rows=[];
   for(const k in cur){
@@ -63710,19 +63880,51 @@ async function pvpRankRefresh(force){
   }
   rows.sort((a,b)=> b.p-a.p || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
   PVP_RANK.rows=rows;
-  /* 🏅 시즌 티어 */
+  /* 🏅 시즌 티어 — 별도 갈래(tier)에서 읽는다. 없으면 주간 랭킹으로 MMR 을 되살린다 */
   {
-    const sc=all[sk]||{}, trows=[];
-    for(const k in sc){
-      const e=sc[k]; if(!e || typeof e!=="object") continue;
-      trows.push({k, n:pvpClean(e.n,8)||"감독", lp:e.p|0, w:e.w|0, d:e.d|0, l:e.l|0, hi:e.hi|0, me:k===mineKey});
+    const tAll=await fbGet("tier");
+    PVP_TIER.wr = (tAll!==null);          // null = 규칙을 아직 안 올렸거나 통신 실패
+    const seen={}, trows=[];
+    for(const k in (tAll||{})){
+      const e=(tAll||{})[k]; if(!e || typeof e!=="object") continue;
+      const c=pvpTierNorm(e);
+      seen[k]=1;
+      if(!c.p && !(c.w+c.d+c.l)) continue;      // 이번 시즌 활동도 이월분도 없으면 뺀다
+      trows.push({k, n:pvpClean(c.n||e.n,8)||"감독", lp:c.p, w:c.w, d:c.d, l:c.l, hi:c.hi, me:k===mineKey, pv:c.pv});
     }
+    /* 🩹 티어 기록이 없는 감독은 주간 랭킹 성적으로 자리를 잡아 준다
+       (⚠ 요청 — 「티어리스트 MMR 을 현재 주간 랭킹에서 가져오고 거기에 맞게 티어를 재배치하자」) */
+    for(const r of rows){
+      if(seen[r.k]) continue;
+      const sd=pvpTierSeed(r); if(!sd || !sd.p) continue;
+      trows.push({k:r.k, n:r.n, lp:sd.p, w:sd.w, d:sd.d, l:sd.l, hi:sd.p, me:r.k===mineKey, seed:1});
+    }
+    /* 🛟 내 기록만은 이 기기에 남겨 둔 값으로도 지킨다 — 서버가 비어도 내 티어는 안 사라진다 */
+    try{
+      const lo=+(localStorage.getItem("klm2026_pvpTierLp")||0);
+      if(lo>0 && mineKey){
+        const m=trows.find(x=>x.k===mineKey);
+        if(!m) trows.push({k:mineKey, n:pvpClean(pvpNick(),8)||"감독", lp:lo, w:0,d:0,l:0, hi:lo, me:true, local:1});
+        else if(m.lp<lo && !m.seed) m.lp=lo;
+      }
+    }catch(e){}
     trows.sort((a,b)=> b.lp-a.lp || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
     PVP_TIER.rows=trows;
     const mine=trows.find(x=>x.me)||null;
     PVP_TIER.my = mine ? {lp:mine.lp, w:mine.w, d:mine.d, l:mine.l, hi:mine.hi} : (PVP_TIER.my||null);
     PVP_TIER.rank = mine ? (trows.indexOf(mine)+1) : null;
     try{ pvpTierSeasonCheck(mine?mine.lp:null); }catch(e){}
+    /* 🔁 옛 자리(rank/s…)에 남아 있던 내 기록을 새 자리로 한 번 옮긴다 */
+    try{
+      if(mineKey && PVP_TIER.wr && !seen[mineKey] && !localStorage.getItem("klm2026_pvpTierMig")){
+        const oldBox=all[pvpTierSeasonKey(0)]||{}, old=oldBox[mineKey];
+        if(old && (old.p|0)>0){
+          fbSet("tier/"+mineKey, { n:String(pvpNick()||"감독").slice(0,8), p:old.p|0, w:old.w|0, d:old.d|0, l:old.l|0,
+            hi:Math.max(old.hi|0, old.p|0), s:pvpSeasonNum(), pv:0, t:Date.now() })
+            .then(()=>{ try{ localStorage.setItem("klm2026_pvpTierMig","1"); }catch(e){} });
+        } else { localStorage.setItem("klm2026_pvpTierMig","1"); }
+      }
+    }catch(e){}
     const te=document.getElementById("pvpTier");
     if(te) te.innerHTML=pvpTierHtml();
     /* 🏅 접속 목록 칩에도 티어가 붙는다 — 티어를 막 받아 왔으면 그 목록도 다시 그린다 (요청) */
@@ -63771,13 +63973,18 @@ function pvpTierHtml(){
       return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
       <td style="font-weight:800">${medal(i)}</td>
       <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
-      <td class="small" style="color:${t.t.c};font-weight:700;white-space:nowrap">${ch?"👑 챌린저":t.label}</td>
+      <td class="small" style="color:${t.t.c};font-weight:700;white-space:nowrap">${ch?"👑 챌린저":t.label}${r.seed?`<span class="small" style="opacity:.6" title="티어 기록이 없어 주간 랭킹 성적으로 자리를 잡았습니다 — 다음 경기부터 정식으로 쌓입니다"> ·추정</span>`:""}</td>
       <td><b style="color:var(--green)">${r.lp}</b></td>
       <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;}).join("")}
   </table></div>`:`<p class="small" style="margin-top:8px;opacity:.6">이번 시즌에 아직 경기를 마친 감독이 없습니다 — 1위 자리가 비어 있습니다.</p>`;
-  return mine + board + lastLine
+  /* ⚠ tier 갈래에 쓰지 못하면(보안 규칙 미배포) 그 사실을 알려 준다 — 조용히 안 쌓이면 최악이다 */
+  const wrWarn = (PVP_TIER.wr===false)
+    ? `<div class="msg warn" style="margin:8px 0 0">⚠ <b>티어 장부에 접근하지 못했습니다.</b>
+        <span class="small">Firebase 보안 규칙에 <b>tier</b> 갈래가 아직 없을 수 있습니다 — 설정 가이드 2번을 다시 올려 주세요. 그때까지 티어는 이 기기에만 남습니다.</span></div>` : "";
+  return mine + board + lastLine + wrWarn
     + `<p class="small" style="margin-top:6px;opacity:.65">승 +22 · 무 +6 · 패 −14 를 기본으로, <b>상대 스쿼드가 셀수록 승리가 더 값지고</b> 약한 상대에게 지면 더 깎입니다 (몰수는 ±18). LP 는 0 아래로 내려가지 않습니다.<br>
-      시즌 ${pvpTierSeasonNo()} — <b>${leftD}일</b> 남았습니다. 시즌이 끝나면 LP 는 초기화되고 마감 티어가 기록으로 남습니다.</p>`;
+      시즌 ${pvpTierSeasonNo()} — <b>${leftD}일</b> 남았습니다. 시즌이 끝나도 <b>LP 의 절반은 그대로 이월</b>되고, 마감 티어가 기록으로 남습니다.<br>
+      <span style="opacity:.85">티어 장부가 비어 있는 감독은 <b>주간 랭킹 성적</b>으로 자리를 잡아 드립니다 (1점 ≈ ${TIER_SEED_PER_PT} LP).</span></p>`;
 }
 function pvpRankHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
@@ -63965,7 +64172,8 @@ function pvpView(){
     /* 서버 미설정 빌드: 시작 버튼 대신 안내만 (전적은 그대로 보인다) */
     if(!pvpOn()) return `<h2>⚔️ 온라인 대전</h2><div class="msg warn">이 빌드에는 온라인 서버가 설정되어 있지 않습니다.</div>${logHtml}`;
     if(PVP_NET===null){ try{ setTimeout(()=>{ try{ pvpNetCheck(); }catch(e){} }, 30); }catch(e){} }
-    return `<h2>⚔️ 온라인 대전 <span class="small">— 실시간 P2P 친선전 (베타)</span></h2>
+    return `<h2>⚔️ 온라인 대전 <span class="small">— 실시간 P2P 친선전 (베타)</span>
+      <span class="tierMini" style="color:var(--gold);border-color:#e3b34155;vertical-align:middle;margin-left:6px" title="내 게임 버전 — 같은 버전끼리만 매칭됩니다">v${PVP_VER}</span></h2>
     ${WAITING?pvpWaitBanner():""}
     <div class="msg info">내 스쿼드로 다른 감독과 실시간으로 붙습니다. <b>순수 친선</b> — 컨디션·부상·성장에 영향이 없고 전적만 남습니다.<br>
       <span class="small">경기 중 <b>📋 전술</b> 버튼을 누르면 <b>리그와 똑같은 전술 화면</b>이 열립니다 — 교체·포메이션·역할·세부 지시를 그대로 다룹니다.
