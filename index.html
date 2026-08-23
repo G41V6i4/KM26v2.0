@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-0942-->
+<!--B:20260823-0953-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -62035,7 +62035,7 @@ function pvpPresenceSync(v){
 }
 function pvpLiveStart(){
   if(PVP_LIVE){ pvpLiveBeat(); return; }
-  PVP_LIVE={es:null, esT:null, esR:null, iv:null, list:null, n:0};
+  PVP_LIVE={es:null, esT:null, esR:null, iv:null, ivInv:null, list:null, n:0};
   PVP_TALK=PVP_TALK||{rows:null, at:0};
   PVP_RES=PVP_RES||{rows:null};
   pvpLiveBeat();
@@ -62064,7 +62064,9 @@ function pvpLiveStart(){
         새로 들어오는 쪽부터 연결이 거부된다.
      ─ 새 연결을 열지 않는다. 랭킹이 바뀌는 순간은 「경기가 끝났을 때」뿐이고, 그건 이미
        results 스트림이 알고 있다. 그 신호에 얹어서 두 표를 다시 그린다. */
-  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); pvpLivePoll(); }catch(e){} }, PVP_LIVE_MS);
+  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLivePoll(); pvpLiveBeat(); }catch(e){} }, PVP_LIVE_MS);
+  PVP_LIVE.ivInv=setInterval(()=>{ try{ pvpInvPoll(); }catch(e){} }, PVP_INV_MS);
+  try{ pvpInvPoll(); }catch(e){}
 }
 function pvpLiveStop(){
   if(!PVP_LIVE) return;
@@ -62073,6 +62075,7 @@ function pvpLiveStop(){
   try{ if(PVP_LIVE.esR) PVP_LIVE.esR.close(); }catch(e){}
   try{ if(PVP_RANK && PVP_RANK.poke){ clearTimeout(PVP_RANK.poke); PVP_RANK.poke=null; } }catch(e){}
   try{ if(PVP_LIVE.iv)  clearInterval(PVP_LIVE.iv); }catch(e){}
+  try{ if(PVP_LIVE.ivInv) clearInterval(PVP_LIVE.ivInv); }catch(e){}
   PVP_LIVE=null;
   try{ fbDel("live/"+pvpId()); }catch(e){}
 }
@@ -62110,11 +62113,30 @@ async function pvpLiveBeat(){
   if(!pvpOn() || !PVP_LIVE) return;
   const inMatch=(typeof PVP!=="undefined") && PVP && (PVP.stage==="match"||PVP.stage==="lobby") ? 1 : 0;   // ⚔️ 대전 중 표식
   const _f=pvpFormPack();
-  const ok=await fbSet("live/"+pvpId(), {n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER, m:inMatch, f:_f||null});
+  /* ⚔️ ⚠ 제보 원문 — 「1대1 대전 신청하면 상대방한테 아무것도 안 뜬다」.
+     원인 ① 1:1 신청은 상대의 접속 표시에 초대장을 얹는 방식(live/{id}.inv)인데,
+            이 심장박동이 fbSet(=PUT, 칸 전체를 갈아끼움)이라 20초마다 초대장을 지워 버린다.
+            예전에는 live 를 상시 연결로 듣고 있어 초대장이 밀리초 만에 도착했기 때문에
+            덮이기 전에 처리됐다. 상시 연결을 주기 조회로 바꾸면서 이 경합이 드러났다.
+     ─ 심장박동은 fbPatch(=칸 안의 값만 갱신)로 바꾼다. 초대장은 받는 쪽이 직접 지운다. */
+  const ok=await fbPatch("live/"+pvpId(), {n:String(pvpNick()).slice(0,8), t:Date.now(), ver:PVP_VER, m:inMatch, f:_f||null});
   if(!ok){ if(PVP_NET!==false){ PVP_NET=false; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} } return; }
   if(PVP_NET!==true){ PVP_NET=true; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} }
   /* 닉네임 점유도 함께 갱신한다 — 계속 쓰는 사람의 이름은 풀리지 않는다 */
   try{ const k=pvpNickKey(); if(k) fbPatch("nicks/"+k, {t:Date.now()}); }catch(e){}
+}
+/* ⚔️ 초대장 감시 — 내 칸 하나만 짧은 주기로 본다. 아주 작은 조회라 회선 부담이 없고,
+   상시 연결을 늘리지 않으면서도 1:1 신청이 곧바로 뜬다 (제보). */
+const PVP_INV_MS=4000;
+async function pvpInvPoll(){
+  if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
+  if(PVP) return;                                    // 이미 매칭·경기 중이면 초대는 받지 않는다
+  try{ if(typeof liveM!=="undefined" && liveM) return; }catch(e){}
+  const mine=pvpId(); if(!mine) return;
+  try{
+    const me=await fbGet("live/"+mine+"/inv");
+    if(me) pvpLiveApply({[mine]:{n:pvpNick(), t:Date.now(), inv:me}}, true);
+  }catch(e){}
 }
 /* 🔌 상시 연결 대신 주기 조회 — 접속자 목록과 전적을 한 번씩 읽어 온다 (제보) */
 async function pvpLivePoll(){
@@ -62125,7 +62147,7 @@ async function pvpLivePoll(){
   try{ const t=await fbGet("live");    if(PVP_LIVE) pvpLiveApply(t||{}); }catch(e){}
   try{ const r=await fbGet("results"); if(PVP_LIVE) pvpResApply(r||{}); }catch(e){}
 }
-function pvpLiveApply(tree){
+function pvpLiveApply(tree, invOnly){
   if(!PVP_LIVE) return;
   const now=Date.now(), rows=[], mine=pvpId();
   for(const id in (tree||{})){
@@ -62139,10 +62161,12 @@ function pvpLiveApply(tree){
     rows.push({id, n:pvpClean(e.n,8)||"감독", me:id===mine, m:!!e.m, v:(e.ver|0),
                f:(e.f&&typeof e.f==="object")?e.f:null});
   }
-  rows.sort((a,b)=> a.me? -1 : b.me? 1 : String(a.n).localeCompare(String(b.n),"ko"));
-  PVP_LIVE.list=rows; PVP_LIVE.n=rows.length;
-  const el=document.getElementById("pvpLive");
-  if(el) el.innerHTML=pvpLiveHtml();
+  if(!invOnly){
+    rows.sort((a,b)=> a.me? -1 : b.me? 1 : String(a.n).localeCompare(String(b.n),"ko"));
+    PVP_LIVE.list=rows; PVP_LIVE.n=rows.length;
+    const el=document.getElementById("pvpLive");
+    if(el) el.innerHTML=pvpLiveHtml();
+  }
   /* ⚔️ 내 접속 표시에 초대장(inv)이 얹혀 있으면 — 1:1 대전 신청이 온 것이다 (개발 노트) */
   try{
     const meE=(tree||{})[mine], inv=meE && meE.inv;
@@ -64664,7 +64688,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-0942";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-0953";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
