@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1453-->
+<!--B:20260823-1720-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -62615,8 +62615,9 @@ function pvpLiveHtml(){
   return `<div><b style="color:var(--green)">🟢 지금 ${L.n}명 접속 중</b>`
     + (L.n>80?` <span class="small" style="opacity:.7">(80명까지 표시)</span>`:"")
     + `</div><div style="margin-top:5px;line-height:1.9">${chips||`<span class="small" style="opacity:.6">아직 아무도 없습니다.</span>`}</div>`
+    + pvpStreakLine()
     + pvpVerLine()
-    + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임 앞은 <b>이번 시즌 티어</b>입니다. 닉네임을 클릭하면 <b>1:1 대전 신청</b>과 <b>🔭 포메이션 보기</b>를 고를 수 있습니다.</p>`:"");
+    + (L.n>1?`<p class="small" style="margin:5px 0 0;opacity:.6">닉네임 앞은 <b>이번 시즌 티어</b>, 뒤의 🔥 는 <b>연승</b>입니다. 닉네임을 클릭하면 <b>👤 감독 프로필</b>·<b>1:1 대전 신청</b>·<b>🔭 포메이션 보기</b>를 고를 수 있습니다.</p>`:"");
 }
 /* ═══ ⚔️ 1:1 대전 신청 — 개발 노트: 「접속중 유저 닉네임 클릭 → 대전 신청 박스 → 대전」 ═══
    비공개 방을 만들어 두고, 상대의 접속 표시(live/{id})에 초대장(inv)을 얹는다.
@@ -62637,6 +62638,8 @@ function pvpUserMenu(id){
     const h2h = pvpH2HLine(r.n) + pvpTierTag(r.n);
     const verBad=(r.v|0) && (r.v|0)!==PVP_VER;
     const opts=[], acts=[];
+    /* 👤 요청 — 「접속 목록에서도 프로필이 열리게」 */
+    opts.push("👤 감독 프로필"); acts.push(()=>pvpProfile(r.n));
     if(!r.m && !verBad){ opts.push("⚔️ 1:1 대전 신청"); acts.push(()=>pvpChallenge(r.id, r.n)); }
     opts.push(F ? "🔭 상대 포메이션 보기" : "🔭 포메이션 보기 (정보 없음)");
     acts.push(()=>pvpShowForm(r.id));
@@ -62869,7 +62872,8 @@ function pvpResHtml(){
   if(!R.rows.length) return `<p class="small" style="opacity:.6">최근 사흘 안에 끝난 경기가 아직 없습니다 — 첫 경기의 주인공이 되어 보세요.</p>`;
   const ago=(t)=>{ const m=Math.floor((Date.now()-t)/60000);
     return m<1?"방금":m<60?(m+"분 전"):(m<1440?(Math.floor(m/60)+"시간 전"):(Math.floor(m/1440)+"일 전")); };
-  const pill=(nick,team,col)=>`<span class="prNick">${nick}</span>`
+  /* 👤 요청 — 「전적표 어디서든」 프로필이 열리게. 닉네임을 누르면 감독 카드가 뜬다 */
+  const pill=(nick,team,col)=>`<span class="prNick clickable" onclick="pvpProfile('${nick}')" title="${nick} 감독의 프로필 보기" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px">${nick}</span>`
     + `<span class="prTeam" style="background:${col};color:${(typeof inkOn==="function")?inkOn(col):"#fff"}">${team}</span>`;
   return `<div class="prList">${R.rows.map(r=>{
     const win=r.hg>r.ag?"h":(r.ag>r.hg?"a":"");
@@ -64384,12 +64388,13 @@ function pvpTierMini(nick, withLp){
   if(!r) return `<span class="tierMini" style="color:#6b7480;border-color:#2a3441" title="이번 시즌 기록 없음">–</span>`;
   if(r.placing){
     const E=pvpPlaceEst(r);
-    return `<span class="tierMini" style="color:var(--gold);border-color:#7a5f1e" title="배치고사 ${r.pl|0}/${TIER_PLACE_N}${E?` — 지금 성적이면 ${E.label} 예상`:""}">🎯<b>${r.pl|0}</b>${E?pvpTierSvg(E.t.k,E.div,12):""}</span>`;
+    return `<span class="tierMini" style="color:var(--gold);border-color:#7a5f1e" title="배치고사 ${r.pl|0}/${TIER_PLACE_N}${E?` — 지금 성적이면 ${E.label} 예상`:""}">🎯<b>${r.pl|0}</b>${E?pvpTierSvg(E.t.k,E.div,12):""}</span>`+pvpStreakChip(r);
   }
   const T=pvpTierOf(r.lp);
   const dv=(T.t.k==="master")?"":PVP_DIV[T.div];
   return `<span class="tierMini" style="color:${T.t.c};border-color:${T.t.c}55" title="${T.label} · ${r.lp} LP · ${r.w}승 ${r.d}무 ${r.l}패">`
-       + `${pvpTierSvg(T.t.k,T.div,13)}${dv?`<b>${dv}</b>`:""}${withLp?` <span style="opacity:.8">${r.lp}</span>`:""}</span>`;
+       + `${pvpTierSvg(T.t.k,T.div,13)}${dv?`<b>${dv}</b>`:""}${withLp?` <span style="opacity:.8">${r.lp}</span>`:""}</span>`
+       + pvpStreakChip(r);
 }
 function pvpH2HLine(nick){
   const h=pvpH2H(nick);
@@ -64400,8 +64405,184 @@ function pvpH2HLine(nick){
        + ` <span style="opacity:.7">(${h.gf}:${h.ga})</span>`
        + (form?` · 최근 ${form}`:"") + `</span>`;
 }
+/* ═══ 👤 감독 프로필 카드 · 🔥 연승 도전 ═══════════════════════════════
+   ⚠ 요청 원문 — 「1. 감독 프로필 카드 — 닉네임 클릭 → 티어 문장, 시즌 전적, 최근 5경기
+      폼(●●○●●), 선호 포메이션, 최다 사용 팀, 연승 기록. 접속 목록·랭킹·전적표 어디서든 열리게.
+      2. 연승 도전 (스트릭) — 현재 연승 수를 접속 목록 칩과 프로필에 표시하고, 3/5/10연승마다
+      티어 포인트 보너스. 연승 중인 감독한테는 "🔥 5연승 도전자" 태그가 붙어서 도전 욕구를 만듦.
+      랭킹에 "최장 연승" 탭 추가」.
+   설계 — 새 통신을 한 줄도 늘리지 않는다. 상시 연결은 그대로 3개(live·talk·results)다.
+     · 연승·최근 폼·선호 포메이션·최다 사용 팀은 이미 있는 tier/{닉네임키} 칸에 얹는다
+       (st=현재 연승 · mx=시즌 최장 연승 · rc=최근 결과 WDL 문자열 · fm=선호 포메이션 · tm=최다 사용 팀).
+       Firebase 규칙은 n·p·s·t 만 검사하고 나머지 칸은 막지 않으므로 규칙을 다시 올릴 필요가 없다.
+     · 프로필 카드는 이미 받아 둔 tier·rank·results·접속 표시를 한 장으로 모아 그린다. */
+const TIER_STREAK_BONUS={3:5, 5:12, 7:20, 10:35};   // 🔥 연승 보너스 LP
+function pvpStreakBonus(st){
+  st=st|0;
+  if(st<3) return 0;
+  if(TIER_STREAK_BONUS[st]!=null) return TIER_STREAK_BONUS[st];
+  return (st>10 && st%5===0) ? 35 : 0;              // 10연승 뒤로는 5연승마다 다시 +35
+}
+function pvpStreakNext(st){
+  st=st|0;
+  for(const k of [3,5,7,10]){ if(st<k) return k; }
+  return (Math.floor(st/5)+1)*5;
+}
+/* 🔥 연승 배지 — 3연승부터 붙는다. 「도전자」 표식이 되어 다른 감독의 도전 욕구를 만든다 */
+function pvpStreakChip(r){
+  try{
+    const st=r&&(r.st|0);
+    if(!st || st<3) return "";
+    return `<span class="tierMini" style="color:#ff9d5c;border-color:#ff9d5c66;margin-left:2px" title="${st}연승 중 — 꺾으면 이 연승이 끊깁니다">🔥<b>${st}</b></span>`;
+  }catch(e){ return ""; }
+}
+/* ●●○●● — 최근 결과. 승 ● · 무 ◐ · 패 ○ (최신이 왼쪽) */
+function pvpFormDots(rc, n){
+  const s=String(rc||"").replace(/[^WDL]/g,"").slice(0, n||5);
+  if(!s) return `<span class="small" style="opacity:.55">–</span>`;
+  return s.split("").map(v=>`<b title="${v==="W"?"승":v==="L"?"패":"무"}" style="font-size:14px;letter-spacing:1px;color:${v==="W"?"var(--green)":v==="L"?"var(--red)":"var(--gold)"}">${v==="W"?"●":v==="D"?"◐":"○"}</b>`).join("");
+}
+/* 내 경기 기록에서 「최다 사용 팀 · 선호 포메이션」을 뽑는다 — 서버에는 결과값만 한 칸씩 올린다 */
+function pvpMyTop(){
+  const out={fm:"", tm:""};
+  try{
+    const L=Array.isArray(G.pvpLog)?G.pvpLog:[];
+    const cf={}, ct={};
+    for(const x of L){
+      if(x&&x.myF) cf[x.myF]=(cf[x.myF]||0)+1;
+      if(x&&x.myT) ct[x.myT]=(ct[x.myT]||0)+1;
+    }
+    const top=(m)=>{ let k="", n=0; for(const j in m){ if(m[j]>n){ n=m[j]; k=j; } } return k; };
+    out.fm=String(top(cf)||"").slice(0,14); out.tm=String(top(ct)||"").slice(0,10);
+  }catch(e){}
+  return out;
+}
+/* 🔥 라운지 한 줄 — 지금 접속해 있는 연승 도전자들 */
+function pvpStreakLine(){
+  try{
+    const rows=(PVP_TIER&&PVP_TIER.rows)||null; if(!rows) return "";
+    const live=((PVP_LIVE&&PVP_LIVE.list)||[]).map(x=>pvpNickKeyOf(x.n));
+    const hot=rows.filter(r=>(r.st|0)>=3 && live.indexOf(r.k)>=0).sort((a,b)=>(b.st|0)-(a.st|0)).slice(0,3);
+    if(!hot.length) return "";
+    return `<p class="small" style="margin:5px 0 0;color:#ff9d5c">🔥 <b>연승 도전자</b> — `
+      + hot.map(r=>`<span class="clickable" onclick="pvpProfile('${r.n}')" style="cursor:pointer;text-decoration:underline dotted">${r.n} <b>${r.st}연승</b></span>`).join(" · ")
+      + ` <span style="opacity:.7">· 꺾으면 그 연승이 끊깁니다</span></p>`;
+  }catch(e){ return ""; }
+}
+/* 프로필 카드 안의 버튼 — 팝업을 닫고 그 자리로 넘어간다 */
+function pvpProfileAct(kind, id, nick){
+  try{ const b=document.getElementById("gcModal"); if(b){ b.className="hidden"; b.innerHTML=""; } }catch(e){}
+  try{
+    if(kind==="chal") pvpChallenge(id, nick);
+    else if(kind==="form") pvpShowForm(id);
+  }catch(e){}
+}
+function pvpProfile(nick){
+  try{
+    const nm=pvpClean(nick,8)||"감독";
+    const key=pvpNickKeyOf(nm);
+    const me=!!(key && key===pvpNickKey());
+    const T=pvpTierFind(nm);
+    const RK=((PVP_RANK&&PVP_RANK.rows)||[]);
+    const W=RK.find(x=>x.k===key)||null;
+    const wRank=W?(RK.indexOf(W)+1):0;
+    const LV=((PVP_LIVE&&PVP_LIVE.list)||[]).find(x=>pvpNickKeyOf(x.n)===key)||null;
+    /* 내 카드는 서버 값이 아직 안 왔어도 이 기기의 기록으로 메운다 */
+    const myTop = me ? pvpMyTop() : null;
+    const fm = (T&&T.fm) || (myTop&&myTop.fm) || (LV&&LV.f&&LV.f.fm) || "";
+    const tm = (T&&T.tm) || (myTop&&myTop.tm) || (LV&&LV.f&&(LV.f.ts||LV.f.tn)) || "";
+
+    /* ── 머리 — 티어 문장 ── */
+    let head;
+    if(!T){
+      head=`<div style="display:flex;gap:12px;align-items:center">
+        <div style="font-size:34px;line-height:1">👤</div>
+        <div><div style="font-size:18px;font-weight:800;color:var(--gold)">${nm}${me?' <span class="small">(나)</span>':""}</div>
+        <div class="small" style="opacity:.75">이번 시즌 기록이 아직 없습니다</div></div></div>`;
+    } else if(T.placing){
+      const E=pvpPlaceEst(T);
+      head=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="font-size:34px;line-height:1">🎯</div>
+        <div style="flex:1;min-width:150px">
+          <div style="font-size:18px;font-weight:800;color:var(--gold)">${nm}${me?' <span class="small">(나)</span>':""}</div>
+          <div class="small" style="opacity:.9">배치고사 <b>${T.pl|0} / ${TIER_PLACE_N}</b>${E?` · <b style="color:${E.t.c}">${pvpTierLbl(E,13)} 예상</b>`:""}</div>
+        </div></div>`;
+    } else {
+      const t=pvpTierOf(T.lp);
+      const sr=((PVP_TIER&&PVP_TIER.rows)||[]).filter(x=>!x.placing).indexOf(T)+1;
+      head=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="line-height:1">${pvpTierSvg(t.t.k,t.div,46)}</div>
+        <div style="flex:1;min-width:150px">
+          <div style="font-size:18px;font-weight:800;color:var(--gold)">${nm}${me?' <span class="small">(나)</span>':""}</div>
+          <div class="small" style="color:${t.t.c};font-weight:800">${pvpTierLbl(t,14)} · ${T.lp} LP${sr>0?` · 시즌 ${sr}위`:""}</div>
+          ${(T.hi|0)>(T.lp|0)?`<div class="small" style="opacity:.65">최고 ${T.hi} LP</div>`:""}
+        </div></div>`;
+    }
+
+    /* ── 접속 상태 ── */
+    const stat = !LV ? `<span style="opacity:.55">오프라인</span>`
+      : LV.me ? `<b style="color:var(--gold)">나</b>`
+      : LV.m  ? `<b style="color:#ff9d95">🔴 대전 중</b>`
+      : LV.q  ? `<b style="color:#ffd479">🟡 매칭 중</b>`
+      : `<b style="color:var(--green)">🟢 접속 중</b>`;
+
+    /* ── 통계 줄 ── */
+    const g=T?((T.w|0)+(T.d|0)+(T.l|0)):0;
+    const wr=g?Math.round((T.w|0)*100/g):0;
+    const cell=(k,v)=>`<div style="flex:1;min-width:88px;background:#161b22;border:1px solid var(--line);border-radius:8px;padding:7px 9px">
+        <div class="small" style="opacity:.6">${k}</div><div style="font-weight:700;margin-top:2px">${v}</div></div>`;
+    const st=T?(T.st|0):0, mx=T?(T.mx|0):0;
+    const grid=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+      ${cell("시즌 전적", g?`${T.w}승 ${T.d}무 ${T.l}패`:"–")}
+      ${cell("승률", g?`${wr}%`:"–")}
+      ${cell("최근 5경기", pvpFormDots(T?T.rc:"",5))}
+      ${cell("현재 연승", st>=1?`<span style="color:#ff9d5c">🔥 ${st}</span>`:"–")}
+      ${cell("최장 연승", mx>=1?`<span style="color:#ff9d5c">${mx}연승</span>`:"–")}
+      ${cell("주간 랭킹", W?`${W.p}점 <span class="small" style="opacity:.7">(${wRank}위)</span>`:"–")}
+      ${cell("선호 포메이션", fm?`<span style="color:var(--gold)">${pvpClean(fm,14)}</span>`:"–")}
+      ${cell("최다 사용 팀", tm?pvpClean(tm,12):"–")}
+      ${cell("접속 상태", stat)}
+    </div>`;
+
+    /* ── 연승 도전 안내 ── */
+    const chase = (st>=3)
+      ? `<div class="msg warn" style="margin:9px 0 0;padding:8px 10px">🔥 <b>${st}연승 도전자</b> — 다음 보너스는 <b>${pvpStreakNext(st)}연승</b>입니다${me?"":`. 이 감독을 꺾으면 연승이 끊깁니다.`}</div>`
+      : "";
+
+    /* ── 나와의 상대 전적 ── */
+    const h2h = me ? "" : `<div style="margin-top:9px">${pvpH2HLine(nm)}</div>`;
+
+    /* ── 최근 경기 (모두의 전적에서 이 감독이 낀 판) ── */
+    const RS=((PVP_RES&&PVP_RES.rows)||[]).filter(x=>pvpNickKeyOf(x.hn)===key||pvpNickKeyOf(x.an)===key).slice(0,5);
+    const recent = RS.length ? `<div style="margin-top:10px"><div class="small" style="opacity:.7;margin-bottom:4px">최근 경기</div>
+      ${RS.map(x=>{
+        const home=(pvpNickKeyOf(x.hn)===key);
+        const my=home?x.hg:x.ag, op=home?x.ag:x.hg;
+        const on=home?x.an:x.hn, ot=home?x.at:x.ht;
+        const col=my>op?"var(--green)":my<op?"var(--red)":"var(--gold)";
+        return `<div class="small" style="display:flex;gap:8px;align-items:center;padding:3px 0;border-bottom:1px solid #1b222b">
+          <b style="color:${col};width:20px">${my>op?"승":my<op?"패":"무"}</b>
+          <b>${my} : ${op}</b><span style="opacity:.8">vs ${on} <span style="opacity:.6">(${ot})</span></span>
+          ${x.ff?`<b style="color:#ff9d5c;margin-left:auto">몰수</b>`:""}</div>`;
+      }).join("")}</div>` : "";
+
+    /* ── 버튼 ── */
+    let acts="";
+    if(LV && !LV.me){
+      const canChal = !LV.m && !LV.q && !((LV.v|0) && (LV.v|0)!==PVP_VER) && !PVP;
+      acts=`<div style="display:flex;gap:6px;margin-top:11px;flex-wrap:wrap">
+        ${canChal?`<button class="mini" style="flex:1;min-width:120px" onclick="pvpProfileAct('chal','${String(LV.id).replace(/[^\w-]/g,"")}','${nm}')">⚔️ 1:1 대전 신청</button>`:""}
+        <button class="mini" style="flex:1;min-width:120px" onclick="pvpProfileAct('form','${String(LV.id).replace(/[^\w-]/g,"")}','${nm}')">🔭 포메이션 보기</button>
+      </div>`;
+    }
+    showConfirm(head+grid+chase+h2h+recent+acts, null, {okLabel:"닫기", cancelLabel:""});
+  }catch(e){}
+}
 function pvpLogAdd(r){
   G.pvpLog=Array.isArray(G.pvpLog)?G.pvpLog:[];
+  /* 👤 프로필 카드의 「최다 사용 팀 · 선호 포메이션」 밑감 — 경기마다 내 구단·포메이션을 함께 적는다 */
+  try{ const _t=userTeam(); if(_t && r) r.myT=String(_t.short||_t.name||"").slice(0,10); }catch(e){}
+  try{ const _f=pvpFormPack(); if(_f && _f.fm && r) r.myF=String(_f.fm).slice(0,14); }catch(e){}
   G.pvpLog.unshift(Object.assign({s:G.season, d:G.day||0, at:Date.now()}, r));
   if(G.pvpLog.length>200) G.pvpLog.length=200;
   try{ pvpRankPost(r); }catch(e){}   // 🏆 주간 랭킹 — 내 결과를 장부에 얹는다 (개발 노트)
@@ -64591,15 +64772,20 @@ function pvpRankPost(r){
 /* 🧬 기록 하나를 「지금 시즌 기준」으로 맞춘다 — 시즌이 바뀌었으면 소프트 리셋해서 돌려준다 */
 function pvpTierNorm(c){
   const s=pvpSeasonNum();
-  const o={ n:"", p:0, w:0, d:0, l:0, hi:0, s, pv:0, t:0, pl:0, pp:0, mm:0 };
+  const o={ n:"", p:0, w:0, d:0, l:0, hi:0, s, pv:0, t:0, pl:0, pp:0, mm:0, st:0, mx:0, rc:"", fm:"", tm:"" };
   if(!c || typeof c!=="object") return o;
   o.n=String(c.n||"").slice(0,8); o.t=c.t|0; o.pv=c.pv|0;
+  /* 👤 선호 포메이션·최다 사용 팀은 시즌이 바뀌어도 그대로 이어진다 (성적이 아니라 취향이다) */
+  o.fm=String(c.fm||"").slice(0,14); o.tm=String(c.tm||"").slice(0,10);
   const cs=(typeof c.s==="number")?c.s:null;
   if(cs===s){
     o.p=Math.max(0,c.p|0); o.w=c.w|0; o.d=c.d|0; o.l=c.l|0; o.hi=Math.max(c.hi|0,o.p);
     /* 🎯 배치 — 옛 기록에는 pl 이 없다. 이미 경기를 치른 감독을 다시 배치로 돌려보내지 않는다 */
     o.pl = (c.pl!=null) ? Math.max(0,c.pl|0) : ((c.w|0)+(c.d|0)+(c.l|0) ? TIER_PLACE_N : 0);
     o.pp = c.pp|0; o.mm = c.mm|0;
+    /* 🔥 연승 — 이번 시즌 기록만 이어 받는다 (시즌이 바뀌면 0부터) */
+    o.st=Math.max(0,c.st|0); o.mx=Math.max(0, c.mx|0, o.st);
+    o.rc=String(c.rc||"").replace(/[^WDL]/g,"").slice(0,10);
     return o;
   }
   /* 지난 시즌 기록 — 절반만 안고 새 시즌을 시작한다 (완전 초기화 금지).
@@ -64653,22 +64839,35 @@ function pvpTierPost(r){
         /* ③ 그래도 없으면 이 기기에 남겨 둔 마지막 LP 로 (내 것만 — 남의 것은 손대지 않는다) */
         try{ const lo=+(localStorage.getItem("klm2026_pvpTierLp")||0); if(!c.p && lo>0) { c.p=lo; c.hi=lo; } }catch(e){}
       }
+      /* 🔥 연승 — ⚠ 요청 「3/5/10연승마다 티어 포인트 보너스」.
+         이기면 늘고, 비기거나 지면 그 자리에서 끊긴다. 보너스는 이번 판 LP 에 얹혀
+         배치 중이든 정식이든 똑같이 반영된다. */
+      const _wn=(r.my>r.op), _dr=(r.my===r.op);
+      const stNow=_wn ? (c.st|0)+1 : 0;
+      const stBonus=_wn ? pvpStreakBonus(stNow) : 0;
+      const stBroke=(!_wn && (c.st|0)>=3) ? (c.st|0) : 0;
+      const rcNew=((_wn?"W":_dr?"D":"L")+String(c.rc||"")).slice(0,10);
+      const dLpT=dLp+stBonus;
+      const _top=pvpMyTop();
       /* 🎯 배치고사 — 다섯 판을 마치기 전에는 티어를 매기지 않고 성적만 모은다 */
       const wasPlacing = c.pl < TIER_PLACE_N;
       let lp, pl=c.pl, pp=c.pp, placedNow=false;
       if(wasPlacing){
-        pl=c.pl+1; pp=c.pp+dLp;
+        pl=c.pl+1; pp=c.pp+dLpT;
         if(pl>=TIER_PLACE_N){
           /* MMR — ① 이번 시즌에 이미 쌓인 LP ② 지난 시즌 이월분 ③ 주간 랭킹 성적 */
           let mmr=Math.max(c.p|0, c.mm|0);
           if(!mmr){ try{ const sd=pvpTierSeed(((PVP_RANK&&PVP_RANK.rows)||[]).find(x=>x.k===key)); if(sd) mmr=sd.p|0; }catch(e){} }
           lp=pvpPlaceLp(mmr, pp); placedNow=true;
         } else lp=c.p;                     // 배치 중 — 표시 LP 는 아직 없다
-      } else lp=Math.max(0, c.p+dLp);
+      } else lp=Math.max(0, c.p+dLpT);
       const rec={ n:String(pvpNick()||"감독").slice(0,8), p:lp,
         w:c.w+(r.my>r.op?1:0), d:c.d+(r.my===r.op?1:0), l:c.l+(r.my<r.op?1:0),
         hi:Math.max(c.hi, lp), s:pvpSeasonNum(), pv:c.pv, t:Date.now(),
-        pl, pp, mm:c.mm };
+        pl, pp, mm:c.mm,
+        /* 🔥👤 연승·최근 폼·선호 포메이션·최다 사용 팀 — 규칙이 검사하지 않는 칸이라 규칙 재배포가 필요 없다 */
+        st:stNow, mx:Math.max(c.mx|0, stNow), rc:rcNew,
+        fm:String(_top.fm||c.fm||"").slice(0,14), tm:String(_top.tm||c.tm||"").slice(0,10) };
       try{ localStorage.setItem("klm2026_pvpTierLp", String(lp)); }catch(e){}
       try{ localStorage.setItem("klm2026_pvpTierPl", pl+"/"+pp); }catch(e){}
       try{ PVP_TIER.my={lp, w:rec.w, d:rec.d, l:rec.l, hi:rec.hi, dLp, pl, pp}; }catch(e){}
@@ -64677,15 +64876,21 @@ function pvpTierPost(r){
           const T=pvpTierOf(lp);
           notify(`🎯 <b>배치 완료</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, "good");
         } else if(pl<TIER_PLACE_N){
-          notify(`🎯 <b>배치 ${pl}/${TIER_PLACE_N}</b> — ${TIER_PLACE_N-pl}경기 더 치르면 티어가 정해집니다 <span class="small">(이번 판 ${dLp>=0?"+":""}${dLp})</span>`, dLp>=0?"info":"warn");
+          notify(`🎯 <b>배치 ${pl}/${TIER_PLACE_N}</b> — ${TIER_PLACE_N-pl}경기 더 치르면 티어가 정해집니다 <span class="small">(이번 판 ${dLpT>=0?"+":""}${dLpT})</span>`, dLpT>=0?"info":"warn");
         } else {
-          const T=pvpTierOf(lp), T0=pvpTierOf(Math.max(0, lp-dLp));
+          const T=pvpTierOf(lp), T0=pvpTierOf(Math.max(0, lp-dLpT));
           if(T.t.k!==T0.t.k || T.div!==T0.div){
-            notify(`🏅 <b>${dLp>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, dLp>=0?"good":"warn");
+            notify(`🏅 <b>${dLpT>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, dLpT>=0?"good":"warn");
           } else {
-            notify(`🏅 시즌 LP <b>${dLp>=0?"+":""}${dLp}</b> → ${lp} LP <span class="small">(${pvpTierLbl(T,13)})</span>`, dLp>=0?"info":"warn");
+            notify(`🏅 시즌 LP <b>${dLpT>=0?"+":""}${dLpT}</b> → ${lp} LP <span class="small">(${pvpTierLbl(T,13)})</span>`, dLpT>=0?"info":"warn");
           }
         }
+      }catch(e){}
+      /* 🔥 연승 알림 — 보너스가 붙은 판, 연승이 이어지는 판, 끊긴 판 세 가지 */
+      try{
+        if(stBonus>0) notify(`🔥 <b>${stNow}연승 달성!</b> 연승 보너스 <b style="color:var(--gold)">+${stBonus} LP</b>`, "good");
+        else if(stNow>=3) notify(`🔥 <b>${stNow}연승</b> 진행 중 — ${pvpStreakNext(stNow)}연승에서 보너스 LP`, "info");
+        else if(stBroke) notify(`💔 <b>${stBroke}연승이 끊겼습니다.</b>`, "warn");
       }catch(e){}
       return fbSet("tier/"+key, rec).then(ok2=>{
         /* 규칙을 아직 안 올려 쓰기가 막혔다면 화면이 그 사실을 알려 준다 */
@@ -64752,7 +64957,9 @@ async function pvpRankRefresh(force){
       seen[k]=1;
       if(!c.p && !(c.w+c.d+c.l)) continue;      // 이번 시즌 활동도 이월분도 없으면 뺀다
       trows.push({k, n:pvpClean(c.n||e.n,8)||"감독", lp:c.p, w:c.w, d:c.d, l:c.l, hi:c.hi, me:k===mineKey, pv:c.pv,
-                  pl:c.pl, pp:c.pp, mm:Math.max(c.p|0, c.mm|0), placing:(c.pl<TIER_PLACE_N)});
+                  pl:c.pl, pp:c.pp, mm:Math.max(c.p|0, c.mm|0), placing:(c.pl<TIER_PLACE_N),
+                  /* 🔥👤 연승·최근 폼·선호 포메이션·최다 사용 팀 (프로필 카드·연승 탭) */
+                  st:c.st|0, mx:c.mx|0, rc:c.rc||"", fm:pvpClean(c.fm,14), tm:pvpClean(c.tm,12)});
     }
     /* 🩹 티어 기록이 없는 감독은 주간 랭킹 성적으로 자리를 잡아 준다
        (⚠ 요청 — 「티어리스트 MMR 을 현재 주간 랭킹에서 가져오고 거기에 맞게 티어를 재배치하자」) */
@@ -64860,7 +65067,25 @@ function pvpTierHtml(){
   const medal=(i)=> i===0?"🥇" : i===1?"🥈" : i===2?"🥉" : `<span style="opacity:.6">${i+1}</span>`;
   /* 🏅 요청 — 「시즌 티어표에서도 유저들 등급 쫘락 볼 수 있게」. 15명에서 자르지 않고
      전원을 담되, 길어지면 표 안에서 스크롤한다. */
-  const board=R.rows.length?`<div class="tblScroll" style="margin-top:10px;max-height:46vh;overflow-y:auto"><table>
+  /* 🔥 ⚠ 요청 — 「랭킹에 "최장 연승" 탭 추가」. 같은 표를 두 가지 잣대로 본다 */
+  const view=(PVP_TIER.view==="st")?"st":"lp";
+  const tabs=`<div style="display:flex;gap:6px;margin-top:10px">
+    <button class="mini" style="${view==="lp"?"background:var(--gold);color:#0d1117;font-weight:800":"opacity:.65"}" onclick="pvpTierView('lp')">🏅 티어순</button>
+    <button class="mini" style="${view==="st"?"background:#ff9d5c;color:#0d1117;font-weight:800":"opacity:.65"}" onclick="pvpTierView('st')">🔥 최장 연승</button></div>`;
+  /* 👤 이름을 누르면 감독 프로필 카드가 열린다 (요청: 어디서든 열리게) */
+  const nameCell=(r)=>`<td style="text-align:left"><b class="clickable" onclick="pvpProfile('${r.n}')" title="${r.n} 감독의 프로필 보기"`
+    + ` style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px${r.me?";color:var(--gold)":""}">${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>`;
+  const stRows=R.rows.filter(r=>(r.mx|0)>0||(r.st|0)>0).sort((a,b)=>(b.mx|0)-(a.mx|0)||(b.st|0)-(a.st|0)||b.lp-a.lp);
+  const boardSt=stRows.length?`<div class="tblScroll" style="margin-top:8px;max-height:46vh;overflow-y:auto"><table>
+    <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>최장 연승</th><th>지금</th><th>최근 5</th></tr>
+    ${stRows.map((r,i)=>`<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
+      <td style="font-weight:800">${medal(i)}</td>
+      ${nameCell(r)}
+      <td><b style="color:#ff9d5c">${r.mx|0}연승</b></td>
+      <td class="small">${(r.st|0)>=1?`<b style="color:#ff9d5c">🔥 ${r.st}</b>`:`<span style="opacity:.5">–</span>`}</td>
+      <td class="small" style="white-space:nowrap">${pvpFormDots(r.rc,5)}</td></tr>`).join("")}
+  </table></div>`:`<p class="small" style="margin-top:8px;opacity:.6">아직 연승 기록이 없습니다 — 내리 두 판을 이기면 여기에 이름이 오릅니다.</p>`;
+  const board=R.rows.length?`<div class="tblScroll" style="margin-top:8px;max-height:46vh;overflow-y:auto"><table>
     <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>티어</th><th>LP</th><th>전적</th></tr>
     ${R.rows.map((r,i)=>{ const t=pvpTierOf(r.lp);
       /* 👑 챌린저 — 마스터 중 시즌 상위 3명 (자리에 대한 칭호라 인원이 늘면 자연히 어려워진다) */
@@ -64870,15 +65095,15 @@ function pvpTierHtml(){
         const E=pvpPlaceEst(r);
         return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""} style="opacity:.8">
       <td style="font-weight:800;opacity:.5">–</td>
-      <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
+      ${nameCell(r)}
       <td class="small" style="white-space:nowrap"><span style="color:var(--gold);font-weight:700">🔮 배치 ${r.pl|0}/${TIER_PLACE_N}</span>
         ${E?`<br><span style="color:${E.t.c};opacity:.85" title="지금 성적이 이어진다면 배치가 끝났을 때 받을 티어입니다">${pvpTierLbl(E,13)} 예상</span>`:""}</td>
       <td class="small" style="opacity:.6">${E?`<span style="opacity:.75">~${pvpPlaceLp(r.mm|0, (r.pl|0)>0?(r.pp|0)*(TIER_PLACE_N/(r.pl|0)):0)}</span>`:"–"}</td>
       <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;}
       return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
       <td style="font-weight:800">${medal(i)}</td>
-      <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
-      <td class="small" style="color:${t.t.c};font-weight:700;white-space:nowrap">${ch?pvpTierSvg("challenger",0,14)+" 챌린저":pvpTierLbl(t,14)}${r.seed?`<span class="small" style="opacity:.6" title="티어 기록이 없어 주간 랭킹 성적으로 자리를 잡았습니다 — 다음 경기부터 정식으로 쌓입니다"> ·추정</span>`:""}</td>
+      ${nameCell(r)}
+      <td class="small" style="color:${t.t.c};font-weight:700;white-space:nowrap">${ch?pvpTierSvg("challenger",0,14)+" 챌린저":pvpTierLbl(t,14)}${pvpStreakChip(r)}${r.seed?`<span class="small" style="opacity:.6" title="티어 기록이 없어 주간 랭킹 성적으로 자리를 잡았습니다 — 다음 경기부터 정식으로 쌓입니다"> ·추정</span>`:""}</td>
       <td><b style="color:var(--green)">${r.lp}</b></td>
       <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;}).join("")}
   </table></div>`:`<p class="small" style="margin-top:8px;opacity:.6">이번 시즌에 아직 경기를 마친 감독이 없습니다 — 1위 자리가 비어 있습니다.</p>`;
@@ -64888,10 +65113,18 @@ function pvpTierHtml(){
         <span class="small">시즌 티어가 저장되는 <b>tier</b> 칸을 읽고 쓸 수 없다는 뜻입니다. 대개는 <b>Firebase 보안 규칙에 tier 갈래가 아직 없어서</b>이고(설정 가이드 2번을 다시 올려 주세요), 잠깐 통신이 끊겨도 나올 수 있습니다.
         그동안에도 경기는 정상이며 내 LP·배치 진행도는 이 기기에 안전하게 남습니다 — 규칙만 올리면 그대로 이어집니다.</span>
         <div style="margin-top:6px"><button class="mini" onclick="pvpRankRefresh(true)">🔄 다시 확인</button></div></div>` : "";
-  return (placing?placeCard:mine) + board + lastLine + wrWarn
+  return (placing?placeCard:mine) + tabs + (view==="st"?boardSt:board) + lastLine + wrWarn
     + `<p class="small" style="margin-top:6px;opacity:.65">승 +22 · 무 +6 · 패 −14 를 기본으로, <b>상대 스쿼드가 셀수록 승리가 더 값지고</b> 약한 상대에게 지면 더 깎입니다 (몰수는 ±18). LP 는 0 아래로 내려가지 않습니다.<br>
       시즌 ${pvpTierSeasonNo()} — <b>${leftD}일</b> 남았습니다. 시즌이 끝나도 <b>LP 의 절반은 그대로 이월</b>되고, 마감 티어가 기록으로 남습니다.<br>
+      <span style="opacity:.9">🔥 <b>연승 보너스</b> — 3연승 <b>+5</b> · 5연승 <b>+12</b> · 7연승 <b>+20</b> · 10연승 <b>+35</b> LP (그 뒤로는 5연승마다 다시 +35). 비기거나 지면 그 자리에서 끊깁니다. 3연승부터 닉네임 옆에 🔥 표식이 붙습니다.</span><br>
       <span style="opacity:.85">🎯 <b>배치고사 ${TIER_PLACE_N}경기</b> — 시즌마다 처음 다섯 판은 티어를 매기지 않고 성적만 모읍니다. 다섯 판을 마치면 <b>기본 ${TIER_PLACE_BASE} LP + MMR + 배치 성적×${TIER_PLACE_MUL}</b> 로 자리를 잡습니다. MMR 은 <b>주간 랭킹 성적</b>(1점 ≈ ${TIER_SEED_PER_PT} LP)과 지난 시즌 이월분에서 가져옵니다.</span></p>`;
+}
+/* 🔥 시즌 표 보기 전환 — 티어순 · 최장 연승순 (요청: 「최장 연승」 탭) */
+function pvpTierView(v){
+  try{
+    PVP_TIER.view=(v==="st")?"st":"lp";
+    const e=document.getElementById("pvpTier"); if(e) e.innerHTML=pvpTierHtml();
+  }catch(e){}
 }
 function pvpRankHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
@@ -64906,7 +65139,7 @@ function pvpRankHtml(){
     <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>티어</th><th>포인트</th><th>전적</th></tr>
     ${R.rows.slice(0,15).map((r,i)=>`<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
       <td style="font-weight:800">${medal(i)}</td>
-      <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
+      <td style="text-align:left"><b class="clickable" onclick="pvpProfile('${r.n}')" title="${r.n} 감독의 프로필 보기" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px${r.me?";color:var(--gold)":""}">${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
       <td>${pvpTierMini(r.n)}</td>
       <td><b style="color:var(--green)">${r.p}</b></td>
       <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`).join("")}
@@ -65264,7 +65497,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1453";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1720";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
