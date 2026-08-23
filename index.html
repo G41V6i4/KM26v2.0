@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1421-->
+<!--B:20260823-1440-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -46958,6 +46958,8 @@ function stepBallPhysics(b){
            이게 없으면 바운드+구름이 30m를 더 가 「골킥 골」이 나온다(제보 2회, 한 경기 2골). */
         if(b.bounced<=1){
           if(b.kickType===KICK.GOALKICK){ b.vx*=0.50; b.vy*=0.50; }
+          /* 🥅 걷어낸 공도 첫 바운드에서 힘을 크게 잃는다 — 옆으로 굴러 나가는 몫을 줄인다 (제보) */
+          else if(b.kickType===KICK.CLEAR){ b.vx*=0.58; b.vy*=0.58; }
           else if(b.kickType!==KICK.SHOT && b.kickType!==KICK.CROSS){
             /* 38m+ 롱볼도 첫 바운드에 힘을 잃는다 — 바운드+구름이 골문까지 살아가는 「하프라인 골」 차단 */
             const _fm=Math.hypot((b.x-(b.sx!=null?b.sx:b.x))*PITCH_AR, b.y-(b.sy!=null?b.sy:b.y))*ISO_TO_M;
@@ -53195,9 +53197,21 @@ class MatchSim{
       const away = (carrier.y<0.5 ? -1 : 1);
       b.ty = clamp01(0.5 + away*(GOAL_HALF*1.9 + Math.random()*0.22));
     } else {
-      // 전방으로 걷어낸다 — 골라인 밖까지 날아가는 일은 드물다
+      /* 🥅 ⚠ 제보 원문 — 「가끔 키퍼가 골킥을 하는데 사이드로 터치라인 아웃 시킨다」.
+         원인: 정확히는 골킥이 아니라 걷어내기(clearBall)다. 압박에 갇힌 키퍼·수비수가
+            공을 옆으로 크게 빼는 동작인데, 그 목표 y 를 −0.015~0.205 · 0.80~1.015 로
+            잡고 있었다 — 범위의 양 끝이 **애초에 경기장 밖**이다.
+            여기에 착지 뒤 바운드·구름까지 더해지니 그대로 라인을 넘는 일이 잦았다.
+            (「옆으로 크게 빼라」는 의도는 맞지만, 라인 밖까지 열어 둘 이유는 없다)
+         ─ 「옆으로 크게」는 그대로 두고 목표만 경기장 안으로 당긴다. 터치라인에서 4m 안쪽.
+            키퍼는 더 안쪽으로 — 손으로 잡았다 걷어내는 공까지 밖으로 버리지는 않는다. */
       b.tx=clamp(carrier.x+carrier.dir*0.26, 0.04, 0.96);
-      b.ty=Math.random()<0.5 ? -0.015+Math.random()*0.22 : 0.80+Math.random()*0.215;
+      /* ⚠ 목표를 라인 안으로 당기는 것만으로는 부족했다(실측 45%가 여전히 아웃) —
+         걷어낸 공은 착지 뒤에도 바운드하며 10~20m 를 더 구른다. 그 몫까지 안으로 들여놓는다. */
+      const _isGK = carrier.slot==="GK";
+      const _lo = _isGK ? 0.18 : 0.12, _hi = _isGK ? 0.34 : 0.28;
+      b.ty = (Math.random()<0.5) ? (_lo+Math.random()*(_hi-_lo))
+                                 : (1-_hi+Math.random()*(_hi-_lo));
     }
     b.flight=0; b.flightLen=Math.hypot((b.tx-carrier.x)*PITCH_AR, b.ty-carrier.y);
     b.flightT=clamp(0.75 + b.flightLen*ISO_TO_M*0.032, 1.15, 2.6);  // 다급하게 걷어낸 공은 높이 솟는다
@@ -65216,7 +65230,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1421";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1440";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
