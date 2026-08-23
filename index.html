@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1037-->
+<!--B:20260823-1049-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -62043,7 +62043,18 @@ function pvpLiveStart(){
   PVP_RES=PVP_RES||{rows:null};
   /* ⚠ 제보 — 「'나'가 늦게 뜬다」. 심장박동은 비동기라, 기다리지 않고 목록을 읽으면
      내 칸이 아직 서버에 없다. 박동이 끝난 뒤에 읽는다. */
-  try{ Promise.resolve(pvpLiveBeat()).then(()=>{ try{ pvpLivePoll(); pvpResPoll(); }catch(e){} }); }catch(e){}
+  /* ⚠ 제보 — 「과거엔 1대1도 빠대도 잘 됐는데 지금은 둘 다 안 된다」.
+     내가 상시 연결(스트림)을 주기 조회로 바꾼 것이 원인이었다. 두 가지가 한꺼번에 무너졌다.
+       ① 초대장은 접속 표시 칸에 얹히는데, 스트림은 밀리초 만에 그 변화를 알려 준다.
+          주기 조회로 바꾸자 20초 심장박동이 초대장을 덮는 경합이 그대로 드러났다.
+       ② 스트림은 「바뀐 부분만」 보내지만, 조회는 매번 「트리 전체」를 받는다.
+          접속자 칸에는 선발 11명 스냅샷까지 실려 있어 한 사람당 0.5KB가 넘는다 —
+          N명이 5초마다 N개를 받으면 내려받기 양이 N² 로 불어난다. 무료 요금제의
+          월 내려받기 한도를 며칠 만에 태우고, 한도를 넘기면 데이터베이스가 통째로
+          막혀 매칭도 방 입장도 전부 실패한다.
+     ─ 원래대로 되돌린다. live·talk·results 세 개는 스트림, 그 위에 얹었던 조회는 전부 뺀다.
+       (연결이 끊기던 진짜 원인은 여기에 rank·tier 스트림 두 개를 더 얹은 것이었다 — 그건 이미 뺐다) */
+  pvpLiveBeat();
   /* ⚠ 제보 원문 — 「여전히 매칭에서 연결이 끊긴다. 심지어 모바일에서도 끊긴다」.
      원인: 상시 연결(EventSource)을 너무 많이 열고 있었다.
        ⚔️ 메뉴에 서 있기만 해도 live·talk·results 로 3개, 매칭에 들어가면 queue 나 rooms 까지
@@ -62057,7 +62068,9 @@ function pvpLiveStart(){
        · live(접속자) — 어차피 20초 심장박동이라 스트림일 이유가 없다 → 주기 조회로
        · results(전적) — 경기가 끝날 때만 바뀐다 → 주기 조회로
        상시 연결이 3개에서 1개로 줄어, 매칭이 쓸 자리가 넉넉해진다. */
-  try{ PVP_LIVE.esT=fbStream("talk", (tree)=>{ try{ pvpTalkApply(tree); }catch(e){} }); }catch(e){}
+  try{ PVP_LIVE.es =fbStream("live",    (tree)=>{ try{ pvpLiveApply(tree); }catch(e){} }); }catch(e){}
+  try{ PVP_LIVE.esT=fbStream("talk",    (tree)=>{ try{ pvpTalkApply(tree); }catch(e){} }); }catch(e){}
+  try{ PVP_LIVE.esR=fbStream("results", (tree)=>{ try{ pvpResApply(tree); }catch(e){} }); }catch(e){}
   /* 🔄 ⚠ 요청 — 「랭킹들 변경되는 게 있을 때마다 갱신되게 해 줘」.
      ⚠ 제보 — 이걸 rank·tier 전용 스트림 두 개로 붙였더니 온라인 연결이 끊기기 시작했다.
         브라우저는 한 서버에 열어 둘 수 있는 연결 수가 정해져 있는데(HTTP/1.1 기준 6개),
@@ -62068,9 +62081,7 @@ function pvpLiveStart(){
         새로 들어오는 쪽부터 연결이 거부된다.
      ─ 새 연결을 열지 않는다. 랭킹이 바뀌는 순간은 「경기가 끝났을 때」뿐이고, 그건 이미
        results 스트림이 알고 있다. 그 신호에 얹어서 두 표를 다시 그린다. */
-  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); pvpResPoll(); }catch(e){} }, PVP_LIVE_MS);
-  PVP_LIVE.ivFast=setInterval(()=>{ try{ pvpLivePoll(); }catch(e){} }, PVP_POLL_MS);
-  PVP_LIVE.ivInv =setInterval(()=>{ try{ pvpInvPoll();  }catch(e){} }, PVP_INV_MS);
+  PVP_LIVE.iv=setInterval(()=>{ try{ pvpLiveBeat(); }catch(e){} }, PVP_LIVE_MS);
 }
 function pvpLiveStop(){
   if(!PVP_LIVE) return;
@@ -62159,28 +62170,23 @@ const PVP_INV_MS=3000;      // ⚔️ 초대장은 내 칸 하나만 보므로 �
 /* ⚔️ ⚠ 제보 — 「1대1 매칭이 여전히 안 된다」. 초대장은 목록 조회에 얹혀 오는데,
    목록이 큰 편이라 주기를 짧게 하기 어렵다. 초대장만 따로, 내 칸 하나만 2초마다 본다.
    (조회 한 번에 수십 바이트다 — 상시 연결이 아니므로 동시 접속 수에 영향이 없다) */
-async function pvpInvPoll(){
-  if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
-  if(PVP) return;
-  try{ if(typeof liveM!=="undefined" && liveM) return; }catch(e){}
-  const mine=pvpId(); if(!mine) return;
-  /* 주 경로 — 나를 지목한 방이 있는가 (읽기만 한다) */
+/* ⚔️ 보조 경로 — 이미 받아 온 방 목록에서 「나를 지목한 방」을 찾는다.
+   접속 표시(live) 스트림이 초대장을 놓치는 아주 드문 경우를 위한 그물이다.
+   ⚠ 이걸 위해 따로 조회하지 않는다 — 방 목록을 새로 고칠 때 그 결과를 그대로 훑는다. */
+function pvpInvScanRooms(rooms){
   try{
-    const rooms=await fbGet("rooms")||{};
+    if(!pvpOn() || !PVP_LIVE || PVP) return;
+    if(typeof liveM!=="undefined" && liveM) return;
+    const mine=pvpId(); if(!mine) return;
     const now=Date.now();
-    for(const code in rooms){
+    for(const code in (rooms||{})){
       const r=rooms[code];
       if(!r || !r.h || r.g || r.st!=="wait" || r.dec) continue;
       if(String(r.to||"")!==String(mine)) continue;
       if(now-(r.t||0) > 90000) continue;
       pvpInvShow(code, pvpClean(r.h.nick,8)||"감독", (r.h.ver|0));
-      break;
+      return;
     }
-  }catch(e){}
-  /* 옛 경로 — 옛 판을 쓰는 상대가 접속 표시에 얹어 준 초대장 */
-  try{
-    const iv=await fbGet("live/"+mine+"/inv");
-    if(iv) pvpLiveApply({[mine]:{n:pvpNick(), t:Date.now(), inv:iv}}, true);
   }catch(e){}
 }
 /* ⚔️ 초대 팝업 — 두 경로(방 지목 · 접속 표시)가 같은 자리로 모인다 */
@@ -62204,18 +62210,61 @@ function pvpInvShow(code, nick, ver){
        onCancel:()=>{ try{ fbPatch("rooms/"+rm, {dec:1}); }catch(e){} }});
   }catch(e){}
 }
+/* 🔧 연결 점검 — 무엇이 막혔는지 눈으로 보여 준다.
+   ⚠ 제보 — 「빠대도 1대1도 안 된다」. 화면은 「연결하지 못했습니다」 한 줄만 주니
+      규칙 문제인지, 요금제 한도인지, 그물 문제인지 구분이 안 된다.
+      각 단계의 HTTP 응답 코드를 그대로 보여 준다.
+        200/204 정상 · 401 규칙에 막힘 · 402/429 요금제 한도 초과 · 0 그물이 끊김 */
+async function pvpDiag(){
+  const L=[];
+  const step=async (label, path, init)=>{
+    const t0=Date.now();
+    try{
+      const r=await fbFetch(fbU(path), init);
+      let body=""; try{ body=(await r.text()||"").slice(0,60); }catch(e){}
+      L.push(`${r.ok?"✅":"❌"} ${label} — HTTP ${r.status} · ${Date.now()-t0}ms${r.ok?"":" · "+body}`);
+      return r.ok;
+    }catch(e){
+      L.push(`❌ ${label} — 응답 없음(그물 끊김·시한 초과) · ${Date.now()-t0}ms`);
+      return false;
+    }
+  };
+  const me=pvpId(), code="ZZ"+String(Math.floor(Math.random()*9000)+1000);
+  L.push(`빌드 ${GAME_BUILD} · 버전 v${PVP_VER} · 내 id ${me}`);
+  await step("접속자 읽기", "live");
+  await step("내 접속 표시 쓰기", "live/"+me, {method:"PATCH", body:JSON.stringify({n:String(pvpNick()||"감독").slice(0,8), t:Date.now(), ver:PVP_VER})});
+  await step("대기열 읽기", "queue");
+  await step("방 만들기(시험)", "rooms/"+code, {method:"PUT", body:JSON.stringify({h:{id:me, n:"?", nick:String(pvpNick()||"감독").slice(0,8), ver:PVP_VER}, pub:0, st:"wait", t:Date.now()})});
+  await step("방 읽기(시험)", "rooms/"+code);
+  await step("방 지우기(시험)", "rooms/"+code, {method:"DELETE"});
+  await step("티어 읽기", "tier");
+  /* 상시 연결이 열리는지 */
+  const es=await new Promise((res)=>{
+    let done=false, s=null;
+    try{
+      s=new EventSource(fbU("talk"));
+      const fin=(v)=>{ if(done) return; done=true; try{ s.close(); }catch(e){} res(v); };
+      s.addEventListener("put", ()=>fin("열림"));
+      s.onerror=()=>fin("실패");
+      setTimeout(()=>fin("응답 없음"), 6000);
+    }catch(e){ res("실패"); }
+  });
+  L.push((es==="열림"?"✅":"❌")+" 상시 연결(채팅) — "+es);
+  const hint = L.some(x=>/HTTP 40[12]|HTTP 429/.test(x))
+    ? "\n\n⚠ 401 은 보안 규칙에 막힌 것이고, 402·429 는 요금제 한도(동시 접속·내려받기)를 넘긴 것입니다. Firebase 콘솔의 사용량 화면을 확인해 주세요."
+    : L.some(x=>/응답 없음/.test(x))
+    ? "\n\n⚠ 서버가 응답하지 않습니다 — 그물 상태이거나 데이터베이스가 잠시 막혀 있습니다."
+    : "\n\n모든 단계가 정상입니다. 매칭이 안 된다면 상대 쪽 상태나 P2P 연결 문제입니다.";
+  showConfirm(`<b>🔧 온라인 연결 점검</b>\n\n<span class="small" style="font-family:monospace;line-height:1.9">${L.join("<br>")}</span>${hint}`,
+    null, {okLabel:"닫기", cancelLabel:""});
+}
 function pvpPollSkip(){
   try{ return !!(typeof pvpBusy==="function" && pvpBusy() && (typeof VIEW==="undefined" || VIEW!=="pvp")); }catch(e){ return false; }
 }
+/* (예비) 스트림을 못 쓰는 환경을 위한 수동 조회 — 평소에는 부르지 않는다 */
 async function pvpLivePoll(){
   if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
-  if(pvpPollSkip()) return;      // 경기 중에는 심장박동만 — 대전 신호와 회선을 다투지 않게
   try{ const t=await fbGet("live"); if(PVP_LIVE) pvpLiveApply(t||{}); }catch(e){}
-}
-async function pvpResPoll(){
-  if(!pvpOn() || !PVP_LIVE || PVP_NET===false) return;
-  if(pvpPollSkip()) return;
-  try{ const r=await fbGet("results"); if(PVP_LIVE) pvpResApply(r||{}); }catch(e){}
 }
 function pvpLiveApply(tree, invOnly){
   if(!PVP_LIVE) return;
@@ -62587,6 +62636,7 @@ async function pvpRoomsRefresh(force){
   const el0=document.getElementById("pvpRooms");
   if(el0 && force) el0.innerHTML=`<p class="small" style="opacity:.6">불러오는 중…</p>`;
   const rooms=await fbGet("rooms")||{};
+  try{ pvpInvScanRooms(rooms); }catch(e){}   // ⚔️ 나를 지목한 방이 있으면 여기서도 잡는다
   const rows=[];
   for(const code in rooms){
     const r=rooms[code]; if(!r||!r.h) continue;
@@ -64699,7 +64749,8 @@ function pvpView(){
       <p class="small" style="margin-top:6px;opacity:.7">비우면 감독 이름을 씁니다. 이 브라우저에 저장돼 어느 세이브로 접속해도 같은 이름입니다.<br>
         <b>같은 닉네임은 한 사람만</b> 쓸 수 있습니다 — 30일 동안 접속이 없으면 그 이름은 다시 풀립니다.</p>
     </div>
-    <div class="card"><h3>🟢 지금 접속 중 <span class="small">— ⚔️ 메뉴를 보고 있는 감독들</span></h3>
+    <div class="card"><h3>🟢 지금 접속 중 <span class="small">— ⚔️ 메뉴를 보고 있는 감독들</span>
+      <button class="mini" style="float:right;padding:3px 9px;font-size:11px" onclick="pvpDiag()" title="매칭이 안 될 때 어디가 막혔는지 확인합니다">🔧 연결 점검</button></h3>
       <div id="pvpLive">${pvpLiveHtml()}</div>
     </div>
     <div class="card"><h3>💬 라운지 채팅 <span class="small">— 여기 있는 모두가 함께 봅니다 · 아래 모서리를 끌어 크기를 바꿀 수 있습니다</span></h3>
@@ -64860,7 +64911,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1037";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260823-1049";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
