@@ -14051,8 +14051,27 @@ function startNewSeason(){
          며칠 지나니까 갑자기 38주로 늘어나 있다」.
          ─ 원인: 시즌 전환이 p.inj=0 으로 몸만 고치고 「회복 예정일(injUntil)」은 지우지 않았다.
            새 시즌은 달력이 0일부터 다시 시작하는데, 지난 시즌 막바지(260일께)의 예정일이
-           남아 있으면 새 부상(1주)이 하루 뒤 일일 정산에서 (260-0)/7 ≈ 38주로 둔갑했다. */
-      p.inj=0; p.injUntil=null; delete p.injW0;
+           남아 있으면 새 부상(1주)이 하루 뒤 일일 정산에서 (260-0)/7 ≈ 38주로 둔갑했다.
+
+         🚑 ⚠ 제보 원문 ② — 「연말에 부상 당한 선수가 시즌이 바뀌면 부상 상태가 초기화 되는
+            버그가 있는지 한 번 확인 부탁드리겠습니다!! 저희 팀 이지후라는 선수가 2039년 12월
+            17일에 부상 3주 상태였는데 2040년 1월 3일 경기에 정상 상태로 출전을 했습니다.
+            … 부상 일수가 남았다면 시즌이 바뀌어도 계속 부상 일수까지 부상 상태로 남게」.
+         ─ 맞는 지적이다. 위 수정이 「예정일까지 싹 지우는」 방향이라, 12월에 다친 선수가
+           1월 1일에 멀쩡해졌다. 비시즌은 두 주 남짓이라 3주 부상이 나을 시간이 아니다.
+         ─ 달력은 1월 1일이 0일이므로, 지난 시즌의 예정일에서 한 해(365일)를 빼면
+           그대로 새 달력의 예정일이 된다. 남은 날이 있으면 그만큼 계속 부상으로 둔다.
+           (예: 12/17 = 350일에 3주 → 예정일 371 → 371−365 = 새 달력 6일 = 1/7 복귀) */
+      {
+        const _due=(typeof p.injUntil==="number") ? p.injUntil-365 : -1;   // 새 달력 기준 예정일
+        if((p.inj||0)>0 && _due>0){
+          p.injUntil=_due;
+          p.inj=Math.max(1, Math.ceil(_due/7));
+          p.injW0=Math.max(p.injW0||0, p.inj);
+        } else {
+          p.inj=0; p.injUntil=null; delete p.injW0;
+        }
+      }
       /* 🟨 대회(EACL·CWC) 징계는 그 시즌 에디션과 함께 끝난다 — 새 대회로 이월되지 않는다.
          (리그 잔여 징계는 실제 규정처럼 이월 유지 · 제보 — CWC발 유령 EACL 정지 차단의 이중 안전망) */
       delete p.banE; delete p.banENew; delete p.banC; delete p.banCNew;
@@ -15258,7 +15277,13 @@ function tickLoanAsk(){
   const cands=loanCandidates(t).filter(p=>!(G.loanAsks||[]).some(a=>a.pid===p.id));
   if(!cands.length) return;
   const p=pick(cands);
-  const clubs=Object.values(G.teams).filter(c=>c.id!==t.id && c.players.filter(q=>q.pos===p.pos).length<=4);
+  /* 🎖️ ⚠ 제보 원문 — 「김천에서 임대 제의가 온다고 하는 유저 분이 있으셨는데 … 김천 상무는
+     임대 제의 불가, 임대 보내기 불가로 고쳐주시면」. 상무는 입대로만 선수를 받는다 —
+     빌려 달라고 연락할 곳이 아니다. (임대 보내기 목록·유망주 위탁 제안에는 이미 빠져 있었고,
+     이 「빌려 가겠다」 문의만 걸러지지 않았다) */
+  const clubs=Object.values(G.teams).filter(c=>c.id!==t.id
+    && !(typeof isArmyTeam==="function" && isArmyTeam(c))
+    && c.players.filter(q=>q.pos===p.pos).length<=4);
   if(!clubs.length) return;
   const c=pick(clubs);
   const share=pick([0, 0.25, 0.5]);            // 상대가 요구하는 "우리 부담"
@@ -15406,7 +15431,10 @@ function loanAsksPrune(){
     const p=t.players.find(x=>x.id===a.pid);
     if(!p) return false;                                     // 이미 우리 선수가 아니다
     if(p.loan || p.army || p.emg) return false;              // 이미 임대 중이거나 내보낼 수 없는 선수
-    return !!G.teams[a.tid];
+    const c=G.teams[a.tid];
+    /* 🎖️ 상무발 문의는 애초에 생기지 않지만, 옛 세이브에 남아 있던 것도 여기서 걷어낸다 (제보) */
+    if(c && typeof isArmyTeam==="function" && isArmyTeam(c)) return false;
+    return !!c;
   });
   return G.loanAsks;
 }
@@ -61763,6 +61791,7 @@ let PVP_NET=null;                     // null=아직 확인 전 · true=연결�
 let PVP_LIVE=null;                    // {es, esT, iv, list, n}
 let PVP_TALK=null;                    // {rows, at}
 let PVP_RES=null;                     // {rows}
+let PVP_TIER={rows:null, my:null, rank:null};   // 🏅 시즌 티어 (개발 노트)
 
 /* ── 🌐 연결 확인 ─────────────────────────────────────────────────────────
    navigator.onLine 은 「랜선이 꽂혀 있다」만 알려 준다(공유기만 붙어도 true).
@@ -61938,13 +61967,15 @@ function pvpUserMenu(id){
     const F=r.f;
     const sub = F ? `<span class="small" style="opacity:.8">${pvpClean(F.tn||F.ts||"",16)} · <b style="color:var(--gold)">${pvpClean(F.fm||"",14)}</b> · ★${((F.sv||30)/10).toFixed(1)}</span>`
                   : `<span class="small" style="opacity:.6">스쿼드 정보가 아직 도착하지 않았습니다</span>`;
+    /* 🆚 상대별 전적 · 🏅 시즌 티어 — 만나는 자리마다 보여 준다 (개발 노트) */
+    const h2h = pvpH2HLine(r.n) + pvpTierTag(r.n);
     const opts=[], acts=[];
     if(!r.m){ opts.push("⚔️ 1:1 대전 신청"); acts.push(()=>pvpChallenge(r.id, r.n)); }
     opts.push(F ? "🔭 상대 포메이션 보기" : "🔭 포메이션 보기 (정보 없음)");
     acts.push(()=>pvpShowForm(r.id));
     showChoice(`<b style="font-size:15px">${pvpClean(r.n,8)}</b> 감독`
       + (r.m?` <span class="small" style="color:#ff9d95">— 지금 경기 중</span>`:``)
-      + `\n${sub}`, opts, (i)=>{ try{ acts[i] && acts[i](); }catch(e){} });
+      + `\n${sub}\n${h2h}`, opts, (i)=>{ try{ acts[i] && acts[i](); }catch(e){} });
   }catch(e){}
 }
 /* 🔭 상대 선발 11명 그림 — 로비의 pvpFormPitch 와 같은 그리기 방식을 그대로 쓴다.
@@ -61981,7 +62012,7 @@ function pvpChallenge(id, nick){
   if(PVP){ try{ flash("이미 매칭이 진행 중입니다 — 먼저 취소해 주세요.","warn"); }catch(e){} return; }
   if(!id || id===pvpId()) return;
   nick=pvpClean(nick,8)||"상대";
-  showConfirm(`<b>⚔️ 1:1 대전 신청</b>\n\n<b>${nick}</b> 감독에게 대전을 신청할까요?\n<span class="small">상대가 수락하면 바로 매치 로비로 이동합니다 · 90초 안에 응답이 없으면 자동으로 거둡니다.</span>`,
+  showConfirm(`<b>⚔️ 1:1 대전 신청</b>\n\n<b>${nick}</b> 감독에게 대전을 신청할까요?\n${pvpH2HLine(nick)}\n<span class="small">상대가 수락하면 바로 매치 로비로 이동합니다 · 90초 안에 응답이 없으면 자동으로 거둡니다.</span>`,
     ()=>{ pvpChallengeGo(id, nick); }, {okLabel:"⚔️ 신청한다", cancelLabel:"그만둔다"});
 }
 async function pvpChallengeGo(id, nick){
@@ -62394,6 +62425,15 @@ function pvpOnMsg(raw){
   if(m.t==="st" && PVP.role==="guest"){ try{ if(PVP.watch){ PVP.watch.st=m.st;
     const el=document.getElementById("pvpStats"); if(el) el.innerHTML=pvpStatsHtml(); } }catch(e){} return; }
   if(m.t==="chat"){ pvpChatPush("opp", pvpClean(m.x,120)); return; }
+  /* 🔁 재대결 — 상대가 「한 판 더」를 눌렀다 (개발 노트) */
+  if(m.t==="rematch"){
+    if(!PVP || PVP.stage!=="done") return;
+    PVP.oppRe=1;
+    try{ if(!PVP.meRe) flash("🔁 상대가 재대결을 신청했습니다.","good"); }catch(e){}
+    pvpMaybeRematch();
+    try{ if(VIEW==="pvp") show("pvp"); }catch(e){}
+    return;
+  }
   if(m.t==="gp" && PVP.role==="guest"){ pvpShowGoal(m); return; }
   if(m.t==="tacp"){
     if(m.on){
@@ -63257,6 +63297,7 @@ function pvpFinish(M){
   const iAmHome=PVP.role==="host";
   const my=iAmHome?hg:ag, op=iAmHome?ag:hg;
   pvpLogAdd({opp:(PVP.oppPack&&PVP.oppPack.name)||"상대", oppMgr:(PVP.oppPack&&PVP.oppPack.mgr)||"", my, op, host:iAmHome?1:0});
+  pvpSeriesAdd(my, op);                      // 🔁 재대결 연전 스코어
   if(PVP.role==="host" && !PVP._endSent){ PVP._endSent=1; pvpSend({t:"end", hg, ag}); }   // 안전망 — 이미 보냈으면 넘어간다
   PVP.stage="done"; PVP.result={hg,ag};
   try{ saveGame(); }catch(e){}
@@ -63270,6 +63311,7 @@ function pvpGuestEnd(m){
   if(PVP.ended) return;
   const my=m.ag||0, op=m.hg||0;      // 게스트 = 원정
   pvpLogAdd({opp:(PVP.oppPack&&PVP.oppPack.name)||"상대", oppMgr:(PVP.oppPack&&PVP.oppPack.mgr)||"", my, op, host:0});
+  pvpSeriesAdd(my, op);                      // 🔁 재대결 연전 스코어
   PVP.ended=1; PVP.result={hg:m.hg,ag:m.ag};
   try{ if(PVP.watchT){ cancelAnimationFrame(PVP.watchT); PVP.watchT=null; } }catch(e){}
   try{ if(inLiveTactics && liveM && liveM.opts && liveM.opts.pvp) cancelLiveTactics(); }catch(e){}
@@ -63298,6 +63340,121 @@ function pvpGuestResult(){
   try{ document.body.classList.remove("matchFS"); }catch(e){}
   show("pvp");
 }
+/* ═══ 🔁 재대결 ════════════════════════════════════════════════════════
+   개발 노트 — 「경기 끝나면 양쪽에 '한 판 더'. 방도 P2P 연결도 아직 살아 있으니
+   매칭 대기 없이 즉시 다시 시작한다. 인원이 적을수록 한 번 만난 상대와 계속 붙는 게
+   자연스러운데, 지금은 그때마다 나가서 큐를 다시 돌아야 한다.」
+   ⚠ pvpReset() 을 쓰면 안 된다 — 연결까지 끊어 버린다. 「경기만」 치우고 로비로 되돌린다. */
+const PVP_RE_TO=90000;             // 상대 응답을 기다리는 시간
+function pvpRematch(){
+  if(!PVP || PVP.stage!=="done" || PVP.meRe) return;
+  if(!PVP.chR || PVP.chR.readyState!=="open"){ flash("상대와 연결이 끊겼습니다 — 재대결할 수 없습니다.","warn"); return; }
+  PVP.meRe=1; pvpSend({t:"rematch"});
+  /* 상대가 끝내 답이 없으면 스스로 접는다 */
+  try{ if(PVP.reTO) clearTimeout(PVP.reTO); }catch(e){}
+  PVP.reTO=setTimeout(()=>{ try{
+    if(PVP && PVP.stage==="done" && PVP.meRe && !PVP.oppRe){
+      PVP.meRe=0; PVP.reTO=null;
+      flash("⚔️ 상대의 응답이 없습니다 — 재대결 신청을 거뒀습니다.","warn");
+      if(VIEW==="pvp") show("pvp");
+    }
+  }catch(e){} }, PVP_RE_TO);
+  pvpMaybeRematch(); show("pvp");
+}
+function pvpMaybeRematch(){
+  if(!PVP || PVP.stage!=="done" || !PVP.meRe || !PVP.oppRe) return;
+  pvpRematchGo();
+}
+/* 경기 하나를 치우고 로비로 — 연결·방·전적은 그대로 둔다 */
+function pvpRematchGo(){
+  if(!PVP) return;
+  try{ if(PVP.reTO){ clearTimeout(PVP.reTO); PVP.reTO=null; } }catch(e){}
+  /* ① 굴러가던 경기 흔적을 지운다 */
+  try{ if(PVP.snapT){ clearInterval(PVP.snapT); PVP.snapT=null; } }catch(e){}
+  try{ if(PVP.watchT){ cancelAnimationFrame(PVP.watchT); PVP.watchT=null; } }catch(e){}
+  try{ if(PVP.awayIv){ clearInterval(PVP.awayIv); PVP.awayIv=null; } }catch(e){}
+  try{ if(PVP.tacIv){ clearInterval(PVP.tacIv); PVP.tacIv=null; } }catch(e){}
+  try{ if(PVP.tacBlIv){ clearInterval(PVP.tacBlIv); PVP.tacBlIv=null; } }catch(e){}
+  try{ if(PVP.tacTO){ clearTimeout(PVP.tacTO); PVP.tacTO=null; } }catch(e){}
+  try{ if(PVP.tacTO2){ clearTimeout(PVP.tacTO2); PVP.tacTO2=null; } }catch(e){}
+  for(const _id of ["pvpAwayOv","pvpHtOv","pvpTacOv","pvpTacBl"]){
+    try{ const o=document.getElementById(_id); if(o&&o.parentNode) o.parentNode.removeChild(o); }catch(e){}
+  }
+  try{ document.body.classList.remove("matchFS"); }catch(e){}
+  try{ inLiveTactics=false; liveTacBackup=null; selSwap=null; }catch(e){}
+  try{ liveM=null; liveSim=null; liveHL=null; liveFF=false; lastHLTick=null; }catch(e){}
+  try{ LIVE_SUB_UNDO=[]; }catch(e){}
+  /* ② 지난 경기의 상태값을 전부 초기값으로 */
+  PVP.result=null; PVP.forfeit=null; PVP.forfeited=0; PVP.ended=0; PVP._endSent=0;
+  PVP.homeT=null; PVP.awayT=null; PVP.tacEdit=null; PVP.htReady=null; PVP.htOpp=null;
+  PVP.meRe=0; PVP.oppRe=0;
+  PVP.reCount=(PVP.reCount|0)+1;                 // 몇 번째 판인가 (화면 표기용)
+  PVP.meReady=false; PVP.oppReady=false;
+  PVP.stage="lobby";
+  /* ③ 스쿼드를 다시 교환한다 — 그 사이에 라인업을 바꿨을 수 있다 */
+  PVP.oppPack=null;
+  try{ pvpHelloSync(); }catch(e){}
+  try{ flash("🔁 재대결 — 스쿼드를 다시 확인하고 준비를 눌러 주세요.","good"); }catch(e){}
+  try{ saveGame(); }catch(e){}
+  show("pvp");
+}
+/* ═══ 🆚 상대별 전적 (H2H) ══════════════════════════════════════════════
+   개발 노트 — 「인원이 적을수록 한 번 만난 상대와 계속 붙는다. 라이벌 구도가 생기려면
+   「이 감독 상대로 내가 몇 승 몇 패인가」가 만나는 자리마다 보여야 한다.」
+   G.pvpLog 에 이미 상대 닉네임(oppMgr)·스코어가 쌓이고 있으므로 새로 저장할 것은 없다.
+   ⚠ 닉네임은 대소문자·기호가 섞일 수 있다 — 장부 키(pvpNickKeyOf)로 맞춘다. */
+function pvpH2H(nick){
+  const key=pvpNickKeyOf(nick||"");
+  const out={n:0, w:0, d:0, l:0, gf:0, ga:0, recent:[], last:null};
+  if(!key) return out;
+  const L=Array.isArray(G.pvpLog)?G.pvpLog:[];
+  for(const x of L){
+    if(pvpNickKeyOf(x.oppMgr||"")!==key) continue;
+    out.n++; out.gf+=(x.my|0); out.ga+=(x.op|0);
+    if(x.my>x.op) out.w++; else if(x.my<x.op) out.l++; else out.d++;
+    if(out.recent.length<5) out.recent.push(x.my>x.op?"W":x.my<x.op?"D2L":"D");
+    if(!out.last) out.last=x;
+  }
+  out.recent=out.recent.map(v=>v==="D2L"?"L":v);
+  return out;
+}
+/* 한 줄 요약 — 팝업·로비·결과 화면이 같은 문구를 쓴다 */
+/* 🔁 이번 연전(재대결로 이어 붙인 판들)의 누적 스코어 — 로비·결과 화면에 함께 적는다 */
+function pvpSeriesLine(){
+  try{
+    const s=PVP && PVP.series;
+    if(!s || (s.w+s.d+s.l)<1) return "";
+    return ` <span class="small" style="opacity:.85">· 🔁 이번 연전 <b style="color:var(--gold)">${s.w}승 ${s.d}무 ${s.l}패</b></span>`;
+  }catch(e){ return ""; }
+}
+function pvpSeriesAdd(my, op){
+  try{
+    if(!PVP) return;
+    PVP.series=PVP.series||{w:0,d:0,l:0};
+    if(my>op) PVP.series.w++; else if(my<op) PVP.series.l++; else PVP.series.d++;
+  }catch(e){}
+}
+/* 🏅 상대의 이번 시즌 티어 — 이미 받아 둔 시즌 순위표에서 찾는다 (추가 통신 없음) */
+function pvpTierTag(nick){
+  try{
+    const key=pvpNickKeyOf(nick||""); if(!key) return "";
+    const rows=(PVP_TIER&&PVP_TIER.rows)||null; if(!rows) return "";
+    /* 키로 먼저 찾고, 없으면 표시 이름으로 — 장부 키와 표기가 어긋난 옛 기록도 잡는다 */
+    const r=rows.find(x=>x.k===key) || rows.find(x=>pvpNickKeyOf(x.n)===key);
+    if(!r) return "";
+    const T=pvpTierOf(r.lp);
+    return ` <span class="small" style="color:${T.t.c};font-weight:700">${T.label} · ${r.lp} LP</span>`;
+  }catch(e){ return ""; }
+}
+function pvpH2HLine(nick){
+  const h=pvpH2H(nick);
+  if(!h.n) return `<span class="small" style="opacity:.65">🆚 처음 만나는 감독입니다</span>`;
+  const col=h.w>h.l?"var(--green)":h.w<h.l?"var(--red)":"var(--gold)";
+  const form=h.recent.map(v=>`<b style="color:${v==="W"?"var(--green)":v==="L"?"var(--red)":"var(--gold)"}">${v}</b>`).join("");
+  return `<span class="small">🆚 상대 전적 <b style="color:${col}">${h.w}승 ${h.d}무 ${h.l}패</b>`
+       + ` <span style="opacity:.7">(${h.gf}:${h.ga})</span>`
+       + (form?` · 최근 ${form}`:"") + `</span>`;
+}
 function pvpLogAdd(r){
   G.pvpLog=Array.isArray(G.pvpLog)?G.pvpLog:[];
   G.pvpLog.unshift(Object.assign({s:G.season, d:G.day||0, at:Date.now()}, r));
@@ -63311,6 +63468,73 @@ function pvpLogAdd(r){
    ⚠ 배포 전에 Firebase 규칙에 rank 갈래를 추가해야 한다 (온라인대전_설정가이드.md). */
 const PVP_RANK_WEEK=7*24*60*60*1000;
 function pvpRankWk(off){ return "w"+(Math.floor(Date.now()/PVP_RANK_WEEK)+(off|0)); }
+/* ═══ 🏅 티어 시즌제 ═══════════════════════════════════════════════════
+   개발 노트 — 「주간 랭킹은 일주일이면 지워진다. 몇 판 이겼다는 사실이 남질 않으니
+   목표가 안 생긴다. 시즌 단위로 쌓이는 티어를 얹자.」
+   설계
+     · 시즌 = 4주(28일). 절대 시각 기준이라 모두에게 같은 잣대다 (주간 랭킹과 동일한 방식).
+     · 순위 백분위가 아니라 「LP 누적」으로 매긴다 — 인원이 적어도 혼자 올라갈 수 있어야 한다.
+     · 이기면 오르고 지면 내려가되, 상대 전력이 셀수록 승리가 더 값지고
+       약한 상대에게 지면 더 깎인다.
+   ⚠ 저장은 기존 rank 갈래를 그대로 쓴다 — rank/{s시즌}/{닉네임키} = {n,p:LP,w,d,l,hi,t}.
+      기존 규칙(n 문자열 8자 · p 숫자 · t 숫자)을 그대로 만족하므로
+      Firebase 보안 규칙을 다시 배포할 필요가 없다. */
+const PVP_TIER_SEASON=28*24*60*60*1000;
+function pvpTierSeasonKey(off){ return "s"+(Math.floor(Date.now()/PVP_TIER_SEASON)+(off|0)); }
+/* 사람이 읽는 시즌 번호 — 2026-01-01 을 시즌 1 로 잡는다 (절대 시각 나눗셈이라 모두 같은 값) */
+const PVP_TIER_EPOCH=Math.floor(Date.UTC(2026,0,1)/(28*24*60*60*1000));
+function pvpTierSeasonNo(){ return Math.floor(Date.now()/PVP_TIER_SEASON)-PVP_TIER_EPOCH+1; }
+const PVP_TIERS=[
+  {k:"bronze", n:"브론즈",   ic:"🥉", c:"#c08457", lo:0,    hi:200},
+  {k:"silver", n:"실버",     ic:"⚪", c:"#c9d1d9", lo:200,  hi:450},
+  {k:"gold",   n:"골드",     ic:"🏅", c:"#e3b341", lo:450,  hi:750},
+  {k:"plat",   n:"플래티넘", ic:"💠", c:"#3fb9a8", lo:750,  hi:1100},
+  {k:"dia",    n:"다이아",   ic:"💎", c:"#79c0ff", lo:1100, hi:1500},
+  {k:"master", n:"마스터",   ic:"👑", c:"#d2a8ff", lo:1500, hi:Infinity}
+];
+const PVP_DIV=["Ⅲ","Ⅱ","Ⅰ"];
+/* LP → 티어·단계·다음 단계까지의 진행도 */
+function pvpTierOf(lp){
+  lp=Math.max(0, Math.round(+lp||0));
+  let T=PVP_TIERS[0];
+  for(const t of PVP_TIERS) if(lp>=t.lo) T=t;
+  if(T.k==="master"){
+    return {t:T, div:0, label:`${T.ic} ${T.n}`, lp, need:null, prog:1, nextAt:null};
+  }
+  const span=(T.hi-T.lo)/3;
+  const di=clamp(Math.floor((lp-T.lo)/span), 0, 2);
+  const segLo=T.lo+span*di, segHi=segLo+span;
+  return {t:T, div:di, label:`${T.ic} ${T.n} ${PVP_DIV[di]}`, lp,
+          need:Math.ceil(segHi-lp), prog:clamp((lp-segLo)/span, 0, 1), nextAt:Math.round(segHi)};
+}
+/* 한 경기의 LP 변동 — 결과 · 전력차 · 몰수 */
+function pvpTierDelta(my, op, myStars, opStars, ff){
+  const win=my>op, draw=(my===op);
+  if(ff) return win? 18 : -18;                       // 몰수는 경기 내용이 없다 — 고정폭
+  const gap=clamp((+opStars||3)-(+myStars||3), -2, 2);   // +면 상대가 강했다
+  let d = win? 22 : draw? 6 : -14;
+  if(win) d += Math.round(gap*5);                    // 센 상대를 잡으면 더
+  else if(!draw) d += Math.round(gap*4);             // 약한 상대에게 지면 더 깎인다 (gap<0)
+  return clamp(d, -30, 40);
+}
+/* 시즌이 바뀌면 지난 시즌 성적을 한 번 알려 준다 (기기에 남긴다 — 닉네임과 같은 단위) */
+function pvpTierSeasonCheck(myLp){
+  try{
+    const cur=pvpTierSeasonKey(0);
+    const seen=localStorage.getItem("klm2026_pvpTierSeason")||"";
+    const lastLp=+(localStorage.getItem("klm2026_pvpTierLp")||0);
+    if(seen && seen!==cur && lastLp>0){
+      const T=pvpTierOf(lastLp);
+      try{ notify(`🏅 <b>지난 시즌 마감</b> — <b style="color:${T.t.c}">${T.label}</b> (${Math.round(lastLp)} LP)로 마쳤습니다. 새 시즌이 시작됐습니다!`,"good"); }catch(e){}
+      try{ localStorage.setItem("klm2026_pvpTierBest", JSON.stringify({s:seen, lp:Math.round(lastLp), label:T.label, c:T.t.c})); }catch(e){}
+    }
+    localStorage.setItem("klm2026_pvpTierSeason", cur);
+    if(myLp!=null) localStorage.setItem("klm2026_pvpTierLp", String(Math.round(myLp)));
+  }catch(e){}
+}
+function pvpTierLast(){
+  try{ const j=localStorage.getItem("klm2026_pvpTierBest"); return j?JSON.parse(j):null; }catch(e){ return null; }
+}
 function pvpRankPost(r){
   try{
     if(!pvpOn() || !r) return;
@@ -63326,6 +63550,38 @@ function pvpRankPost(r){
         w:(c.w|0)+(r.my>r.op?1:0), d:(c.d|0)+(r.my===r.op?1:0), l:(c.l|0)+(r.my<r.op?1:0),
         t:Date.now()});
     }).catch(()=>{});
+    pvpTierPost(r);                       // 🏅 시즌 티어도 함께 (개발 노트)
+  }catch(e){}
+}
+/* 🏅 시즌 티어 갱신 — 같은 rank 갈래의 「s시즌」 칸에 LP 를 쌓는다 */
+function pvpTierPost(r){
+  try{
+    if(!pvpOn() || !r || !pvpNickClaimed()) return;
+    const key=pvpNickKey(); if(!key) return;
+    const sk=pvpTierSeasonKey(0);
+    /* 전력차 — 지금 붙은 상대의 스쿼드 성급(패키지에 실려 온 값) */
+    let myS=3, opS=3;
+    try{ if(PVP && PVP.myPack && PVP.myPack.stars) myS=+PVP.myPack.stars; }catch(e){}
+    try{ if(PVP && PVP.oppPack && PVP.oppPack.stars) opS=+PVP.oppPack.stars; }catch(e){}
+    const dLp=pvpTierDelta(r.my, r.op, myS, opS, !!r.ff);
+    fbGet("rank/"+sk+"/"+key).then(cur=>{
+      const c=(cur&&typeof cur==="object")?cur:{};
+      const lp=Math.max(0, (c.p|0)+dLp);
+      const rec={ n:String(pvpNick()||"감독").slice(0,8), p:lp,
+        w:(c.w|0)+(r.my>r.op?1:0), d:(c.d|0)+(r.my===r.op?1:0), l:(c.l|0)+(r.my<r.op?1:0),
+        hi:Math.max(c.hi|0, lp), t:Date.now() };
+      try{ localStorage.setItem("klm2026_pvpTierLp", String(lp)); }catch(e){}
+      try{ PVP_TIER.my={lp, w:rec.w, d:rec.d, l:rec.l, hi:rec.hi, dLp}; }catch(e){}
+      try{
+        const T=pvpTierOf(lp), T0=pvpTierOf(Math.max(0, lp-dLp));
+        if(T.t.k!==T0.t.k || T.div!==T0.div){
+          notify(`🏅 <b>${dLp>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${T.label}</b> (${lp} LP)`, dLp>=0?"good":"warn");
+        } else {
+          notify(`🏅 시즌 LP <b>${dLp>=0?"+":""}${dLp}</b> → ${lp} LP <span class="small">(${T.label})</span>`, dLp>=0?"info":"warn");
+        }
+      }catch(e){}
+      return fbSet("rank/"+sk+"/"+key, rec);
+    }).catch(()=>{});
   }catch(e){}
 }
 let PVP_RANK={rows:null, at:0};
@@ -63336,8 +63592,10 @@ async function pvpRankRefresh(force){
   PVP_RANK.at=now;
   const all=await fbGet("rank")||{};
   const wk=pvpRankWk(0), prev=pvpRankWk(-1);
-  /* 지난주보다 오래된 주차는 청소한다 — 장부가 무한히 자라지 않게 */
-  for(const k in all){ if(k!==wk && k!==prev){ try{ fbDel("rank/"+k); }catch(e){} } }
+  const sk=pvpTierSeasonKey(0), sPrev=pvpTierSeasonKey(-1);
+  /* 지난주보다 오래된 주차는 청소한다 — 장부가 무한히 자라지 않게.
+     ⚠ 시즌 칸(s…)은 남긴다 — 같은 갈래를 쓰지만 수명이 4주다 (개발 노트: 티어 시즌제) */
+  for(const k in all){ if(k!==wk && k!==prev && k!==sk && k!==sPrev){ try{ fbDel("rank/"+k); }catch(e){} } }
   const cur=all[wk]||{}, mineKey=pvpNickKey();
   const rows=[];
   for(const k in cur){
@@ -63346,8 +63604,70 @@ async function pvpRankRefresh(force){
   }
   rows.sort((a,b)=> b.p-a.p || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
   PVP_RANK.rows=rows;
+  /* 🏅 시즌 티어 */
+  {
+    const sc=all[sk]||{}, trows=[];
+    for(const k in sc){
+      const e=sc[k]; if(!e || typeof e!=="object") continue;
+      trows.push({k, n:pvpClean(e.n,8)||"감독", lp:e.p|0, w:e.w|0, d:e.d|0, l:e.l|0, hi:e.hi|0, me:k===mineKey});
+    }
+    trows.sort((a,b)=> b.lp-a.lp || b.w-a.w || (b.w+b.d+b.l)-(a.w+a.d+a.l));
+    PVP_TIER.rows=trows;
+    const mine=trows.find(x=>x.me)||null;
+    PVP_TIER.my = mine ? {lp:mine.lp, w:mine.w, d:mine.d, l:mine.l, hi:mine.hi} : (PVP_TIER.my||null);
+    PVP_TIER.rank = mine ? (trows.indexOf(mine)+1) : null;
+    try{ pvpTierSeasonCheck(mine?mine.lp:null); }catch(e){}
+    const te=document.getElementById("pvpTier");
+    if(te) te.innerHTML=pvpTierHtml();
+  }
   const el=document.getElementById("pvpRank");
   if(el) el.innerHTML=pvpRankHtml();
+}
+/* 🏅 시즌 티어 카드 — 내 티어 배지 + 진행 막대 + 시즌 순위표 */
+function pvpTierHtml(){
+  if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
+  const R=PVP_TIER;
+  const leftMs=(Math.floor(Date.now()/PVP_TIER_SEASON)+1)*PVP_TIER_SEASON - Date.now();
+  const leftD=Math.max(0, Math.ceil(leftMs/86400000));
+  const last=pvpTierLast();
+  const lastLine=last?`<p class="small" style="margin:6px 0 0;opacity:.75">지난 시즌 마감 — <b style="color:${last.c||"var(--gold)"}">${last.label}</b> (${last.lp} LP)</p>`:"";
+  if(!pvpNickClaimed())
+    return `<p class="small" style="opacity:.75">🎫 <b>닉네임을 저장</b>하면 티어가 매겨집니다 — 이름 없는 성적은 세울 자리가 없습니다.</p>${lastLine}`;
+  if(!R.rows) return `<p class="small" style="opacity:.6">불러오는 중…</p>`;
+  /* 내 티어 */
+  const my=R.my;
+  const T=pvpTierOf(my?my.lp:0);
+  const games=my?(my.w+my.d+my.l):0;
+  const bar=`<div style="height:9px;border-radius:999px;background:#161b22;border:1px solid var(--line);overflow:hidden;margin-top:6px">
+      <div style="height:100%;width:${Math.round(T.prog*100)}%;background:linear-gradient(90deg,${T.t.c}88,${T.t.c});border-radius:999px"></div></div>`;
+  const mine=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="font-size:34px;line-height:1">${T.t.ic}</div>
+      <div style="flex:1;min-width:150px">
+        <div style="font-size:18px;font-weight:800;color:${T.t.c}">${T.t.n}${T.t.k==="master"?"":" "+PVP_DIV[T.div]}</div>
+        <div class="small" style="opacity:.85"><b>${my?my.lp:0} LP</b>${T.need!=null?` · 다음 단계까지 ${T.need} LP`:" · 최고 티어"}${R.rank?` · 시즌 ${R.rank}위`:""}</div>
+        ${bar}
+      </div>
+      <div class="small" style="text-align:right;min-width:110px;opacity:.9">
+        ${games?`${my.w}승 ${my.d}무 ${my.l}패`:"아직 경기 없음"}${my&&my.hi>my.lp?`<br><span style="opacity:.7">최고 ${my.hi} LP</span>`:""}
+      </div>
+    </div>`;
+  /* 시즌 순위표 */
+  const medal=(i)=> i===0?"🥇" : i===1?"🥈" : i===2?"🥉" : `<span style="opacity:.6">${i+1}</span>`;
+  const board=R.rows.length?`<div class="tblScroll" style="margin-top:10px"><table>
+    <tr><th style="width:38px">#</th><th style="text-align:left">감독</th><th>티어</th><th>LP</th><th>전적</th></tr>
+    ${R.rows.slice(0,15).map((r,i)=>{ const t=pvpTierOf(r.lp);
+      /* 👑 챌린저 — 마스터 중 시즌 상위 3명 (자리에 대한 칭호라 인원이 늘면 자연히 어려워진다) */
+      const ch=(i<3 && t.t.k==="master");
+      return `<tr${r.me?' style="background:rgba(227,179,65,.10)"':""}>
+      <td style="font-weight:800">${medal(i)}</td>
+      <td style="text-align:left"><b${r.me?' style="color:var(--gold)"':""}>${r.n}</b>${r.me?' <span class="small">(나)</span>':""}</td>
+      <td class="small" style="color:${t.t.c};font-weight:700;white-space:nowrap">${ch?"👑 챌린저":t.label}</td>
+      <td><b style="color:var(--green)">${r.lp}</b></td>
+      <td class="small">${r.w}승 ${r.d}무 ${r.l}패</td></tr>`;}).join("")}
+  </table></div>`:`<p class="small" style="margin-top:8px;opacity:.6">이번 시즌에 아직 경기를 마친 감독이 없습니다 — 1위 자리가 비어 있습니다.</p>`;
+  return mine + board + lastLine
+    + `<p class="small" style="margin-top:6px;opacity:.65">승 +22 · 무 +6 · 패 −14 를 기본으로, <b>상대 스쿼드가 셀수록 승리가 더 값지고</b> 약한 상대에게 지면 더 깎입니다 (몰수는 ±18). LP 는 0 아래로 내려가지 않습니다.<br>
+      시즌 ${pvpTierSeasonNo()} — <b>${leftD}일</b> 남았습니다. 시즌이 끝나면 LP 는 초기화되고 마감 티어가 기록으로 남습니다.</p>`;
 }
 function pvpRankHtml(){
   if(PVP_NET===false) return `<p class="small" style="opacity:.6">연결이 끊겨 있어 불러올 수 없습니다.</p>`;
@@ -63593,6 +63913,10 @@ function pvpView(){
       <div id="pvpRooms"><p class="small" style="opacity:.6">불러오는 중…</p></div>
       ${(function(){ try{ setTimeout(()=>{ try{ pvpRoomsRefresh(); }catch(e){} }, 50); }catch(e){} return ""; })()}
     </div>
+    <div class="card"><h3>🏅 시즌 티어 <span class="small">— 시즌 ${pvpTierSeasonNo()} · 4주마다 새 시즌</span></h3>
+      <div id="pvpTier">${pvpTierHtml()}</div>
+      ${(function(){ try{ setTimeout(()=>{ try{ pvpRankRefresh(); }catch(e){} }, 80); }catch(e){} return ""; })()}
+    </div>
     <div class="card"><h3>🏆 주간 랭킹 <span class="small">— 이번 주 포인트 순 · 승 3 무 1 패 0</span></h3>
       <div id="pvpRank">${pvpRankHtml()}</div>
       ${(function(){ try{ setTimeout(()=>{ try{ pvpRankRefresh(); }catch(e){} }, 80); }catch(e){} return ""; })()}
@@ -63610,7 +63934,8 @@ function pvpView(){
   if(PVP.stage==="lobby"){
     const pk=PVP.oppPack, ck=PVP.oppCheck||{ok:true,notes:[]};
     return `<h2>⚔️ 온라인 대전 — 매치 로비</h2>
-    ${pk?`<div class="card"><h3>상대: <span style="color:var(--gold)">${pk.mgr}</span>의 ${pk.name} <span class="small">— 전력 ${(pk.stars||3).toFixed(1)}★</span></h3>
+    ${pk?`<div class="card"><h3>상대: <span style="color:var(--gold)">${pk.mgr}</span>의 ${pk.name} <span class="small">— 전력 ${(pk.stars||3).toFixed(1)}★</span>${(PVP.reCount|0)?` <span class="small" style="color:var(--gold)">· 🔁 ${(PVP.reCount|0)+1}번째 판</span>`:""}</h3>
+      <p style="margin:2px 0 6px">${pvpH2HLine(pk.mgr)}${pvpTierTag(pk.mgr)}${pvpSeriesLine()}</p>
       ${ck.notes.length?`<div class="msg warn">⚠ ${ck.notes.join(" · ")}</div>`:""}
       ${(function(){
         /* ⚠ 제보 — 선수 표 대신 「내 선발 vs 상대 선발」 포메이션 그림. 전술 수정 후 돌아오면
@@ -63676,10 +64001,24 @@ function pvpView(){
     const iH=PVP.role==="host";
     const my=iH?r.hg:r.ag, op=iH?r.ag:r.hg;
     return `<h2>⚔️ 경기 종료</h2>
-    <div class="card"><h3 style="font-size:22px">${my} : ${op} <span class="small">— ${PVP.forfeit?(PVP.forfeit==="me"?"몰수패 ⚠️":"몰수승 🎉"):(my>op?"승리! 🎉":my<op?"패배":"무승부")}</span></h3>
+    <div class="card"><h3 style="font-size:22px">${my} : ${op} <span class="small">— ${PVP.forfeit?(PVP.forfeit==="me"?"몰수패 ⚠️":"몰수승 🎉"):(my>op?"승리! 🎉":my<op?"패배":"무승부")}</span>${pvpSeriesLine()}</h3>
       ${PVP.forfeit?`<p class="small" style="color:${PVP.forfeit==="me"?"var(--red)":"var(--green)"}">${PVP.forfeit==="me"?"경기 중 이탈 — 0 : 3 몰수패로 기록됐습니다.":"상대가 경기를 떠나 3 : 0 몰수승으로 기록됐습니다."}</p>`:""}
+      ${(function(){ const nk=(PVP.oppPack&&PVP.oppPack.mgr)||""; return nk?`<p style="margin:4px 0 2px">${pvpH2HLine(nk)}</p>`:""; })()}
       <p class="small">순수 친선전 — 선수단에는 아무 영향이 없습니다. 전적에 기록됐습니다.</p>
-      <button class="mini" onclick="pvpReset();show('pvp')">로비로</button></div>
+      ${(function(){
+        /* 🔁 재대결 — 연결이 살아 있을 때만. 몰수(상대 이탈)로 끝난 판은 붙잡을 상대가 없다 */
+        const live=!!(PVP.chR && PVP.chR.readyState==="open") && !PVP.forfeit;
+        if(!live) return `<p class="small" style="opacity:.7">상대와의 연결이 끝났습니다 — 재대결은 로비에서 다시 신청해 주세요.</p>`;
+        if(PVP.meRe && PVP.oppRe) return `<p class="small" style="color:var(--green)">🔁 재대결 준비 중…</p>`;
+        if(PVP.meRe) return `<div class="msg info" style="margin:6px 0">🔁 <b>재대결을 신청했습니다</b> — 상대의 응답을 기다리는 중… <span class="small">(90초)</span></div>`;
+        if(PVP.oppRe) return `<div class="msg good" style="margin:6px 0">🔁 <b>상대가 재대결을 신청했습니다!</b> 아래 버튼을 누르면 바로 다시 시작합니다.</div>`;
+        return "";
+      })()}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${(PVP.chR && PVP.chR.readyState==="open" && !PVP.forfeit && !PVP.meRe)
+          ? `<button class="mini sel" style="padding:8px 16px;border-color:var(--gold);color:var(--gold)" onclick="pvpRematch()">⚔️ 한 판 더${PVP.oppRe?" (상대 대기 중)":""}</button>` : ""}
+        <button class="mini" onclick="pvpReset();show('pvp')">로비로</button>
+      </div></div>
     ${logHtml}`;
   }
   return `<h2>⚔️ 온라인 대전</h2><div class="card"><p>경기 진행 중…</p></div>`;
