@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260823-1720-->
+<!--B:20260824-1024-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1249,6 +1249,8 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .calHead div{text-align:center;font-size:11px;color:var(--sub);font-weight:700}
 .calHead div:first-child{color:#ff7b72}.calHead div:last-child{color:#79c0ff}
 .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cdw{position:absolute; top:2px; right:3px; font-size:11px; opacity:.62; pointer-events:none;}
+@media (max-width:820px){ .cdw{font-size:9px; top:1px; right:2px;} }
 .calD{position:relative;min-height:56px;border:1px solid #21262d;border-radius:6px;padding:3px 4px;
   background:#0d1117;font-size:11px;overflow:hidden}
 .calD .cdn{position:absolute;top:2px;right:5px;color:var(--sub);font-size:10px}
@@ -5851,6 +5853,37 @@ const COMM={
  lvCornerLive:["코너킥입니다. {t}의 기회입니다.","{t}, 코너킥을 얻어냅니다."],
  lvFKLive:["프리킥입니다. 벽이 세워집니다.","위험한 위치의 프리킥— 수비벽이 섭니다."],
  lvAerial:["{p}, 공중볼을 따냅니다!","{p}이/가 높이 솟아 머리에 맞힙니다!"],
+ /* 🌦️ 날씨 해설 — ⚠ 요청 「날씨 관련 해설 코멘트」. 경기 중 이따금 그날의 조건을 짚어 준다 */
+ wxRain:["🌧️ 빗줄기가 굵어집니다. 그라운드가 완전히 젖었습니다",
+   "🌧️ 젖은 잔디 위에서 공이 예상보다 빠르게 흐릅니다",
+   "🌧️ 이런 날에는 짧은 패스보다 확실한 처리가 낫습니다",
+   "🌧️ 물이 고인 자리에서 공이 갑자기 멈춰 섭니다",
+   "🌧️ 선수들 유니폼이 몸에 달라붙었습니다. 체감 무게가 다릅니다",
+   "🌧️ 골키퍼가 장갑을 계속 털어냅니다 — 잡기 어려운 공입니다"],
+ wxStorm:["⛈️ 폭우입니다. 정상적인 축구를 하기 어려운 조건입니다",
+   "⛈️ 라인 근처에 물이 고여 공이 그대로 멈춥니다",
+   "⛈️ 주심이 그라운드 상태를 살펴봅니다",
+   "⛈️ 관중석은 이미 비옷 물결입니다. 그래도 자리를 지킵니다",
+   "⛈️ 이 정도 비면 롱볼과 세컨볼 싸움이 됩니다"],
+ wxSnow:["🌨️ 눈발이 날립니다. 라인이 보이지 않을 정도입니다",
+   "🌨️ 발을 디딜 때마다 미끄러집니다 — 방향 전환이 위험합니다",
+   "🌨️ 그라운드 관리팀이 라인을 다시 그리고 있습니다",
+   "🌨️ 이런 날엔 공보다 발이 먼저 미끄러집니다",
+   "🌨️ 흰 공이 눈에 묻혀 잘 보이지 않습니다"],
+ wxHot:["🔥 폭염 경보 속 경기입니다. 선수들이 벌써 지쳐 보입니다",
+   "🔥 급수 시간이 필요해 보입니다 — 벤치가 계속 물병을 던져 줍니다",
+   "🔥 이 더위에서는 후반 30분이 승부처가 될 겁니다",
+   "🔥 땀으로 유니폼 색이 달라졌습니다",
+   "🔥 템포가 눈에 띄게 떨어집니다. 더위 탓입니다"],
+ wxCold:["❄️ 입김이 하얗게 올라옵니다. 매서운 추위입니다",
+   "❄️ 몸이 굳어 첫 발이 잘 나가지 않습니다",
+   "❄️ 벤치의 선수들은 담요를 두르고 있습니다",
+   "❄️ 언 땅이라 바운스가 예측되지 않습니다"],
+ wxWind:["🌬️ 강한 바람이 붑니다. 롱볼이 크게 흐릅니다",
+   "🌬️ 코너 깃발이 완전히 눕습니다",
+   "🌬️ 바람을 등진 쪽이 확실히 유리해 보입니다",
+   "🌬️ 골킥이 바람에 밀려 되돌아옵니다",
+   "🌬️ 크로스가 바람을 타고 골문 쪽으로 흘러 들어갑니다"],
  lvInjury:["아... {p}이/가 쓰러져 있습니다. 괜찮을까요?","{p}, 그라운드에 주저앉습니다. 부상인가요?"],
  lvGKrush:["{g} 골키퍼가 뛰쳐나옵니다!","{g}, 박스 밖까지 나와 처리합니다!"],
  penGiven:["🅿️ 페널티킥이 선언됩니다! {t}에게 절호의 기회!","🅿️ 주심이 스팟을 가리킵니다 — {t}의 페널티킥!"],
@@ -6306,6 +6339,9 @@ function createMatch(home, away, opts={}){
   try{ loanBlockSet(home, away); }catch(e){}
   const _MP={};                                     // 플랜 기록용 임시 컨테이너
   try{ aiMatchPlan(_MP, home, away, true); aiMatchPlan(_MP, away, home, false); }catch(e){}
+  /* 🌦️ 오늘 날씨 — 달(月)이 판을 깔고 그 위에서 주사위를 굴린다 (요청) */
+  /* 같은 날 열리는 모든 경기는 같은 하늘 아래다 — 날짜가 날씨를 정한다 (요청) */
+  const _wx = opts.wx ? opts.wx : dayWeather(G.day);
   const H=xiStrength(home), A=xiStrength(away);
   const mk=(xi)=>xi.map(p=>({p, fit:p.cond, y:0, red:false, goals:0, assists:0, on:0, off:null}));
   const M={home, away, opts, min:0, half:1, hg:0, ag:0, done:false, addedTotal:2+R(4), xiDirty:true,
@@ -6316,6 +6352,7 @@ function createMatch(home, away, opts={}){
     h:{team:home, list:mk(H.xi), bench:matchBench(home), subs:0, red:0},
     a:{team:away, list:mk(A.xi), bench:matchBench(away), subs:0, red:0},
     st:{hS:0,aS:0,hT:0,aT:0,hF:0,aF:0,hC:0,aC:0,hY:0,aY:0,hR:0,aR:0},
+    wx:_wx,                                        // 🌦️ 이 경기의 날씨
     needsSubPause:false, pauseReason:null, pauseEntryId:null,
     pendingQueue:{h:[],a:[]}, // VAR 판독처럼 실제로 시간이 걸리는 판정만 다음 분으로 미루는 대기열
     events:[]};
@@ -6334,6 +6371,19 @@ function createMatch(home, away, opts={}){
     M.aatt=awayAttFor(home, away, M.att);      // 그중 원정 팬
   }catch(e){ M.att=0; M.aatt=0; }
   ev(M, null, F_(COMM.ko,refVars(M)), "info", false, {kind:"kickoff"});
+  /* 🌦️ 오늘 그라운드 상태 — 킥오프 직후 한 줄 (요청) */
+  try{
+    const w=M.wx;
+    if(w && w.k!=="clear" && w.k!=="cloud"){
+      const say={ rain:"🌧️ 비가 내립니다 — 그라운드가 젖어 공이 빠르게 흐릅니다.",
+                  storm:"⛈️ 폭우입니다 — 공이 미끄러지고 발이 밀립니다. 정상적인 축구가 어려운 날씨입니다.",
+                  snow:"🌨️ 눈이 내립니다 — 방향 전환이 어렵고 넘어지는 선수가 나올 겁니다.",
+                  hot:"🔥 폭염 속 경기입니다 — 후반 체력이 승부를 가를 것 같습니다.",
+                  cold:"❄️ 한파입니다 — 몸이 굳어 첫 발이 잘 안 나갑니다.",
+                  windy:"🌬️ 강풍이 붑니다 — 롱볼과 크로스가 바람을 탑니다." }[w.k];
+      if(say) ev(M, null, say, "info", false, {kind:"weather"});
+    }
+  }catch(e){}
   return M;
 }
 /* 전광판 표기 — 45+2 · 90+4 · 105+1 · 120+2 처럼 실제 중계와 같은 꼴로 */
@@ -7313,12 +7363,13 @@ function applyMatchResult(M){
       const load = clamp((APP_BASE + (mins/93)*(1-APP_BASE)*(x.on>0?SUB_RATE:1))*gkK, 0, 1.15);
       p.cond=clamp(p.cond-Math.round(load*(8+R(6))*cf*natK),55,100);
       p.mFat=Math.round(clamp((p.mFat||0)+load, 0, 1.30)*100)/100;   // 다음 며칠의 회복을 늦춘다
-      let base=6.0+x.goals*1.0+x.assists*0.5-x.y*0.3-(x.red?1.2:0)+(gf-ga)*0.2+(Math.random()*1.2-0.3);
-      x.rating=clamp(base,3,10);        // 이 경기의 평점 — 리포트·MOM 선정에 쓰인다
-      if(frMatch){ p.fRTot=(p.fRTot||0)+clamp(base,3,10); p.fRating=Math.round(p.fRTot/p.fApps*100)/100; }
+      /* ⭐ 실축 눈금 평점 — 팀 성적·골득실·공격 포인트·무실점/실점·리그 대비 실력·출전 시간 (제보) */
+      const base=matchRating(x, p, t, mins, gf, ga, ef, ea);
+      x.rating=base;                    // 이 경기의 평점 — 리포트·MOM 선정에 쓰인다
+      if(frMatch){ p.fRTot=(p.fRTot||0)+base; p.fRating=Math.round(p.fRTot/p.fApps*100)/100; }
       else if(eaclMatch){ /* 대회 평점 — eaclStatCollect 가 x.rating 을 가져간다 */ }
-      else { p.rTot+=clamp(base,3,10); p.seasonRating=Math.round(p.rTot/p.apps*100)/100; }
-      p.morale=clamp(p.morale+(ef>ea?3:ef<ea?-3:0)+(base>=7.6?2:0),30,99);
+      else { p.rTot+=base; p.seasonRating=Math.round(p.rTot/p.apps*100)/100; }
+      p.morale=clamp(p.morale+(ef>ea?3:ef<ea?-3:0)+(base>=7.9?2:0),30,99);
       /* 특성 경험치 — 뛴 만큼, 잘한 만큼 쌓인다 (우리 팀 선수만 관리 대상) */
       if(t.isUser){
         try{ addTraitXp(p, traitXpForMatch(p, mins, clamp(base,3,10), x.goals, x.assists,
@@ -7360,6 +7411,93 @@ const MOM_FMK={
    위쪽이 우리가 공격하는 방향이다(후반 진영 교대는 수집 단계에서 이미 뒤집어 놨다). */
 let PMAP_SIDE="h";
 function pmapSide(k){ PMAP_SIDE=k; try{ show("home"); }catch(e){} }
+/* 📈 경기 모멘텀 — FM 의 그 막대 그래프 (요청).
+   1분 단위 값을 5분 묶음으로 눌러 18칸 안팎으로 그린다. 위(밝은 색)=홈, 아래(팀 색)=원정.
+   전·후반 사이에 구분선을 긋고, 골이 난 칸에는 ⚽ 를 얹는다. */
+function momentumCard(res, h, a){
+  const MO=res && res.momo;
+  if(!MO || !Array.isArray(MO.v) || MO.v.length<8) return "";
+  const ht=MO.ht||45;
+  /* 5분 묶음 — 전·후반 경계에서 끊어 두 구간이 섞이지 않게 한다 */
+  const BIN=5, bins=[];
+  const put=(from, to)=>{
+    for(let s=from; s<to; s+=BIN){
+      const e=Math.min(s+BIN, to);
+      let sum=0, n=0;
+      for(const it of MO.v){ if(it.m>=s && it.m<e){ sum+=it.v; n++; } }
+      if(!n) continue;
+      /* 추가시간 자투리(1~2분)는 앞 칸에 합친다 — 「90분부터 91분까지」 같은 토막이 안 생기게 */
+      const prev=bins[bins.length-1];
+      if((e-s)<=2 && prev && prev.half===(s<ht?1:2)){ prev.v=(prev.v+sum/n)/2; prev.e=e; continue; }
+      bins.push({s, e, v:sum/n, half:(s<ht?1:2)});
+    }
+  };
+  const last=MO.v.reduce((m2,it)=>Math.max(m2,it.m), 0)+1;
+  put(0, ht); put(ht, Math.max(ht+1, last));
+  if(bins.length<4) return "";
+  const W=560, H=250, PADX=18, PADY=24, MID=PADY+(H-PADY*2)/2;
+  const bw=(W-PADX*2)/bins.length;
+  const hCol=(h&&h.col)||"#e6edf3", aCol=(a&&a.col)||"#e5484d";
+  const hInk=(typeof inkOn==="function")?inkOn(hCol):"#fff";
+  /* 막대 */
+  let bars="";
+  bins.forEach((b,i)=>{
+    const x=PADX+i*bw+bw*0.14, w=bw*0.72;
+    const hgt=Math.max(1.5, Math.abs(b.v)*(H-PADY*2)/2*0.94);
+    if(b.v>=0) bars+=`<rect x="${x.toFixed(1)}" y="${(MID-hgt).toFixed(1)}" width="${w.toFixed(1)}" height="${hgt.toFixed(1)}" fill="${hCol}" rx="1"/>`;
+    else       bars+=`<rect x="${x.toFixed(1)}" y="${MID.toFixed(1)}" width="${w.toFixed(1)}" height="${hgt.toFixed(1)}" fill="${aCol}" rx="1"/>`;
+  });
+  /* 골 표식 */
+  let goals="";
+  for(const g of (MO.g||[])){
+    let idx=bins.findIndex(b=>g.m>=b.s && g.m<b.e);
+    if(idx<0) continue;
+    const x=PADX+idx*bw+bw/2;
+    const y=(g.s==="h") ? MID-((H-PADY*2)/2)*0.62 : MID+((H-PADY*2)/2)*0.62;
+    goals+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="#0d1117" stroke="#e6edf3" stroke-width="1.4"/>`
+         + `<text x="${x.toFixed(1)}" y="${(y+3.4).toFixed(1)}" text-anchor="middle" font-size="8.5">⚽</text>`;
+  }
+  /* 하프타임 구분선 */
+  const n1=bins.filter(b=>b.half===1).length;
+  const hx=PADX+n1*bw;
+  /* 왼쪽 요약 — 이 경기가 어떤 흐름이었는지 문장으로 (FM 의 그 설명문) */
+  const hs=bins.filter(b=>b.half===1), as2=bins.filter(b=>b.half===2);
+  const avg=(A)=>A.length?A.reduce((s,b)=>s+b.v,0)/A.length:0;
+  const nm=(v)=>v>0?((h&&h.short)||"홈"):((a&&a.short)||"원정");
+  const say=[];
+  const all=avg(bins);
+  say.push(Math.abs(all)<0.12 ? `양 팀 모두 경기 내내 <b>비슷한 수준의 대결</b>을 펼쳤습니다.`
+    : `경기 전체로는 <b>${nm(all)}</b> 쪽이 흐름을 쥐었습니다.`);
+  const a1=avg(hs), a2=avg(as2);
+  if(hs.length) say.push(Math.abs(a1)<0.14 ? `전반전은 전체적으로 <b>비슷했습니다</b>.`
+    : `전반전은 <b>${nm(a1)}</b> 쪽이 <b>${Math.abs(a1)>0.42?"확실히":"조금"}</b> 우세했습니다.`);
+  if(as2.length) say.push(Math.abs(a2)<0.14 ? `후반전 들어 <b>팽팽한 접전</b>이 이어졌습니다.`
+    : `후반전은 <b>${nm(a2)}</b> 쪽이 <b>${Math.abs(a2)>0.42?"주도권을 가져갔습니다":"조금 앞섰습니다"}</b>.`);
+  /* 가장 뜨거웠던 구간 */
+  let bestP=null, bestN=null;
+  for(const b of bins){ if(!bestP||b.v>bestP.v) bestP=b; if(!bestN||b.v<bestN.v) bestN=b; }
+  if(bestP && bestP.v>0.45) say.push(`<b>${bestP.s}분부터 ${bestP.e}분</b>까지는 <b>${(h&&h.short)||"홈"}</b> 쪽이 확실히 우세했습니다.`);
+  if(bestN && bestN.v<-0.45) say.push(`<b>${bestN.s}분부터 ${bestN.e}분</b>까지는 <b>${(a&&a.short)||"원정"}</b> 쪽이 주도권을 잡았습니다.`);
+  return `<div class="card" style="flex:1;min-width:330px">
+    <h3>📈 경기 모멘텀 <span class="small">— 5분 단위 우세도</span></h3>
+    <div class="tblScroll" style="overflow-x:auto">
+      <svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:340px;display:block">
+        <rect x="0" y="0" width="${W}" height="${H}" fill="#0d1117" rx="8"/>
+        <line x1="${PADX}" y1="${MID}" x2="${W-PADX}" y2="${MID}" stroke="#8b949e" stroke-width="1"/>
+        ${n1&&as2.length?`<line x1="${hx.toFixed(1)}" y1="${PADY-6}" x2="${hx.toFixed(1)}" y2="${H-PADY+6}" stroke="#30363d" stroke-width="1.4"/>`:""}
+        ${bars}${goals}
+        <text x="${PADX+2}" y="${PADY-8}" font-size="10" fill="#8b949e">수적 우위 ↑</text>
+        ${n1?`<text x="${(PADX+n1*bw/2).toFixed(1)}" y="${H-6}" font-size="10.5" fill="#8b949e" text-anchor="middle">전반</text>`:""}
+        ${as2.length?`<text x="${(hx+as2.length*bw/2).toFixed(1)}" y="${H-6}" font-size="10.5" fill="#8b949e" text-anchor="middle">후반</text>`:""}
+      </svg>
+    </div>
+    <div class="small" style="display:flex;gap:14px;justify-content:center;margin:4px 0 8px">
+      <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${hCol};vertical-align:-1px"></i> ${(h&&h.short)||"홈"}</span>
+      <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${aCol};vertical-align:-1px"></i> ${(a&&a.short)||"원정"}</span>
+    </div>
+    <div class="small" style="line-height:1.75;opacity:.9">${say.map(s=>`· ${(typeof fixJosa==="function")?fixJosa(s):s}`).join("<br>")}</div>
+  </div>`;
+}
 function passMapCard(res, h, a){
   const PM=res && res.pmap; if(!PM) return "";
   const meIsHome = !!(h && h.isUser);
@@ -7482,6 +7620,89 @@ function momScore(x, won, drew, cleanSheet){
   const mins=(x.off===null?90:x.off)-x.on;
   if(mins<25) s-=0.60;                       // 잠깐 뛰고 뽑히면 이상하다
   return s;
+}
+/* ═══ ⭐ 평점 — 실축(K리그1·2) 통계에 맞춘 눈금 ══════════════════════════
+   ⚠ 제보 원문 — 「현재 평점 시스템이 실축과 다르게 짜게 편성되어 있는 것 같다.
+      시즌 최우수 베스트 11의 경우 평점이 6점대인 후보가 여덟 명인데, 특히 미드필더진·
+      수비진·골키퍼는 모두가 6점대였다. 실축에서는 작년 기준 리그 베스트11이 모두 7점대
+      이상이었다(최고점 이동경 7.65). 공격수 또한 리그 파괴급이 아니면 저평가당한다.
+      K리그1·K리그2 실축 평점 통계를 활용해 현실화해 달라」.
+   ── 원인 ────────────────────────────────────────────────────
+   옛 식은 이랬다:  6.0 + 골×1.0 + 도움×0.5 − 경고×0.3 − 퇴장×1.2 + 골득실×0.2 + rand(−0.3~+0.9)
+     · 공격 포인트가 없으면 무조건 6.3 언저리다. 골키퍼·수비수·수비형 미드필더는
+       한 시즌을 아무리 잘 막아도 6점대를 벗어날 방법이 아예 없었다 —
+       무실점·실점·선방·상대 전력·팀 성적이 식에 단 한 줄도 없었기 때문이다.
+     · 리그 평균이 6.3이라 실축 눈금(평균 6.75)보다 통째로 0.45 낮았고,
+       그래서 베스트11이 6점대로 발표됐다.
+   ── 새 눈금 (실축 분포에 맞춤) ────────────────────────────────
+     리그 평균 ≈ 6.75 · 주전 하위권 ≈ 6.3 · 베스트11 ≈ 7.2~7.7 · 최고 ≈ 7.7
+   ── 무엇을 보는가 ───────────────────────────────────────────
+     ① 팀 성적(승·무·패)과 골득실 — 이긴 팀의 선수가 더 받는다
+     ② 공격 포인트 — 포지션마다 무게가 다르다 (수비수의 한 골 > 공격수의 한 골)
+     ③ 무실점·실점 — 골키퍼와 수비수의 성적표다 (옛 식에는 아예 없었다)
+     ④ 「보이지 않는 기여」 — 이 매치엔진은 선수별 태클·선방·키패스를 따로 적지 않는다.
+        실축 평점의 절반은 그 항목들에서 나온다. 대신 <b>같은 리그 평균 대비 실력</b>을
+        그 자리에 놓는다. 리그마다 기준선이 따로 잡히므로 K리그2 베스트11도 7점대에 선다.
+     ⑤ 출전 시간 — 짧게 뛴 교체 선수는 평균 쪽으로 당겨진다 (15분 뛰고 8점이 나오지 않게)
+   ⚠ 분포를 통째로 0.45 올렸으므로, 평점을 읽는 다른 판정(부진·호조·이적료·재계약·
+      임대 완전영입·MOM 화제성)의 문턱도 같은 폭으로 함께 옮겼다. */
+const RT_BASE=6.66;
+/* 포지션 기준선 — 실축 평점도 자리마다 바탕이 조금씩 다르다. 골키퍼·수비수는
+   기록에 남는 공격 포인트가 거의 없어 바탕을 조금 높게 잡아야 눈금이 맞는다 (제보). */
+const RT_POS ={GK:0.06, DF:0.05, MF:0.00, FW:-0.02};                                     // 아무 일 없이 풀타임을 뛴 선수의 바탕
+const RT_WIN=0.36, RT_DRAW=0.02, RT_LOSS=-0.26;         // 팀 성적
+const RT_GD=0.05, RT_GD_CAP=0.20;                       // 골득실 한 점당 (상·하한)
+const RT_GOAL={GK:1.60, DF:1.25, MF:1.05, FW:1.00};     // 골 — 수비수의 한 골이 더 무겁다
+const RT_AST ={GK:0.90, DF:0.68, MF:0.60, FW:0.52};     // 도움
+const RT_CS  ={GK:0.48, DF:0.42, MF:0.12, FW:0.02};     // 무실점
+const RT_CONC={GK:0.16, DF:0.10, MF:0.03, FW:0.00};     // 2실점째부터 한 점당
+/* 「보이지 않는 기여」 — ⚠ 능력치 절대값으로 재면 안 된다. K리그1 의 실력 폭은 아주 좁고
+   (측정: 평균 72.6 · 90% 75 · 최고 80) K리그2 는 넓다(평균 66.6 · 90% 72 · 최고 80).
+   같은 계수를 쓰면 1부에서는 이 항이 사실상 0이 되어 베스트11 이 6점대에 머문다.
+   ─ 그 리그 안에서의 <b>표준편차 기준 위치(z)</b>로 잰다. 실축 평점도 리그 안의 상대 평가다. */
+const RT_QUAL_Z=0.27, RT_QUAL_LO=-0.50, RT_QUAL_HI=0.90;
+const RT_RAND=0.45;                                     // 경기마다의 흔들림 (시즌 평균에는 거의 영향이 없다)
+const RT_YEL=0.15, RT_RED=1.00;
+/* 그 리그(부)의 실력 분포(평균·표준편차) — 클럽별 상위 18명(실제로 뛰는 인원)만 센다.
+   하루에 한 번만 계산하고 캐시한다. */
+let RT_MID_CACHE=null;
+function rateMidOvr(div){
+  try{
+    const key=(G.season||0)+"|"+(G.day||0);
+    if(!RT_MID_CACHE || RT_MID_CACHE.k!==key) RT_MID_CACHE={k:key, v:{}};
+    const c=RT_MID_CACHE.v, d=(div|0)||1;
+    if(c[d]) return c[d];
+    const arr=[];
+    for(const id in G.teams){
+      const t=G.teams[id]; if(!t || (t.div|0)!==d || !Array.isArray(t.players)) continue;
+      const top=t.players.slice().sort((a,b)=>(b.ovr||0)-(a.ovr||0)).slice(0,18);
+      for(const p of top) arr.push(p.ovr||60);
+    }
+    if(!arr.length) return (c[d]={m:70, s:4});
+    const m=arr.reduce((s,x)=>s+x,0)/arr.length;
+    const s=Math.sqrt(arr.reduce((s2,x)=>s2+(x-m)*(x-m),0)/arr.length) || 4;
+    return (c[d]={m, s:Math.max(1.6, s)});
+  }catch(e){ return {m:70, s:4}; }
+}
+function ratePosK(p){
+  const z=p&&p.pos;
+  return z==="GK"?"GK" : z==="DF"?"DF" : z==="FW"?"FW" : "MF";
+}
+/* 한 경기 평점 — 두 엔진(2D·분 단위)이 같은 식을 쓴다 */
+function matchRating(x, p, t, mins, gf, ga, ef, ea){
+  const k=ratePosK(p);
+  const w=clamp(mins/72, 0.42, 1);                       // 출전 시간 가중
+  const res=(ef>ea)?RT_WIN : (ef<ea)?RT_LOSS : RT_DRAW;
+  const MD=rateMidOvr(t&&t.div);
+  const qual=clamp((((p.ovr||60) - MD.m)/MD.s) * RT_QUAL_Z, RT_QUAL_LO, RT_QUAL_HI);
+  const cs = (ga===0) ? RT_CS[k]*w : -Math.max(0, ga-1)*RT_CONC[k]*w;
+  const v = RT_BASE + RT_POS[k]
+    + (res + clamp((gf-ga)*RT_GD, -RT_GD_CAP, RT_GD_CAP) + qual) * w
+    + (x.goals||0)*RT_GOAL[k] + (x.assists||0)*RT_AST[k]
+    + cs
+    - (x.y||0)*RT_YEL - (x.red?RT_RED:0)
+    + (Math.random()*2-1)*RT_RAND;
+  return clamp(v, 3, 10);
 }
 function pickMOM(M){
   if(!M || M.opts&&M.opts.friendly) return null;
@@ -8125,7 +8346,7 @@ function matchNews(M, div, rnd){
       if(mm.isUser){
         addNews(`🏅 <b>${mm.name}</b>, ${rd} MOM 선정 — ${detail}평점 <b>${mm.rating.toFixed(2)}</b>`, "good", "club");
         socialFill(MOM_SOC.our, 2+R(2), 1, {p:mm.name, t:mt.short, r:mm.rating.toFixed(2)});
-        if(mm.rating>=8.2 || mm.goals>=2) fmkFill(MOM_FMK.big, 1+R(2), {p:mm.name, t:mt.short, r:mm.rating.toFixed(2)});
+        if(mm.rating>=8.6 || mm.goals>=2) fmkFill(MOM_FMK.big, 1+R(2), {p:mm.name, t:mt.short, r:mm.rating.toFixed(2)});
         try{
           const pl=(userTeam().players||[]).find(x=>x.id===mm.id);
           if(pl){ pl.morale=clamp((pl.morale||70)+3,30,99); affAdd(pl, 2, "MOM 선정"); }
@@ -11013,6 +11234,7 @@ function completeRound(M){
   const k1done=G.r1>=G.k1Fix.length, k2done=G.r2>=G.k2Fix.length;
   if(k1done&&k2done&&G.phase==="league"){ G.phase="po"; G.poQueue=buildPOQueue(); addNews("⚔️ 정규리그 종료! 승강 플레이오프가 시작됩니다."); }
   try{ checkTitleClinch(); }catch(e){}   // 🏆 이 라운드로 우승이 정해졌는가
+  try{ acqRoundCheck(); }catch(e){}      // 📰 시민구단 인수 접촉설 (요청)
   try{ banSweep(); }catch(e){}      // 🟥 갈아끼운 징계가 갇혀 있으면 먼저 되돌린다
   tickBanInj({inj:true, ban:true});
   /* ⚠ 제보 — "출장정지 해제가 안 됩니다": 방출·FA로 풀린 선수는 구단 순회 루프 밖이라
@@ -13264,8 +13486,8 @@ function developPlayer(t, p, load, foc){
     if(age<=21) sh *= (1 + share*0.30);
     else if(age<=23) sh *= (1 + share*0.18);
     /* 잘하고 있으면 더 는다 — 자신감이 붙은 유망주는 다음 경기가 또 다르다 */
-    if(p.seasonRating>=6.9 && (p.apps||0)>=3) sh *= 1.10;
-    else if(p.seasonRating && p.seasonRating<6.3 && (p.apps||0)>=5) sh *= 0.94;
+    if(p.seasonRating>=7.30 && (p.apps||0)>=3) sh *= 1.10;
+    else if(p.seasonRating && p.seasonRating<6.50 && (p.apps||0)>=5) sh *= 0.94;
     dir *= (0.25+room*0.92) * sh * (load==null?DEV_REST:DEV_LOAD[clamp(load,0,2)]);
     if(p.inj>0) dir*=0.22;                                      // 재활 중엔 성장이 멈춘다
     if(p.sulk>0) dir*=0.35;                                     // 태업하는 선수는 늘지 않는다
@@ -13464,6 +13686,24 @@ function tacDrill(t, g){
   return heal;
 }
 function famOf(t){ return t && t.fam!=null ? t.fam : 70; }
+/* 🧩 ⚠ 제보 원문 — 「특별한 이유 없이 똑같은 전술과 선수들인데도 경기 전 '전술' 의 숙련도와
+      경기 도중의 '전술' 숙련도가 차이가 난다(보통 경기 전이 더 높다). 경기 전 숙련도로
+      경기 도중의 숙련도를 통일해 달라」.
+   원인 — 경기 중 전술판에서 무엇이든 건드리면(포메이션·성향·슬라이더·프리셋) 그 자리에서
+     noteTacticChange 가 조직력을 깎는다. 그런데 이 깎임은 <b>그 경기 한정</b>이다 —
+     종료 휘슬과 함께 restoreTactic 이 킥오프 시점 값으로 그대로 되돌린다.
+     즉 「경기 중에만 낮게 보이는 값」이었고, 감독은 아무것도 안 바꿨다고 느끼는 사소한 조정
+     (성향 한 칸, 되돌렸다 다시 놓기, 퇴장 뒤 자리 재배치)에도 숫자가 내려가 있었다.
+     되돌릴 값을 경기 내내 낮게 보여 줄 이유가 없다.
+   수정 — 경기 중에는 <b>킥오프 시점(preMatchTactic.fam)</b>을 기준으로 삼는다.
+     화면(친숙도 게이지·전술 슬롯)과 경기 엔진(famK)이 같은 값을 쓰므로 표시와 실제가 어긋나지 않는다. */
+function famLive(t){
+  try{
+    if(t && t.isUser && preMatchTactic && typeof preMatchTactic.fam==="number"
+       && typeof liveM!=="undefined" && liveM && !liveM.done) return preMatchTactic.fam;
+  }catch(e){}
+  return famOf(t);
+}
 /* 조직력은 위로 갈수록 더디게 오른다. 58에서 시작해 5주면 '매우 익숙함',
    시즌 중반에 95 근처로 수렴한다. 포메이션을 갈아엎으면(-20) 다시 5주가 든다. */
 /* ── 🧓 노장 페널티 ────────────────────────────────────────────
@@ -13523,7 +13763,7 @@ function famLabel(v){
 }
 /* 경기에 미치는 영향 계수 — 70을 기준선으로 -1.5 ~ +1.0.
    패스 정확도·수비 간격·압박 타이밍에 곱해 쓴다. 체감은 되지만 전력 차를 뒤집지는 못한다. */
-function famK(t){ return clamp((famOf(t)-70)/30, -1.5, 1); }
+function famK(t){ return clamp((famLive(t)-70)/30, -1.5, 1); }
 function playRound(div, skipUser){
   /* 🟥 리그 라운드를 굴리기 전에 징계 문맥을 리그로 맞춘다 — 프리시즌의 「친선」 문맥이
      남아 있으면 리그 경기에 정지 선수가 뛴다 (제보: 대회 간 징계 완전 분리) */
@@ -13721,6 +13961,344 @@ function runPOInstant(){
   return {type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events}, h:G.teams[hid], a:G.teams[aid], tag:m.tag};
 }
 /* ---------- 시즌 종료 ---------- */
+/* ═══ 🏢 기업 인수 — 시민구단이 기업구단이 된다 ═══════════════════════
+   ⚠ 요청 원문 — 「시민구단이 매력도도 높고 일정 기준을 크게 충족하면 기업인이 인수하는
+      그런 이벤트도 구현해볼까?」
+   ─ 정한 것 ─────────────────────────────────────────────────
+     · 감독은 결정에 개입하지 않는다 — 인수는 구단주와 주주의 일이고, 감독은 통보를 받는다
+     · AI 시민구단에도 일어난다 — 리그 판도가 살아 움직인다 (한 시즌에 한 구단만)
+     · 구단명에 기업명이 반영된다 (K리그 관행: 「울산 HD」·「전북 현대」 꼴)
+   ⚠ 배관은 이미 있다 — G.ownerKinds/G.ownerNames 를 바꾸면 스폰서 매력도·파트너 수·
+      구장 사업비·AI 예산 증액 확률·모기업 증시 상장까지 전부 따라간다(에디터용으로 만든 길).
+      이 이벤트는 그 길을 그대로 쓴다. */
+const ACQ_BAR=92;           // 인수 문턱 점수 — 1부 3위권을 두세 시즌 유지한 시민구단이 겨우 닿는다
+const ACQ_GAP=2;            // 리그 전체 쿨다운 (시즌)
+const ACQ_BRAND_A=["한백","대선","세종","우성","태산","서진","동보","가온","해성","진성",
+                   "백산","유정","대양","신원","청람","도원","명진","광일","성진","한영",
+                   "무학","금정","연호","다산","벽산"];
+const ACQ_BRAND_B=["그룹","산업","모빌리티","전자","건설","화학","바이오","에너지",
+                   "제철","금융지주","물산","해운","식품","텔레콤","중공업","리테일"];
+/* 이미 리그에서 쓰고 있는 모기업 이름과 겹치지 않게 고른다 */
+function acqBrand(){
+  const used=new Set();
+  try{
+    for(const id in CLUB_TYPE) used.add(String(CLUB_TYPE[id].o||""));
+    for(const id in (G.ownerNames||{})) used.add(String(G.ownerNames[id]||""));
+  }catch(e){}
+  for(let i=0;i<60;i++){
+    const a=pick(ACQ_BRAND_A), b=pick(ACQ_BRAND_B), full=a+b;
+    if(used.has(full)) continue;
+    let dup=false; for(const u of used) if(u.indexOf(a)===0){ dup=true; break; }
+    if(dup) continue;
+    return {core:a, full};
+  }
+  return {core:"한백", full:"한백그룹"};
+}
+/* 도시 이름 — 「수원FC」처럼 붙어 있는 꼬리를 떼고 앞의 지명만 남긴다 */
+function acqCityOf(t){
+  return String(t.short||t.name||"").replace(/(FC|유나이티드|시티)$/,"").trim() || String(t.short||"구단");
+}
+/* 얼마나 「살 만한 구단」인가 — 매력도가 주축이고 성적·관중·구장·팬이 얹힌다 */
+function acqScore(t, pos){
+  try{
+    if(!t || t.id==="gimcheon") return null;
+    const k=clubType(t).k;
+    if(k!=="civic" && k!=="mixed") return null;          // 이미 기업구단이면 대상이 아니다
+    const why=[]; let s=0;
+    const ap=(typeof sponAppeal==="function")?sponAppeal(t):20;
+    const vA=clamp(Math.round((ap-40)*1.5), 0, 60);
+    s+=vA; if(vA) why.push(`구단 매력도 ${ap}`);
+    /* 성적 — 1부 상위권일수록 값이 뛴다 */
+    let vR=0;
+    if(t.div===1){ vR = pos<=1?36 : pos<=3?26 : pos<=6?16 : 8; }
+    else         { vR = pos<=2?12 : pos<=4?6 : 0; }
+    s+=vR; if(vR) why.push(`${divName(t.div)} ${pos}위`);
+    /* 아시아 무대 — 기업이 가장 탐내는 간판 */
+    try{ if(t.div===1 && pos<=3){ s+=8; why.push("아시아 무대 진출권"); } }catch(e){}
+    /* 관중 */
+    const b0=(typeof attBase0==="function")?attBase0(t):3000;
+    const vC=clamp(Math.round((b0-3000)/700), 0, 12);
+    s+=vC; if(vC) why.push(`평균 관중 ${Math.round(b0).toLocaleString()}명`);
+    /* 전용구장 */
+    const cap=(stadOf(t).cap)|0;
+    if(cap>=25000){ s+=10; why.push(`${cap.toLocaleString()}석 대형 구장`); }
+    else if(cap>=18000){ s+=6; why.push(`${cap.toLocaleString()}석 구장`); }
+    /* 팬 규모 */
+    const vF=clamp(Math.round(((t.fans||10)-10)*0.5), 0, 10);
+    s+=vF; if(vF) why.push(`팬 규모 ${Math.round(t.fans||10)}`);
+    /* 꾸준함 — 「한 해 반짝」에는 자본이 움직이지 않는다 */
+    const g=((G.acqGood||{})[t.id])|0;
+    const vG=Math.min(3, g)*6;
+    s+=vG; if(vG) why.push(`${Math.min(3,g)}시즌 연속 호성적`);
+    return {s, why, ap, pos};
+  }catch(e){ return null; }
+}
+/* ═══ 📰 1단계 — 접촉설 ════════════════════════════════════════════
+   ⚠ 요청 — 「시즌 중반에 『○○그룹, 인수 검토』 기사가 먼저 뜨고 여론이 들끓다가 성사/무산」.
+   시즌이 끝나는 순간 통보만 하면 드라마가 없다. 시즌 후반에 먼저 설이 돌고,
+   그 설이 있어야만 시즌 말에 인수가 성사된다 — 물론 그대로 무산되기도 한다. */
+const ACQ_RUM_FROM=0.52, ACQ_RUM_TO=0.86;   // 시즌 진행률 이 구간에서만 설이 돈다
+const ACQ_RUM_BAR=78;                        // 설이 도는 문턱 (성사 문턱보다 낮다 — 그래서 무산이 나온다)
+function acqProgress(){
+  try{
+    const a=(G.k1Fix||[]).length, b=(G.r1|0);
+    return a? clamp(b/a, 0, 1) : 0;
+  }catch(e){ return 0; }
+}
+function acqRoundCheck(){
+  try{
+    G.acq=G.acq||{last:0, list:[], corp:{}};
+    if(G.acq.rum && G.acq.rum.s===G.season) return;      // 한 시즌에 설은 하나
+    if(G.acq.rumDone===G.season) return;
+    if(G.season-(G.acq.last|0) < ACQ_GAP) return;
+    const pg=acqProgress();
+    if(pg<ACQ_RUM_FROM || pg>ACQ_RUM_TO) return;
+    const cands=[];
+    const scan=(tb)=>tb.forEach((t,i)=>{ const r=acqScore(t, i+1); if(r && r.s>=ACQ_RUM_BAR) cands.push({t, r}); });
+    scan(tableOf(1)); scan(tableOf(2));
+    if(!cands.length) return;
+    if(Math.random()>=0.20) return;                      // 라운드마다 굴리므로 낮게
+    cands.sort((a,b)=>b.r.s-a.r.s);
+    const t=cands[0].t, r=cands[0].r, br=acqBrand();
+    G.acq.rum={s:G.season, tid:t.id, brand:br.full, core:br.core, score:r.s, why:(r.why||[]).slice(0,3)};
+    const isU=!!t.isUser;
+    const V={t:t.short, o:br.full, n:`${acqCityOf(t)} ${br.core}`, p:t.name};
+    addNews(fixJosa(`📰 <b>${br.full}, ${t.name} 인수 검토</b> — 복수의 관계자에 따르면 `
+      + `${br.full}이/가 ${clubTypeName(clubType(t).o)}와 인수 협상을 진행 중입니다. `
+      + `양측 모두 "확정된 것은 없다"는 입장입니다.`), null, "club");
+    try{
+      pushFeed({cat:"club", ic:"📰", tone:0, tid:t.id, src:pick(MEDIA),
+        head:`${br.full}, ${t.name} 인수 검토설`,
+        sub:`${(r.why||[]).slice(0,3).join(" · ")}. 구단은 "드릴 말씀이 없다"고만 했다.`});
+    }catch(e){}
+    try{
+      if(isU){
+        socialFill(SOC.acqRumOurs, 4+R(3), 0, V);
+        fmkFill(FMK.acqRum, 2+R(3), V);
+        notify(`📰 <b>${br.full}이 우리 구단 인수를 검토 중이라는 보도가 나왔습니다</b><br>`
+          + `<span class="small">확정된 것은 없습니다. 시즌이 끝날 때 결론이 납니다 — `
+          + `남은 경기 성적이 협상 테이블의 값을 정합니다.</span>`, "info");
+      } else {
+        socialFill(SOC.acqRumOther, 2+R(2), 0, V);
+        fmkFill(FMK.acqRum, 1+R(2), V);
+      }
+    }catch(e){}
+  }catch(e){}
+}
+/* ═══ 📉 인수 그 뒤 — 모기업 지원 축소와 철수 ══════════════════════
+   ⚠ 요청 — 「인수 후 몇 시즌 성적이 나쁘면 발을 빼는 역이벤트. 팬들이 걱정하는 그 시나리오」.
+   두 단계다. 두 시즌 부진 → <b>지원 축소</b>(예산이 확 준다). 거기서 두 시즌 더 → <b>철수</b>
+   (시민구단으로 되돌아가고 구단명도 원래대로). 중간에 성적을 내면 지원이 회복된다. */
+function acqSeasonRating(t, pos, n){
+  /* 그 시즌이 모기업 눈에 어떻게 보였는가 */
+  if(t.div===1){
+    if(pos<=6) return "good";
+    if(pos> Math.max(8, Math.round(n*0.66))) return "bad";
+  } else {
+    if(pos<=3) return "good";
+    if(pos>6) return "bad";
+  }
+  return "flat";
+}
+function acqAfterCheck(t1, t2){
+  try{
+    G.acq=G.acq||{last:0, list:[], corp:{}};
+    G.acq.corp=G.acq.corp||{};
+    const posOf=(id)=>{
+      let i=t1.findIndex(x=>x.id===id); if(i>=0) return {pos:i+1, n:t1.length};
+      i=t2.findIndex(x=>x.id===id);     if(i>=0) return {pos:i+1, n:t2.length};
+      return null;
+    };
+    for(const tid in G.acq.corp){
+      const e=G.acq.corp[tid], t=G.teams[tid];
+      if(!t){ delete G.acq.corp[tid]; continue; }
+      if(e.s===G.season) continue;                 // 인수한 그해는 묻지 않는다
+      const P=posOf(tid); if(!P) continue;
+      const q=acqSeasonRating(t, P.pos, P.n);
+      if(q==="bad") e.bad=(e.bad|0)+1; else if(q==="good") e.bad=Math.max(0,(e.bad|0)-1); 
+      if(q==="good" && e.cut){ acqRestore(t, e); continue; }
+      if(!e.cut && (e.bad|0)>=2){ acqCut(t, e); continue; }
+      if(e.cut && (e.bad|0)>=4){ acqWithdraw(t, e); continue; }
+    }
+  }catch(e){}
+}
+function acqCut(t, e){
+  e.cut=G.season;
+  const isU=!!t.isUser;
+  const before=t.budget;
+  t.budget=Math.round(t.budget*0.55*10)/10;
+  try{ bumpHype(t, -0.08, `${e.brand} 지원 축소`); }catch(e2){}
+  const V={t:t.short, o:e.brand, n:t.name};
+  addNews(fixJosa(`📉 <b>${e.brand}, ${t.name} 지원 축소</b> — 두 시즌 연속 부진에 모기업이 `
+    + `투자 규모를 줄입니다. 이적 예산이 <b>${before}억 → ${t.budget}억</b>으로 깎였습니다.`),
+    isU?"bad":null, "club");
+  try{
+    pushFeed({cat:"club", ic:"📉", tone:-1, tid:t.id, src:pick(MEDIA),
+      head:`${e.brand}, ${t.short} 투자 축소`,
+      sub:`모기업 관계자는 "성과에 따른 정상적인 조정"이라고 했다. 구단 안팎에서는 철수설까지 나온다.`});
+  }catch(e2){}
+  try{
+    if(isU){
+      socialFill(SOC.acqCut, 4+R(3), -1, V);
+      fmkFill(FMK.acqCut, 2+R(3), V);
+      adjustTrust("fans", -5, `${e.brand} 지원 축소`);
+      notify(`📉 <b>${e.brand}이 지원을 줄였습니다</b><br><span class="small">이적 예산 ${before}억 → <b>${t.budget}억</b>. `
+        + `이대로 두 시즌 더 부진하면 <b>모기업이 철수</b>합니다 — 상위권 성적을 내면 지원이 돌아옵니다.</span>`, "warn");
+    } else socialFill(SOC.acqCutOther, 1+R(2), 0, V);
+  }catch(e2){}
+}
+function acqRestore(t, e){
+  const isU=!!t.isUser;
+  e.cut=0; e.bad=0;
+  const add=(t.div===1?18+R(14):8+R(8));
+  t.budget=Math.round((t.budget+add)*10)/10;
+  try{ bumpHype(t, 0.06, `${e.brand} 지원 재개`); }catch(e2){}
+  addNews(fixJosa(`📈 <b>${e.brand}, ${t.name} 지원 재개</b> — 성적으로 답했습니다. 이적 예산 <b>+${add}억</b>.`),
+    isU?"good":null, "club");
+  try{ if(isU){ socialFill(SOC.acqBack, 3+R(2), 1, {t:t.short, o:e.brand, n:t.name}); adjustTrust("fans", +3, `${e.brand} 지원 재개`); } }catch(e2){}
+}
+function acqWithdraw(t, e){
+  const isU=!!t.isUser;
+  const corpName=t.name, brand=e.brand;
+  /* 시민구단으로 되돌아간다 — 이름도 원래대로 */
+  G.ownerKinds=G.ownerKinds||{}; G.ownerNames=G.ownerNames||{}; G.ownerAuto=G.ownerAuto||{};
+  G.ownerKinds[t.id]="civic";
+  delete G.ownerNames[t.id]; delete G.ownerAuto[t.id];   // CLUB_TYPE 의 원래 운영 주체로 돌아간다
+  if(e.from) t.name=e.from;
+  try{ stkSyncClubListing(t); }catch(e2){}               // 📉 모기업이 증시에서 내려간다
+  const before=t.budget;
+  t.budget=Math.round(t.budget*0.45*10)/10;
+  t.fans=Math.round(clamp((t.fans||10)*0.94, 4, 140)*10)/10;
+  try{ bumpHype(t, -0.12, `${brand} 철수`); }catch(e2){}
+  delete G.acq.corp[t.id];
+  G.acq.list.unshift({s:G.season, tid:t.id, brand, from:corpName, to:t.name, out:1});
+  G.acq.list=G.acq.list.slice(0,20);
+  const V={t:t.short, o:brand, n:t.name, p:corpName};
+  addNews(fixJosa(`🏳️ <b>${brand}, ${corpName}에서 철수</b> — 구단은 다시 <b>${t.name}</b> 시민구단 체제로 돌아갑니다. `
+    + `이적 예산 <b>${before}억 → ${t.budget}억</b>.`), isU?"bad":null, "club");
+  try{
+    pushFeed({cat:"club", ic:"🏳️", tone:-1, tid:t.id, src:"K리그 공식",
+      head:`${brand} 철수 — ${t.name} 시민구단 환원`,
+      sub:`지자체와 시민 주주가 다시 운영을 맡는다. 팬들은 "그럴 줄 알았다"와 "그래도 돌아와서 다행"으로 갈렸다.`});
+  }catch(e2){}
+  try{
+    if(isU){
+      socialFill(SOC.acqOut, 5+R(3), -1, V);
+      fmkFill(FMK.acqOut, 3+R(3), V);
+      adjustTrust("fans", -8, `${brand} 철수`);
+      adjustTrust("owner", -6, `${brand} 철수`);
+      notify(`🏳️ <b>${brand}이 철수했습니다</b><br><span class="small">구단명 ${corpName} → <b>${t.name}</b> · 이적 예산 ${before}억 → <b>${t.budget}억</b><br>`
+        + `다시 시민구단입니다. 팬들이 걱정하던 바로 그 시나리오가 현실이 됐습니다.</span>`, "bad");
+    } else { socialFill(SOC.acqOutOther, 2+R(2), 0, V); fmkFill(FMK.acqOut, 1+R(2), V); }
+  }catch(e2){}
+}
+/* 시즌이 끝날 때 한 번 — 「올해 자본이 움직였는가」 */
+function acqSeasonCheck(t1, t2){
+  try{
+    G.acq=G.acq||{last:0, list:[]};
+    G.acqGood=G.acqGood||{};
+    /* ① 올해 성적을 「호성적 연속」 장부에 반영한다 (다음 해 판정의 밑감) */
+    const mark=(tb, div)=>{ tb.forEach((t,i)=>{
+      const good = div===1 ? (i<6) : (i<2);
+      G.acqGood[t.id] = good ? Math.min(5, (G.acqGood[t.id]|0)+1) : 0;
+    }); };
+    mark(t1,1); mark(t2,2);
+    /* ② 인수 뒤의 이야기 — 지원 축소·철수·회복 (요청) */
+    try{ acqAfterCheck(t1, t2); }catch(e){}
+    /* ③ 결론 — 올해 돌던 접촉설이 성사되는가. 설이 없었으면 인수도 없다 */
+    const rum=G.acq.rum;
+    if(!rum || rum.s!==G.season) return;
+    G.acq.rum=null; G.acq.rumDone=G.season;
+    const t=G.teams[rum.tid]; if(!t) return;
+    const pos=(function(){ let i=t1.findIndex(x=>x.id===t.id); if(i>=0) return i+1;
+                           i=t2.findIndex(x=>x.id===t.id); return i>=0?i+1:99; })();
+    const r=acqScore(t, pos);
+    /* 시즌 후반 성적이 협상 테이블의 값을 정한다 — 무너졌으면 그대로 무산된다 */
+    const prob = (r && r.s>=ACQ_BAR) ? clamp(0.45 + (r.s-ACQ_BAR)/180, 0.45, 0.90) : 0;
+    if(prob>0 && Math.random()<prob){ acqDo(t, r, rum); return; }
+    acqFail(t, rum, r);
+  }catch(e){}
+}
+/* 📰 무산 — 설만 돌다 끝났다. 이것도 하나의 소식이다 */
+function acqFail(t, rum, r){
+  const isU=!!t.isUser;
+  const V={t:t.short, o:rum.brand, n:`${acqCityOf(t)} ${rum.core}`, p:t.name};
+  const why = (r && r.s<ACQ_BAR) ? "시즌 막판 성적이 협상 테이블의 값을 깎았다는 분석이 나옵니다."
+                                 : "양측이 인수 조건에 끝내 합의하지 못했습니다.";
+  addNews(fixJosa(`📰 <b>${rum.brand}의 ${t.name} 인수 무산</b> — ${why} `
+    + `구단은 당분간 ${clubTypeName(clubType(t).o)} 체제를 유지합니다.`), null, "club");
+  try{
+    pushFeed({cat:"club", ic:"📰", tone:0, tid:t.id, src:pick(MEDIA),
+      head:`${rum.brand}, ${t.short} 인수 협상 결렬`,
+      sub:`${why} 구단 관계자는 "다시 논의될 여지는 남아 있다"고 했다.`});
+  }catch(e){}
+  try{
+    if(isU){
+      socialFill(SOC.acqFail, 4+R(3), 0, V);
+      fmkFill(FMK.acqRum, 1+R(2), V);
+      notify(`📰 <b>${rum.brand}의 인수가 무산됐습니다</b><br><span class="small">${why}<br>`
+        + `우리는 계속 ${clubTypeName(clubType(t).o)} 체제입니다. 성적을 더 쌓으면 다시 테이블이 열립니다.</span>`, "info");
+    } else socialFill(SOC.acqFailOther, 1+R(2), 0, V);
+  }catch(e){}
+}
+function acqDo(t, r, rum){
+  G.acq=G.acq||{last:0, list:[], corp:{}}; G.acqGood=G.acqGood||{};   // 옛 세이브 안전망
+  G.acq.corp=G.acq.corp||{};
+  /* 접촉설에서 이미 기업 이름이 나갔다면 그 이름 그대로 간다 — 기사와 결론이 어긋나면 안 된다 */
+  const br=(rum && rum.brand && rum.core) ? {core:rum.core, full:rum.brand} : acqBrand();
+  const city=acqCityOf(t);
+  const oldName=t.name, oldOwner=clubType(t).o;
+  const isU=!!t.isUser;
+  /* ① 구단 형태·모기업·이름 */
+  G.ownerKinds=G.ownerKinds||{}; G.ownerNames=G.ownerNames||{}; G.ownerAuto=G.ownerAuto||{};
+  G.ownerKinds[t.id]="corp";
+  G.ownerNames[t.id]=br.full;
+  delete G.ownerAuto[t.id];                    // 사람이 정한 이름과 같은 자격으로 남긴다
+  t.name=`${city} ${br.core}`;
+  try{ stkSyncClubListing(t); }catch(e){}      // 📈 모기업이 증시에 올라온다
+  /* ② 돈 — 인수 자금이 한 번에 들어오고, 이후 규모는 매력도가 알아서 끌어올린다 */
+  const cash = (t.div===1 ? 30+R(26) : 15+R(14));
+  t.budget=Math.round((t.budget+cash)*10)/10;
+  t.fans=Math.round(clamp((t.fans||10)*1.06, 4, 140)*10)/10;
+  try{ bumpHype(t, 0.10, `${br.full} 인수`); }catch(e){}
+  /* ③ 장부 */
+  G.acq.last=G.season;
+  G.acq.rum=null; G.acq.rumDone=G.season;
+  G.acq.list.unshift({s:G.season, tid:t.id, brand:br.full, from:oldName, to:t.name, owner:oldOwner});
+  G.acq.list=G.acq.list.slice(0,20);
+  G.acqGood[t.id]=0;
+  /* 📉 인수 뒤의 이야기를 여기서부터 센다 — 두 시즌 부진하면 지원이 줄고, 거기서 더 가면 철수한다 */
+  G.acq.corp[t.id]={s:G.season, brand:br.full, from:oldName, cut:0, bad:0};
+  /* ④ 소식 */
+  const V={t:t.short, o:br.full, n:t.name, p:oldName};
+  addNews(fixJosa(`🏢 <b>${br.full}, ${oldName} 인수</b> — 구단명이 <b>${t.name}</b>(으)로 바뀝니다. `
+    + `${clubTypeName(oldOwner)}이 20년 넘게 지켜 온 시민구단이 기업구단으로 전환됩니다.`),
+    isU?"good":null, "club");
+  try{
+    pushFeed({cat:"club", ic:"🏢", tone:isU?1:0, tid:t.id, src:"K리그 공식",
+      head:`${br.full}, ${oldName} 인수 — ${t.name}으로 새 출발`,
+      sub:`인수 자금 ${cash}억. 구단은 "지역 연고와 엠블럼은 그대로 간다"고 밝혔다. ${r&&r.why&&r.why.length?`(${r.why.slice(0,3).join(" · ")})`:""}`});
+  }catch(e){}
+  try{
+    if(isU){
+      socialFill(SOC.acqOurs, 5+R(3), 0, V);
+      fmkFill(FMK.acq, 3+R(3), V);
+      rivalFill(SOC.acqRiv, 2+R(2), 0, V);
+      adjustTrust("fans", -6, `${br.full} 인수 — 시민구단 정체성 논란`);
+      adjustTrust("owner", +8, `${br.full} 인수 — 새 구단주 부임`);
+      notify(`🏢 <b>${br.full}이 우리 구단을 인수했습니다</b><br>`
+        + `<span class="small">구단명 <b>${oldName} → ${t.name}</b> · 이적 예산 <b>+${cash}억</b><br>`
+        + `기업구단으로 전환되어 스폰서 매력도와 예산 규모가 올라갑니다. `
+        + `다만 새 구단주는 성과를 빨리 봅니다 — 팬 일부는 시민구단 정체성을 잃었다고 봅니다.</span>`, "good");
+    } else {
+      /* 남의 구단 인수 — 우리 팬에게는 「경쟁자가 돈을 쥐었다」는 소식이다 */
+      socialFill(SOC.acqOther, 2+R(3), -1, V);
+      fmkFill(FMK.acq, 2+R(3), V);
+    }
+  }catch(e){}
+}
+/* 「대구광역시 · 시민주주」 → 「대구광역시」 (문장에 넣기 좋게 앞머리만) */
+function clubTypeName(o){ return String(o||"운영 주체").split("·")[0].trim(); }
 function endSeason(){
   G.phase="seasonEnd";
   /* 🌍 CWC 자격 — 시즌이 닫히기 전에 찍어 둔다.
@@ -13848,6 +14426,8 @@ function applyPromotionRelegation(t1, t2, champ2, uid){
   if(upl.length) addNews(`⬆️ 승격: ${upl.map(id=>G.teams[id].name).join(", ")}`);
   if(dn.indexOf(uid)>=0){ adjustTrust("owner",-18,"리그 강등"); adjustTrust("fans",-15,"리그 강등"); }
   if(upl.indexOf(uid)>=0){ adjustTrust("owner",12,"리그 승격"); adjustTrust("fans",12,"리그 승격"); }
+  /* 🏢 자본이 움직였는가 — 시민구단 기업 인수 (요청). 승강이 확정된 뒤에 본다 */
+  try{ acqSeasonCheck(t1, t2); }catch(e){}
 }
 /* ── 시즌 시상식 ─────────────────────────────────────────────────
    예전에는 득점왕과 MVP 두 줄이 전부였다. 한 시즌을 끝냈는데 남는 게 그것뿐이면
@@ -13918,7 +14498,14 @@ function seasonCeremony(t1, t2, champ, champ2, relIds, proIds){
     rivalFill(SOC.runnerUp, 2, 0, V);
     pushFeed({cat:"club", ic:"🏆", tone:1, tid:u.id, src:"K리그 공식",
       head:`${u.name}, ${G.season} ${divName(1)} 우승`,
-      sub:`시즌 최종 ${u.Pts}점. 트로피가 ${STADIUM[u.id]?STADIUM[u.id].n:"홈 구장"}에 들어온다.`});
+      /* 🏟️ ⚠ 제보 원문 — 「리그 우승 시 뉴스에 '트로피가 강릉하이원아레나로 들어온다' 는 문구가
+         있는데 현재 구장이 아닌 이전 구장을 서술하고 있다. 신구장 건설 또는 인게임 에디터로
+         변경한 이름을 반영하지 않는 것 같다」.
+         원인 — 여기만 <b>고정 자료표(STADIUM)</b>를 직접 읽고 있었다. 그 표는 게임 시작 시점의
+           원본 값이라 전용구장 신축(stadFinish)도, 에디터 구장 이름 변경도, 명명권 판매도
+           반영되지 않는다. 살아 있는 값은 t.stad 이고, 그걸 읽는 창구가 stadOf(t) 다.
+           (구단명·선수명·모기업명은 이미 살아 있는 값을 읽고 있었다 — 구장만 새고 있었다) */
+      sub:`시즌 최종 ${u.Pts}점. 트로피가 ${(function(){ try{ return stadOf(u).n; }catch(e){ return "홈 구장"; } })()}에 들어온다.`});
     addNews(`🏆 <b>${u.name} ${G.season} ${divName(1)} 우승!</b> 감독 통산 ${G.trophies.filter(x=>x.kind==="champ").length}번째 리그 우승`,"good");
   } else if(champ2.id===u.id){
     add("champ2", `${G.season} K리그2 우승 · 승격`);
@@ -14369,8 +14956,8 @@ function renewAsk(p){
      어떤 감액도 받지 않고 시장 평가를 그대로 불렀다.
      ─ 사람은 「내가 올해 무엇을 했는가」를 안다. 출전 비중을 협상의 근거로 삼는다. */
   const _rate=renewPlayRate(p, t);
-  if((p.seasonRating||0)>=7.0 && p.apps>=8) mul+=0.18;      // 잘하고 있으면 값을 올린다
-  if((p.seasonRating||0)<=6.3 && p.apps>=8) mul-=0.10;
+  if((p.seasonRating||0)>=7.35 && p.apps>=8) mul+=0.18;      // 잘하고 있으면 값을 올린다
+  if((p.seasonRating||0)<=6.50 && p.apps>=8) mul-=0.10;
   if(age<=23) mul+=0.10;                                    // 유망주는 미래값을 받는다
   if(age>=33) mul-=0.18;                                    // 노장은 스스로도 안다
   if((p.ct||1)<=1) mul+=0.12;                               // 만료 임박 — 협상력이 선수에게 있다
@@ -14389,8 +14976,8 @@ function renewAsk(p){
   if(age>=33) floor=0.80;                                   // 은퇴가 보이면 삭감을 받아들인다
   else if(age>=31) floor=0.88;
   else if(age<=25) floor=1.08;                              // 아직 오를 일만 남았다
-  if((p.seasonRating||0)>=7.0 && p.apps>=8) floor+=0.08;
-  if((p.seasonRating||0)<=6.2 && p.apps>=10) floor-=0.10;   // 못 하고 있으면 목소리가 작아진다
+  if((p.seasonRating||0)>=7.35 && p.apps>=8) floor+=0.08;
+  if((p.seasonRating||0)<=6.45 && p.apps>=10) floor-=0.10;   // 못 하고 있으면 목소리가 작아진다
   if(playShareKnown() && playShare(p)<0.30 && (p.apps||0)>=5) floor-=0.08;   // 못 뛰는 선수도 마찬가지 (갓 온 선수는 표본이 없다 — 할인 없음)
   /* ⏱️ 뛴 시간이 곧 협상력이다 — 한 시즌을 통째로 날린 선수는 인상을 요구할 명분이 없다.
      0.5(절반 출전) 이상이면 손대지 않고, 거의 못 뛰었으면 현재 연봉에서 삭감까지 받아들인다. */
@@ -14469,7 +15056,7 @@ function renewFactors(p, wage, years, promise){
   /* 재계약에서의 성격 — 야심가는 더 큰 무대를 보고, 온화한 선수는 정든 팀에 남는다 */
   const PERS_RENEW=[0.05, -0.08, 0.10, -0.03];
   add(PERS_RENEW[p.pers||0], `성격: ${["프로 — 조건이 맞으면 사인한다","야심 — 더 큰 무대를 본다","온화 — 정든 팀에 남고 싶어한다","다혈질 — 기분에 좌우된다"][p.pers||0]}`);
-  if((p.seasonRating||0)>=7.2 && p.apps>=8) add(-0.06, "최근 폼이 좋다 (몸값을 안다)");
+  if((p.seasonRating||0)>=7.50 && p.apps>=8) add(-0.06, "최근 폼이 좋다 (몸값을 안다)");
   if(t.div===2) add(-0.05, "2부 소속");
   /* ⚠ "재계약이 너무 쉽다"는 피드백 —
      ① 같은 선수에게 계속 들이밀면 피로가 빨리 쌓인다 (2회째부터가 아니라 바로)
@@ -14942,7 +15529,7 @@ function endLoan(p, holder){
   /* 💰 완전이적 옵션 — 임대 구단이 활약과 지갑을 보고 결정한다 (제보 — 옵션이 있어도 발동 코드가 없었다) */
   if(L.buy && club && holder===club){
     const fee=loanOptFee(p);
-    if(played>=6 && (p.seasonRating||0)>=6.55 && club.budget>=fee){
+    if(played>=6 && (p.seasonRating||0)>=6.95 && club.budget>=fee){
       club.budget=Math.round((club.budget-fee)*10)/10;
       own.budget=Math.round((own.budget+fee)*10)/10;
       p.loan=null; p.ct=Math.max(p.ct||1,2);
@@ -19012,7 +19599,8 @@ function drawHighlightFrame(cv, hl){
   for(let i=0;i<f.a.length;i++){
     const rec=f.a[i], nx=(nf.a[i]&&nf.a[i].id===rec.id)?nf.a[i]:rec;
     const ag=byId[rec.id]; if(!ag) continue;
-    save.push([ag, ag.x, ag.y, ag.face, ag._rx, ag._ry, ag._rf]);
+    save.push([ag, ag.x, ag.y, ag.face, ag._rx, ag._ry, ag._rf, ag._hlJ]);
+    ag._hlJ=(rec.j!==undefined || nx.j!==undefined) ? lerp(rec.j||0, nx.j||0, k) : 0;   // 🦘 점프 (재생)
     // ⚠ 보간은 여기서 이미 끝냈다. drawSimWatch 는 _rx→x 를 자기 나름의 알파로 한 번 더
     //    보간하는데, 그 알파는 관전 화면용이라 여기와 무관하다. 두 번 보간되면 화면이 뚝뚝 끊긴다.
     //    _rx 를 결과값과 같게 맞춰 두 번째 보간을 무력화한다.
@@ -19024,6 +19612,9 @@ function drawHighlightFrame(cv, hl){
     ag._rf=ag.face;
   }
   s._hlOwner = (f.oi!==undefined) ? (f.oi||null) : undefined;   // 이 프레임의 볼 소유자 (흰 링용)
+  /* 🎯 슛 궤적 — 재생 중에는 시뮬이 멈춰 있어 s.ball.state 가 「장면이 끝난 뒤의 상태」다.
+     그 프레임에 기록해 둔 값(bs)을 써야 슛이 날아가는 그 순간에만 꼬리가 붙는다 */
+  s._hlShot = (f.bs!==undefined) ? (f.bs==="SHOT") : undefined;
   const b=s.ball, bs=[b.x,b.y,b.z,b._rx,b._ry,b._rz];
   const bx=lerp(f.bx, nf.bx, k), by=lerp(f.by, nf.by, k);
   b.x=bx; b.y=by; b._rx=bx; b._ry=by;
@@ -19054,9 +19645,9 @@ function drawHighlightFrame(cv, hl){
      그렇게 뽑힌 키커는 엔트리상 이미 나간 선수라 화면에 그려지지 않는다 = 「투명 선수」.
      무슨 일이 있어도 걷어내도록 finally 로 묶는다. */
   // 원래 좌표로 되돌린다 — 재생이 끝나면 경기가 그 자리에서 이어져야 한다
-  s._hlOwner=undefined;
+  s._hlOwner=undefined; s._hlShot=undefined;
   if(ghosts.length) s.agents=s.agents.filter(a=>ghosts.indexOf(a)<0);   // 유령은 다시 걷어낸다
-  for(const [ag,x,y,fc,rx,ry,rf] of save){ ag.x=x; ag.y=y; ag.face=fc; ag._rx=rx; ag._ry=ry; ag._rf=rf; }
+  for(const [ag,x,y,fc,rx,ry,rf,hj] of save){ ag.x=x; ag.y=y; ag.face=fc; ag._rx=rx; ag._ry=ry; ag._rf=rf; ag._hlJ=hj; }
   b.x=bs[0]; b.y=bs[1]; b.z=bs[2]; b._rx=bs[3]; b._ry=bs[4]; b._rz=bs[5];
   if(rs){ s.ref.x=rs[0]; s.ref.y=rs[1]; s.ref._rx=rs[2]; s.ref._ry=rs[3]; }
   }
@@ -19138,11 +19729,16 @@ function drawSimWatch(cv, simOverride){
     const ax=IX(a), ay=IY(a);
     const af=lerpAngle(a._rf, a.face, AL);
     const R0=isGK?6.2:5.6;   // FM 비율 — 바둑알 지름 ≈2m (11/9.5px는 3.5~4m 상당이었다)
-    drawDotXY(ctx, cv, ax, ay, isGK?(a.side==="h"?gkH:gkA):(a.side==="h"?hCol:aCol), R0);
+    /* 🦘 점프 — 재생 중에는 프레임에 적어 둔 값(_hlJ), 관전 중에는 지금 시각으로 계산 (요청) */
+    const _jz = (a._hlJ!==undefined && a._hlJ!==null) ? a._hlJ : jumpZOf(a, s.t);
+    const _jl = _jz>0.02 ? _jz*JUMP_LIFT*K2 : 0;      // 화면에서 위로 띄우는 픽셀
+    const _R0 = R0*(1+ (_jz>0.02?_jz*JUMP_GROW:0));
+    const _P  = (px0,py0)=>{ const c=pitchToCanvasXY(cv, px0, py0); return {x:c.x, y:c.y-_jl}; };
+    drawDotXY(ctx, cv, ax, ay, isGK?(a.side==="h"?gkH:gkA):(a.side==="h"?hCol:aCol), R0, _jz);
     if(a.face!==undefined){            // 바라보는 방향 — 바둑알 앞에 붙는 작은 삼각형
-      const c0=pitchToCanvasXY(cv, ax, ay);
+      const c0=_P(ax, ay);
       const ux=Math.cos(af), uy=Math.sin(af), px=-uy, py=ux;
-      const tipD=(R0+5.5)*K2, baseD=(R0+1.0)*K2, halfW=3.0*K2;   // (바둑알 축소·해상도 배율 반영)
+      const tipD=(_R0+5.5)*K2, baseD=(_R0+1.0)*K2, halfW=3.0*K2;   // (바둑알 축소·해상도 배율 반영)
       ctx.beginPath();
       ctx.moveTo(c0.x+ux*tipD, c0.y+uy*tipD);                       // 뾰족한 끝
       ctx.lineTo(c0.x+ux*baseD+px*halfW, c0.y+uy*baseD+py*halfW);   // 밑변 한쪽
@@ -19153,29 +19749,29 @@ function drawSimWatch(cv, simOverride){
     }
     // 등번호 — 바둑알 안에 새긴다. 팀 색이 밝으면 검은 글씨로 뒤집어 가독성을 지킨다.
     {
-      const pt=pitchToCanvasXY(cv, ax, ay);
+      const pt=_P(ax, ay);
       const col=isGK?(a.side==="h"?gkH:gkA):(a.side==="h"?hCol:aCol);
-      ctx.font="bold "+(7.5*K2).toFixed(1)+"px system-ui,sans-serif";
+      ctx.font="bold "+(7.5*K2*(1+(_jz>0.02?_jz*JUMP_GROW:0))).toFixed(1)+"px system-ui,sans-serif";
       ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillStyle = isLightColor(col) ? "#0d1117" : "#f2f6fa";
       ctx.fillText(String(a.p&&a.p.no||""), pt.x, pt.y+0.5);
     }
     if(owner){ // 볼 소유자 표시
-      const pt=pitchToCanvasXY(cv, ax, ay);
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, (R0+4)*K2, 0, Math.PI*2);
+      const pt=_P(ax, ay);
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, (_R0+4)*K2, 0, Math.PI*2);
       ctx.strokeStyle="#fff"; ctx.lineWidth=2*K2; ctx.stroke();
     }
     // 클릭으로 고른 선수 — 이름표를 달아 준다 (FM에서 선수를 찍으면 이름이 뜨는 그것)
     if(simPick===a.id){
-      const pt=pitchToCanvasXY(cv, ax, ay);
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, (R0+6)*K2, 0, Math.PI*2);
+      const pt=_P(ax, ay);
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, (_R0+6)*K2, 0, Math.PI*2);
       ctx.strokeStyle="#e3b341"; ctx.lineWidth=2*K2; ctx.stroke();
       const nm=(a.p&&a.p.name)||"";
       const label=(a.p&&a.p.no?a.p.no+" ":"")+nm;
       ctx.font="bold 11px system-ui,sans-serif"; ctx.textAlign="center"; ctx.textBaseline="alphabetic";
       const mt=ctx.measureText&&ctx.measureText(label);
       const w=((mt&&mt.width)||label.length*8)+10;
-      const ly=pt.y-R0-8;
+      const ly=pt.y-_R0-8;
       ctx.fillStyle="rgba(8,12,17,0.88)";
       roundRectPath(ctx, pt.x-w/2, ly-13, w, 16, 4); ctx.fill();
       ctx.strokeStyle="#e3b34188"; ctx.lineWidth=1; ctx.stroke();
@@ -19218,27 +19814,73 @@ function drawSimWatch(cv, simOverride){
   (function(){
     try{
       const b=s.ball, tr=(b._tr=b._tr||[]);
+      /* 🎯 ⚠ 요청 — 「슈팅할 때 이펙트로 공 진행 방향 뒤로 트레일 나오게. 슈팅인 게 바로 눈에 띄게」.
+         평소 잔상은 다섯 점짜리 옅은 점선이라 「빠른 공」과 「슛」이 구분되지 않았다.
+         슛일 때만 꼬리를 길게(14칸) 잡고, 점이 아니라 <b>공 지름에서 0 으로 좁아지는 유선형 띠</b>로
+         그린다. 재생 중에는 프레임에 적어 둔 상태(_hlShot)를 본다 — 시뮬은 멈춰 있기 때문. */
+      const isShot = (s._hlShot!==undefined) ? s._hlShot : (b.state==="SHOT");
+      const MAXT = isShot ? 14 : 5;
       const lastP=tr.length?tr[tr.length-1]:null;
       /* 장면 전환·세트피스 배치처럼 통째로 튀면 잔상을 끊는다 (선을 그으면 안 되는 순간) */
       if(lastP && Math.hypot((_bx-lastP.x)*PITCH_AR, _by-lastP.y) > 0.10) tr.length=0;
+      /* 슛이 시작되는 순간에는 이전 잔상을 버린다 — 드리블 흔적이 슛 꼬리에 이어 붙으면 안 된다 */
+      if(isShot && !b._trShot) tr.length=0;
+      b._trShot=isShot;
       tr.push({x:_bx, y:_by, z:bz});
-      if(tr.length>5) tr.shift();
+      while(tr.length>MAXT) tr.shift();
       if(tr.length<3) return;
       const p0=pitchToCanvasXY(cv, tr[0].x, tr[0].y), p1=pitchToCanvasXY(cv, _bx, _by);
-      if(Math.hypot(p1.x-p0.x, p1.y-p0.y) < 6) return;      // 느린 공 — 잔상 없음
+      if(Math.hypot(p1.x-p0.x, p1.y-p0.y) < (isShot?4:6)) return;      // 느린 공 — 잔상 없음
       const K3=cvK(cv);
-      for(let i=0;i<tr.length-1;i++){
-        const q=tr[i], a=(i+1)/tr.length;
-        const pt=pitchToCanvasXY(cv, q.x, q.y);
-        const hM=(q.z||0)*ISO_TO_M, lf=Math.min(24, hM*3.0)*K3;
-        ctx.globalAlpha=a*a*0.34;
-        ctx.beginPath(); ctx.arc(pt.x, pt.y-lf, (1.6+a*1.9)*K3, 0, Math.PI*2);
-        ctx.fillStyle="#ffffff"; ctx.fill();
+      const _lf=(q)=>Math.min(24, ((q.z||0)*ISO_TO_M)*3.0)*K3;
+      if(isShot){
+        /* 유선형 띠 — 꼬리 끝은 뾰족하고 공 쪽은 지름만큼 굵다. 위아래 가장자리를 따로 이어
+           하나의 닫힌 도형으로 그리면 canvas 에서 폭이 변하는 선을 만들 수 있다. */
+        const pts=tr.map(q=>{ const c=pitchToCanvasXY(cv,q.x,q.y); return {x:c.x, y:c.y-_lf(q)}; });
+        const n=pts.length;
+        const rEnd=(3.0+3.45)*K3*0.92;                 // 공 반지름과 맞춘 두께
+        const nrm=(i)=>{ const a2=pts[Math.max(0,i-1)], b2=pts[Math.min(n-1,i+1)];
+                         const dx=b2.x-a2.x, dy=b2.y-a2.y, L=Math.hypot(dx,dy)||1;
+                         return {x:-dy/L, y:dx/L}; };
+        const up=[], dn=[];
+        for(let i=0;i<n;i++){
+          const w=rEnd*Math.pow(i/(n-1||1), 1.35), v=nrm(i);
+          up.push({x:pts[i].x+v.x*w, y:pts[i].y+v.y*w});
+          dn.push({x:pts[i].x-v.x*w, y:pts[i].y-v.y*w});
+        }
+        let grad=null;
+        try{
+          grad=ctx.createLinearGradient(pts[0].x, pts[0].y, pts[n-1].x, pts[n-1].y);
+          grad.addColorStop(0,   "rgba(255,255,255,0)");
+          grad.addColorStop(0.45,"rgba(255,236,190,0.30)");
+          grad.addColorStop(1,   "rgba(255,255,255,0.72)");
+        }catch(e2){ grad=null; }
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(up[0].x, up[0].y);
+        for(let i=1;i<n;i++) ctx.lineTo(up[i].x, up[i].y);
+        for(let i=n-1;i>=0;i--) ctx.lineTo(dn[i].x, dn[i].y);
+        ctx.closePath();
+        ctx.fillStyle=grad||"rgba(255,246,214,0.55)";
+        try{ ctx.shadowColor="rgba(255,214,120,0.55)"; ctx.shadowBlur=7*K3; }catch(e2){}
+        ctx.fill();
+        ctx.restore();
+      } else {
+        for(let i=0;i<tr.length-1;i++){
+          const q=tr[i], a=(i+1)/tr.length;
+          const pt=pitchToCanvasXY(cv, q.x, q.y);
+          ctx.globalAlpha=a*a*0.34;
+          ctx.beginPath(); ctx.arc(pt.x, pt.y-_lf(q), (1.6+a*1.9)*K3, 0, Math.PI*2);
+          ctx.fillStyle="#ffffff"; ctx.fill();
+        }
       }
       ctx.globalAlpha=1;
     }catch(e){ try{ ctx.globalAlpha=1; }catch(_){} }
   })();
   drawBallZ(ctx, cv, _bx, _by, bz);
+  /* 🌧️ 날씨 연출 — 비는 사선으로 긋고, 눈은 천천히 흩날린다 (요청).
+     경기 판정과 무관한 순수 그림이라 실패해도 조용히 넘어간다. */
+  try{ drawWeatherFx(ctx, cv, (s.M&&s.M.wx)||null); }catch(e){}
   try{ if(G.opt && G.opt.ftDebug) drawReceiveDebug(ctx, cv, s, IX, IY); }catch(e){}
   const el=document.getElementById("simInfo");
   // 매 프레임 통계를 다시 집계하고 HTML 을 새로 쓰면 60fps 가 버겁다. 5Hz 로 충분하다.
@@ -19247,7 +19889,8 @@ function drawSimWatch(cv, simOverride){
     simInfoAt=nowT;
     const r=s.report();
     const done=s.clock>=s.endSec;
-    el.innerHTML=`<b>${Math.floor(s.clock/60)}'</b>${done?" <span class='small'>(종료)</span>":""} · `
+    const _wxs=(s.M&&s.M.wx)?`<span title="오늘의 날씨 — 공·발·체력에 영향을 줍니다">${wxLabel(s.M.wx)}</span> · `:"";
+    el.innerHTML=`<b>${Math.floor(s.clock/60)}'</b>${done?" <span class='small'>(종료)</span>":""} · `+_wxs
       +`점유 <b>${s.M.home.short}</b> ${r.h.possPct}% / <b>${s.M.away.short}</b> ${r.a.possPct}% · `
       +`패스 ${r.totalPass} (성공률 ${r.h.acc}% / ${r.a.acc}%) · `
       +`볼 위치 수비 ${r.thirds.def}% · 중원 ${r.thirds.mid}% · 공격 ${r.thirds.att}%`
@@ -27061,7 +27704,7 @@ function show(v){
   if(liveM && !LIVE_PEEK) return;
   if(liveM && LIVE_PEEK && v==="match"){ peekEnd(); return; }
   if(liveM && LIVE_PEEK && !peekAllowed(v)){
-    try{ notify("🔍 둘러보기 중에는 <b>순위표·기록·일정</b> 같은 조회 화면만 열 수 있습니다.<br><span class=\"small\">전술·교체는 경기 화면의 ⏸ 에서 하세요.</span>","warn"); }catch(e){}
+    try{ flash("🔍 둘러보기 중에는 <b>순위표·기록·일정</b> 같은 조회 화면만 열 수 있습니다.<br><span class=\"small\">전술·교체는 경기 화면의 ⏸ 에서 하세요.</span>","warn"); }catch(e){}
     return;
   }
   /* ⚔️ 제보 — 온라인 대전 진행 중(매칭~경기)에는 다른 메뉴로 못 나간다 (게스트 포함).
@@ -27321,7 +27964,10 @@ function home(){
     ${att0?`<div class="small" style="text-align:center;margin:-4px 0 6px;color:#c9d4e0">🏟️ ${stadOf(h).n} · 관중 <b style="color:#fff">${att0.toLocaleString()}</b>명${isSellout(h,att0)?' <span class="tag star">매진</span>':""}</div>`:""}
     ${cardLine(st.hY||0, st.aY||0, st.hR||0, st.aR||0)}
     <div id="matchLog">${imp.map(e=>`<div class="evt-${e.type}"><b>${e.min}'</b> ${e.t?`[${e.t}] `:""}${e.txt}</div>`).join("")||'<div class="info">주요 장면 없이 종료되었습니다.'}</div></div>
-    ${(function(){ try{ return passMapCard(res, h, a); }catch(e){ return ""; } })()}`;
+    <div class="row" style="align-items:flex-start">
+      ${(function(){ try{ return passMapCard(res, h, a); }catch(e){ return ""; } })()}
+      ${(function(){ try{ return momentumCard(res, h, a); }catch(e){ return ""; } })()}
+    </div>`;
   }
   const next=nextOpponent();
   return `<h2>🏠 감독 오피스</h2>
@@ -28137,6 +28783,17 @@ function socialOnResult(M){
   const v={t:t.short, s:Math.abs(gf-ga), p:best?best.p.name:"우리 선수", o:opp.short,
            sh:myS, shO:opS, sog:myT,
            a:(M.att||0).toLocaleString(), st:stadOf(t).n};
+  /* 🌦️ 오늘의 하늘 — ⚠ 요청 「날씨 관련 소셜 반응」. 험한 날씨일수록 자주 화제가 된다 */
+  try{
+    const w=M.wx;
+    const pool={rain:SOC.wxRain, storm:SOC.wxStorm, snow:SOC.wxSnow,
+                hot:SOC.wxHot, cold:SOC.wxCold, windy:SOC.wxWind}[w&&w.k];
+    if(pool){
+      const sev=Math.max(w.wet, w.slip, Math.abs(w.heat), w.wind*0.8);
+      socialFill(pool, 1+R(1+Math.round(sev*2)), 0, v);
+      if(sev>0.55){ fmkFill(FMK.wx, 1+R(2), v); if(Math.random()<0.5) rivalFill(pool, 1, 0, v); }
+    }
+  }catch(e){}
   // 홈경기라면 오늘 관중석 이야기가 빠질 수 없다
   if(isHomeGame && M.att){
     const sd=stadOf(t), pct=M.att/Math.max(1,sd.cap);
@@ -28150,10 +28807,14 @@ function socialOnResult(M){
   const isFirst = played<=1;
   if(rf>ra){
     if(isFirst){ socialFill(SOC.firstWin, 3+R(2), 1, v); fmkFill(FMK.firstWin, 3+R(3), v); }
+    /* 🎆 ⚠ 요청 — 「크게 이겼을 때의 팬들 반응을 구현해 주자」. 3골 차와 6골 차가 같은 말을
+       하면 안 된다. 5골 차부터는 「대승」이 아니라 「학살」의 결이다 — 전용 반응을 따로 둔다. */
+    else if(rf-ra>=5){ socialFill(SOC.winRout, 4+R(3), 1, v); fmkFill(FMK.routWin, 3+R(3), v); }
     else if(rf-ra>=3){ socialFill(SOC.winBig, 2+R(2), 1, v); fmkFill(FMK.bigWin, 3+R(2), v); }
     else { socialFill(SOC.win, 2+R(2), 1, v); fmkFill(FMK.win, 2+R(2), v); }
     // 옆 동네 반응 — 같은 경기를 남의 눈으로 다시 본다
-    if(rf-ra>=3){ rivalFill(RIV.winBig, 2+R(2), 1, v); rivalFmk(FRIV.bigWin, 1+R(2), v); }
+    if(rf-ra>=5){ rivalFill(RIV.winRout, 2+R(3), 1, v); rivalFmk(FRIV.routWin, 2+R(2), v); }
+    else if(rf-ra>=3){ rivalFill(RIV.winBig, 2+R(2), 1, v); rivalFmk(FRIV.bigWin, 1+R(2), v); }
     else { rivalFill(RIV.win, 2+R(2), 1, v); rivalFmk(FRIV.win, 1+R(2), v); }
   } else if(rf===ra){
     if(isFirst){ socialFill(SOC.firstDraw, 2+R(2), 0, v); fmkFill(FMK.firstDraw, 2+R(2), v); }
@@ -28161,9 +28822,12 @@ function socialOnResult(M){
     rivalFill(RIV.draw, 2+R(2), 0, v); rivalFmk(FRIV.draw, 1+R(2), v);
   } else {
     if(isFirst){ socialFill(SOC.firstLose, 3+R(2), -1, v); fmkFill(FMK.firstLose, 3+R(3), v); }
+    /* 💀 ⚠ 요청 — 「마찬가지로 크게 졌을 때도」 */
+    else if(ra-rf>=5){ socialFill(SOC.loseRout, 4+R(3), -1, v); fmkFill(FMK.routLose, 3+R(3), v); }
     else if(ra-rf>=3){ socialFill(SOC.loseBig, 2+R(2), -1, v); fmkFill(FMK.bigLose, 3+R(2), v); }
     else { socialFill(SOC.lose, 2+R(2), -1, v); fmkFill(FMK.lose, 2+R(2), v); }
-    if(ra-rf>=3){ rivalFill(RIV.loseBig, 2+R(2), -1, v); rivalFmk(FRIV.bigLose, 2+R(2), v); }
+    if(ra-rf>=5){ rivalFill(RIV.loseRout, 2+R(3), -1, v); rivalFmk(FRIV.routLose, 2+R(2), v); }
+    else if(ra-rf>=3){ rivalFill(RIV.loseBig, 2+R(2), -1, v); rivalFmk(FRIV.bigLose, 2+R(2), v); }
     else { rivalFill(RIV.lose, 2+R(2), -1, v); rivalFmk(FRIV.lose, 1+R(2), v); }
   }
   /* ── 이스터에그 ────────────────────────────────────────────────
@@ -28731,7 +29395,11 @@ function retireFarewell(p, t){
 function _retireNext(){
   const it=_retireQ[0]; if(!it) return;
   const p=it.p, t=it.t||userTeam();
-  const done=(fn)=>{ try{ fn(); }catch(e){} _retireQ.shift(); saveGame(); setTimeout(_retireNext, 60); };
+  /* 🎽 ⚠ 요청 원문 — 「선수가 은퇴할 때 영구결번할 거냐 묻는 옵션이 생겼으면 좋겠습니다.
+     보통 영결은 선수 은퇴할 때 하는데 게임에서는 현역 선수만 영결이 가능하다 보니,
+     은퇴할 때쯤 영결해 줘야지 싶었던 선수가 은퇴해 버려서 결국 영결을 못 해 주는 문제가 생긴다」.
+     ─ 배웅 인사를 마친 뒤, 자격이 되는 선수에 한해 한 번 더 묻는다. */
+  const done=(fn)=>{ try{ fn(); }catch(e){} retireNoAsk(p, t, ()=>{ _retireQ.shift(); saveGame(); setTimeout(_retireNext, 60); }); };
   const nm=p.name, age=G.season-p.by, yrs=Math.max(1, Math.round((p.career||0)/34));
   const legend=(p.apps||0)>=25 || (p.ovr||0)>=74;
   const say=pick(legend
@@ -28769,6 +29437,57 @@ function _retireNext(){
         } else socialFill(SOC.retire, 1+R(2), 0, V);
       }catch(e){}
      })});
+}
+/* 🎽 은퇴 선수 영구결번 — 자격이 되면 배웅 직후에 묻는다 (요청).
+   ⚠ retireNumber() 는 t.players 에서 선수를 찾는다. 은퇴 처리 중에는 이미 명단에서 빠졌을 수
+      있으므로, 선수 객체를 직접 받는 전용 경로를 둔다. */
+function retireNoEligible(p, t){
+  try{
+    if(!p || !t || !p.no) return false;
+    if(isRetiredNo(t, p.no)) return false;
+    if((p.career||0)>=120) return true;                      // 오래 뛴 선수
+    if((p.ovr||0)>=78) return true;                          // 리그를 대표하던 선수
+    if(p.acc && ((p.acc.xi|0)>0 || (p.acc.mvp|0)>0 || (p.acc.top|0)>0)) return true;   // 수상 이력
+    return false;
+  }catch(e){ return false; }
+}
+function retireNoAsk(p, t, next){
+  const go=()=>{ try{ next&&next(); }catch(e){} };
+  try{
+    t=t||userTeam();
+    if(!retireNoEligible(p, t)) return go();
+    const n=p.no, nm=p.name, age=G.season-p.by;
+    showConfirm(`<b>🎽 ${nm}의 ${n}번을 영구결번으로 남기시겠습니까?</b>\n\n`
+      + `${POS_KO[p.pos]||p.pos} · ${age}세 은퇴 · 통산 ${p.career||0}경기\n\n`
+      + `<span class="small">· 이 번호는 앞으로 어떤 선수도 달 수 없습니다\n`
+      + `· 팬과 선수단이 이 결정을 기억합니다\n`
+      + `· 나중에 스태프 회의에서 해제할 수 있습니다</span>`,
+      ()=>{ try{ retireNoGrant(p, t); }catch(e){} go(); },
+      {okLabel:`🎽 ${n}번을 영구결번으로`, cancelLabel:"아니오", onCancel:go});
+  }catch(e){ go(); }
+}
+function retireNoGrant(p, t){
+  t=t||userTeam(); if(!t || !p || !p.no) return;
+  const n=p.no, nm=p.name;
+  if(isRetiredNo(t, n)) return;
+  retiredList(t).push({n, who:nm, why:`${G.season}시즌 은퇴`, s:G.season, ret:true});
+  for(const q of t.players) q.morale=clamp(q.morale+1,20,99);
+  notify(`🎽 <b>${nm}</b> 선수의 <b>${n}번</b>이 영구결번으로 지정되었습니다`,"good");
+  addNews(fixJosa(`🎽 <b>${t.short} ${n}번</b>, 영구결번 — ${nm}의 은퇴와 함께 이 번호는 비워집니다 (통산 ${p.career||0}경기)`), "good", "club");
+  try{
+    pushFeed({cat:"club", ic:"🎽", tone:1, tid:t.id, src:"K리그 공식",
+      head:`${t.name}, 은퇴하는 ${nm}의 ${n}번 영구결번`,
+      sub:`구단은 "이 번호는 앞으로 누구도 달지 않는다"고 밝혔다.`});
+  }catch(e){}
+  const V={p:nm, t:t.short, n};
+  /* 🎽 은퇴 전용 반응 — 현역 결번 풀도 섞어 같은 문장이 반복되지 않게 한다 (요청) */
+  try{
+    socialFill((SOC.retireNoBye||[]).concat(SOC.retireNo||[]), 5+R(3), 1, V);
+    fmkFill((FMK.retireNoBye||[]).concat(FMK.retireNo||[]), 3+R(3), V);
+    rivalFill((SOC.retireNoByeRiv||[]).concat(FMK.retireNo||[]), 2+R(2), 1, V);
+  }catch(e){}
+  try{ adjustTrust("fans", +3, `${nm} 영구결번`); }catch(e){}
+  try{ staffLog(`은퇴하는 ${nm}의 ${n}번을 영구결번으로 지정했습니다.`); }catch(e){}
 }
 /* 🎖️ 입대 배웅 — 내 선수가 김천 상무로 떠날 때, 훈련소 가기 전 마지막 인사.
    여러 명이 같은 날 뽑혀도 한 명씩 차례로 인사한다. */
@@ -29990,7 +30709,7 @@ function traitXpForMatch(p, mins, rating, goals, assists, opts){
   if(!p || mins<=0) return 0;
   const a=p.attr||{}, age=G.season-p.by;
   let x = (mins/90)*5.0;                                  // 풀타임 한 경기 ≈ 5
-  if(rating>=8.0) x+=2.2; else if(rating>=7.0) x+=1.2; else if(rating<6.0) x-=0.5;
+  if(rating>=8.40) x+=2.2; else if(rating>=7.35) x+=1.2; else if(rating<6.30) x-=0.5;
   x += (goals||0)*1.6 + (assists||0)*1.0;
   const aff0=(typeof aff==="function")?aff(p):50;
   x *= clamp(0.86 + (aff0-50)/100*0.60, 0.84, 1.32);      // 감독과의 관계 — 스킨십이 배움의 속도를 바꾼다
@@ -30348,13 +31067,13 @@ function slapCase(p){
   if(p.noMove && (p.unhappy||0)>0){ g+=18; reasons.push(["이적을 막아 놓고 팀에 도움도 안 된다", 18]); }
   if((p.unhappy||0)>=3){ g+=22; reasons.push(["공개 이적 요구 (불만 3/3)", 22]); }
   else if((p.unhappy||0)===2){ g+=10; reasons.push(["불만 2/3", 10]); }
-  if((p.apps||0)>=5 && (p.seasonRating||0)>0 && p.seasonRating<6.0){ g+=26; reasons.push([`심각한 부진 (평점 ${(p.seasonRating||0).toFixed(2)})`, 26]); }
-  else if((p.apps||0)>=5 && (p.seasonRating||0)>0 && p.seasonRating<6.3){ g+=12; reasons.push([`부진 (평점 ${(p.seasonRating||0).toFixed(2)})`, 12]); }
+  if((p.apps||0)>=5 && (p.seasonRating||0)>0 && p.seasonRating<6.30){ g+=26; reasons.push([`심각한 부진 (평점 ${(p.seasonRating||0).toFixed(2)})`, 26]); }
+  else if((p.apps||0)>=5 && (p.seasonRating||0)>0 && p.seasonRating<6.50){ g+=12; reasons.push([`부진 (평점 ${(p.seasonRating||0).toFixed(2)})`, 12]); }
   if((p.ban||0)>0){ g+=16; reasons.push([`출장 정지 ${p.ban}경기 — 팀에 피해를 줬다`, 16]); }
   if((p.cond||90)<62 && (p.apps||0)>=3){ g+=8; reasons.push(["몸 관리 실패 (컨디션 "+Math.round(p.cond)+"%)", 8]); }
   if(t.form && t.form.slice(-4).filter(f=>f==="L").length>=3 && (p.apps||0)>=3){ g+=10; reasons.push(["팀은 4경기 중 3패 — 주전으로서 책임", 10]); }
   /* 반대로 명분을 깎는 것들 */
-  if((p.apps||0)>=5 && (p.seasonRating||0)>=7.0){ g-=30; reasons.push([`오히려 잘하고 있다 (평점 ${p.seasonRating.toFixed(2)})`, -30]); }
+  if((p.apps||0)>=5 && (p.seasonRating||0)>=7.35){ g-=30; reasons.push([`오히려 잘하고 있다 (평점 ${p.seasonRating.toFixed(2)})`, -30]); }
   if(G.season-p.by<=20){ g-=18; reasons.push([`${G.season-p.by}세 — 아직 어린 선수다`, -18]); }
   if(p.inj>0){ g-=20; reasons.push(["부상으로 재활 중인 선수다", -20]); }
   if(aff(p)>=70){ g-=10; reasons.push(["감독을 믿고 따르던 선수다", -10]); }
@@ -30474,7 +31193,7 @@ function talkCard(p){
   const t=userTeam();
   const r=t.div===1?G.r1:G.r2;
   const talked=p.talkR===r;
-  const goodForm=p.apps>=3&&p.seasonRating>=6.8, badForm=p.apps>=3&&p.seasonRating<6.4;
+  const goodForm=p.apps>=3&&p.seasonRating>=7.20, badForm=p.apps>=3&&p.seasonRating<6.55;
   return `<div class="card">
     <h3>대화 ${talked?'<span class="small">(이번 라운드 면담 완료)</span>':""}</h3>
     <button class="mini" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px" ${talked?"disabled":""} onclick="talkTo(${p.id},'praise')">👏 최근 활약 칭찬 ${p.sulk>0?'<span class="small">(태업 중 — 역효과 주의)</span>':goodForm?"":'<span class="small">(근거 부족 시 역효과)</span>'}</button>
@@ -30846,7 +31565,7 @@ function talkTo(pid, kind){
     saveGame(); show("player"); return;
   }
   if(kind==="praise"){
-    if(p.apps>=3&&p.seasonRating>=6.8){
+    if(p.apps>=3&&p.seasonRating>=7.20){
       d=[5,3,6,4][pers]+(lowM?2:0);
       txt=pick([
         [`"감사합니다. 팀이 이기는 게 우선이지만, 인정받으니 힘이 납니다."`,`"준비한 만큼 나온 것뿐입니다. 다음 경기에선 더 보여드리죠."`,`"과찬이십니다. 아직 보완할 게 많아요."`],
@@ -30861,7 +31580,7 @@ function talkTo(pid, kind){
       txt=pick([`"...제가 요즘 칭찬받을 만한가요? 놀리시는 겁니까."`,`"영혼 없는 칭찬은 사양하겠습니다."`,`"차라리 제가 뭘 고쳐야 하는지 말씀해 주십시오."`])+` <i>(근거 없는 칭찬은 역효과)</i>`;
     }
   } else if(kind==="scold"){
-    if(p.apps>=3&&p.seasonRating<6.4){
+    if(p.apps>=3&&p.seasonRating<6.55){
       d=[3,2,-3,(Math.random()<0.5?4:-5)][pers];
       txt=pick([
         [`"맞는 말씀입니다. 프로라면 결과로 말해야죠."`,`"변명하지 않겠습니다. 오늘부터 훈련량을 늘리겠습니다."`],
@@ -31148,7 +31867,7 @@ function presetLabel(t, i){
 }
 /* 그 슬롯에 쌓인 조직력 — 활성 슬롯은 지금 값, 비활성은 저장된 값 */
 function presetFam(t, i){
-  if(t.tactic.presetCur===i) return Math.round(famOf(t));
+  if(t.tactic.presetCur===i) return Math.round(famLive(t));   // 🧩 경기 중에는 킥오프 시점 값 (제보)
   const ps=tacPresets(t)[i];
   return ps && typeof ps.fam==="number" ? Math.round(ps.fam) : null;
 }
@@ -31211,7 +31930,7 @@ function fmTopBar(t, xi, formName){
   const ment=clamp(Math.round(T.mentality*2),0,4);
   const mentN=["매우 수비적","수비적","균형","공격적","매우 공격적"][ment];
   const tk=clamp(Math.round(T.tackle*2),0,4);
-  const fam=Math.round(famOf(t));
+  const fam=Math.round(famLive(t));   // 🧩 경기 중에는 킥오프 시점 값으로 통일 (제보)
   const gauge=(v,max,cls)=>{
     const on=Math.round(clamp(v/max,0,1)*5);
     return `<span class="fmGauge">${[0,1,2,3,4].map(i=>`<i class="${i<on?cls:""}"></i>`).join("")}</span>`;
@@ -31313,7 +32032,13 @@ function banLabel(p, brief){
 }
 /* 전술판 상태 칸 — 부상·징계·경고누적을 아이콘과 설명으로 */
 function fmStateCell(p){
-  if(p.inj>0) return `<span style="color:#f85149" title="부상 ${p.inj}주">🚑</span>`;
+  /* 🚑 ⚠ 제보 원문 — 「최근 패치 이후로 전술 탭에서 부상 선수 몇 주 남았는지 안 보여요」.
+     출장정지 표시를 넣으면서 이 칸을 아이콘 하나로 줄였는데, 남은 주수가 툴팁으로만 남아
+     폰에서는 확인할 방법이 없어졌다. 징계 칩과 같은 모양으로 숫자를 다시 세운다. */
+  if(p.inj>0){
+    const w=(typeof injWeeksLeft==="function") ? (injWeeksLeft(p)||p.inj) : p.inj;
+    return `<span style="color:#f85149;white-space:nowrap" title="부상 — 복귀까지 약 ${w}주">🚑<b style="font-size:10px;margin-left:1px">${w}주</b></span>`;
+  }
   const bl=banLabel(p);
   if(bl) return `<span style="color:#f85149" title="${bl}">⛔<b style="font-size:10px;margin-left:1px">${(p.ban||p.banE||p.banC)|0}</b></span>`;
   if(p._yc>=1) return `<span style="color:#d29922" title="경고 ${p._yc}장 — 한 장 더 받으면 출장정지">▣</span>`;
@@ -31328,7 +32053,7 @@ function fmSquadRow(t, p, slotLabel, slot, idx){
   const mt=moodTag(p);
   const react=`<span class="fmReact ${mt.c}">${mt.t}</span>`;
   const rating = p.apps ? (p.seasonRating||0).toFixed(2) : "-";
-  const rCol = p.apps ? (p.seasonRating>=7.2?"#3fb950":p.seasonRating>=6.7?"#c9d1d9":"#d29922") : "#8b949e";
+  const rCol = p.apps ? (p.seasonRating>=7.40?"#3fb950":p.seasonRating>=6.90?"#c9d1d9":"#d29922") : "#8b949e";
   /* 행 전체가 터치 영역이다. 예전에는 이름 칸(td.fmName)에만 onclick 이 걸려 있어서
      폰에서는 이름 위를 정확히 눌러야만 선택이 됐다 — 교체가 사실상 불가능했다.
      역할·임무 드롭다운은 자기 클릭을 따로 잡으므로(stopPropagation) 서로 방해하지 않는다. */
@@ -34248,7 +34973,7 @@ function calendarCard(){
     const tapable = r<0 && !past && !ec && !fr;
     cells.push(`<div class="calD ${cls}${past?" calPast":""}${i===(G.day||0)?" calToday":""}"`
       + (tapable?` onclick="pickDayPlan(${i})" title="탭하면 휴식/훈련을 고를 수 있습니다"`:"")
-      + `><span class="cdn">${dd}</span>${inner}</div>`);
+      + `><span class="cdn">${dd}</span><span class="cdw" title="${(function(){try{return dayWeather(i).n;}catch(e){return "";}})()}">${(function(){try{return dayWeather(i).ic;}catch(e){return "";}})()}</span>${inner}</div>`);
   }
   const today=dateOfDay(G.day||0);
   return `<div class="card"><h3>🗓️ ${y}년 ${mo+1}월
@@ -34753,7 +35478,7 @@ function genRumor(){
       if(sent.length){
         const {p, c}=pick(sent);
         const played=(p.apps||0)-((p.loan&&p.loan.apps0)||0);
-        if(played>=6 && (p.seasonRating||0)>=6.8)
+        if(played>=6 && (p.seasonRating||0)>=7.20)
           return mk("loanBack", p.id, c?c.id:null, ut.id,
             pick([`${c?c.short:"임대 구단"}에서 펄펄 나는 ${p.name} — ${ut.short} 복귀 후 주전 경쟁 예고`,
                   `[화제] 임대생 ${p.name}, ${played}경기 평점 ${(p.seasonRating||0).toFixed(2)}… ${c?c.short:"임대팀"}은 완전 영입 희망`,
@@ -36350,7 +37075,7 @@ function recallChance(p, club){
   let c=0.88;
   c -= clamp(played*0.045, 0, 0.55);              // 많이 뛰었으면 붙잡는다
   if(p.loan.buy) c-=0.18;                          // 완전이적을 노리고 데려간 선수
-  if((p.seasonRating||0)>=7.0 && played>=5) c-=0.12;
+  if((p.seasonRating||0)>=7.35 && played>=5) c-=0.12;
   if(club){
     try{ const depth=club.players.filter(q=>q.pos===p.pos&&avail(q)).length; if(depth<=3) c-=0.10; }catch(e){}
   }
@@ -36634,7 +37359,7 @@ function loanSocial(p, club, kind){
     } else if(kind==="back"){
       /* 임대에서 돌아왔다 — 성과에 따라 결이 갈린다 */
       const played=(p.apps||0)-((p.loan&&p.loan.apps0)||0);
-      const good = played>=12 || (p.seasonRating||0)>=6.9;
+      const good = played>=12 || (p.seasonRating||0)>=7.30;
       socialFill(good?SOC.loanReturn2:SOC.loanBack, 2+R(2), good?1:0, V);
     } else if(kind==="in"){
       socialFill(SOC.loanIn, 2+R(2), 1, V); fmkFill(FMK.loanIn, 1+R(2), V);
@@ -37563,7 +38288,11 @@ function stadFinish(){
   /* 새 구장은 기존보다 작아지지 않는다 — 작은 구단은 규모 자체가 뛰고, 큰 구단은 폭이 좁다 */
   const add=plan.capAdd[0]+R(plan.capAdd[1]-plan.capAdd[0]+1);
   const cap=Math.max(Math.round(sd.cap*(plan.capMul||1.08)), sd.cap+Math.round(add*0.55), add);
-  t.stad={n:S.name, cap:Math.round(cap/100)*100, avg:Math.round(sd.avg*plan.avgMul)};
+  /* ⚠ 예전에는 t.stad 를 통째로 새 객체로 갈아 끼우면서 _base0(기준 관중의 밑값)를 흘렸다.
+     그러면 attBase0 가 옛 자료표(STADIUM)의 값으로 되돌아가, 4만 석짜리 새 구장을 짓고도
+     관중 하한·상한이 옛 구장 기준에 묶였다 — 신축의 실익이 반쯤 사라졌다. */
+  const _newAvg=Math.round(sd.avg*plan.avgMul);
+  t.stad={n:S.name, cap:Math.round(cap/100)*100, avg:_newAvg, _base0:_newAvg};
   t.fans=Math.round(clamp((t.fans||10)*plan.fansMul, 4, 140)*10)/10;
   bumpHype(t, plan.hype, `${S.name} 개장`);
   adjustTrust("owner", 16, `${S.name} 완공`); adjustTrust("fans", 22, `${S.name} 완공`);
@@ -38884,7 +39613,20 @@ function buildCtx(stage, M){
     const lastG  = gl.length?gl[gl.length-1]:null;
     ctx.lateDrama= !!(lastG && lastG.m>=85 && ctx.res!=="D");
     ctx.blank    = myG===0;                       // 무득점
-    ctx.thriller = (myG+opG)>=5;                  // 난타전
+    /* ⚠ 제보 원문 — 「우리가 6-0으로 이긴 경기인데도 인터뷰에서는 난타전이라고 나옴」.
+       원인: 「양 팀 합계 5골 이상」만 봤다. 6-0·5-0 처럼 한쪽이 일방적으로 몰아친 경기도
+       합계가 5를 넘으니 난타전으로 잡혔다. 난타전은 <b>양쪽이 다 넣은</b> 경기다. */
+    /* 🌦️ ⚠ 요청 — 「날씨 관련 기자회견 질문과 선택지」. 험한 날씨였던 경기만 질문이 붙는다 */
+    try{
+      const w=M.wx;
+      if(w && ["rain","storm","snow","hot","cold","windy"].indexOf(w.k)>=0){
+        const sev=Math.max(w.wet, w.slip, Math.abs(w.heat), w.wind*0.8);
+        if(sev>0.42){ ctx.wx=w.k; ctx.wxN=w.n; ctx.wxIc=w.ic; ctx.wxSev=sev; }
+      }
+    }catch(e){}
+    ctx.thriller = (myG+opG)>=5 && Math.min(myG,opG)>=2;   // 난타전 — 양 팀 모두 2골 이상
+    ctx.rout     = (myG-opG)>=4;                  // 대승 (그 자리를 난타전이 잘못 채우고 있었다)
+    ctx.routed   = (opG-myG)>=4;                  // 대패
     ctx.bore     = (myG+opG)===0;                 // 0-0
     ctx.leaky    = opG>=3;                        // 3실점 이상
     ctx.hat      = sd.list.find(x=>x.goals>=3)||null;
@@ -39712,6 +40454,38 @@ function qPool(stage,c){
       O("찬스는 만들었습니다. 마무리만 되면 풀립니다. 믿고 기다리겠습니다.",2,2,"공격수들에게 힘이 될 발언이네요."),
       O("솔직히 창의성이 부족했습니다. 훈련장에서 다시 짜겠습니다.",0,2,"냉정한 자기 평가입니다."),
       O("스트라이커 보강이 필요하다는 건 구단도 알고 있을 겁니다.",1,1,"공개적으로 영입을 요구하셨습니다. 구단이 들었겠네요.")]);
+    /* 🌦️ 날씨 — 이겼든 졌든 「날씨 탓」은 감독이 가장 쉽게 잡는 지푸라기다. 그래서 함정이 된다 */
+    QP(0,!!c.wx,`${c.wxIc||"🌦️"} ${c.wxN||"악천후"} 속에서 치른 경기였습니다. 경기 준비에 영향이 있었습니까?`,[
+      O("조건은 양 팀이 똑같았습니다. 핑계 삼지 않겠습니다.",2,3,"깔끔한 답변입니다."),
+      O("네, 계획했던 축구는 못 했습니다. 그래도 선수들이 잘 적응해 줬습니다.",1,2,"현실적인 평가군요."),
+      O("이런 날씨에 경기를 강행한 것 자체가 문제라고 봅니다.",0,-2,"연맹을 겨냥한 발언으로 받아들이겠습니다."),
+      O("솔직히 날씨가 다 했습니다. 오늘 경기는 잊겠습니다.",0,-3,"...선수들이 들으면 서운하겠는데요.")]);
+    QP(1,!!c.wx&&c.res==="L",`${c.wxN||"날씨"} 탓을 하는 목소리도 있습니다. 감독님 생각은 어떻습니까?`,[
+      O("상대도 같은 그라운드에서 뛰었습니다. 저희가 부족했습니다.",2,3,"변명하지 않으시는군요."),
+      O("영향이 없었다면 거짓말입니다. 다만 그게 진 이유의 전부는 아닙니다.",1,2,"균형 잡힌 답변입니다."),
+      O("이런 그라운드에서 우리 스타일을 보여 달라는 건 무리한 요구입니다.",0,-2,"...날카롭게 받아치셨습니다.")]);
+    QP(1,!!c.wx&&c.res==="W",`${c.wxN||"악천후"}에서 이겼습니다. 무엇을 준비하셨습니까?`,[
+      O("이런 날은 단순하게 가는 게 맞습니다. 그렇게 주문했고 선수들이 지켰습니다.",1,3,"준비된 승리였군요."),
+      O("특별히 준비한 건 없습니다. 선수들이 알아서 적응했습니다.",2,2,"선수단에 공을 돌리셨습니다."),
+      O("운도 따랐습니다. 이런 날씨에는 운이 절반입니다.",1,0,"겸손하신 건지, 정말 그렇게 보시는 건지.")]);
+    QP(2,c.wx==="hot",`이 더위에 선수들 체력 관리는 어떻게 하실 생각입니까?`,[
+      O("급수 시간을 최대한 활용하고, 교체 카드를 아끼지 않겠습니다.",1,2,"구체적인 계획이 있으시군요."),
+      O("여름은 모든 팀에게 똑같습니다. 버티는 팀이 이깁니다.",1,1,"버티기 싸움이라는 말씀이군요."),
+      O("솔직히 이 일정으로는 답이 없습니다. 연맹이 시간을 조정해야 합니다.",0,-1,"일정에 대한 불만을 공개적으로 밝히셨습니다.")]);
+    QP(2,(c.wx==="snow"||c.wx==="storm"),`선수 부상 위험을 걱정하는 시선도 있었습니다.`,[
+      O("가장 걱정한 부분입니다. 무리한 태클은 하지 말라고 미리 일러뒀습니다.",2,3,"선수 보호를 우선하셨군요."),
+      O("경기를 하기로 한 이상 최선을 다하는 게 프로입니다.",1,0,"프로다운 답변이지만 논쟁의 여지는 있겠습니다."),
+      O("솔직히 취소됐어야 할 경기라고 생각합니다.",0,-2,"강한 발언입니다. 그대로 나가겠습니다.")]);
+    QP(1,c.rout,`${c.myG}-${c.opG}. 이 정도 점수 차는 리그에서도 흔치 않습니다. 오늘 무엇이 달랐습니까?`,[
+      O("선수들이 준비한 대로 90분 내내 해냈습니다. 제 공은 없습니다.",2,3,"선수단에 공을 돌리셨습니다."),
+      O("전반에 흐름을 가져온 뒤로는 상대가 버틸 수 없는 상태였습니다. 계획대로였습니다.",1,2,"냉정한 분석이네요."),
+      O("한 경기일 뿐입니다. 다음 주에 지면 오늘 점수는 아무 의미가 없습니다.",1,1,"벌써 다음 경기를 보고 계시는군요."),
+      O("상대를 존중합니다. 오늘은 저희 날이었을 뿐입니다.",1,2,"승자의 품격이라는 말이 어울리네요.")]);
+    QP(2,c.routed,`${c.myG}-${c.opG}. 이런 점수 차로 지는 경기, 감독으로서 어떻게 설명하시겠습니까?`,[
+      O("변명하지 않겠습니다. 전적으로 제 책임입니다. 팬들께 죄송합니다.",0,3,"고개를 숙이셨습니다."),
+      O("선수들을 탓하지 마십시오. 이런 판을 짠 건 접니다.",1,2,"선수단을 감싸셨습니다."),
+      O("오늘 경기는 통째로 지우고 다음 주부터 다시 시작하겠습니다.",1,1,"빠른 손절이라고 봐야 할까요."),
+      O("이 정도 실력 차가 있다는 걸 인정해야 합니다. 시간이 필요합니다.",1,-1,"...구단과 팬에게는 아픈 말이겠습니다.")]);
     QP(1,c.thriller,`${c.myG}-${c.opG}, 난타전이었습니다. 이런 경기, 감독 입장에서는 어떻습니까?`,[
       O("보는 분들은 재밌었겠지만 저는 수명이 줄었습니다. (웃음)",2,3,"명언 추가요. 팬들은 즐거웠습니다!"),
       O("공격은 만족스럽지만 수비 조직은 다시 봐야 합니다.",1,2,"양면을 정확히 보시는군요."),
@@ -40275,6 +41049,73 @@ FMK.retireNo=[
  "K리그에 영구결번 흔치 않은데 {t}이/가 했네",
  "{p} 커리어 다시 찾아보고 옴. 받을 만하다",
  "우리 팀도 저런 레전드 있었으면"];
+/* 🏢 기업 인수 — 축하 일색이 아니다. 돈이 들어오는 기쁨과 정체성을 잃는 상실감이 같이 온다 */
+FMK.acq=[
+ ["{t} {o}에 인수됐다는데 ㄷㄷ 이제 돈 쓰겠네",1],
+ ["시민구단 하나 또 사라졌네... 씁쓸하다",-1],
+ ["{n}... 이름 부르기가 아직 어색함",0],
+ ["{o}가 축구에 관심이 있었나? 갑자기?",0],
+ ["솔직히 부럽다. 우리 구단도 좀 팔려라",1],
+ ["기업구단 되면 초반만 반짝하고 발 빼는 경우 많던데",-1],
+ ["{t} 팬들 심정 복잡할 듯. 축하한다고 해야 하나",0],
+ ["이제 {t} 이적시장에서 안 밀리겠네",1],
+ ["엠블럼이랑 연고는 유지한다니까 그건 다행",1],
+ ["K리그에 돈 들어오는 건 무조건 환영임",1],
+ ["{p} 이라는 이름이 사라진 게 제일 크다",-1]];
+/* 🎆💀 펨코 — 리그 전체가 구경하는 스코어 */
+FMK.routWin=[
+ ["{t} {s}골 차 ㅋㅋㅋㅋㅋ 이게 프로 경기가 맞냐",1],
+ ["{o} 오늘 갤러리 초토화 예상",1],
+ ["스코어 보고 오타인 줄 알았다",1],
+ ["{t} 폼 미쳤네 진짜. 이번 시즌 사고 친다",1],
+ ["이 경기 하이라이트가 아니라 풀영상으로 봐야 함",1],
+ ["{p} 오늘 혼자 다 했다던데",1],
+ ["득실 차 싸움 이걸로 끝났다",1],
+ ["{o} 감독 오늘 경질 안 되면 그것도 뉴스감",1],
+ ["올 시즌 최다 골 차 경기 나왔다",1],
+ ["후반에 살살한 게 저거임 ㄷㄷ",1]];
+FMK.routLose=[
+ ["{t} {s}골 차 ㅋㅋㅋㅋㅋㅋㅋ 박제",-1],
+ ["이건 진짜 역대급이다. 캡처 떠놨음",-1],
+ ["{t} 팬들 오늘 커뮤니티 조용함. 다들 나갔나 봄",-1],
+ ["프로가 이래도 되는 거임?",-1],
+ ["{t} 프런트는 뭐 하고 있냐 진짜",-1],
+ ["감독 다음 주에 있을까?",-1],
+ ["원정 간 팬들 환불해줘라 좀",-1],
+ ["{o}가 잘한 것도 있지만 {t}이/가 너무 안 했다",-1],
+ ["올 시즌 최다 실점 경기 갱신",-1],
+ ["이 정도면 선수단 전체 방출감",-1]];
+FMK.acqRum=[
+ ["{t} {o}에 팔린다는 기사 떴네",0],
+ ["또 인수설이냐 ㅋㅋ 이런 거 성사되는 거 본 적이 없다",0],
+ ["{o} 자금력이면 진짜 되긴 하겠는데",1],
+ ["{t} 팬들 오늘 커뮤니티 난리났음",0],
+ ["시민구단 하나 또 없어지는 건가",-1],
+ ["기사 소스가 어디임? 믿을 만함?",0],
+ ["성사되면 다음 시즌 판도 바뀐다",1]];
+FMK.acqCut=[
+ ["{t} 모기업 지원 줄였다는데 ㄷㄷ 벌써?",-1],
+ ["기업구단 전환할 때 이런 리스크 얘기 아무도 안 하지",-1],
+ ["{o} 그럴 줄 알았다. 축구는 취미로 하는 게 아님",-1],
+ ["{t} 팬들 어쩌냐 진짜",0],
+ ["성적 못 내면 돈 끊기는 게 기업구단임 ㅇㅇ",0]];
+FMK.acqOut=[
+ ["{t} 모기업 철수 ㅋㅋㅋ 진짜 발 빼네",-1],
+ ["{p} 이름 결국 사라짐",0],
+ ["기업 인수가 만능이 아니라는 산 증거",0],
+ ["{t} 다시 시민구단으로. 이게 맞는 것 같기도",0],
+ ["남 얘기 아니다 우리도 조심해야 함",-1],
+ ["선수단 그대로 유지 가능하냐 이거",-1]];
+FMK.retireNoBye=[
+ "{t} {p} 은퇴하면서 {n}번 영구결번 ㄷㄷ",
+ "은퇴식에서 결번 발표하는 게 국룰이지 이게 맞다",
+ "{p} 하이라이트 보고 왔는데 진짜 한 시대였네",
+ "{n}번 다음에 누가 달지 궁금했는데 아무도 안 단다고 함",
+ "K리그도 이런 문화 좀 자리 잡았으면",
+ "{t} 팬들 오늘 단체로 울었을 듯",
+ "솔직히 {p} 정도면 받을 만함 ㅇㅇ",
+ "우리 구단은 레전드 나가는 것도 기사로 알았는데 ㅋㅋ",
+ "{p} 마지막 경기 직관 못 간 거 평생 후회할 듯"];
 SOC.snark=[
  ["이 팀 보고 있으면 혈압약이 필요하다",-1],
  ["오늘도 축구를 본 게 아니라 인내심 테스트를 했다",-1],
@@ -40313,6 +41154,214 @@ SOC.retireNo=[
  ["{n}번 유니폼 아직 갖고 있는데 오늘부터 가보가 됐다",1],
  ["{p} 데뷔전부터 봤는데 여기까지 왔네",1],
  ["영구결번은 아무나 받는 게 아니다. 인정",1]];
+/* 🎽 은퇴와 함께 다는 영구결번 — 현역 결번과는 결이 다르다.
+   현역은 「대단하다」, 은퇴는 「고맙다·이제 끝났구나」다. 전용 반응을 따로 둔다 (요청). */
+SOC.retireNoBye=[
+ ["마지막 경기 끝나고 {n}번 걷는 장면 보고 울었다",1],
+ ["{p} 은퇴에 영구결번까지... 오늘 하루 종일 먹먹하다",1],
+ ["{n}번 달던 사람이 이제 없다는 게 아직 실감이 안 난다",1],
+ ["내 유년기가 {n}번이랑 같이 끝났다",1],
+ ["{t}이/가 {p}을/를 이렇게 보내주는 거 보고 팬 하길 잘했다 싶었다",1],
+ ["{p} 고맙습니다. {n}번은 영원히 당신 겁니다",1],
+ ["애가 {n}번 마킹 유니폼 사달라는데 이제 못 산다고 하니까 울더라",1],
+ ["다음 시즌 라커룸에 {n}번이 비어 있겠네",1],
+ ["은퇴하는 날 결번까지 걸어주는 구단 몇이나 되냐. {t} 인정",1],
+ ["{p} 데뷔전 표 아직 갖고 있다. 오늘 액자에 넣었다",1],
+ ["{n}번 유니폼 입고 경기장 갈 때마다 인사받던 게 엊그제 같은데",1],
+ ["박수 소리 진짜 안 끊기더라. {p} 수고했다",1],
+ ["{p} 없는 {t}은/는 아직 상상이 안 된다",1],
+ ["결번식 언제 하냐 그날 연차 쓴다",1]];
+/* 타팀 팬도 은퇴 결번에는 진심이다 */
+SOC.retireNoByeRiv=[
+ ["{t} 팬은 아니지만 {p} 은퇴 결번은 인정한다",1],
+ ["{n}번 걷는 거 보고 남의 팀인데 왜 내가 뭉클하냐",1],
+ ["우리 레전드도 저렇게 보내줬으면 좋겠다",0],
+ ["{p}한테 참 많이 당했는데... 수고했다 진짜",1],
+ ["이런 건 리그 전체가 박수 쳐야 하는 장면임",1],
+ ["{t} 프런트 이런 건 배워야 함",0]];
+/* 📰 접촉설 — 아직 아무것도 정해지지 않았을 때가 여론이 제일 시끄럽다 */
+/* 🎆 5골 차 이상 대승 — 「이겼다」가 아니라 「끝냈다」. 축제와 미안함이 섞인다 */
+SOC.winRout=[
+ ["{s}골 차… 이런 경기를 내 눈으로 보다니",1],
+ ["후반 30분부터는 상대가 안쓰러웠다 솔직히",1],
+ ["오늘 경기 티켓 안 버린다. 액자에 넣을 거다",1],
+ ["{o} 원정 팬들 반쯤 빠져나가더라. 마음이 좀 그랬다",1],
+ ["골 넣을 때마다 옆자리 아저씨가 나를 껴안음 ㅋㅋㅋ",1],
+ ["득실 차 이거 시즌 끝까지 간다. 오늘 진짜 크다",1],
+ ["{p} 오늘 미쳤다. 이런 날이 커리어에 몇 번이나 있겠냐",1],
+ ["애들한테 오늘 경기 보여주려고 녹화 걸어놨다",1],
+ ["스코어보드 사진 백 장 찍음",1],
+ ["이 경기력 딱 절반만 매주 해주면 우승한다",1],
+ ["상대 골키퍼가 제일 불쌍했다",1],
+ ["경기 끝나고 아무도 안 일어나더라. 다 같이 응원가만 불렀다",1],
+ ["교체로 들어간 애들까지 다 좋았다. 뎁스가 이 정도였나",1],
+ ["{s}골 차인데 왜 아직도 안 믿기지",1],
+ ["오늘만큼은 우리가 리그 최강이다. 내일은 몰라도",1],
+ ["다음 주에 지면 오늘 이 글 삭제함 ㅋㅋ",1]];
+/* 💀 5골 차 이상 대패 — 분노를 넘어 헛웃음이 나오는 구간 */
+SOC.loseRout=[
+ ["{s}골 차... 무슨 말을 해야 할지 모르겠다",-1],
+ ["전반 끝나고 나왔다. 처음이다 이런 거",-1],
+ ["원정 세 시간 걸려 갔는데 이걸 보고 왔다",-1],
+ ["화도 안 난다. 그냥 웃음만 나온다",-1],
+ ["선수들 뛰는 거 자체를 포기한 것 같았다",-1],
+ ["이건 전술 문제가 아니라 태도 문제다",-1],
+ ["{o}한테 {s}골 차라니. 자존심이 남아 있긴 하냐",-1],
+ ["오늘 경기장에 있던 팬들한테 사과부터 해라",-1],
+ ["박수 쳐준 팬들이 더 대단하다 진짜",-1],
+ ["구단 SNS 댓글창 닫았더라 ㅋㅋㅋ",-1],
+ ["이 정도면 감독 문제가 아니라 구단 전체 문제다",-1],
+ ["내년 시즌권 진지하게 고민 중이다",-1],
+ ["그래도 끝까지 응원가는 불렀다. 우리가 할 수 있는 건 그거뿐이라",0],
+ ["다음 경기가 언제냐. 빨리 지워버리고 싶다",-1],
+ ["하이라이트 절대 안 본다",-1]];
+/* 🌦️ 날씨 반응 — ⚠ 요청 「날씨 관련 소셜 반응」. 경기 뒤 그날의 하늘 이야기가 한 번은 나온다 */
+SOC.wxRain=[
+ ["오늘 비 맞고 직관한 사람들 진짜 대단하다",1],
+ ["우비 입고 90분... 감기 걸릴 듯",0],
+ ["비 오는 날 축구 특유의 그 분위기는 있다",1],
+ ["패스가 자꾸 길게 빠지더라. 잔디가 젖어서 그런 듯",0],
+ ["이런 날은 그냥 길게 차는 게 맞다",0],
+ ["키퍼가 공 놓칠까 봐 계속 조마조마했다",-1],
+ ["비 오면 우리 팀은 왜 더 못하냐",-1],
+ ["경기장 배수 시설 좀 어떻게 해줘라",-1]];
+SOC.wxStorm=[
+ ["이 날씨에 경기를 하는 게 맞나 싶었다",-1],
+ ["물웅덩이에 공이 그냥 멈추더라 ㅋㅋ",0],
+ ["선수들 다칠까 봐 보는 내내 불안했다",-1],
+ ["폭우 속 직관... 평생 기억날 듯",1],
+ ["이건 축구가 아니라 수영이었다",0],
+ ["연기했어야 하는 거 아니냐",-1]];
+SOC.wxSnow=[
+ ["눈 오는 날 축구 낭만 있다 진짜",1],
+ ["선수들 계속 미끄러지던데 안 다쳐서 다행",0],
+ ["공이 눈에 묻혀서 안 보이더라 ㅋㅋ",0],
+ ["관중석에서 눈사람 만드는 사람 봤다",1],
+ ["이런 날 원정 온 팬들 존경합니다",1],
+ ["라인 안 보이는데 오프사이드 판정이 되냐",-1]];
+SOC.wxHot=[
+ ["이 더위에 90분 뛰는 게 사람이 할 짓이냐",0],
+ ["후반에 다들 걸어 다니더라. 이해는 간다",0],
+ ["급수 시간 좀 더 자주 줬으면",0],
+ ["관중석이 찜통이었다. 그늘 좀 만들어줘라",-1],
+ ["여름 축구는 그냥 체력 싸움임",0],
+ ["더운 날엔 우리가 더 유리한 것 같기도",1]];
+SOC.wxCold=[
+ ["손발 얼어붙는 줄 알았다. 핫팩 필수",0],
+ ["추운 날엔 몸 풀기 전에 실점하더라",-1],
+ ["입김 나오는 경기장 분위기는 또 좋다",1],
+ ["이 날씨에 반팔 입고 뛴 선수 있던데 대단",1]];
+SOC.wxWind=[
+ ["바람 때문에 크로스가 다 흘러가더라",0],
+ ["전반이랑 후반이랑 완전히 다른 경기였다. 바람 방향 때문",0],
+ ["골킥이 되돌아오는 거 처음 봤다 ㅋㅋ",0],
+ ["바람 등지는 쪽 잡는 게 코인토스의 전부였던 날",0]];
+FMK.wx=[
+ ["{t} 경기 날씨 실화냐 ㅋㅋ",0],
+ ["이런 날 경기 강행하는 게 맞나",-1],
+ ["악천후 경기는 그냥 복불복임",0],
+ ["오늘 그라운드 상태 보고 놀랐다",0],
+ ["날씨빨 받은 팀이 이기는 거지 뭐",0],
+ ["직관 가신 분들 고생 많으셨습니다",1]];
+SOC.acqRumOurs=[
+ ["{o} 인수설 진짜냐?? 오늘 하루 종일 이 얘기뿐이다",0],
+ ["아니 왜 우리한테 물어보질 않냐고. 시민구단인데",-1],
+ ["제발 사줘라... 이 예산으로는 더 못 버틴다",1],
+ ["기사만 보고 흥분하지 말자. 이런 거 열에 아홉은 무산됨",0],
+ ["{o}면 나쁘지 않은데? 최소 돈은 있는 회사잖아",1],
+ ["구단명 바뀌는 거면 나는 반대다. 그 이름이 우리 역사인데",-1],
+ ["시민주주 총회 열어야 하는 거 아님? 우리 동의 없이 되는 거야?",-1],
+ ["남은 경기 잘하면 값 올라간대. 이번 시즌 응원할 이유가 하나 더 생겼다",1],
+ ["엠블럼만 지켜주면 나는 찬성",1],
+ ["설레발 치다 무산되면 그게 더 아프다. 기대 안 함",0],
+ ["프런트가 흘린 거 아니냐 이거. 협상용으로",0],
+ ["20년을 시민구단으로 버텼는데... 마음이 이상하다",-1]];
+SOC.acqRumOther=[
+ ["{t} 인수설 뜨던데 저기 팔리면 판도 바뀐다",-1],
+ ["부럽다. 우리 구단은 인수설조차 안 뜬다",-1],
+ ["{o}가 축구를? 뜬금없네",0],
+ ["또 무산되겠지 뭐. 이런 기사 몇 번째냐",0]];
+SOC.acqFail=[
+ ["결국 무산이네... 기대한 내가 바보지",-1],
+ ["오히려 다행이다. 우리는 시민구단으로 남는 게 맞다",1],
+ ["다시 논의 여지 있다는 게 그나마 위안",0],
+ ["성적으로 값을 올려야 한다는 거 아니냐. 다음 시즌 가자",1],
+ ["몇 달을 들었다 놨다 해놓고 이게 뭐냐",-1],
+ ["{o} 애초에 진심 아니었던 듯",0],
+ ["예산은 그대로다. 겨울에 또 헐값 영입 보겠네",-1]];
+SOC.acqFailOther=[
+ ["{t} 인수 무산됐대 ㅋㅋ 다행이다 솔직히",1],
+ ["저기 팔렸으면 골치 아팠는데",0]];
+/* 📉 지원 축소 — 팬들이 걱정하던 그 장면 */
+SOC.acqCut=[
+ ["봐라 내가 뭐랬냐. 기업구단 되면 이렇게 된다고 했지",-1],
+ ["{o} 이럴 거면 왜 샀냐 진짜",-1],
+ ["예산 반 토막이면 겨울에 주전 다 나간다는 소리인데",-1],
+ ["시민구단 때가 오히려 안정적이었다",-1],
+ ["성적 내면 돌아온다니까 일단 버텨보자",0],
+ ["기업 논리로 축구하면 이렇게 됨. 배웠다",-1],
+ ["구단명은 저쪽 거고 빚은 우리 거고",-1],
+ ["감독님이 무슨 죄냐 진짜",0],
+ ["철수설 도는 거 사실이냐? 무섭다",-1]];
+SOC.acqCutOther=[
+ ["{t} 모기업이 발 빼는 중이라던데",0],
+ ["기업구단이라고 다 좋은 게 아니구나",0]];
+SOC.acqBack=[
+ ["{o} 지원 재개! 성적으로 답한 거다",1],
+ ["돈 다시 들어온다 ㅠㅠ 이번 겨울 기대해도 되냐",1],
+ ["의심해서 미안하다 {o}",1],
+ ["이래서 성적이 중요한 거다",1],
+ ["감독님 진짜 대단하다. 없는 살림으로 여기까지",1]];
+/* 🏳️ 철수 — 다시 시민구단으로 */
+SOC.acqOut=[
+ ["{o} 철수... 결국 이렇게 끝나네",-1],
+ ["{p}이라는 이름은 결국 얼마 못 갔다",-1],
+ ["돌아와서 다행이라는 사람도 있더라. 나는 잘 모르겠다",0],
+ ["빚만 남기고 갔다는 게 제일 화난다",-1],
+ ["처음부터 팔지 말았어야 했다",-1],
+ ["다시 {n}이다. 이름은 되찾았는데 선수는 다 나가겠지",-1],
+ ["시민주주 다시 모집한대. 나는 넣는다",1],
+ ["이럴 줄 알았으면서도 막상 닥치니 허탈하다",-1],
+ ["그래도 우리 이름 돌아온 건 좋다",1],
+ ["구단 역사에 짧은 흑역사 하나 생겼네",-1]];
+SOC.acqOutOther=[
+ ["{t} 모기업 철수했다던데... 남 일 같지 않다",0],
+ ["기업구단 전환 신중해야 하는 이유",0]];
+/* 🏢 우리 구단이 인수됐다 — 팬 여론이 정확히 반으로 갈린다 */
+SOC.acqOurs=[
+ ["{o} 인수 확정... 솔직히 아직 실감이 안 난다",0],
+ ["이제 이적시장에서 안 밀린다는 거지? 그건 좋다",1],
+ ["{p}이라는 이름 20년 불렀는데 오늘로 끝이네",-1],
+ ["시민주주 배당 몇 푼이라도 받던 게 자랑이었는데",-1],
+ ["돈 들어오는 거 반대할 사람 없지. 근데 마음 한켠이 허하다",0],
+ ["{n}... 입에 안 붙는다 진짜",-1],
+ ["솔직히 우리 예산으로는 한계였다. 나는 찬성",1],
+ ["연고랑 엠블럼 지킨다고 했으니 일단 믿어본다",1],
+ ["기업구단 되면 성적 안 나올 때 바로 발 뺀다더라. 그게 무섭다",-1],
+ ["내년 겨울 이적시장 기대된다 ㅋㅋ 이런 마음 처음이야",1],
+ ["시민구단이라 좋아했던 건데... 이제 뭘로 자부심을 갖냐",-1],
+ ["{o} 회장 인터뷰 봤는데 진심 같긴 하더라",1],
+ ["창단 멤버 어르신들 오늘 다 울었다고 함",-1],
+ ["일단 우승 한번 하고 얘기하자. 그러면 다 납득할 거다",1],
+ ["유니폼에 기업 로고 박히는 건 좀... 익숙해지겠지",0],
+ ["예산 늘어난다고 성적 나는 거 아님. 프런트가 문제였지",-1]];
+/* 🏢 남의 구단이 인수됐다 — 경쟁자가 돈을 쥐었다 */
+SOC.acqOther=[
+ ["{t} 인수됐다는데... 이제 걔네 영입 못 막는다",-1],
+ ["{o} 자본 들어오면 판이 기울어진다",-1],
+ ["부럽긴 한데 우리 구단은 왜 아무도 안 사가냐",-1],
+ ["{n} 다음 시즌 무섭겠네",-1],
+ ["돈으로 축구하는 팀 하나 더 늘었다",-1],
+ ["우리도 성적 내면 누가 사가지 않을까",0],
+ ["{t} 팬들은 좋겠다 진짜",0]];
+/* 🏢 타팀 팬이 보는 우리 구단 인수 */
+SOC.acqRiv=[
+ ["{t} 인수됐네. 이제 우는소리 못 하겠다",0],
+ ["{o} 돈으로 리그 망치지나 마라",-1],
+ ["솔직히 부럽다. 축하한다",1],
+ ["시민구단 하나 또 사라졌다. 리그 전체로 보면 손해",-1],
+ ["{n} 이름 적응 안 되네 ㅋㅋ",0],
+ ["돈 생겼다고 성적 나면 축구가 쉽지",-1]];
 SOC.rivalRenew=[
  ["{t} 재계약했네. 우리는 왜 아직 소식이 없냐",-1],
  ["{t}은/는 일 빨리 하네 부럽다",0],
@@ -41484,6 +42533,24 @@ RIV.win=[
  ["{t} 저 경기력이면 상위권 가능함. 인정할 건 인정",1],
  ["{p} 저 선수 우리 팀에 있었으면 좋겠다 진짜",1],
  ["{t} 다음 경기 우리랑인데 벌써부터 속 쓰림",0]];
+/* 🎆 옆 동네가 보는 대파괴 — 부러움 반, 「저긴 무섭다」 반 */
+RIV.winRout=[
+ ["{t} {s}골 차 넣었다는데... 우리는 다음 주에 저길 상대한다",-1],
+ ["솔직히 저 정도면 인정해야지",1],
+ ["{o} 팬들 오늘 진짜 고생했겠다",0],
+ ["우리 팀은 저런 경기 언제 해보냐",-1],
+ ["득실 차 저렇게 벌면 순위 싸움에서 진짜 불리해진다",-1],
+ ["하이라이트 봤는데 소름 돋았다. 잘하긴 잘하더라",1],
+ ["저 팀 만나기 전에 로또라도 사야 하나",0],
+ ["리그가 재미없어지는 거 아니냐",-1]];
+RIV.loseRout=[
+ ["{t} {s}골 차로 깨졌대 ㅋㅋㅋ 우리도 저럴 뻔했다",0],
+ ["남 일 같지 않아서 웃지도 못하겠다",0],
+ ["저 팀 오늘 왜 저랬냐 진짜",0],
+ ["강등 싸움에서 하나 빠지는 소리가 들린다",0],
+ ["{t} 팬들 멘탈 어떡하냐",0],
+ ["우리랑 붙을 때 저래줬으면",1],
+ ["감독 바뀔 듯. 저건 못 버틴다",0]];
 RIV.winBig=[
  ["{t}이/가 {s}점 차로 이겼다고? {o} 뭐 하는 거야 진짜",1],
  ["{s}점 차 ㄷㄷ 저건 그냥 전력 차이다",1],
@@ -41670,6 +42737,18 @@ FRIV.win=[["{t} 또 이김 ㅇㅇ 우리 팀은 언제 이기냐",1],["{t} 폼 �
  ["{t} 감독 데려오고 싶다 진심",1],["{o} 저기서 왜 라인 올림? 이해 안 감",0],
  ["{t}한테 지는 건 이제 국룰임",0],["인정할 건 인정. {t} 오늘 잘했다",1],
  ["우리 팀 감독은 저거 보고 뭐 느끼는 거 없냐",1]];
+FRIV.routWin=[["{t} {s}골 차 실화냐 ㅋㅋㅋㅋ 이건 사건이다",1],
+ ["오늘 리그 화제는 이거 하나로 끝",1],
+ ["{o} 어쩌다 저렇게 됐냐",1],
+ ["{t} 진짜 잘하긴 하더라 인정",1],
+ ["이런 스코어 몇 년 만이지",1],
+ ["다음 주에 저 팀 만나는 팀 힘내라",1]];
+FRIV.routLose=[["{t} {s}골 차 ㅋㅋㅋㅋㅋㅋ 이건 박제해야 함",-1],
+ ["역대급 스코어 나왔다",-1],
+ ["{t} 갤 오늘 폭발했겠네",-1],
+ ["프로 리그에서 이런 점수가 나오냐",-1],
+ ["감독 자리 위험할 듯",-1],
+ ["팬들만 불쌍하다 진짜",-1]];
 FRIV.bigWin=[["{t} {s}점 차 ㅋㅋㅋㅋ {o} 뭐임",1],["이거 리그 밸런스 문제 아님?",1],
  ["{o} 감독 짐 싸는 소리 들린다",0],["{t} 상대 안 만나고 싶다 진짜",1],
  ["남의 팀 대승 보는 것도 재밌네 (우리 팀 아님)",0]];
@@ -43846,7 +44925,8 @@ function retiredCard(t){
       <option value="">— 선수를 선택하세요 —</option>
       ${[...t.players].filter(p=>p.no && !isRetiredNo(t,p.no))
         .sort((a,b)=>(a.no||99)-(b.no||99))
-        .map(p=>`<option value="${p.id}">${String(p.no).padStart(2," ")}번 · ${p.name} (${p.pos} ${G.season-p.by}세 · 통산 ${p.career||0}경기)</option>`).join("")}
+        /* ⚠ 요청 — 「스태프 회의에서 영구결번 설정할 때 출장 경기수 나오잖아. 그거 없애」 */
+        .map(p=>`<option value="${p.id}">${String(p.no).padStart(2," ")}번 · ${p.name} (${p.pos} ${G.season-p.by}세)</option>`).join("")}
     </select>
     <button class="mini" style="margin-left:6px" onclick="retireFromSelect()">🎽 영구결번 지정</button>
   </div>`;
@@ -44376,7 +45456,7 @@ function peekLive(){
   livePaused=true; LIVE_PEEK=true;
   try{ updLiveCtrl(); }catch(e){}
   show("table");
-  try{ notify("🔍 <b>둘러보기</b> — 경기가 멈춰 있습니다. 화면은 볼 수 있지만 조작은 되지 않습니다.","info"); }catch(e){}
+  try{ flash("🔍 <b>둘러보기</b> — 경기가 멈춰 있습니다. 화면은 볼 수 있지만 조작은 되지 않습니다.","info"); }catch(e){}
 }
 function peekEnd(){
   LIVE_PEEK=false;
@@ -44387,6 +45467,15 @@ function peekEnd(){
        if(m){ try{ m.classList.remove("peekOnly"); }catch(_){}
               try{ m.className=String(m.className||"").replace(/\bpeekOnly\b/g,"").trim(); }catch(_){} } }catch(e){}
   try{ enterMatchTab(); }catch(e){}
+  /* 🔆 ⚠ 제보 원문 — 「매치엔진에서 둘러보기 하고 와서 다시 경기 재개하면 블라인드 화면
+     (약간 어두운 화면)에서 경기가 재개된다. 재개되면 밝은 화면으로 와야겠지?」
+     원인 — 경기 화면 마크업의 캔버스는 `class="dim"` 으로 태어난다(장면 사이 대기 상태가 기본).
+       enterMatchTab 이 화면을 다시 그리면 그 dim 이 새로 붙는데, 밝기를 맞추는 건
+       applyMatchModeUI 이고 그건 setMatchMode 로만 불린다. setMatchMode 는 「모드가 같으면
+       바로 반환」이라 둘러보기 전후로 모드가 그대로면 영영 호출되지 않는다 —
+       그래서 하이라이트가 재생되는 동안에도 화면이 어두운 채로 굳었다.
+     ─ 화면을 다시 그렸으면 밝기도 지금 모드에 맞춰 다시 칠한다. */
+  try{ applyMatchModeUI(); }catch(e){}
   /* ⚠ 제보 — 「둘러보기 후 경기 화면에 돌아오면 경기 시작(재개) 버튼이 없어서, 전술을
      열었다 취소해야 경기가 다시 진행된다」. enterMatchTab 은 화면 골격만 다시 그리고
      컨트롤 바(lvCtrl 의 ▶/⏸/둘러보기)는 채우지 않는다 — 여기서 채워 준다. */
@@ -45357,9 +46446,32 @@ function drawPitchBase(ctx, cv){
   ctx.stroke();
   ctx.restore();
 }
-function drawDotXY(ctx, cv, nx, ny, color, r){
+/* 🦘 ⚠ 요청 — 「선수가 점프할 때도 선수 바둑알이 약간 커지는 효과를 넣어 줘. 그림자도 생기고」.
+   공(drawBallZ)과 같은 원리다 — 탑뷰에서 「떴다」를 알 수 있는 건 그림자와의 간격, 그리고 커진 크기뿐.
+   다만 사람은 공만큼 높이 뜨지 않으니 폭을 훨씬 좁게 잡는다 (최대 +18% · 4.5px 부양). */
+const JUMP_LIFT=4.5;         // 최고점에서 화면상 띄우는 픽셀
+const JUMP_GROW=0.18;        // 최고점에서 커지는 비율
+const JUMP_DUR=0.62;         // 도약 → 착지 (초)
+/* 지금 이 선수가 얼마나 떠 있는가 (0=지면 · 1=최고점) */
+function jumpZOf(a, now){
+  try{
+    if(!a || a._jt0===undefined) return 0;
+    const d=(a._jdur||JUMP_DUR);
+    const k=(now-a._jt0)/d;
+    if(k<=0 || k>=1) return 0;
+    return Math.sin(Math.PI*k)*(a._jh||1);
+  }catch(e){ return 0; }
+}
+function drawDotXY(ctx, cv, nx, ny, color, r, jz){
   const k=cvK(cv), {x,y}=pitchToCanvasXY(cv,nx,ny);
-  ctx.beginPath(); ctx.arc(x,y,r*k,0,Math.PI*2);
+  const J=jz||0;
+  if(J>0.02){                                  // 🦘 지면에 남는 그림자 — 뜰수록 작고 흐려진다
+    const sh=r*k*(1-J*0.30);
+    ctx.beginPath(); ctx.ellipse(x, y+J*1.2*k, sh, sh*0.42, 0, 0, Math.PI*2);
+    ctx.fillStyle="rgba(0,0,0,"+(0.34-J*0.10).toFixed(2)+")"; ctx.fill();
+  }
+  const yy=y-J*JUMP_LIFT*k, rr=r*(1+J*JUMP_GROW)*k;
+  ctx.beginPath(); ctx.arc(x,yy,rr,0,Math.PI*2);
   ctx.fillStyle=color; ctx.fill();
   ctx.lineWidth=1.3*k; ctx.strokeStyle="rgba(0,0,0,.55)"; ctx.stroke();
 }
@@ -45374,7 +46486,7 @@ function drawBallXY(ctx, cv, nx, ny, lift){
     ctx.beginPath(); ctx.ellipse(x, y, sh, sh*0.55, 0, 0, Math.PI*2);
     ctx.fillStyle="rgba(0,0,0,"+Math.max(0.08, 0.38-h*0.015).toFixed(2)+")"; ctx.fill();
   }
-  const r=(3.0+kh*3.0)*k, by=y-h;   // 공중 최대 6.0px — 바둑알(11px)보다 항상 작게, FM 비율
+  const r=(3.0+kh*3.45)*k, by=y-h;  // 공중 최대 6.45px — 바둑알(11px)보다 항상 작게, FM 비율 (확대폭 +15% 요청)
   if(kh>0.12){
     ctx.beginPath(); ctx.arc(x, by, r+1.1, 0, Math.PI*2);
     ctx.fillStyle="rgba(0,0,0,"+(0.10+kh*0.12).toFixed(2)+")"; ctx.fill();
@@ -45406,7 +46518,9 @@ function drawBallZ(ctx, cv, nx, ny, z){
     ctx.beginPath(); ctx.ellipse(x, y, sh, sh*0.50, 0, 0, Math.PI*2);
     ctx.fillStyle="rgba(0,0,0,"+Math.max(0.07, 0.42-hM*0.045).toFixed(2)+")"; ctx.fill();
   }
-  const r=(3.0+kh*3.0)*k;                   // 3.0px(땅볼) → 6.0px(높이 뜬 공) — 바둑알보다 항상 작게
+  /* ⚠ 요청 — 「공 높이 뜰 때 공이 확대되는 거 15% 더 크게」. 뜬 만큼 커지는 몫만 키운다
+     (땅볼 크기는 그대로 3.0px — 기준이 흔들리면 높이감이 오히려 흐려진다) */
+  const r=(3.0+kh*3.45)*k;                  // 3.0px(땅볼) → 6.45px(높이 뜬 공) — 바둑알보다 항상 작게
   const by=y-lift;
   /* 높이 뜬 공은 아래로 옅은 그늘이 지고 위쪽에 빛이 걸린다 — 부피감을 준다 */
   if(kh>0.12){
@@ -45835,6 +46949,47 @@ function drawReceiveDebug(ctx, cv, s, IX, IY){
   ctx.restore();
 }
 /* 공이 지나온 자취 — 빠르게 날아가는 슛일수록 잔상이 길게 남아 속도감이 보인다 */
+/* 🌧️ 빗줄기·눈송이 — 화면 크기에 맞춰 한 번만 만들고 계속 굴린다 */
+let WXFX=null;
+function drawWeatherFx(ctx, cv, wx){
+  if(!wx) return;
+  const rain=(wx.k==="rain"||wx.k==="storm"), snow=(wx.k==="snow");
+  if(!rain && !snow) return;
+  const W=cv.width, H=cv.height, K=cvK(cv);
+  const n = snow ? Math.round(70+wx.wet*40) : Math.round(90+ (wx.k==="storm"?110:40) );
+  if(!WXFX || WXFX.n!==n || WXFX.w!==W || WXFX.h!==H || WXFX.k!==wx.k){
+    WXFX={n, w:W, h:H, k:wx.k, p:[]};
+    for(let i=0;i<n;i++) WXFX.p.push({x:Math.random()*W, y:Math.random()*H,
+      v:(snow?0.6:3.4)+Math.random()*(snow?0.8:2.6), s:0.5+Math.random()*0.9, ph:Math.random()*6.28});
+  }
+  const t=(typeof nowMs==="function"?nowMs():0)/1000;
+  const drift=Math.cos(wx.wdir||0)*(snow?1.4:2.4)*(0.4+(wx.wind||0));
+  ctx.save();
+  if(snow){
+    ctx.fillStyle="rgba(255,255,255,0.72)";
+    for(const p of WXFX.p){
+      p.y+=p.v; p.x+=drift*0.35+Math.sin(t*1.4+p.ph)*0.5;
+      if(p.y>H){ p.y=-4; p.x=Math.random()*W; }
+      if(p.x<-6) p.x=W+4; else if(p.x>W+6) p.x=-4;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.s*1.5*K, 0, Math.PI*2); ctx.fill();
+    }
+  } else {
+    ctx.strokeStyle = wx.k==="storm" ? "rgba(190,215,240,0.42)" : "rgba(190,215,240,0.30)";
+    ctx.lineWidth=1*K;
+    ctx.beginPath();
+    for(const p of WXFX.p){
+      p.y+=p.v*2.6; p.x+=drift;
+      if(p.y>H){ p.y=-10; p.x=Math.random()*W; }
+      if(p.x<-10) p.x=W+6; else if(p.x>W+10) p.x=-6;
+      const L=(6+p.v*2.2)*K;
+      ctx.moveTo(p.x, p.y); ctx.lineTo(p.x-drift*1.6, p.y-L);
+    }
+    ctx.stroke();
+    /* 폭우는 화면 전체를 조금 어둡게 덮는다 */
+    if(wx.k==="storm"){ ctx.fillStyle="rgba(120,150,180,0.07)"; ctx.fillRect(0,0,W,H); }
+  }
+  ctx.restore();
+}
 function drawBallTrail(ctx, cv, trail){
   for(let i=0;i<trail.length;i++){
     const p=trail[i], a=(i+1)/trail.length;
@@ -45929,10 +47084,12 @@ function paceMul(a){
   /* 다리가 무거우면 최고 속도가 먼저 떨어진다 — 뒷공간 경쟁에서 바로 드러난다 */
   return clamp((SPD_A+v*SPD_B)*stamK(a,0.86), SPD_LO*0.86, SPD_HI);
 }
+/* 🌨️ 미끄러운 잔디 — 첫 발이 안 붙는다 (눈·언 땅에서 가장 크다) */
+function wxAccK(){ return 1 - clamp(WX_NOW.slip||0,0,1)*0.14 - Math.max(0, -(WX_NOW.heat||0))*0.05; }
 function accMul(a){
   const v=(a && a.accelSkill!=null) ? a.accelSkill : ((a && a.paceSkill) || 0.6);
   /* 첫 몇 걸음이 안 나가는 게 지친 선수의 가장 뚜렷한 증상이다 */
-  return clamp((ACC_A+v*ACC_B)*stamK(a,0.80), ACC_LO*0.80, ACC_HI);
+  return clamp((ACC_A+v*ACC_B)*stamK(a,0.80)*wxAccK(), ACC_LO*0.75, ACC_HI);
 }
 const ACCEL_TAU=0.18;      // 목표 속도에 붙는 시간상수(초) — 작을수록 민첩하게 방향을 바꾼다
 const SEPARATION=0.030;    // 이 거리보다 가까우면 서로 밀어내 바둑알이 겹치지 않게 한다
@@ -46418,7 +47575,8 @@ function resolveFirstTouch(a, b, opps){
      (실측 — 하급 선수가 느린 정면 패스도 11%만 통제해 프로 경기로 보이지 않았다) */
   /* 기준선을 올려 「쉬운 공은 누구나 받는다」를 확실히 한다.
      기울기(skill 계수)는 그대로라 잘하는 선수의 우위는 유지된다. */
-  const score = skill*1.28 - diff*1.02 + 0.26 + (Math.random()-0.5)*0.44;
+  /* 🌧️ 젖은 공은 발에 안 붙는다 — 비 오는 날 터치가 길어지는 그 장면 (요청) */
+  const score = skill*1.28 - diff*1.02 + 0.26 - (WX_NOW.wet||0)*0.13 + (Math.random()-0.5)*0.44;
   const q = score>0.62 ? "PERFECT" : score>0.44 ? "GOOD" : score>0.24 ? "NORMAL"
           : score>0.06 ? "HEAVY" : score>-0.14 ? "BAD" : "FAIL";
   const P=FT[q];
@@ -46605,6 +47763,31 @@ function chooseShotType(shooter, g, ball, gk, opt){
   const TT=shooter.tr||{};
   if(o.clear && g.distM<20){
     const r=Math.random();
+    /* 🧤 ⚠ 요청 — 「공격수는 키퍼가 나온 걸 보고 칩샷·밀어넣기·제치기를 고른다」.
+       예전에는 이 갈림길이 순수 난수였다 — 키퍼가 골라인에 붙어 있든 6m를 뛰쳐나왔든
+       똑같은 확률로 로빙을 찼다. 이제 <b>키퍼가 지금 어디 서 있는지</b>를 읽는다.
+         · gkOut  — 키퍼가 골라인에서 나온 거리(m)
+         · gap    — 나와 키퍼 사이 거리(m). 넘길 공간이 있어야 로빙이 성립한다
+       읽는 능력은 시야·판단력·침착성이다. 눈이 나쁜 공격수는 키퍼가 나와 있어도 그냥 때린다. */
+    if(gk){
+      const gkOut=Math.abs(gk.x-g.gx)*PITCH_AR*ISO_TO_M;
+      const gap=Math.hypot((gk.x-shooter.x)*PITCH_AR, gk.y-shooter.y)*ISO_TO_M;
+      const A=(k)=>(shooter.p&&shooter.p.attr&&attr20(shooter.p.attr[k])/20)||0.6;
+      const read=clamp(A("vis")*0.42 + A("dec")*0.32 + A("cmp")*0.26, 0.15, 1.0);   // 상황을 읽는 눈
+      /* 🥄 로빙 — 키퍼가 많이 나왔고 넘길 공간이 남았을 때. 「너무 일찍 나온 키퍼」의 대가다 */
+      if(gkOut>4.0 && gap>3.0 && g.distM>5){
+        const pChip = clamp((gkOut-4.0)/7.0, 0, 1) * (0.28 + read*0.44 + (TT.lob?0.30:0));
+        if(r < pChip) return SHOT_TYPE.CHIP;
+      }
+      /* 🌀 제치기 — 키퍼가 코앞까지 덮쳐 왔다. 슛할 각이 없으니 옆으로 빼서 지나간다.
+         볼 다루는 기술·민첩성·침착성이 받쳐 줘야 시도한다 (실패하면 키퍼에게 먹힌다). */
+      if(gap<5.5 && gkOut>3.0){
+        const dr=clamp(A("dri")*0.44 + A("agi")*0.28 + A("cmp")*0.28, 0.15, 1.0);
+        if(r < 0.14 + dr*0.42 + (TT.round?0.26:0)){ shooter._roundGK=1; return SHOT_TYPE.PLACED; }
+      }
+      /* 키퍼가 골라인에 붙어 버티고 있다 — 넘길 공간이 없다. 구석을 노린다 */
+      if(gkOut<2.2 && r < 0.30+fin*0.30) return SHOT_TYPE.FINESSE;
+    }
     // 특성: 로빙 슛 선호 / 키퍼 제치기 / 휘어차기
     if(g.distM>5 && r < 0.22+fin*0.16+(TT.lob?0.34:0)) return SHOT_TYPE.CHIP;    // 키퍼 키를 넘긴다 (5m 안에서는 넘길 공간이 없다)
     if(TT.round && r < 0.60)                          return SHOT_TYPE.PLACED;    // 제치고 밀어 넣는다
@@ -46736,6 +47919,79 @@ const ISO_TO_M=70;         // 등방 좌표 1단위 = 70m (세로폭). 가로는
    · 땅에 닿으면 반발계수만큼 튀어오르고, 튈 때마다 수평 속도도 잃는다.
    속도 단위는 "iso/초"(1 iso ≈ 67m), 높이 z 도 같은 iso 단위다.                    */
 const GRAVITY = 9.81/ISO_TO_M;      // 중력 가속도 (iso/s²)
+/* ═══ 🌦️ 날씨 · 피치 상태 ═══════════════════════════════════════════
+   ⚠ 요청 — 「비 → 공 마찰 감소, 바운스 낮아짐, 퍼스트터치 실수↑, 키퍼 핸들링 실수,
+      슬라이딩 태클 거리↑ / 눈·젖은 잔디 → 미끄러짐, 가속 저하 / 폭염 → 체력 소모 가속 /
+      캔버스에 빗줄기 연출 + 중계 자막」.
+   ── 설계 ────────────────────────────────────────────────────
+     날씨를 종류로 나누지 않고 <b>세 개의 축</b>으로 환원한다. 엔진은 종류를 모르고 축만 읽는다 —
+     그래서 나중에 날씨를 추가해도 엔진을 다시 뜯을 필요가 없다.
+       wet  (0~1) 젖음   — 공이 더 구르고, 덜 튀고, 발에 안 붙고, 키퍼 손에서 빠진다
+       slip (0~1) 미끄러움 — 방향 전환이 무뎌지고, 급격히 꺾으면 넘어진다
+       heat (-1~1) 더위  — 체력 소모 가속 (음수는 추위 — 소모는 덜하지만 몸이 굳는다)
+     ⚠ stepBallPhysics 같은 전역 함수는 시뮬 인스턴스를 모른다 — 매 틱 WX_NOW 에 실어 준다. */
+const WX_KIND={
+  clear:{n:"맑음",   ic:"☀️", wet:0.00, slip:0.00, heat:0.15, wind:0.10},
+  cloud:{n:"흐림",   ic:"☁️", wet:0.06, slip:0.03, heat:0.00, wind:0.20},
+  rain: {n:"비",     ic:"🌧️", wet:0.62, slip:0.32, heat:-0.10, wind:0.35},
+  storm:{n:"폭우",   ic:"⛈️", wet:1.00, slip:0.58, heat:-0.15, wind:0.75},
+  snow: {n:"눈",     ic:"🌨️", wet:0.50, slip:0.88, heat:-0.30, wind:0.45},
+  hot:  {n:"폭염",   ic:"🔥", wet:0.00, slip:0.00, heat:1.00, wind:0.05},
+  cold: {n:"한파",   ic:"❄️", wet:0.08, slip:0.30, heat:-0.35, wind:0.40},
+  windy:{n:"강풍",   ic:"🌬️", wet:0.10, slip:0.05, heat:0.00, wind:1.00}
+};
+let WX_NOW={k:"clear", wet:0, slip:0, heat:0, wind:0, wdir:0};
+/* 그날의 날씨 — 달(月)이 판을 깔고 그 위에서 주사위를 굴린다 (K리그는 2~12월) */
+/* ⚠ 요청 — 「일정 달력·상단 날짜·좌측 메뉴에도 날씨가 보이게」.
+   달력은 <b>앞으로의 날짜</b>를 묻는다. 그러려면 날씨가 「경기 시작할 때 굴리는 주사위」가 아니라
+   <b>날짜의 성질</b>이어야 한다 — 시즌+날짜로 씨앗을 만들어, 같은 날은 언제 물어도 같은 날씨다. */
+function wxRandOf(day){
+  let s=((G.season|0)*7919 ^ (((day|0)+1)*104729)) >>> 0;
+  return ()=>{ s=(s+0x6D2B79F5)>>>0; let t=s;
+    t=Math.imul(t^(t>>>15), t|1); t^=t+Math.imul(t^(t>>>7), t|61);
+    return ((t^(t>>>14))>>>0)/4294967296; };
+}
+function pickWeather(day, rnd){
+  try{
+    let mo=6;
+    try{ mo=dateOfDay(day==null?(G.day||0):day).getMonth()+1; }catch(e){}
+    const R=(rnd||Math.random)();
+    if(mo<=2 || mo>=12){                      // 한겨울 — 승강PO·대륙대회
+      if(R<0.16) return "snow"; if(R<0.42) return "cold"; if(R<0.58) return "cloud";
+      if(R<0.68) return "rain"; if(R<0.76) return "windy"; return "clear";
+    }
+    if(mo===3 || mo===11){                    // 이른 봄·늦가을
+      if(R<0.06) return "snow"; if(R<0.26) return "cold"; if(R<0.44) return "cloud";
+      if(R<0.58) return "rain"; if(R<0.68) return "windy"; return "clear";
+    }
+    if(mo>=6 && mo<=8){                       // 한여름 — 장마와 폭염
+      if(R<0.20) return "storm"; if(R<0.44) return "rain"; if(R<0.66) return "hot";
+      if(R<0.78) return "cloud"; return "clear";
+    }
+    if(R<0.05) return "storm"; if(R<0.22) return "rain"; if(R<0.30) return "windy";
+    if(R<0.48) return "cloud"; return "clear";
+  }catch(e){ return "clear"; }
+}
+/* 경기 하나의 날씨 상태를 만든다 — 같은 종류라도 세기가 조금씩 다르다 */
+function makeWeather(kind, rnd){
+  const K=WX_KIND[kind]||WX_KIND.clear;
+  const R=rnd||Math.random;
+  const j=0.78+R()*0.44;                                 // 세기 편차
+  return {k:kind, n:K.n, ic:K.ic,
+          wet:clamp(K.wet*j,0,1), slip:clamp(K.slip*j,0,1),
+          heat:clamp(K.heat*j,-1,1), wind:clamp(K.wind*j,0,1),
+          wdir:R()*Math.PI*2};
+}
+/* 그 날짜의 날씨 — 달력·상단 표시·경기가 모두 이 함수 하나를 본다 */
+function dayWeather(day){
+  try{
+    const d=(day==null)?(G.day||0):day;
+    const r=wxRandOf(d);
+    return makeWeather(pickWeather(d, r), r);
+  }catch(e){ return makeWeather("clear"); }
+}
+function wxLabel(w){ return w ? `${w.ic} ${w.n}` : "☀️ 맑음"; }
+function wxIcon(day){ try{ return dayWeather(day).ic; }catch(e){ return ""; } }
 const GRASS_FRICTION = 0.931;       // 잔디 마찰 (틱당) — 초당 -30% 감속(0.931^5≈0.70). 공은 시원하게 구른다
 /* ⚠ 패스 「발사 속도」는 옛 마찰(0.885) 기준을 유지한다 — 마찰을 완화하며 이 공식이 (1-마찰)에
    비례하는 바람에 패스가 40% 느려졌고, 키퍼 짧은 패스부터 줄줄이 잘렸다(제보). 발은 그대로 차고,
@@ -46788,12 +48044,42 @@ function clampGoalOut(x){ return x<-BEHIND_GOAL_MAX ? -BEHIND_GOAL_MAX : (x>1+BE
    ⚠ GOAL_OUT_X 는 반드시 BEHIND_GOAL_MAX 안이어야 한다 — 넘으면 캔버스 밖으로 나간다. */
 const GOAL_OUT_X = 0.046;
 const GOAL_OUT_Y = GOAL_HALF + 0.034;
+/* 🥅 ⚠ 제보 원문 — 「가끔 공이 골라인 아웃될 때 순간이동하던데, 이거 제대로 잡아줄래?」
+   실측(6경기) — 골라인 아웃 623회가 <b>전부</b> 순간이동이었다. 중앙값 4.6m · 최대 7.4m.
+     (터치라인은 중앙값 0.6m 로 멀쩡하다 — 골라인만의 문제였다)
+   원인 두 겹.
+     ① placeGoalOut 이 공을 「골망 뒤 4.7m · 포스트 밖 5.8m」 자리로 한 프레임에 옮겼다.
+        그 자리 자체는 필요하다 — 라인 위에 두면 골문에 박힌 것처럼 보인다는 옛 제보 때문이다.
+        문제는 자리가 아니라 <b>옮기는 방식</b>이었다.
+     ② 세트피스 DEAD 단계도 매 틱 공을 sp.out 에 그대로 대입해, 남은 거리를 또 순간이동했다.
+   ─ 목표 좌표는 그대로 두되, 공은 <b>굴러가서</b> 그 자리에 선다. 라인을 넘은 공은 이미
+     죽은 공이라 이 0.3~0.6초는 경기 판정에 아무 영향이 없다 (키커 회수 절차는 sp.out 기준 그대로). */
+const DEAD_ROLL_MUL=0.75;     // 죽은 공이 굴러가 멈추는 속도 (스프린트 대비)
+function goalOutXY(b, gx, y){
+  const x=(gx>0.5 ? 1+GOAL_OUT_X : -GOAL_OUT_X);
+  const _y=(y==null? b.y : y);
+  /* 어느 포스트 밖으로 흐를지는 「가던 방향」이 정한다 — 위치 부호로만 정하면
+     한가운데(0.500)를 넘은 공이 매번 같은 쪽으로 튀어 부자연스럽다 */
+  let s=(_y>=0.5?1:-1);
+  if(typeof b.vy==="number" && Math.abs(b.vy)>0.02) s=(b.vy>=0?1:-1);
+  const yy=(Math.abs(_y-0.5) < GOAL_OUT_Y) ? (0.5 + s*GOAL_OUT_Y) : clamp01(_y);
+  return {x, y:yy};
+}
 function placeGoalOut(b, gx, y){
-  b.x = (gx>0.5 ? 1+GOAL_OUT_X : -GOAL_OUT_X);
-  const _y=(y==null? b.y : y), _s=(_y>=0.5?1:-1);
-  b.y = (Math.abs(_y-0.5) < GOAL_OUT_Y) ? (0.5 + _s*GOAL_OUT_Y) : clamp01(_y);
+  const d=goalOutXY(b, gx, y);
+  /* 물리 한 틱이 최대 11m라, 아웃을 발견했을 땐 공이 라인 한참 뒤에 가 있다.
+     그 자리에서 굴리기 시작하면 「뒤에서 앞으로 되돌아오는」 그림이 된다 —
+     이번 틱의 시작점과 이어 「라인을 실제로 넘은 지점」을 되짚어 거기서 출발시킨다. */
+  const line=(gx>0.5)?1:0;
+  if(typeof b._px==="number" && ((b._px-line)*(b.x-line))<0){
+    const tt=(line-b._px)/((b.x-b._px)||1e-6);
+    if(tt>=0 && tt<=1) b.y = b._py + (b.y-b._py)*tt;
+  }
+  const lim=0.006;                       // 라인 바로 뒤에서 출발한다
+  b.x=(gx>0.5) ? Math.min(b.x, 1+lim) : Math.max(b.x, -lim);
+  b.y=Math.max(-0.02, Math.min(1.02, b.y));
   b.vx=0; b.vy=0; b.vz=0; b.z=0; b.aerial=false;
-  return {x:b.x, y:b.y};
+  return d;                      // 최종 정지 지점 — 세트피스 절차(out)가 이 값을 쓴다
 }
 const NET_DRAG = 0.28;              // 그물에 걸린 공 — 급격히 감속하며 흔들린다
 const WALL_BOUNCE = 0.45;           // 광고판·펜스에 맞고 되튀는 정도
@@ -46919,6 +48205,15 @@ function decaySpin(b){
 }
 function stepBallPhysics(b){
   const _px=b.x, _py=b.y, _pz=b.z||0;
+  /* 🌬️ 바람 — 떠 있는 공만 민다. 롱볼·크로스·코너가 바람을 타고 흐른다 (요청) */
+  if((WX_NOW.wind||0)>0.08 && (b.z||0)>0.004){
+    const w=WX_NOW.wind*0.020;
+    b.vx += Math.cos(WX_NOW.wdir||0)*w*SIM_DT;
+    b.vy += Math.sin(WX_NOW.wdir||0)*w*SIM_DT;
+  }
+  /* 🥅 이번 틱을 어디서 시작했는가 — 라인을 넘었을 때 「실제로 넘은 지점」을 되짚는 데 쓴다.
+     한 틱에 최대 11m를 가므로, 넘은 걸 발견했을 땐 이미 라인 한참 뒤일 수 있다 (제보) */
+  b._px=_px; b._py=_py;
   b.x += b.vx*SIM_DT/PITCH_AR;
   b.y += b.vy*SIM_DT;
   if(b.z>0 || b.vz>0){                       // 공중
@@ -46946,7 +48241,8 @@ function stepBallPhysics(b){
         const sp=b.spin;
         /* 🌀 스핀이 바운스를 바꾼다 — 백스핀은 튀면서 멈칫하고(혹은 되돌아오고),
            톱스핀은 튀면서 앞으로 튀어나간다. 골키퍼 앞에 떨어지는 공이 달라지는 이유. */
-        const up = Math.abs(vHit)*BOUNCE*(sp ? (1 + Math.max(0,sp.back)*0.22) : 1);
+        /* 🌧️ 젖은 잔디는 바운스를 먹는다 — 튀지 않고 미끄러진다 */
+        const up = Math.abs(vHit)*BOUNCE*(1-(WX_NOW.wet||0)*0.30)*(sp ? (1 + Math.max(0,sp.back)*0.22) : 1);
         b.vz = up - GRAVITY*rest;
         b.z  = Math.max(0, up*rest - 0.5*GRAVITY*rest*rest);
         let grip=BOUNCE_GRIP;
@@ -46970,7 +48266,8 @@ function stepBallPhysics(b){
     }
   } else {                                   // 잔디 위를 구른다
     b.z=0; b.vz=0;
-    const f = b.inNet ? NET_DRAG : GRASS_FRICTION;
+    /* 🌧️ 젖은 잔디 — 공이 안 먹히고 쭉 나간다 (마찰이 1에 가까워질수록 덜 감속) */
+    const f = b.inNet ? NET_DRAG : (GRASS_FRICTION + (1-GRASS_FRICTION)*(WX_NOW.wet||0)*0.42);
     b.vx *= f; b.vy *= f;
     /* 🌀 사이드스핀 — 굴러가는 공이 서서히 휜다 */
     if(b.spin && b.spin.side && (b.vx||b.vy)){
@@ -47037,6 +48334,19 @@ function launchBallTo(b, tx, ty, speed, loft){
 const LOOSE_FRICTION=0.935;   // 구르며 잃는 속도
 const LOOSE_STOP=0.0016;      // 이 속도 아래면 멈춘 것으로 본다
 const LOOSE_PICKUP=0.024;     // 굴러가는 공을 이 거리 안에서 잡는다
+/* ═══ 🤼 50:50 그라운드 경합 ═════════════════════════════════════════
+   ⚠ 요청 — 「공중볼 경합은 있는데 땅볼 경합이 없다. 흐른 공에 두 명이 동시에 달려들면
+      지금은 그냥 가까운 쪽이 먹는다. 힘·대담성·몸무게로 겨루고, 밀리면 파울 or 공이
+      튀어 나가는 게 자연스럽다」.
+   ── 설계 ────────────────────────────────────────────────────
+     · 공중볼(aerialDuel)과 같은 자리에 땅볼 판을 하나 더 놓는다.
+     · 세 가지 결말 — ① 이긴 쪽이 잡는다 ② 아무도 못 잡고 공이 튄다 ③ 파울
+       50:50 이 늘 깨끗하게 끝나면 그게 오히려 이상하다. 실제로는 셋이 다 나온다.
+     · 겨루는 축 — 몸싸움(힘·균형·체중) · 대담성 · 예측(먼저 닿기) · 퍼스트터치(수습)
+       + 「누가 더 가까웠나」. 거리는 유리하지만 절대적이지는 않다. */
+const GDUEL_R=0.036;          // 이 안(약 2.4m)에 양 팀이 함께 있으면 경합이다
+const GDUEL_LOOSE=0.20;       // 아무도 못 잡고 공이 튀어 나갈 확률
+const GDUEL_FOUL=0.13;        // 밀리는 쪽이 반칙으로 끊을 확률 (공격성으로 커진다)
 const LOOSE_MAXT=6.0;         // 아무도 못 잡으면 이 시간 뒤 가장 가까운 선수에게
 const LOOSE_GRACE=1.0;        // 튄 직후 — 공이 빠르고 몸이 흐트러져 아무도 잡지 못한다
 const LOOSE_AIR=1.6;          // 떠서 날아간 공이 땅에 떨어지기까지
@@ -47439,6 +48749,20 @@ const KNOCK={
   DIST_M: [3.0, 5.9], // 차 놓는 거리 (m) — 능력에 따라 (7.5→6.6→5.9, 제보 반영)
   COOL: 5.0           // 연속으로 치달하지 않도록 쉬는 시간(초)
 };
+/* 🏃‍♂️ 뒷걸음질(백페달) — ⚠ 요청 원문 「선수들이 공을 바라보면서 뒷걸음질 치는 무빙을
+   구현해보자. 이게 사실 수비에 필요한 움직임이잖아?」 맞는 말이다. 수비는 공을 시야에서
+   놓치는 순간 무너진다 — 실제 수비수는 물러설 때 몸을 돌리지 않고 뒤로 밀려난다.
+   지금까지는 골키퍼만 이렇게 움직였고(GK_TURN_DIST 아래 로직), 필드 플레이어는 물러설 때
+   등을 보이며 달렸다. 같은 원리를 수비 진영 전체로 넓힌다.
+   ⚠ 무조건은 아니다 — 먼 거리를 되돌아가야 하면 실제로도 몸을 돌려 전력질주한다. */
+const BACKPEDAL_SEE=0.47;    // 공이 이 안(약 32m)에 있을 때만 — 그보다 멀면 볼 필요가 없다
+const BACKPEDAL_MAX=0.105;   // 물러설 거리가 이보다 멀면(약 7m) 몸을 돌려 달린다
+/* ⚠ 14m 였을 때의 문제 — 저지(JOCKEY) 수비수는 목표가 볼에 묶여 있어, 드리블러가 전력질주로
+   밀고 들어오면 계속 「뒤로 걷는」 상태에 갇힌다. 백페달은 정면 달리기보다 느리니 그대로 벗겨진다.
+   실제 수비도 뒷걸음질은 한두 걸음이고, 벌어지면 몸을 돌려 따라간다. 발동 거리를 절반으로 줄여
+   「자리를 잡고 버티는 구간」에서만 뒷걸음질하게 한다 — 벌어지는 순간 자동으로 달리기로 넘어간다. */
+const BACKPEDAL_ANG=0.35;    // 진행 방향이 공에서 이만큼(π 기준) 벗어나야 백페달로 본다
+const BACKPEDAL_PEN=0.42;    // 옆·뒤로 갈 때 속도 손실 계수 (사이드스텝 0.79배 · 백페달 0.68배)
 const PRESS_R=0.052;         // 이 거리 안(약 3.5m)의 상대를 압박으로 본다
 const GK_KEEP_M=2.6;         // 🧤 공을 통제 중인 키퍼에게서 상대가 떨어져 있어야 하는 거리(m)
 const DRIB_TOUCH=0.8;        // 드리블 터치 간격(초) — 이때마다 공을 앞으로 툭 차 놓는다
@@ -49325,6 +50649,23 @@ const DEF_ROLE={ PRESS:"PRESS", JOCKEY:"JOCKEY", LANE:"LANE", MARK:"MARK", LINE:
    나가는 게 이득인지 아닌지를 각자 계산하고, 아니면 지연시킨다(Jockey).
    ══════════════════════════════════════════════════════════════════ */
 const JOCKEY_D=0.026;          // 저지 간격 (약 1.7m) — 이 거리를 두고 따라붙는다
+/* ═══ 🪤 오프사이드 트랩 ══════════════════════════════════════════════
+   ⚠ 요청 — 「오프사이드 트랩. 포백이 신호에 맞춰 동시에 전진. 성공하면 오프사이드,
+      한 명만 늦으면 단독 찬스. 조직력 수치에 눈에 보이는 값어치가 생김」.
+   지금까지 breaksOffside 는 <b>특성 이름</b>으로만 있었고, 수비 라인은 그냥 라인을 유지할 뿐
+   능동적으로 걸어 올라가지 않았다.
+   ── 설계 ────────────────────────────────────────────────────
+     · 성공·실패를 <b>주사위로 정하지 않는다</b>. 라인을 실제로 밀어 올리고, 판정은 기존
+       오프사이드 로직이 「그 순간의 좌표」로 알아서 내린다. 그래서 한 명이 늦으면
+       그 선수가 최종 수비수가 되어 상대가 온사이드가 된다 — 저절로 단독 찬스가 된다.
+     · 선수별 반응 지연 = 위치선정·판단력·팀워크 + <b>팀 조직력(fam)</b>.
+       조직력이 낮은 팀은 라인이 톱니처럼 어긋나 트랩이 오히려 독이 된다.
+     · 라인을 높게 쓰는 팀만 자주 건다 (전술 슬라이더 line). */
+const TRAP_STEP=0.055;         // 한 번에 밀어 올리는 깊이 (약 3.7m)
+const TRAP_HOLD=0.85;          // 라인을 올린 채 버티는 시간 (초)
+const TRAP_COOL=11.0;          // 다시 걸기까지 최소 간격 (초)
+const TRAP_LAG=0.42;           // 가장 굼뜬 수비수가 늦는 최대 시간 (초)
+const TRAP_NEAR=0.085;         // 라인 앞 이 안(약 5.7m)에 잡을 상대가 있어야 건다
 function pressScore(d, carrier, ctx){
   const A=(d.p&&d.p.attr)||{};
   const at=(k,fb)=>clamp(attr20(A[k]!=null?A[k]:(fb||60))/20, 0.15, 1);
@@ -50076,6 +51417,11 @@ function matchSkills(p){
     shotPower:  S(W(a,{str:0.45, lon:0.35, tec:0.20}, fb)),
     // 골키퍼 — 반사신경·일대일·핸들링
     gkSkill:    g ? S(W(g,{ref:0.42, one:0.28, han:0.20, cmd:0.10}, fb)) : S(fb*0.6),
+    /* 🧤 ⚠ 요청 — 「키퍼 1대1. 각을 좁히며 나오기/버티기 판단(oneOnOne), 공격수는 그걸 보고
+       칩샷·밀어넣기·제치기 선택, 키퍼가 너무 일찍 나오면 칩샷에 당함」.
+       「일대일 방어(one)」 능력치는 지금까지 프로필에만 있고 엔진은 gkSkill 합계로만 읽었다 —
+       1대1 전용 축으로 따로 뽑는다. 침착성·용기가 붙는다(뛰쳐나가는 판단은 배짱이다). */
+    oneSkill:   g ? S(W(g,{one:0.62, cmp:0.16, cnt:0.12, bra:0.10}, fb)) : S(fb*0.6),
     // 주력 — 최고 속도(가속도와 함께). 옛 호출부가 쓰는 종합 스피드 지표.
     paceSkill:  S(W(a,{pac:0.55, acc:0.35, sta:0.10}, fb)*B.pace),
     // 최고 속도 — 30m를 달릴 때. 주력이 지배하고, 체중이 무거우면 깎인다.
@@ -50432,6 +51778,7 @@ class MatchSim{
     for(let i=0;i<this.agents.length;i++){
       const g=this.agents[i];
       a[i]={id:g.id, x:g.x, y:g.y, face:g.face};
+      const _jz=jumpZOf(g, this.t); if(_jz>0.02) a[i].j=+_jz.toFixed(3);   // 🦘 점프 높이 (재생용)
     }
     const b=this.ball, rf=this.ref;
     // 세리머니 상태를 프레임에 새긴다 — 하이라이트를 되감아 볼 때 "공이 언제 들어갔는지"를
@@ -50450,6 +51797,8 @@ class MatchSim{
           t:+(this.t-cfx.t).toFixed(2), min:cfx.min};
     }
     this.buf.push({t:this.t, clock:this.clock, bx:b.x, by:b.y, bz:b.z, st:this.matchState, a,
+                   bs:b.state,                                        // 🎯 이 순간 공이 슛인가 — 재생 때 슛 궤적을 그린다
+
                    oi:b.ownerId||0,                                   // 이 순간의 볼 소유자 — 재생 때 흰 링이 이걸 따른다
                    rx:rf?rf.x:0.5, ry:rf?rf.y:0.4, cg, cd});
     if(this.buf.length>HL_BUF_MAX) this.buf.shift();
@@ -50772,6 +52121,7 @@ class MatchSim{
       try{ freezeLiveSlots(x._sd || (a.side==="h"?this.M.h:this.M.a)); }catch(e){}
       x.off=this.M.min;
       x.injGap=true;                   // 부상으로 비운 자리 — 채우기 전까지 교체 후보로 남긴다
+      x.gapT=this.t;                   // 🚑 발생 시각 — 퇴장과 같은 재생헤드 필터를 태우기 위해 (제보)
       const wks=1+R(4)+(it.hard?R(3):0);                   // 결장 주수
       if(a.p){ try{ setInjury(a.p, Math.max(injWeeksLeft(a.p), wks)); }catch(e){ a.p.inj=Math.max(a.p.inj||0, wks); } }   // 🚑 예정일 동시 기록 (제보)
       if(b.ownerId===a.id){                                // 공을 들고 쓰러졌다면 공은 흘러나간다
@@ -51128,8 +52478,16 @@ class MatchSim{
           else           k1=0.55;                         // 코앞 — 멈춰 서서 지연(§45)
           if(ballTight && (carrier.paceSkill||0.6)>0.62) k1*=0.62;   // RushRisk (§21)
           if(chase) k1*=0.72;                             // CB 복귀 중 — 시간을 번다 (§44)
+          /* 🧤 나갈까 버틸까 — 1대1 방어가 좋은 키퍼는 「끝까지 서서 크게 보이다가」 마지막에 덮친다.
+             나쁜 키퍼는 성급하게 튀어나온다. 그 성급함이 곧 칩샷의 먹잇감이 된다 (요청). */
+          const one1=clamp(a.oneSkill||0.6, 0.1, 1.2);
+          if(dM>10) k1 *= (0.72 + one1*0.46);             // 멀면 잘하는 키퍼가 더 적극적으로 각을 좁히고
+          else      k1 *= (1.36 - one1*0.52);             // 가까우면 잘하는 키퍼일수록 덜 뛰쳐나간다
+          /* 공격수가 아직 공을 몸에서 떼어 놓지 못했으면 급할 이유가 없다 */
+          if(!ballTight && dM<11) k1 *= (1.10 - one1*0.30);
           step*=k1*(0.7+one*0.5);
           a._gkState = dM<8 ? "DELAY" : "CLOSE_1V1";
+          a._gkCommit = dM;                               // 지금 얼마나 나와 있나 — 공격수가 이걸 본다
         }
       }
     }
@@ -51348,6 +52706,7 @@ class MatchSim{
             this._jockey=scored[0].a; scored[0].a._pressS=scored[0].s;
           }
           this._defCtx={nD, nA, ballD, back:cb, spaceBehind, top:(scored[0]?scored[0].s:0)};
+          try{ this.trapCheck(key, mine, carrier, T); }catch(e){}   // 🪤 오프사이드 트랩 (요청)
         } else {
           pressers=cand.sort((p,q)=>pressCost(p)-pressCost(q)).slice(0, 1+extra);
         }
@@ -51697,6 +53056,17 @@ class MatchSim{
           // 수비 — 역할별로 다르게 움직인다(길목 차단 / 대인마크 / 라인 유지 / 커버)
           a._now=this.t;
           const dt=defTargetXY(a, anchor, b, carrier, defThreat, a.dir);
+          /* 🪤 오프사이드 트랩 — 라인을 통째로 밀어 올린다 (요청).
+             성공·실패를 따로 굴리지 않는다. 좌표를 실제로 옮기고, 판정은 기존 오프사이드
+             로직이 그 순간의 좌표로 내린다 — 늦은 한 명이 그대로 최종 수비수가 된다. */
+          try{
+            const _tp=this.trapPush(a);
+            if(_tp>0){
+              dt.x = clamp01(dt.x + a.dir*TRAP_STEP*_tp);
+              spd = SPD.SPRINT;
+              a._trapOn=1;
+            } else a._trapOn=0;
+          }catch(e){}
           /* 🚨 위험이 크면 역할보다 골문 앞이 먼저다 (§10·§18).
              역할 자체를 지우지 않고 목표만 당긴다 — 마킹·길목은 그대로 하되 자리가 깊어진다.
              ⚠ 이게 없어서 상대가 박스까지 들어와도 우리 박스 안 수비가 평균 2명뿐이었다. */
@@ -52002,14 +53372,35 @@ class MatchSim{
         if(ml>TARGET_DEAD){          // 코앞이면 굳이 움직이지 않는다 (제자리 떨림 방지)
           const want=Math.atan2(my, mx);
           if(a.face===undefined) a.face=want;
-          let df=want-a.face;
-          while(df>Math.PI) df-=Math.PI*2;
-          while(df<-Math.PI) df+=Math.PI*2;
-          // 방향 전환은 주력이 아니라 민첩성이 가른다. 발이 빠른 선수가 반드시
-          // 몸을 잘 돌리는 것은 아니다 — 볼 잡은 선수 쪽과 같은 기준으로 맞춘다.
-          const maxTurn=TURN_RATE*SIM_DT*(0.60+(a.agility||0.6)*0.80);
-          a.face += clamp(df, -maxTurn, maxTurn);
-          if(a.face>Math.PI) a.face-=Math.PI*2; else if(a.face<-Math.PI) a.face+=Math.PI*2;
+          /* 🏃‍♂️ 백페달 판정 — 수비하는 쪽이 공을 마주 본 채 뒤·옆으로 물러서는가 (요청).
+             ① 우리가 수비 중이고 ② 공이 시야권 안이며 ③ 물러설 거리가 짧고
+             ④ 가려는 방향이 공에서 충분히 벗어나 있으면, 몸은 공을 향하고 발만 목표로 간다. */
+          let _bpAng=0;
+          if(_recvFace===null && !b.setPiece && !a._chase && a.side!==this.possSide){
+            const _bd=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y);
+            if(_bd<=BACKPEDAL_SEE && ml<=BACKPEDAL_MAX){
+              const _fb=Math.atan2(b.y-a.y, (b.x-a.x)*PITCH_AR);
+              let _d2=want-_fb;
+              while(_d2>Math.PI) _d2-=Math.PI*2; while(_d2<-Math.PI) _d2+=Math.PI*2;
+              if(Math.abs(_d2)>Math.PI*BACKPEDAL_ANG){ _bpAng=Math.abs(_d2); a._bpFace=_fb; }
+            }
+          }
+          let df;
+          if(_bpAng){
+            /* 몸은 공 쪽으로만 돈다 — 목표 방향으로는 돌지 않는다(그래서 뒤로 걷는 그림이 된다) */
+            df=turnToward(a, a._bpFace, 1.15);
+            a._bp=1;
+          } else {
+            a._bp=0;
+            df=want-a.face;
+            while(df>Math.PI) df-=Math.PI*2;
+            while(df<-Math.PI) df+=Math.PI*2;
+            // 방향 전환은 주력이 아니라 민첩성이 가른다. 발이 빠른 선수가 반드시
+            // 몸을 잘 돌리는 것은 아니다 — 볼 잡은 선수 쪽과 같은 기준으로 맞춘다.
+            const maxTurn=TURN_RATE*SIM_DT*(0.60+(a.agility||0.6)*0.80);
+            a.face += clamp(df, -maxTurn, maxTurn);
+            if(a.face>Math.PI) a.face-=Math.PI*2; else if(a.face<-Math.PI) a.face+=Math.PI*2;
+          }
           if(_recvFace!==null){        // 수신 중 — 시선은 공에 둔다 (몸은 목표 지점으로 계속 움직인다)
             let dr=_recvFace-a.face;
             while(dr>Math.PI) dr-=Math.PI*2; while(dr<-Math.PI) dr+=Math.PI*2;
@@ -52021,7 +53412,22 @@ class MatchSim{
             a._turning=Math.abs(dr);
           }
           // 몸이 덜 돌아간 만큼 속도가 준다 — 뒤로 꺾을수록 크게 느려진다
-          let turnPen = 1 - Math.min(0.78, Math.abs(df)/Math.PI*1.25);
+          /* 🏃‍♂️ 백페달은 「덜 돌아서」 느린 게 아니라 「뒤로 걸어서」 느리다.
+             사이드스텝은 정면의 약 80%, 완전한 백페달은 약 55%다 (실제 스프린트 대비). */
+          let turnPen = _bpAng ? (1 - Math.min(0.32, _bpAng/Math.PI*BACKPEDAL_PEN))
+                               : (1 - Math.min(0.78, Math.abs(df)/Math.PI*1.25));
+          /* 🌨️ 미끄러운 잔디 — 속도를 붙인 채 크게 꺾으면 발이 밀린다 (요청).
+             균형(bal)·민첩이 좋은 선수는 버틴다. 넘어지면 잠깐 못 일어난다. */
+          if((WX_NOW.slip||0)>0.18 && !_bpAng && Math.abs(df)>Math.PI*0.42
+             && (a.spd||0)>SPD.RUN*0.75 && !(a._down&&a._down>this.t)){
+            const bal=(a.p&&a.p.attr&&attr20(a.p.attr.bal)/20)||0.6;
+            const pSlip=WX_NOW.slip*0.011*(1.35-bal*0.70)*(Math.abs(df)/Math.PI);
+            if(Math.random()<pSlip){
+              a._down=this.t+0.55+Math.random()*0.45; a.spd=0;
+              if(this.emitEvents && Math.random()<0.22)
+                this.cap(a.side, ["🌨️ {p}, 젖은 잔디에 미끄러집니다","🌨️ {p}이/가 중심을 잃고 넘어집니다"], {p:this.nm(a)});
+            }
+          }
           /* 공을 받으려고 몸을 트는 중에는 거의 멈춘다 — 돌면서 달리지 않는다 */
           if(a._turning!==undefined && a._turning>0.25)
             turnPen *= 1 - Math.min(0.82, (a._turning-0.25)/Math.PI*1.5);
@@ -52039,8 +53445,10 @@ class MatchSim{
           const lim=(wantSpd>(a.spd||0)) ? acc*SIM_DT : acc*DECEL_MUL*SIM_DT;
           a.spd = (a.spd||0) + clamp(wantSpd-(a.spd||0), -lim, lim);
           const step=Math.min(ml, a.spd*SIM_DT);
-          a.x=clampPx(a.x+Math.cos(a.face)*step/PITCH_AR);
-          a.y=clampPy(a.y+Math.sin(a.face)*step);
+          /* 백페달 중에는 시선(face)과 발이 따로 논다 — 발은 목표(want) 쪽으로 간다 */
+          const _mv=_bpAng ? want : a.face;
+          a.x=clampPx(a.x+Math.cos(_mv)*step/PITCH_AR);
+          a.y=clampPy(a.y+Math.sin(_mv)*step);
         }
         a.vx=a.x-ox; a.vy=a.y-oy;
       }
@@ -53483,6 +54891,47 @@ class MatchSim{
     }catch(e){}
   }
   /* 평균 위치 — 1초에 한 번 그라운드 위 좌표를 적립한다 */
+  /* 📈 ⚠ 요청 — 「경기 끝나면 리포트에 패스맵 나오잖아. 그 옆에 경기 모멘텀도 나오게」.
+     FM 의 그 막대 그래프다. 「그 1분 동안 누가 경기를 쥐고 있었나」를 한 칸으로 만든다.
+       · 점유 — 그 분 동안 공을 가진 틱 수
+       · 영역 — 공이 상대 진영 3분의 1에 있던 틱 수 (밀어붙였다는 증거)
+       · 슛   — 한 방이 점유 10틱보다 무겁다
+       · 골   — 그 분의 주인을 통째로 바꾼다
+     값은 −1(상대 완전 우세) ~ +1(우리 완전 우세). */
+  momTick(){
+    try{
+      if(!this.recording) return;
+      const m=Math.floor(this.clock/60);
+      if(!this._mo) this._mo={cur:-1, h:0, a:0, out:[], g:[], hs:0, as:0, hg0:0, ag0:0};
+      const O=this._mo;
+      if(O.cur!==m){
+        if(O.cur>=0) this.momFlush();
+        O.cur=m; O.h=0; O.a=0;
+        O.hs=this.stats.h.shot|0; O.as=this.stats.a.shot|0;
+        O.hg0=this.M.hg|0; O.ag0=this.M.ag|0;
+      }
+      const b=this.ball;
+      if(this.possSide==="h") O.h+=1; else if(this.possSide==="a") O.a+=1;
+      let hd=1; try{ const s0=this.side("h")[0]; if(s0) hd=s0.dir; }catch(e){}
+      const hx = hd>0 ? b.x : 1-b.x;            // 0=홈 골문 · 1=원정 골문
+      if(hx>0.66) O.h+=1.6; else if(hx<0.34) O.a+=1.6;
+    }catch(e){}
+  }
+  momFlush(){
+    try{
+      const O=this._mo; if(!O || O.cur<0) return;
+      const dhs=(this.stats.h.shot|0)-O.hs, das=(this.stats.a.shot|0)-O.as;
+      const dhg=(this.M.hg|0)-O.hg0,        dag=(this.M.ag|0)-O.ag0;
+      O.h += dhs*10 + dhg*28; O.a += das*10 + dag*28;
+      if(dhg>0) for(let i=0;i<dhg;i++) O.g.push({m:O.cur, s:"h"});
+      if(dag>0) for(let i=0;i<dag;i++) O.g.push({m:O.cur, s:"a"});
+      const t=O.h+O.a;
+      O.out.push({m:O.cur, v: t>0 ? +(((O.h-O.a)/t)).toFixed(3) : 0});
+    }catch(e){}
+  }
+  momFinish(){
+    try{ this.momFlush(); if(this._mo) this.M.momo={v:this._mo.out.slice(), g:this._mo.g.slice(), ht:Math.floor((this.htSec||2700)/60)}; }catch(e){}
+  }
   pmSample(){
     try{
       for(const a of this.agents){
@@ -54177,7 +55626,8 @@ class MatchSim{
       if(o._down && o._down>this.t) continue;                 // 아직 못 일어남
       if(o._beaten && o._beaten>this.t) continue;             // 방금 제쳐져 역동작에 걸렸다
       const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
-      if(d>SLIDE_RANGE) continue;
+      /* 🌧️ 젖은 잔디에서는 슬라이딩이 더 멀리 미끄러져 닿는다 (요청) */
+      if(d>SLIDE_RANGE*(1+(WX_NOW.wet||0)*0.28)) continue;
       // 제쳐지는 순간의 파울 — 태클도 못 들어가고 속도로도 밀리면 잡아채거나 몸으로 막는다.
       // 실제 경기 파울의 절반쯤은 이 "어쩔 수 없어서" 하는 파울이다.
       const behind = (carrier.dir>0 ? o.x<carrier.x : o.x>carrier.x);
@@ -54353,8 +55803,17 @@ class MatchSim{
       // 여기서 킥 지점으로 바로 가버리면, 선수가 공을 잡기도 전에 공이 혼자 움직여 버린다.
       moveTo(sp.out.x, sp.out.y, ph.dead);
       /* 🥅 골라인 뒤로 나간 공은 나간 자리 그대로 둔다 (1.020 으로 깎으면 골망 안으로 돌아간다) */
-      b.x=Math.max(-GOAL_OUT_X, Math.min(1+GOAL_OUT_X, sp.out.x));
-      b.y=Math.max(-0.020, Math.min(1.020, sp.out.y)); b.z=0;
+      /* ⚠ 제보(골라인 아웃 순간이동) — 예전에는 여기서 매 틱 sp.out 을 그대로 대입했다.
+         공이 아직 라인 근처에 있으면 그 거리를 한 프레임에 건너뛴다. 굴려서 보낸다. */
+      {
+        const _tx=Math.max(-GOAL_OUT_X, Math.min(1+GOAL_OUT_X, sp.out.x));
+        const _ty=Math.max(-0.020, Math.min(1.020, sp.out.y));
+        const _dx=(_tx-b.x)*PITCH_AR, _dy=_ty-b.y, _d=Math.hypot(_dx,_dy);
+        const _cap=SPD.SPRINT*DEAD_ROLL_MUL*SIM_DT;
+        if(_d>_cap){ b.x+=(_dx/_d)*_cap/PITCH_AR; b.y+=(_dy/_d)*_cap; }
+        else { b.x=_tx; b.y=_ty; }
+        b.z=0;
+      }
       /* ⚠ 공을 라인 밖(±1.2~1.4m)에 두자 선수 좌표는 [0,1] 클램프라 0.012 안으로
          영영 못 들어가 DEAD가 시간초과까지 늘어졌다(실측: 경기당 패스 -20%, 코너 정체).
          발 뻗으면 닿는 거리로 완화한다. */
@@ -54523,13 +55982,13 @@ class MatchSim{
     const gk=mine.find(a=>a.slot==="GK")||mine[0];
     /* 🥅 빗나간 슛은 골라인 위에서 멈춰 있다 — 골망 뒤·포스트 바깥으로 옮겨 회수한다.
        골문 폭 안(그물 뒤)에 놓으면 골처럼 보인다 (제보) — placeGoalOut 주석 참고 */
-    placeGoalOut(b, dir>0 ? 0 : 1, b.y);
-    const out={x:b.x, y:b.y};                       // 공이 나가 멈춘 자리 — 여기서 회수한다
+    const _dst=placeGoalOut(b, dir>0 ? 0 : 1, b.y);
+    const out={x:_dst.x, y:_dst.y};                 // 공이 굴러가 멈출 자리 — 여기서 회수한다
     const spot={x: dir>0 ? 0.06 : 0.94, y:0.5};
     b.state="SETTLED"; b.aerial=false; b.offsideAt=null; b.toId=null; b.spPlan=null; b.fkIndirect=false;
     b.ownerId=gk.id; this.possSide=side; this.lastTouch=side;
     b.isThrow=false; b.fromGoalKick=true; this.beginSetPiece("goalKick", gk, spot, out);
-    this.setupSetPiece("goalKick", side, {x:b.x, y:b.y});   // 회수 → 놓고 → 물러났다 → 찬다
+    this.setupSetPiece("goalKick", side, {x:out.x, y:out.y});   // 회수 → 놓고 → 물러났다 → 찬다
     this.stats[side].goalKick++;
   }
   /* 코너킥 — 코너 플래그에서 박스 안으로 올린다(공중볼) */
@@ -54910,6 +56369,25 @@ class MatchSim{
           && !opps.some(o=>o.slot!=="GK" && Math.hypot((o.x-shooter.x)*PITCH_AR,(o.y-shooter.y))<0.043);
         if(solo) acc += 0.20;
         this._soloShot=solo;
+        /* 🌀 키퍼 제치기 (요청) — 슛이 아니라 「지나가기」다. 기술·민첩·침착 vs 키퍼의 일대일 방어.
+           이기면 사실상 빈 골대, 지면 키퍼 발에 걸린다. 슛 한 방보다 편차가 큰 선택이다. */
+        this._roundRes=0;
+        if(shooter._roundGK){
+          shooter._roundGK=0;
+          const A2=(k)=>(shooter.p&&shooter.p.attr&&attr20(shooter.p.attr[k])/20)||0.6;
+          const dr=clamp(A2("dri")*0.44+A2("agi")*0.30+A2("cmp")*0.26, 0.1, 1.1);
+          const one2=clamp((gk&&gk.oneSkill)||0.6, 0.1, 1.2);
+          this._roundRes = (Math.random() < clamp(0.36+(dr-one2)*0.60, 0.10, 0.86)) ? 1 : -1;
+          if(this._roundRes>0){
+            acc += 0.32;
+            if(this.emitEvents) this.cap(shooter.side, ["🌀 {p}, 키퍼를 제치고 지나갑니다!",
+              "🌀 {p}! 골키퍼를 벗겨냈습니다!"], {p:this.nm(shooter)});
+          } else {
+            acc -= 0.18;
+            if(this.emitEvents) this.cap(shooter.side, ["🧤 {p}, 제치려다 키퍼 발에 걸립니다",
+              "🧤 {p}의 시도 — 키퍼가 먼저 몸을 던졌습니다"], {p:this.nm(shooter)});
+          }
+        }
         /* ⚡ 근거리(12m 이내) — FM 기준.
              · 침착성이 낮으면 홈런을 날리거나 키퍼 정면으로 찬다 (압박이 셀수록 더)
              · 순발력·민첩성은 수비수보다 먼저 닿아 몸을 틀 시간을 만든다
@@ -55063,8 +56541,24 @@ class MatchSim{
       // 직접 프리킥 — 벽 너머로 넘어오는 공은 시야가 늦게 열려 반응이 반 박자 늦다
       if(isFK) save -= 0.10;
       }
-      // 로빙슛은 키퍼가 나와 있을 때 노리는 슛이라, 앞에 나와 있을수록 막기 어렵다
-      if(type===SHOT_TYPE.CHIP && gk) save -= clamp(Math.abs(gk.x-g.gx)*PITCH_AR/GK_OFFLINE,0,2)*0.16;
+      /* 🥄 로빙슛 — 키퍼가 나와 있을수록 막기 어렵다. 반대로 <b>골라인에 붙어 있는 키퍼에게
+         로빙을 차면 그냥 잡힌다</b> — 이게 「너무 일찍 나오면 당한다」의 뒷면이다 (요청).
+         예전에는 clamp(...,0,2) 라 아무리 붙어 있어도 감점이 0에서 멈췄다 — 벌이 없었다. */
+      if(type===SHOT_TYPE.CHIP && gk){
+        const _off=Math.abs(gk.x-g.gx)*PITCH_AR*ISO_TO_M;
+        save -= clamp((_off-3.2)/4.5, -1.0, 2.0)*0.22;      // 3.2m 안쪽이면 오히려 선방률이 오른다
+      }
+      /* 🌀 제치기 결과 — 이겼으면 빈 골대나 다름없고, 졌으면 키퍼가 이미 공 위에 있다 */
+      if(this._roundRes>0) save -= 0.44;
+      else if(this._roundRes<0) save += 0.40;
+      /* 🧤 1대1 방어 — 이 상황만큼은 반사신경이 아니라 「일대일」이 가른다 (요청).
+         각을 크게 만들고 마지막까지 버티는 능력. 코앞에서 붙을수록 비중이 커진다. */
+      if(gk && !isPen && !isFK && this._soloShot){
+        const _one=clamp(gk.oneSkill||gkSkill||0.6, 0.1, 1.2);
+        const _gap=Math.hypot((gk.x-shooter.x)*PITCH_AR, gk.y-shooter.y)*ISO_TO_M;
+        const _w=clamp(1-(_gap-3)/9, 0.25, 1);              // 3m 코앞 1.0 → 12m 0.25
+        save += (_one-0.62)*0.34*_w;
+      }
       /* 🧤 키퍼의 실제 위치에서 착탄점까지의 거리 — 정면으로 온 공과 구석으로 꽂힌 공은 다르다.
          이 항이 있어야 "키퍼가 치우친 반대쪽을 노린다"는 조준이 결과로 이어진다. (§38·§39) */
       if(gk && !isPen){
@@ -55151,6 +56645,7 @@ class MatchSim{
         let hold = 0.10 + _a("han",62)*0.50 + _mg*0.42 - (power-1.0)*0.30 - nearPost*0.20;
         /* 🧤 특성 — 펀칭 선호는 덜 잡고, 「품에 안는다」는 더 잡는다 */
         if(gk) hold -= FX(gk,"gkFist")*0.28;
+        hold -= (WX_NOW.wet||0)*0.24;              // 🌧️ 젖은 공은 품에 안기지 않는다 (요청)
         if(deflected) hold -= 0.20;
         if(type===SHOT_TYPE.POWER) hold += 0.12;
         if(type===SHOT_TYPE.CHIP) hold += 0.10;   // 느리게 떠오는 공은 잡기 쉽다
@@ -55623,7 +57118,17 @@ class MatchSim{
         if(a.slot==="GK") d*=0.75;                      // 박스 안이면 키퍼가 먼저 덮친다
         if(d<bd){ bd=d; best=a; }
       }
-      if(best && bd<LOOSE_PICKUP){ this.giveTo(best); return; }
+      /* 🤼 50:50 — 양 팀이 함께 달려들었으면 가까운 쪽이 그냥 먹지 않는다 (요청) */
+      if(best && bd<LOOSE_PICKUP){
+        const _cands=this.agents.filter(a=>{
+          if(a.slot==="GK") return false;
+          if(a._down && a._down>this.t) return false;
+          return Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y) < GDUEL_R;
+        });
+        const _gd=this.groundDuel(_cands);
+        if(_gd) return;
+        this.giveTo(best); return;
+      }
     }
     if((sp<LOOSE_STOP && b.z<=0) || b.looseT>LOOSE_MAXT){   // 공이 멈췄다
       b.aerial=false; b.z=0; b.vx=0; b.vy=0; b.vz=0;
@@ -55661,6 +57166,137 @@ class MatchSim{
     this.launchLoose(b.x, b.y, ang, Math.max(3, runM), near.side, false);
   }
   /* 공중볼 경합 — 롱패스가 떨어지는 지점에서 양 팀이 헤딩으로 다툰다 */
+  /* 🪤 지금 라인을 걸어 올릴 때인가 */
+  trapCheck(key, mine, carrier, T){
+    const b=this.ball, dir=mine[0].dir;
+    const tr=this._trap;
+    if(tr && tr.side===key && this.t < tr.until) return;             // 이미 거는 중
+    if(tr && tr.side===key && this.t < tr.t0+TRAP_COOL) return;      // 쿨다운
+    if(!carrier || carrier.side===key) return;
+    if(b.setPiece || b.foulScene || b.celebrate) return;
+    if(b.state!=="SETTLED" && b.state!=="LOOSE") return;             // 이미 날아간 공은 늦었다
+    /* 라인을 높게 쓰는 팀의 무기다 — 내려앉은 팀은 걸 이유가 없다 */
+    const lineTac=(T && typeof T.line==="number") ? T.line : 1;
+    if(lineTac < 1.05) return;
+    const own = v => dir>0 ? v : 1-v;
+    /* 볼이 우리 진영 깊숙이 오면 트랩이 아니라 그냥 막아야 한다 */
+    const bOwn=own(b.x);
+    if(bOwn < 0.30 || bOwn > 0.72) return;
+    /* 우리 최종 수비 라인 */
+    const backs=mine.filter(a=>a.slot!=="GK" && (a.defRole===DEF_ROLE.LINE || a.defRole===DEF_ROLE.MARK));
+    if(backs.length<3) return;
+    let lineOwn=9; for(const a of backs) lineOwn=Math.min(lineOwn, own(a.x));
+    /* 잡을 상대가 라인 근처에 있어야 하고, 이미 등 뒤로 넘어간 상대가 있으면 늦었다 */
+    const opps=this.side(this.opp(key)).filter(o=>o.slot!=="GK");
+    let hasRunner=false;
+    for(const o of opps){
+      const oOwn=own(o.x);
+      if(oOwn < lineOwn - 0.004) return;                             // 이미 뒤에 있다 — 걸면 자살
+      if(oOwn < lineOwn + TRAP_NEAR) hasRunner=true;
+    }
+    if(!hasRunner) return;
+    /* 볼 소유자가 앞을 보고 있어야 한다 — 등지고 있으면 찌를 수 없다 */
+    if(carrier.face!==undefined){
+      const fwd=Math.atan2(0, (dir>0?-1:1));
+      let df=carrier.face-fwd; while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
+      if(Math.abs(df) > Math.PI*0.55) return;
+    }
+    /* 얼마나 자주 거는가 — 라인 지시와 조직력이 정한다 */
+    const fam=clamp((backs.reduce((s,a)=>s+(a.teamFamK||0),0)/backs.length+1.5)/2.5, 0, 1);
+    const p = clamp(0.05 + (lineTac-1.05)*0.16 + fam*0.06, 0.03, 0.26);
+    if(Math.random() >= p) return;
+    /* 건다 — 선수마다 반응이 다르다. 이 어긋남이 곧 성공과 실패를 가른다 */
+    let worst=0;
+    for(const a of backs){
+      const q=clamp(((a.posSkill||0.6)*0.42 + (a.teamwork||0.6)*0.30 + (a.decSkill||0.55)*0.28), 0, 1);
+      const lag=TRAP_LAG*(1-q)*(1.35-fam*0.70)*(0.7+Math.random()*0.6);
+      a._trapAt=this.t+lag; worst=Math.max(worst, lag);
+    }
+    this._trap={side:key, t0:this.t, until:this.t+TRAP_HOLD+worst};
+    if(this.emitEvents) this.cap(key, ["🪤 수비 라인이 한꺼번에 올라섭니다!",
+      "🪤 오프사이드 트랩 — 뒷선이 통째로 전진합니다!"], {});
+    this.evl("TRAP", backs[0], {n:backs.length});
+  }
+  /* 지금 이 선수가 트랩으로 걸어 올라가는 중인가 */
+  trapPush(a){
+    const tr=this._trap;
+    if(!tr || tr.side!==a.side || this.t>=tr.until) return 0;
+    if(a._trapAt===undefined || this.t < a._trapAt) return 0;         // 아직 반응 못 했다
+    if(a.defRole!==DEF_ROLE.LINE && a.defRole!==DEF_ROLE.MARK) return 0;
+    /* 올라갔다가 다시 내려온다 — 사인 곡선이 아니라 「빠르게 올라가 잠깐 버틴다」 */
+    const k=clamp((this.t-a._trapAt)/0.30, 0, 1);
+    return k;
+  }
+  /* 🤼 땅볼 50:50 — 흐른 공에 양 팀이 함께 달려들었는가. 결말을 반환한다.
+     null = 경합 아님(평소대로 가장 가까운 선수가 잡는다) */
+  groundDuel(near){
+    const b=this.ball;
+    if(!near || near.length<2) return null;
+    const sides={}; for(const a of near) sides[a.side]=1;
+    if(Object.keys(sides).length<2) return null;              // 같은 팀끼리면 경합이 아니다
+    let bd=1e9; for(const a of near) bd=Math.min(bd, Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y));
+    const sc=(a)=>{
+      const d=Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y);
+      const closer=clamp(1-(d-bd)/GDUEL_R, 0.15, 1);          // 먼저 닿는 쪽이 유리하다
+      const A=(k)=>(a.p&&a.p.attr&&attr20(a.p.attr[k])/20)||0.6;
+      const mass=clamp(((a.body&&a.body.tall)||0)*0.5+0.5, 0.3, 1.1);   // 큰 선수가 몸으로 이긴다
+      const v=(a.strength||0.6)*0.34 + (a.bravery||0.6)*0.22
+            + (a.posSkill||0.6)*0.18 + (a.ftSkill||a.firSkill||0.6)*0.12
+            + A("agg")*0.14;
+      return v*(0.62+mass*0.38)*closer*(0.55+Math.random()*0.90);
+    };
+    let win=null, ws=-1, lose=null, ls=-1;
+    for(const a of near){ const s=sc(a); if(s>ws){ ls=ws; lose=win; ws=s; win=a; } else if(s>ls){ ls=s; lose=a; } }
+    if(!win) return null;
+    if(lose && lose.side===win.side) lose=near.find(a=>a.side!==win.side)||lose;
+    try{ for(const a of near){ const st=this.stats[a.side]; st.duel=(st.duel||0)+1; } }catch(e){}
+    try{ const st=this.stats[win.side]; st.duelWon=(st.duelWon||0)+1; }catch(e){}
+    /* ③ 파울 — 밀리는 쪽이 발을 넣는다. 공격성이 높을수록 자주 (박스 안에서는 훨씬 조심한다) */
+    const AG=(a)=>((a&&a.p&&a.p.attr&&attr20(a.p.attr.agg)/20)||0.6);
+    /* 자기 진영 박스 근처에서는 함부로 발을 넣지 않는다 — PK 를 내주니까 (공중볼 경합과 같은 잣대) */
+    const boxK = (lose && ((lose.dir>0?lose.x:1-lose.x) < 0.16)) ? 0.30 : 1;
+    if(lose && Math.random() < GDUEL_FOUL*(0.55+AG(lose)*0.90)*boxK*meTune("foul")){
+      this.stats[lose.side].foul++; this.stats[win.side].freeKick++;
+      this.cap(lose.side, ["🤼 {p}, 몸싸움에서 밀리자 발을 넣습니다 — 반칙",
+                           "🤼 50:50 경합 — {p}의 반칙입니다"], {p:this.nm(lose)});
+      this.startFoulScene(lose, win, false, (lose.dir>0?lose.x:1-lose.x)<0.34);
+      return {kind:"foul"};
+    }
+    /* ② 아무도 못 잡는다 — 두 몸에 맞고 공이 엉뚱한 데로 튄다 */
+    if(Math.random() < GDUEL_LOOSE){
+      const ang=Math.random()*Math.PI*2;
+      this.launchLoose(b.x, b.y, ang, 4+Math.random()*7, win.side, false);
+      b.looseT=0;
+      if(this.emitEvents && Math.random()<0.35)
+        this.cap(win.side, ["🤼 두 선수가 부딪히며 공이 흘러나갑니다","🤼 격렬한 경합 — 공이 엉뚱한 곳으로 튑니다"], {});
+      return {kind:"loose"};
+    }
+    /* ① 이긴 쪽이 잡는다 */
+    if(this.emitEvents && Math.random()<0.30)
+      this.cap(win.side, ["🤼 {p}, 몸싸움에서 이겨 공을 지켜냅니다","🤼 {p}이/가 어깨싸움에서 앞섭니다"], {p:this.nm(win)});
+    this.giveTo(win);
+    /* 진 선수는 잠깐 균형을 잃는다 — 곧바로 다시 달려들지 못한다 */
+    if(lose) lose._beaten=Math.max(lose._beaten||0, this.t+0.35+Math.random()*0.35);
+    return {kind:"win", by:win};
+  }
+  /* 🌦️ 날씨 해설 — 분이 바뀔 때마다 낮은 확률로 한 줄. 험한 날씨일수록 자주 나온다 (요청) */
+  wxTalk(){
+    try{
+      if(!this.recording || !this.emitEvents) return;
+      const w=this.M&&this.M.wx; if(!w) return;
+      const m=Math.floor(this.clock/60);
+      if(m===this._wxMin) return; this._wxMin=m;
+      const pool={rain:COMM.wxRain, storm:COMM.wxStorm, snow:COMM.wxSnow,
+                  hot:COMM.wxHot, cold:COMM.wxCold, windy:COMM.wxWind}[w.k];
+      if(!pool) return;
+      /* 험한 날씨일수록 자주 — 폭우·눈은 4분에 한 번꼴, 흐린 날은 아예 안 나온다 */
+      const sev=Math.max(w.wet, w.slip, Math.abs(w.heat), w.wind*0.8);
+      if(Math.random() > 0.055*sev*(1+sev)) return;
+      const b=this.ball;
+      if(b.celebrate || b.foulScene) return;
+      this.cap(null, pool, {});
+    }catch(e){}
+  }
   aerialDuel(){
     const b=this.ball;
     const atkSide = b._passer ? b._passer.side : null;
@@ -55686,6 +57322,12 @@ class MatchSim{
       if(sc>bs){ bs=sc; best=a; }
     }
     if(!best) best=near[0];
+    /* 🦘 공중 경합 — 붙은 선수들이 실제로 뛴다. 이긴 쪽이 조금 더 높이 뜬다 (요청) */
+    for(const a of near){
+      a._jt0=this.t + Math.random()*0.06;
+      a._jdur=JUMP_DUR*(0.88+Math.random()*0.20);
+      a._jh=(a===best?1.0:0.78)*(0.80+((a.jump||0.6)*0.40));
+    }
     for(const a of near) this.stats[a.side].aerial++;
     if(best){ this.stats[best.side].aerialWon++; this.cap(best.side, COMM.lvAerial, {p:this.nm(best)}); }
     // 공중볼은 몸이 부딪히는 경합이라 파울이 잦다 — 진 쪽이 밀거나 팔을 쓴다
@@ -55720,14 +57362,19 @@ class MatchSim{
         녹화를 그 안쪽 맨 아래에 두면 정작 보여줘야 할 장면 — 날아가는 슛, 키퍼 선방, 골대 맞고
         튀는 공, 골 세리머니 — 이 전부 녹화에서 빠진다. 그래서 바깥에서 감싸 무조건 남긴다. */
   tick(){
+    /* 🌦️ 전역 물리 함수(stepBallPhysics·firstTouch 등)는 시뮬 인스턴스를 모른다 —
+       이 시뮬의 날씨를 매 틱 실어 준다. AI 경기와 내 경기가 섞여 돌아도 안 어긋난다. */
+    WX_NOW = (this.M && this.M.wx) ? this.M.wx : {k:"clear", wet:0, slip:0, heat:0, wind:0, wdir:0};
     this.halfTimeCheck();
     this.reapGhosts();                 // ⚠ 제보(투명 키커) — 나간 선수가 경기에 남지 않게 매 틱 확인
     this.injuryCheck(); this.processHurt(); this.tickCore(); this.recordFrame();
+    this.wxTalk();                      // 🌦️ 날씨 해설 (요청)
     this.drainStamina();
     this.subCheck();
     this.syncGuard();
     /* 🕸️ 패스맵 표본 — 1초(5틱)에 한 번이면 90분에 5,400점이라 충분하다 */
     if((this._pmTick=(this._pmTick||0)+1) % 5 === 0) this.pmSample();
+    this.momTick();                    // 📈 경기 모멘텀 (요청)
   }
   /* 🛟 그라운드 인원과 도트 수가 어긋나면 그 자리에서 맞춘다.
      ⚠ 제보 — 「부상 교체를 했는데 들어온 선수가 엉뚱한 데 있다」.
@@ -55786,7 +57433,9 @@ class MatchSim{
         /* 🧤 골키퍼는 90분 내내 뛰어다니지 않는다 — 같은 시간을 소화해도 훨씬 덜 지친다.
            이동량(work)에 하한(0.55)이 걸려 있어 실제 활동량 차이가 다 반영되지 못했다. */
         const gkK = (x.p.pos==="GK" || x.slot==="GK") ? GK_STAM_K : 1;
-        const drop = (STAM_PER_MIN*cf + Math.random()*0.14) * work * natK * ageWearK(x.p) * gkK * mins;
+        /* 🔥 폭염 — 소모가 가속된다. 추우면 조금 덜 지치지만 몸이 굳는다(가속 저하로 따로 반영) */
+        const wxK = 1 + clamp(WX_NOW.heat||0, -1, 1)*0.26;
+        const drop = (STAM_PER_MIN*cf + Math.random()*0.14) * work * natK * ageWearK(x.p) * gkK * wxK * mins;
         x.fit=Math.max(25, x.fit - drop);
       }
     }
@@ -56031,6 +57680,7 @@ class MatchSim{
     const M=this.M;
     this.syncStats();
     this.pmFinish();          // 🕸️ 패스맵 — 평균 위치·연결 횟수를 M 에 옮겨 담는다
+    this.momFinish();         // 📈 경기 모멘텀 — 분당 우세도를 M 에 옮겨 담는다 (요청)
     M.min=Math.floor(this.endSec/60);
     M.half=2; M.done=true;
     // 출전 시간 — 교체가 없으면 전원 풀타임으로 기록된다
@@ -56919,7 +58569,9 @@ function renderReactionsHtml(data){
 function calDateText(){
   if(!G.cal || G.day==null) return `${G.season} 시즌`;
   const dt=dateOfDay(G.day);
-  return `${dt.getMonth()+1}월 ${dt.getDate()}일 (${DOW_KR[dt.getDay()]})`;
+  /* 🌦️ 오늘 날씨 — 좌측 메뉴 하단 날짜 옆에 (요청) */
+  let wx=""; try{ const w=dayWeather(G.day); wx=` <span title="${w.n}" style="font-size:13px">${w.ic}</span>`; }catch(e){}
+  return `${dt.getMonth()+1}월 ${dt.getDate()}일 (${DOW_KR[dt.getDay()]})${wx}`;
 }
 /* 🌏 다음에 치를 EACL 경기 — 상단 일정 표기가 리그만 보지 않도록 */
 function eaclNextForUser(){
@@ -56968,7 +58620,9 @@ function updateTopBar(t, r, fix){
   if(!dEl) return;
   if(G.cal && G.day!=null){
     const dt=dateOfDay(G.day);
-    dEl.textContent=`${dt.getFullYear()}년 ${dt.getMonth()+1}월 ${dt.getDate()}일 (${DOW_KR[dt.getDay()]})`;
+    /* 🌦️ 오늘 날씨 — 상단 날짜 옆에 (요청) */
+    let wx=""; try{ const w=dayWeather(G.day); wx=` <span title="${w.n} — 공·발·체력에 영향을 줍니다">${w.ic}</span>`; }catch(e){}
+    dEl.innerHTML=`${dt.getFullYear()}년 ${dt.getMonth()+1}월 ${dt.getDate()}일 (${DOW_KR[dt.getDay()]})${wx}`;
   } else {
     dEl.textContent=`${G.season} 시즌`;
   }
@@ -57038,7 +58692,9 @@ function snapshotTactic(){
   preMatchTactic={
     tactic: JSON.parse(JSON.stringify(t.tactic||{})),
     xi: G.userXI ? G.userXI.slice() : null,
-    fam: famOf(t), sig: t._sig
+    /* 🧩 조직력뿐 아니라 「이탈 장부」까지 찍어 둔다 — 이게 없으면 경기 중 조정분이
+       다음 경기의 기준선으로 새어 나가 조직력이 조금씩 영구히 깎였다 (제보) */
+    fam: famOf(t), sig: t._sig, sigBase: t._sigBase, devPen: t._devPen
   };
 }
 function restoreTactic(){
@@ -57048,6 +58704,8 @@ function restoreTactic(){
   t.tactic=JSON.parse(JSON.stringify(preMatchTactic.tactic));
   G.userXI = preMatchTactic.xi ? preMatchTactic.xi.slice() : null;
   t.fam=preMatchTactic.fam; t._sig=preMatchTactic.sig;
+  if(preMatchTactic.sigBase!==undefined) t._sigBase=preMatchTactic.sigBase;
+  if(preMatchTactic.devPen!==undefined)  t._devPen =preMatchTactic.devPen;
   const changed = before!==tacticSig(t);
   preMatchTactic=null;
   if(changed) addNews("📋 경기 중 조정했던 전술을 경기 전 설정으로 되돌렸습니다.", null, "club");
@@ -59116,9 +60774,10 @@ function liveLayout(M, tag){
         <canvas id="pitch2d" class="dim" width="960" height="630"
                 onclick="pickPlayerOnPitch(event,this,liveSim)" title="선수를 클릭하면 이름이 표시됩니다"></canvas>
         <div id="lvSpdPanel" class="lvSpdPanel hidden">
-          <div class="small">⏩ 경기 배속 <b id="lvSpdLbl">${liveMulUI().toFixed(1)}×</b></div>
-          <input id="lvSpdRange" type="range" min="1" max="5" step="0.1" value="${liveMulUI()}"
-                 oninput="setLiveMul(this.value)">
+          <div class="small">⏩ 경기 속도</div>
+          <div style="display:flex;gap:4px;margin-top:5px">
+            ${LIVE_SPD.map((s,i)=>`<button class="mini spdBtn${i===liveSpdIdx()?" sel":""}" style="flex:1;padding:5px 4px" onclick="setLiveSpd(${i})">${s.n}</button>`).join("")}
+          </div>
           <div class="small" style="margin-top:9px">🎬 다시보기(리플레이) 배속 <b id="lvRepLbl">${replayMulUI().toFixed(1)}×</b></div>
           <input type="range" min="0.5" max="2" step="0.1" value="${replayMulUI()}"
                  oninput="setReplayMul(this.value)">
@@ -59130,7 +60789,7 @@ function liveLayout(M, tag){
     </div>
     <div class="lvSide">
       <div class="card hidden" id="lvOffCard" style="border-color:#e5484d">
-        <h3 style="color:#e5484d">🟥 퇴장</h3><div id="lvOff"></div></div>
+        <h3 style="color:#e5484d" id="lvOffTitle">🟥 퇴장</h3><div id="lvOff"></div></div>
       <div class="card"><h3>📊 경기 통계</h3><div id="lvStats"></div></div>
       <div class="card"><h3>${(M.opts&&M.opts.pvp)?"📋 전술 · 💬 채팅":"📋 수석코치의 조언"}</h3><div id="lvPanel"></div></div>
     </div>
@@ -59150,16 +60809,62 @@ function liveLayout(M, tag){
           그 퇴장은 liveSim.sentOff 가 아니라 출전 기록(sd.list[].red)에만 적히는데,
           옛 경로가 `!liveSim` 일 때만 돌게 막혀 있어 목록에서 통째로 빠졌다.
         → 경기가 끝난 뒤에는 두 곳을 합쳐 본다(이름 기준 중복 제거). */
+/* 🟥🚑 ⚠ 제보 원문 — 「경기 중 상대가 퇴장 당했는데 퇴장 정보 박스가 우측 상단에 뜨지 않는다.
+      퇴장 장면을 보여주지 않았고, 유저는 수석 코치의 조언에 '수적 우위입니다, 폭을 넓히고
+      라인을 올려 상대를 좌우로 흔드세요' 를 보고 상대의 퇴장을 알았다. 경기 중 퇴장을 당하면
+      그 즉각 우측 상단의 퇴장 정보 박스를 보여 달라. 또, 퇴장 장면을 하이라이트에서 보여주지
+      않아도 퇴장 정보 박스를 통해 알려 달라」.
+   ── 원인 (14경기를 돌려 확인) ────────────────────────────────
+   ① 「🟥 수적 우위/열세」 조언은 퇴장뿐 아니라 <b>채우지 못한 부상 공백</b>(injGap)까지 세는데,
+      우측 상단 박스는 「퇴장이 한 명이라도 있어야」만 열렸다 — `if(!list.length) return ""`.
+      상대가 교체 카드를 다 써서 열 명이 된 경우가 여기 해당한다.
+      실제로 14경기에서 「수적 우위·열세」 조언이 뜬 16순간이 <b>전부</b> 이 경우였고,
+      그 16순간 모두 박스는 닫힌 채였다. 감독 입장에서는 「퇴장인데 박스가 안 뜬다」로 보인다.
+      (그래서 「퇴장 장면」도 없었던 것이다 — 애초에 카드가 나온 게 아니었다)
+   ② 퇴장은 재생헤드(화면이 도달한 시점)로 걸러 스포를 막는데, 부상 공백은 안 걸렀다.
+      조언이 장면보다 먼저 인원 변화를 흘렸다.
+   ③ 퇴장 자체도 「지금 재생 중인 장면」이 그 순간을 품고 있지 않으면 영영 안 뜰 여지가 있었다
+      (장면 프레임이 모자라 통째로 버려지는 경우 등).
+   ── 수정 ────────────────────────────────────────────────────
+   · 박스를 「퇴장 · 인원」 박스로 넓힌다 — 퇴장이 0명이어도 인원 공백이 있으면 즉시 열린다.
+   · 부상 공백에도 발생 시각(gapT)을 남기고 퇴장과 똑같은 재생헤드 필터를 태운다.
+   · 지금 재생 중인 장면 밖의 사건은 기다리지 않고 즉시 공개한다 — 장면을 보여주지 않는
+     퇴장이 묻히지 않는다.
+   · 박스와 조언이 완전히 같은 함수(revealedAt·shownRedCount·shownGaps)를 쓰므로
+     두 곳의 말이 다시 어긋날 수 없다. */
+function hlPlayT(){
+  try{ if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) return liveHL.frames[liveHL.i].t; }catch(e){}
+  return null;
+}
+function revealedAt(t){
+  try{
+    if(!liveSim) return true;                              // 분 단위 엔진 — 지연 재생이 없다
+    if(liveM && liveM.done && !liveHL) return true;        // 휘슬이 울렸다 — 감출 것이 없다
+    if(t==null) return true;
+    const ph=hlPlayT();
+    if(ph==null) return (t<=liveSim.t+1e-6);               // 재생 중인 장면이 없다 — 시뮬 시점 기준
+    if(t<=ph+1e-6) return true;                            // 재생헤드가 이미 지났다
+    /* 아직 안 지났다 — 지금 재생 중인 장면 안에서 곧 나올 순간이면 기다리고(스포 방지),
+       그 장면 밖이면 이 화면으로는 나오지 않으므로 지금 알린다 */
+    return !(t>=liveHL.t0-1e-6 && t<=liveHL.tEnd+1e-6);
+  }catch(e){ return true; }
+}
+/* 🚑 화면에 공개된 「채우지 못한 부상 공백」 명단 */
+function shownGaps(M, key){
+  try{
+    const sd=(key==="h")?M.h:M.a;
+    const all=(sd&&Array.isArray(sd.list)) ? sd.list.filter(x=>x && x.off!==null && !x.red && x.injGap) : [];
+    if(!liveSim) return all;
+    return all.filter(x=>revealedAt(x.gapT));
+  }catch(e){ return []; }
+}
 function liveSentOffHtml(){
   const M=liveM; if(!M) return "";
   const _over = !!(M.done && !liveHL);      // 휘슬이 울렸고 재생 중인 장면도 없다 — 감출 것이 없다
   let list=[];
   try{
     if(liveSim && Array.isArray(liveSim.sentOff) && liveSim.sentOff.length){
-      let cut=liveSim.t;
-      if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) cut=liveHL.frames[liveHL.i].t;
-      if(_over) cut=Infinity;
-      list=liveSim.sentOff.filter(x=>x.t<=cut+1e-6).map(x=>({
+      list=liveSim.sentOff.filter(x=>revealedAt(x.t)).map(x=>({
         side:x.side, min:(x.lbl!=null?x.lbl:(x.min!=null?x.min:Math.round((x.t||0)/60))),
         name:x.name||"", ps:x.slot||x.pos||"", second:!!x.second}));
     }
@@ -59194,7 +60899,10 @@ function liveSentOffHtml(){
       }
     }catch(e){}
   }
-  if(!list.length) return "";
+  /* 🚑 인원 공백 — 퇴장이 한 명도 없어도 「열 명으로 뛰는 팀」은 알려야 한다.
+     (수석코치는 이걸 세어 「수적 우위」라고 말하는데 박스만 닫혀 있던 것이 이번 제보다) */
+  const gh=shownGaps(M,"h"), ga=shownGaps(M,"a");
+  if(!list.length && !gh.length && !ga.length) return "";
   /* 「90+2」 같은 전광판 글자도 섞이므로 앞뒤 숫자를 합쳐 정렬 기준을 만든다 */
   const _ord=(v)=>{ const s=String(v==null?0:v); const m=s.match(/(\d+)(?:\+(\d+))?/);
                     return m ? (+m[1])*100 + (+(m[2]||0)) : 0; };
@@ -59212,14 +60920,11 @@ function liveSentOffHtml(){
     </div>`;
   };
   const cnt={h:list.filter(x=>x.side==="h").length, a:list.filter(x=>x.side==="a").length};
-  const numLeft=(key)=>{ try{ return liveSim ? liveSim.agents.filter(a=>a.side===key).length : (11-cnt[key]); }catch(e){ return 11-cnt[key]; } };
+  /* ⚠ 예전에는 시뮬의 실시간 인원(liveSim.agents)을 그대로 적었다 — 장면이 나오기도 전에
+     숫자가 먼저 줄어 스포가 됐다. 수석코치와 똑같은 「공개된 인원」을 쓴다. */
+  const numLeft=(key)=>{ try{ return shownOnPitch(M, key); }catch(e){ return 11-cnt[key]; } };
   /* 🚑 퇴장이 아닌데 인원이 빈 경우 — 교체 카드를 다 썼거나 벤치가 없어 채우지 못한 부상 이탈.
      ⚠ 제보 — 「퇴장은 한 명인데 그라운드에 9명」. 숫자만 보여 주니 버그로 보였다. 이유를 적는다. */
-  const gapsOf=(key)=>{ try{
-      const sd=M[key]; if(!sd||!Array.isArray(sd.list)) return [];
-      return sd.list.filter(x=>x && x.off!==null && !x.red && x.injGap);
-    }catch(e){ return []; } };
-  const gh=gapsOf("h"), ga=gapsOf("a");
   const gapTxt=[];
   for(const [key, arr] of [["h",gh],["a",ga]]){
     if(!arr.length) continue;
@@ -59239,10 +60944,7 @@ function syncSentOffPanel(){
   /* ⚔️ 퇴장 명단 중계 — 화면 공개 시점 기준 목록을 게스트에도 (제보: 카드 동기화) */
   try{
     if(liveM && liveM.opts && liveM.opts.pvp && typeof PVP!=="undefined" && PVP && PVP.role==="host" && liveSim){
-      let cut=liveSim.t;
-      if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) cut=liveHL.frames[liveHL.i].t;
-      if(liveM.done && !liveHL) cut=Infinity;   // 🟥 휘슬 뒤에는 감출 것이 없다 (추가시간 퇴장 제보)
-      const list=(liveSim.sentOff||[]).filter(x=>x.t<=cut+1e-6).slice(0,8).map(x=>({
+      const list=(liveSim.sentOff||[]).filter(x=>revealedAt(x.t)).slice(0,8).map(x=>({
         s:x.side, m:(x.lbl!=null?x.lbl:(x.min!=null?x.min:Math.round((x.t||0)/60))), n:String(x.name||"").slice(0,12), p:String(x.slot||x.pos||"").slice(0,4)}));
       const j=JSON.stringify(list);
       if(PVP._offJ!==j){ PVP._offJ=j; if(list.length) pvpSend({t:"offl", list}); }
@@ -59253,6 +60955,16 @@ function syncSentOffPanel(){
   const h=liveSentOffHtml();
   if(!h){ card.classList.add("hidden"); box.innerHTML=""; return; }
   card.classList.remove("hidden");
+  /* 🚑 퇴장이 없이 인원 공백만 있을 때도 열리므로, 제목을 상황에 맞게 바꾼다 (제보) */
+  try{
+    const ttl=document.getElementById("lvOffTitle");
+    if(ttl && liveM){
+      const nr=shownRedCount(liveM,"h")+shownRedCount(liveM,"a");
+      const ng=shownGaps(liveM,"h").length+shownGaps(liveM,"a").length;
+      const s = (nr&&ng) ? "🟥 퇴장 · 🚑 인원 공백" : nr ? "🟥 퇴장" : "🚑 인원 공백";
+      if(ttl.textContent!==s) ttl.textContent=s;
+    }
+  }catch(e){}
   if(box.innerHTML!==h) box.innerHTML=h;
 }
 function toggleSpdPanel(){
@@ -59790,25 +61502,47 @@ function setLiveSpeed(ms){ liveSpeed=ms; livePaused=false; if(liveTimer) clearIn
    일시정지 상태는 건드리지 않는다 — 배속을 만졌다고 경기가 멋대로 재개되면 안 된다. */
 /* 표시 1× = 실제 2× (2배속이 기본이자 표준 시청 속도). 슬라이더는 표시값 1~5를 다루고,
    엔진·재생은 liveMul()=표시×2 를 쓴다. 구버전 저장(실제값 1~4 저장)은 1회 1×로 리셋. */
+/* ⏩ ⚠ 요청 — 「배속이 5단계로 있잖아. 2.2배속을 기본으로 하고 기본(2.2)-빠름(3.3)-매우 빠름(4.4)
+   3단계로. 배속 수치는 빼고 그냥 이름으로」.
+   ─ 예전에는 1.0~5.0 을 0.1 단위로 끄는 슬라이더였다. 눈금이 촘촘한 만큼 「지금 몇 배인지」를
+     계속 신경 써야 했고, 기본값(1.0)은 온라인 대전(2.2)의 절반이라 체감이 크게 달랐다.
+     세 칸으로 줄이고 기본을 온라인 대전과 같은 속도에 맞춘다. */
+const LIVE_SPD=[{n:"기본", v:2.2}, {n:"빠름", v:3.3}, {n:"매우 빠름", v:4.4}];
+function liveSpdIdx(){
+  if(!G.opt) G.opt={};
+  /* 옛 세이브 이사 — 0.1 단위 배속(speed)을 세 칸 중 가까운 칸으로 옮긴다 */
+  if(G.opt._spd3==null){
+    const old=+(G.opt.speed||0);
+    G.opt._spd3 = old>=4.0 ? 2 : old>=3.0 ? 1 : 0;
+  }
+  return clamp(G.opt._spd3|0, 0, LIVE_SPD.length-1);
+}
 function liveMulUI(){
-  /* ⚔️ 제보 — 온라인 대전은 2.5배속 고정 (양쪽이 같은 속도의 중계를 본다) */
-  try{ if(liveM && liveM.opts && liveM.opts.pvp) return 2.5; }catch(e){}
-  if(G.opt && !G.opt._spd2){ G.opt._spd2=1; G.opt.speed=1; }
-  return clamp((G.opt&&G.opt.speed)||1, 1, 5);
+  /* ⚔️ 제보 — 온라인 대전은 배속 고정 (양쪽이 같은 속도의 중계를 본다) */
+  try{ if(liveM && liveM.opts && liveM.opts.pvp) return 2.2; }catch(e){}
+  return LIVE_SPD[liveSpdIdx()].v;
+}
+function liveSpdName(){
+  try{ if(liveM && liveM.opts && liveM.opts.pvp) return "고정"; }catch(e){}
+  return LIVE_SPD[liveSpdIdx()].n;
 }
 function liveMul(){ return liveMulUI()*2; }
-function setLiveMul(v){
+function setLiveSpd(i){
   if(!G.opt) G.opt={};
-  G.opt.speed=clamp(Math.round(+v*10)/10, 1, 5); G.opt._spd2=1;
+  G.opt._spd3=clamp(i|0, 0, LIVE_SPD.length-1);
   // 연속 엔진은 간격을 고정하고 "한 번에 굴리는 양"으로 배속을 낸다(stepLiveSim의 시간 예산).
   const ms = liveSim ? LIVE_SIM_TICK_MS : Math.max(24, Math.round(TEXT_TICK_MS/liveMul()));
   liveSpeed=ms;
   if(liveTimer){ clearInterval(liveTimer); liveTimer=setInterval(liveTick, ms); }
-  const lb=document.getElementById("lvSpdLbl");
-  if(lb) lb.textContent=G.opt.speed.toFixed(1)+"×";
-  updLiveCtrl();   // 스코어버그의 배속 버튼 라벨(N.N×) 갱신
+  try{
+    const p=document.getElementById("lvSpdPanel");
+    if(p){ const bs=p.querySelectorAll(".spdBtn");
+      for(let k=0;k<bs.length;k++) bs[k].className="mini spdBtn"+(k===G.opt._spd3?" sel":""); }
+  }catch(e){}
+  updLiveCtrl();   // 스코어버그의 배속 버튼 라벨 갱신
   saveGame();
 }
+function setLiveMul(v){ setLiveSpd(+v>=4.0?2:+v>=3.0?1:0); }   // 옛 호출부 호환
 function pauseLive(){
   if(liveM && liveM.opts && liveM.opts.pvp){ try{ flash("⚔️ 온라인 대전 중에는 경기를 멈출 수 없습니다.","warn"); }catch(e){} return; }
   livePaused=true; updLiveCtrl(); }
@@ -59856,13 +61590,13 @@ function updLiveCtrl(state){
     el.innerHTML=`<button class="mini sel" onclick="resumeLive()">후반전 시작 ▶</button>`; return; }
   /* ⚔️ 제보 — 온라인 대전: 일시정지·둘러보기·배속 전부 잠긴 기능이라 버튼 자체를 걷어낸다 */
   if(liveM && liveM.opts && liveM.opts.pvp){
-    el.innerHTML=`<span class="small" style="opacity:.6" title="온라인 대전은 배속이 고정됩니다 (다시보기 2.0×)">2.5× 고정</span>`;
+    el.innerHTML=`<span class="small" style="opacity:.6" title="온라인 대전은 경기 속도가 고정됩니다 (양쪽이 같은 속도의 중계를 봅니다)">⏩ 속도 고정</span>`;
     return;
   }
   el.innerHTML=`
     <button class="mini ${livePaused?'sel':''}" onclick="${livePaused?'resumeLive()':'pauseLive()'}" title="${livePaused?'재개':'일시정지'}">${livePaused?"▶":"⏸"}</button>
     <button class="mini" onclick="peekLive()" title="경기를 세워 두고 순위표·기록 같은 다른 탭을 봅니다 (보기 전용)">🔍 둘러보기</button>
-    <button class="mini" onclick="toggleSpdPanel()" title="경기·다시보기 배속">${liveMulUI().toFixed(1)}× ▾</button>`;
+    <button class="mini" onclick="toggleSpdPanel()" title="경기 속도·다시보기 배속">⏩ ${liveSpdName()} ▾</button>`;
 }
 /* 하이라이트 씬 하나를 재생 예약한다 — 실제 프레임 그리기는 지속 루프(render2DTick)가 current2DScene을
    매 프레임 읽어서 수행하고, 여기서는 씬을 "선언"하고 완료 콜백만 등록한다. */
@@ -60148,9 +61882,8 @@ function oppTacVisible(M){
 function shownRedCount(M, key){
   try{
     if(liveSim && Array.isArray(liveSim.sentOff)){
-      let cut=liveSim.t;
-      if(liveHL && liveHL.frames && liveHL.frames[liveHL.i]) cut=liveHL.frames[liveHL.i].t;
-      return liveSim.sentOff.filter(x=>x.side===key && x.t<=cut+1e-6).length;
+      /* 🟥 퇴장 명단(liveSentOffHtml)과 완전히 같은 판정을 쓴다 — 두 곳의 말이 어긋나지 않게 (제보) */
+      return liveSim.sentOff.filter(x=>x.side===key && revealedAt(x.t)).length;
     }
   }catch(e){}
   return (key==="h"?M.h:M.a).red||0;   // 분 단위 엔진 — 지연 재생이 없으니 그대로
@@ -60163,8 +61896,8 @@ function shownOnPitch(M, key){
   try{
     const sd=(key==="h")?M.h:M.a;
     const red=shownRedCount(M, key);
-    let gap=0;
-    try{ gap=(sd.list||[]).filter(x=>x && x.off!==null && !x.red && x.injGap).length; }catch(e){}
+    /* 🚑 부상 공백도 재생헤드로 거른다 — 예전에는 안 걸러서 조언이 장면보다 먼저 인원을 흘렸다 (제보) */
+    const gap=shownGaps(M, key).length;
     return Math.max(7, 11-red-gap);
   }catch(e){ return 11; }
 }
@@ -60207,6 +61940,48 @@ function renderCoachAdvice(){
       add(0, `🟥 <b>수적 우위</b>입니다 ${_cnt}. 폭을 넓히고 라인을 올려 상대를 좌우로 흔드세요.`);
     else if(_mine<11)
       add(0, `🟥 양 팀 모두 한 명씩 빠져 <b>${_mine} 대 ${_theirs}</b>입니다. 인원은 같지만 공간이 넓어집니다 — 체력 관리와 역습 대비를 함께 챙기세요.`);
+  }
+  /* 🌦️ ⚠ 요청 — 「수석코치의 조언에서도 날씨 관련해서 조언하게 하자」.
+     날씨 자체를 읊지 않는다("비가 옵니다"는 화면 위에 이미 있다) — <b>지금 내 전술 설정</b>과
+     대조해서 "그래서 무엇을 돌려야 하는가"만 말한다. 이미 맞게 해 뒀으면 아무 말도 하지 않는다. */
+  {
+    const w=M.wx;
+    const sev = w ? Math.max(w.wet, w.slip, Math.abs(w.heat), w.wind*0.8) : 0;
+    if(w && sev>0.35){
+      const hi=(v)=>v>=1.35, lo=(v)=>v<=0.65;   // 슬라이더는 0~2 눈금이다
+      if(w.wet>0.45){
+        /* 젖은 잔디 — 공이 빠르게 흐른다. 짧게 주고받을수록 위험하고, 키퍼는 공을 흘린다 */
+        if(lo(T.pass))
+          add(1, `${w.ic} <b>젖은 그라운드</b>인데 <b>짧은 패스</b>로 풀고 있습니다. 공이 예상보다 빠르게 흐릅니다 — 후방에서는 <b>다이렉트하게</b> 넘기는 게 안전합니다.`);
+        if(hi(T.line))
+          add(1, `${w.ic} 젖은 잔디에서는 <b>백패스와 백헤딩이 미끄러집니다</b>. 라인을 한 칸 내려 뒷공간을 줄이는 걸 권합니다.`);
+        add(2, `${w.ic} 키퍼가 공을 잡기 어려운 날입니다 — <b>중거리 슛</b>과 <b>골문 앞 세컨볼</b>을 노려 볼 만합니다.`);
+      }
+      if(w.slip>0.45){
+        /* 미끄러운 잔디 — 태클이 발을 못 멈춘다 */
+        if(hi(T.tackle))
+          add(1, `${w.ic} <b>태클 강도가 높습니다</b>. 이 그라운드에서는 발이 멈추지 않습니다 — 카드와 부상이 나오기 전에 한 칸 낮추세요.`);
+        if(hi(T.press))
+          add(2, `${w.ic} 미끄러운 잔디에서 <b>강한 압박</b>은 한 번 벗겨지면 그대로 뚫립니다. 조금 물러서서 간격을 지키는 편이 낫습니다.`);
+      }
+      if((w.heat||0)>0.45){
+        /* 폭염 — 체력이 먼저 무너진다 */
+        const dead2=pitch.filter(x=>x.fit<66).length;
+        if(hi(T.press) || hi(T.tempo))
+          add(1, `${w.ic} <b>폭염</b>입니다. 지금 템포·압박으로는 후반 30분을 못 버팁니다 — 한 칸씩 낮추고 공을 돌리며 쉬어 가세요.`);
+        if(min>=55 && subsLeft>0)
+          add(1, `${w.ic} 이 더위에서는 <b>교체를 아끼는 게 손해</b>입니다. 남은 카드 ${subsLeft}장, 지금부터 쓰기 시작하세요.${dead2?` (체력 66 미만 ${dead2}명)`:""}`);
+        else if(min>=70 && subsLeft===0)
+          add(2, `${w.ic} 교체 카드를 다 썼습니다 — 남은 시간은 <b>공을 돌려 쉬는 것</b> 말고 방법이 없습니다.`);
+      }
+      if((w.heat||0)<-0.25 && min<20)
+        add(2, `${w.ic} 추운 날은 <b>초반 15분</b>에 실점이 몰립니다. 몸이 풀릴 때까지는 무리해서 나가지 말고 간격부터 잡으세요.`);
+      if((w.wind||0)>0.55){
+        add(2, `${w.ic} <b>강풍</b>입니다 — 롱볼과 크로스가 바람을 탑니다. 바람을 안고 뛰는 하프에서는 <b>땅볼로 짧게</b>, 등지는 하프에서는 <b>과감한 롱볼과 중거리</b>가 유효합니다.`);
+        if(hi(T.pass))
+          add(2, `${w.ic} 지금 <b>롱볼 위주</b>인데 바람이 셉니다. 낙하 지점이 계속 밀리면 세컨볼을 상대가 먹습니다.`);
+      }
+    }
   }
   const tired=[...pitch].sort((a,b)=>a.fit-b.fit);
   const dead=tired.filter(x=>x.fit<58);
@@ -60429,14 +62204,14 @@ function finishLive(){
     const mine=M.home.isUser?M.hg:M.ag, his=M.home.isUser?M.ag:M.hg;
     const opp=M.home.isUser?M.away:M.home;
     addNews(`🤝 연습경기: ${ut.short} ${mine}-${his} ${opp.short}`);
-    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, friendly:true, att:M.att||0};
+    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, friendly:true, att:M.att||0};
     checkPreseasonEnd();
     saveGame();
   } else if(G.pendingPO){
     const {m,hid,aid}=G.pendingPO; G.pendingPO=null;
     applyMatchResult(M);
     poResolve(m, hid, aid, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0);
-    lastMatch={type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, tag:m.tag, att:M.att||0, mom:M.mom||null};
+    lastMatch={type:"pomatch", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, tag:m.tag, att:M.att||0, mom:M.mom||null};
     saveGame();
   } else if(G.pendingCWC){
     /* 🌍 CWC — 프리시즌 한복판의 공식전. 리그 순위표도 라운드도 건드리지 않는다. */
@@ -60445,7 +62220,7 @@ function finishLive(){
     try{ cwcStatCollect(M); }catch(e){}
     try{ cwcResolveUser(P, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0); }catch(e){}
     try{ matchNewsCwc(M, P.tag); }catch(e){}
-    lastMatch={type:"cwc", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, tag:P.tag, att:M.att||0, mom:M.mom||null};
+    lastMatch={type:"cwc", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, tag:P.tag, att:M.att||0, mom:M.mom||null};
     saveGame();
   } else if(G.pendingEACL){
     /* 🌏 EACL — 리그 순위표를 건드리지 않고 대회 기록만 남긴다(noTable). 라운드도 넘기지 않는다. */
@@ -60457,10 +62232,10 @@ function finishLive(){
     if((P2.m||P2.t)) eaclResolveUser(P2, M.hg, M.ag, M.pk?(M.pk.win==="h"?1:-1):0);
     try{ eaclGate(M); }catch(e){}
     try{ matchNewsEacl(M, P.tag); }catch(e){}
-    lastMatch={type:"eacl", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, tag:P.tag, att:M.att||0, mom:M.mom||null};
+    lastMatch={type:"eacl", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, tag:P.tag, att:M.att||0, mom:M.mom||null};
     saveGame();
   } else {
-    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
+    lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
     completeRound(M);
   }
   }catch(e){ try{ console.warn("경기 결과 반영 실패:", e); }catch(_){} }
@@ -60696,7 +62471,7 @@ function prgContractWatch(){
     const cold = played<=1 && (G.r1||G.r2)>=6;
     prgPush(cold
       ? `🔁 <b>${x.p.name}</b> — ${x.c.short}에서도 출전이 없습니다 (${played}경기). 조기 소환을 생각해 볼 때입니다`
-      : `🔁 <b>${x.p.name}</b> 임대 소식 — ${x.c.short}에서 ${played}경기${x.p.apps?` · 평점 ${(x.p.seasonRating||0).toFixed(2)}`:""}${played>=10&&(x.p.seasonRating||0)>=6.9?" — 완전히 자리를 잡았습니다":""}`,
+      : `🔁 <b>${x.p.name}</b> 임대 소식 — ${x.c.short}에서 ${played}경기${x.p.apps?` · 평점 ${(x.p.seasonRating||0).toFixed(2)}`:""}${played>=10&&(x.p.seasonRating||0)>=7.30?" — 완전히 자리를 잡았습니다":""}`,
       cold?"prgAlert":"prgNews");
   }
   /* 🔁 빌려온 선수 — 우리 팀에서 얼마나 쓰고 있는지, 언제 돌려보내야 하는지 */
@@ -60708,7 +62483,7 @@ function prgContractWatch(){
     const rd=(t.div===1?G.r1:G.r2);
     if(L.half && L.backR!=null && L.backR-rd<=3 && L.backR-rd>=0){
       prgPush(`🔁 <b>${p.name}</b> 임대 종료까지 <b>${L.backR-rd}라운드</b> — ${L.buy?"완전 영입 옵션을 쓸지 정해야 합니다":`${own?own.short:"원소속"}으로 돌아갑니다`}`, "prgAlert");
-    } else if(played>=8 && (p.seasonRating||0)>=6.9 && L.buy){
+    } else if(played>=8 && (p.seasonRating||0)>=7.30 && L.buy){
       prgPush(`🔁 <b>${p.name}</b> — 임대생인데 ${played}경기 평점 ${(p.seasonRating||0).toFixed(2)}. 완전 영입 옵션을 걸어 둔 게 다행입니다`, "prgNews");
     } else if(played<=1 && rd>=6){
       prgPush(`🔁 <b>${p.name}</b> — 빌려왔는데 ${played}경기밖에 못 뛰었습니다. ${own?own.short:"원소속 구단"}이 지켜보고 있습니다`, "prgAlert");
@@ -61354,7 +63129,7 @@ function runDelegatedMatch(M, tag){
   addNews(`🩺 ${t.short} ${mine}-${his} ${opp.short} — 부상 중인 감독 대신 수석코치가 지휘했습니다 (복귀까지 약 ${w}주)`,
           mine>his?"good":mine<his?"warn":null, "club");
   try{ staffLog(`수석코치가 ${opp.short}전을 대신 지휘했습니다. (${mine}-${his})`); }catch(e){}
-  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
+  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
   saveGame();
   const outcome=matchOutcome(M, isHome);
   const cls=outcome==="win"?"good":outcome==="loss"?"warn":"info";
@@ -61395,7 +63170,7 @@ function runDelegatedFriendly(M){
   addNews(`🤝 연습경기(위임): ${t.short} ${mine}-${his} ${opp.short}`);
   staffLog(`수석코치가 ${opp.short}전 연습경기를 지휘했습니다. (${mine}-${his})`);
   checkPreseasonEnd();
-  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null}, h:M.home, a:M.away, friendly:true, att:M.att||0};
+  lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, friendly:true, att:M.att||0};
   saveGame();
   const outcome = mine>his?"win":mine===his?"draw":"loss";
   const cls = outcome==="win"?"good":outcome==="loss"?"warn":"info";
@@ -63160,10 +64935,34 @@ async function pvpRtcAnswer(offerStr){   // 호스트: 응답
 }
 /* ── 프로토콜 (신뢰 채널) ─────────────────────────────────────────────── */
 function pvpSend(o){ try{ if(PVP&&PVP.chR&&PVP.chR.readyState==="open") PVP.chR.send(JSON.stringify(o)); }catch(e){} }
+/* 🌦️ ⚠ 요청 — 「온라인 대전은 날씨를 매칭마다 랜덤으로. 매칭 잡히고 시작 전 포메이션 화면에서
+   날씨 정보도 알려 주게」. 리그는 「날짜」가 날씨를 정하지만 대전은 날짜가 없다 —
+   <b>호스트가 판마다 새로 굴리고</b> 그 값을 게스트에게 보낸다(양쪽이 같은 하늘을 봐야 한다). */
+function pvpRollWx(){
+  try{
+    if(!PVP || PVP.role!=="host") return null;
+    const ks=Object.keys(WX_KIND);
+    PVP.wx=makeWeather(ks[Math.floor(Math.random()*ks.length)]);
+    return PVP.wx;
+  }catch(e){ return null; }
+}
+function pvpWxLine(){
+  try{
+    const w=PVP&&PVP.wx; if(!w) return "";
+    const tip={rain:"공이 빠르게 흐르고 터치가 길어집니다", storm:"미끄럽고 발이 밀립니다 — 롱볼 싸움",
+               snow:"방향 전환이 위험합니다 — 넘어지는 선수가 나옵니다", hot:"체력이 빨리 떨어집니다",
+               cold:"첫 발이 잘 안 나갑니다", windy:"롱볼·크로스가 바람을 탑니다",
+               clear:"조건이 좋습니다", cloud:"무난한 조건입니다"}[w.k]||"";
+    return `<div class="msg info" style="margin:6px 0;padding:8px 10px">
+      <b style="font-size:15px">${w.ic} 오늘 그라운드 — ${w.n}</b>
+      <span class="small" style="opacity:.85"> · ${tip}</span></div>`;
+  }catch(e){ return ""; }
+}
 function pvpSendHello(){
   PVP.myPack=pvpPack();
   try{ PVP._myPackJ=JSON.stringify(PVP.myPack); }catch(e){}
-  pvpSend({t:"hello", ver:PVP_VER, pack:PVP.myPack});
+  if(PVP.role==="host" && !PVP.wx) pvpRollWx();
+  pvpSend({t:"hello", ver:PVP_VER, pack:PVP.myPack, wx:(PVP.role==="host"?PVP.wx:undefined)});
 }
 /* 🎽 로비 스쿼드 동기화 — 전술 탭에서 수정하고 돌아오면 바뀐 스쿼드를 상대에게 재전송한다.
    양쪽 수락은 초기화 — 옛 스쿼드를 보고 한 수락은 무효다. (제보: 로비에서 스쿼드 수정) */
@@ -63176,7 +64975,7 @@ function pvpLobbySquadSync(){
     if(!PVP._myPackJ){ PVP._myPackJ=j; PVP.myPack=pk; return; }
     if(PVP._myPackJ===j) return;
     PVP._myPackJ=j; PVP.myPack=pk;
-    pvpSend({t:"hello", ver:PVP_VER, pack:pk});
+    pvpSend({t:"hello", ver:PVP_VER, pack:pk, wx:(PVP.role==="host"?PVP.wx:undefined)});
     if(PVP.meReady||PVP.oppReady){ PVP.meReady=false; PVP.oppReady=false; pvpSend({t:"unready"}); }
     try{ flash("📤 수정한 스쿼드를 상대에게 보냈습니다 — 양쪽 수락이 초기화됐습니다","info"); }catch(e){}
     try{ if(VIEW==="pvp") show("pvp"); }catch(e){}   // 🗺️ 내 포메이션 그림 즉시 갱신 (제보)
@@ -63201,6 +65000,8 @@ function pvpOnMsg_(m){
         q.sl=(typeof q.sl==="string" && SLOT_XY[q.sl])?q.sl:null; }
     } }catch(e){}
     PVP.oppPack=m.pack; PVP.oppCheck=pvpPackCheck(m.pack||{});
+    /* 🌦️ 이 판의 날씨는 호스트가 정한다 — 게스트는 받아서 쓴다 (요청) */
+    try{ if(PVP.role==="guest" && m.wx && WX_KIND[m.wx.k]) PVP.wx=m.wx; }catch(e){}
     if(PVP.helloT){ try{ clearInterval(PVP.helloT); }catch(e){} PVP.helloT=null; }
     /* 재전송으로 뒤늦게 온 hello 가 경기 중 화면을 로비로 되돌리지 않게 한다 */
     if(PVP.stage!=="match" && PVP.stage!=="done") PVP.stage="lobby";
@@ -63215,7 +65016,10 @@ function pvpOnMsg_(m){
   }
   if(m.t==="ready"){ PVP.oppReady=1; pvpMaybeStart(); try{ if(VIEW==="pvp") show("pvp"); }catch(e){} return; }
   if(m.t==="unready"){ PVP.meReady=false; PVP.oppReady=false; try{ if(VIEW==="pvp") show("pvp"); }catch(e){} return; }
-  if(m.t==="kickoff" && PVP.role==="guest"){ pvpGuestMatchStart(m.info||{}); return; }
+  if(m.t==="rep"){ try{ if(m.r) PVP.rep=m.r; if(VIEW==="pvp" && PVP.stage==="done") show("pvp"); }catch(e){} return; }
+  if(m.t==="kickoff" && PVP.role==="guest"){
+    try{ if(m.wx && WX_KIND[m.wx.k]) PVP.wx=m.wx; }catch(e){}   // 🌦️ (요청)
+    pvpGuestMatchStart(m.info||{}); return; }
   if(m.t==="tac" && PVP.role==="host"){ pvpApplyGuestTac(m); return; }
   if(m.t==="ev" && PVP.role==="guest"){ pvpGuestEv(m); return; }
   if(m.t==="end" && PVP.role==="guest"){ pvpGuestEnd(m); return; }
@@ -63401,8 +65205,9 @@ function pvpHostStart(){
   home.short=(home.short+"("+hNick+")").slice(0,18); away.short=(away.short+"("+aNick+")").slice(0,18);
   home.name=(home.name+" ("+hNick+")").slice(0,26);  away.name=(away.name+" ("+aNick+")").slice(0,26);
   PVP.tacMe=PVP_TAC_USES; PVP.tacOppLeft=PVP_TAC_USES; PVP.tacEdit=null; PVP.tacOppOn=0;   // 🔁 교체 기회 (제보)
-  const M=createMatch(home, away, {noTable:true, pvp:true, neutral:true});
-  pvpSend({t:"kickoff", info:{hn:home.name, an:away.name, hs:home.short, as:away.short, hc:home.col, ac:away.col, hm:hNick, am:aNick}});
+  if(!PVP.wx) pvpRollWx();                      // 🌦️ 혹시 아직 안 굴렸으면 여기서 (요청)
+  const M=createMatch(home, away, {noTable:true, pvp:true, neutral:true, wx:PVP.wx});
+  pvpSend({t:"kickoff", wx:PVP.wx, info:{hn:home.name, an:away.name, hs:home.short, as:away.short, hc:home.col, ac:away.col, hm:hNick, am:aNick}});
   /* 스냅샷 송신 루프 */
   PVP.snapT=setInterval(()=>{
     try{
@@ -63824,7 +65629,7 @@ function pvpGuestTacOpen(st){
     const me=pvpBuildTeam(PVP.myPack, "h"), op=pvpBuildTeam(PVP.oppPack, "a");
     if(st.form && FORMATIONS[st.form]) me.tactic.formation=st.form;
     for(const k of PVP_TAC_KEYS) if(st.tac && st.tac[k]!=null) me.tactic[k]=clamp(st.tac[k]|0,0,4);
-    const M=createMatch(me, op, {noTable:true, pvp:true, neutral:true});
+    const M=createMatch(me, op, {noTable:true, pvp:true, neutral:true, wx:(PVP.wx||undefined)});
     const byNo=(no)=>me.players.find(p=>p.no===no);
     const xi=(st.xi||[]).map(q=>byNo(q.no)).filter(Boolean);
     const bench=(st.bench||[]).map(q=>byNo(q.no)).filter(Boolean);
@@ -64215,6 +66020,41 @@ function pvpAnnounceEnd(){
     try{ pvpResPost(liveM.hg||0, liveM.ag||0, 0); }catch(e){}   // 🌐 제보 — 모두의 전적에 남긴다
   }catch(e){}
 }
+/* 📊 ⚠ 요청 — 「온라인 대전에서도 결과창에 패스맵이랑 경기 모멘텀 그래프가 나왔으면」.
+   호스트만 엔진을 굴리므로 게스트에게는 그림 데이터가 아예 없다 — 경기가 끝나는 순간
+   한 통으로 보낸다. 좌표는 소수 셋째 자리까지, 연결은 굵은 것 24개까지만 담아 가볍게. */
+function pvpRepPack(M){
+  try{
+    if(!M) return null;
+    const trim=(side)=>{
+      if(!side) return null;
+      return {
+        nodes:(side.nodes||[]).slice(0,11).map(n=>({id:n.id, x:+(+n.x).toFixed(3), y:+(+n.y).toFixed(3),
+                mn:n.mn|0, tch:n.tch|0, no:n.no|0, nm:String(n.nm||"").slice(0,12), pos:n.pos||"MF"})),
+        links:(side.links||[]).slice(0,24).map(l=>({a:l.a, b:l.b, n:l.n|0}))
+      };
+    };
+    const PM=M.pmap ? {h:trim(M.pmap.h), a:trim(M.pmap.a)} : null;
+    const MO=M.momo ? {ht:M.momo.ht|45, g:(M.momo.g||[]).slice(0,20),
+                       v:(M.momo.v||[]).map(o=>({m:o.m|0, v:+(+o.v).toFixed(2)}))} : null;
+    const T=(t)=>t?{name:String(t.name||"").slice(0,26), short:String(t.short||"").slice(0,18),
+                    col:/^#[0-9a-fA-F]{3,8}$/.test(t.col||"")?t.col:"#2a6ee8"}:null;
+    return {pmap:PM, momo:MO, h:T(M.home), a:T(M.away)};
+  }catch(e){ return null; }
+}
+/* 결과 화면이 쓰는 모양으로 꺼낸다 — 게스트는 홈/원정이 뒤집혀 있지 않다(그림자 경기도 h=나) */
+function pvpRepCards(){
+  try{
+    const R=PVP&&PVP.rep; if(!R) return "";
+    const res={pmap:R.pmap||null, momo:R.momo||null};
+    const h=Object.assign({}, R.h||{}, {isUser:(PVP.role==="host")});
+    const a=Object.assign({}, R.a||{}, {isUser:(PVP.role!=="host")});
+    let out="";
+    try{ out+=passMapCard(res, h, a)||""; }catch(e){}
+    try{ out+=momentumCard(res, h, a)||""; }catch(e){}
+    return out ? `<div class="row" style="align-items:flex-start">${out}</div>` : "";
+  }catch(e){ return ""; }
+}
 function pvpFinish(M){
   if(!PVP) return;
   try{ pvpAwayStop(); }catch(e){}     // ⏸ 자리 비움 안내는 경기와 함께 끝난다 (제보)
@@ -64227,6 +66067,11 @@ function pvpFinish(M){
   pvpSeriesAdd(my, op);                      // 🔁 재대결 연전 스코어
   if(PVP.role==="host" && !PVP._endSent){ PVP._endSent=1; pvpSend({t:"end", hg, ag}); }   // 안전망 — 이미 보냈으면 넘어간다
   PVP.stage="done"; PVP.result={hg,ag};
+  /* 📊 패스맵·모멘텀 — 내 화면에 쓰고, 게스트에게도 한 통 보낸다 (요청) */
+  try{
+    const rp=pvpRepPack(M);
+    if(rp){ PVP.rep=rp; pvpSend({t:"rep", r:rp}); }
+  }catch(e){}
   try{ saveGame(); }catch(e){}
 }
 /* ⚔️ 제보 — 「경기 끝나고 나오는 결과 확인 버튼을 호스트만 누를 수 있다. 게스트도 결과 확인
@@ -64317,6 +66162,8 @@ function pvpRematchGo(){
         `_endSent` 만 풀고 `_resSent` 를 빠뜨렸다 — 그래서 두 번째 판부터는 결과가 아예 올라가지
         않고, 「모두의 전적」에는 첫 판 점수가 그대로 남아 있었다. 방금 끝낸 판과 다른 점수다. */
   PVP.result=null; PVP.forfeit=null; PVP.forfeited=0; PVP.ended=0; PVP._endSent=0; PVP._resSent=0;
+  try{ if(PVP.role==="host"){ PVP.wx=null; pvpRollWx(); } }catch(e){}   // 🌦️ 재대결은 새 하늘 아래 (요청)
+  PVP.rep=null;                                                          // 📊 지난 판의 패스맵·모멘텀은 버린다
   PVP.homeT=null; PVP.awayT=null; PVP.tacEdit=null; PVP.tacOppOn=0; PVP.htReady=null; PVP.htOpp=null;
   PVP.meRe=0; PVP.oppRe=0;
   PVP.reCount=(PVP.reCount|0)+1;                 // 몇 번째 판인가 (화면 표기용)
@@ -64740,7 +66587,7 @@ function pvpTierSeasonCheck(myLp){
     const lastLp=+(localStorage.getItem("klm2026_pvpTierLp")||0);
     if(seen && seen!==cur && lastLp>0){
       const T=pvpTierOf(lastLp);
-      try{ notify(`🏅 <b>지난 시즌 마감</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,14)}</b> (${Math.round(lastLp)} LP)로 마쳤습니다. 새 시즌이 시작됐습니다!`,"good"); }catch(e){}
+      try{ flash(`🏅 <b>지난 시즌 마감</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,14)}</b> (${Math.round(lastLp)} LP)로 마쳤습니다. 새 시즌이 시작됐습니다!`,"good"); }catch(e){}
       try{ localStorage.setItem("klm2026_pvpTierBest", JSON.stringify({s:seen, lp:Math.round(lastLp), label:T.label, c:T.t.c, k:T.t.k, dv:T.div})); }catch(e){}
     }
     localStorage.setItem("klm2026_pvpTierSeason", cur);
@@ -64818,6 +66665,9 @@ function pvpTierSeed(wkRow){
   const lp=Math.max(0, Math.round(pts*TIER_SEED_PER_PT));
   return { n:wkRow.n||"감독", p:lp, w:wkRow.w|0, d:wkRow.d|0, l:wkRow.l|0, hi:lp, s:pvpSeasonNum(), pv:0, t:Date.now(), seed:1 };
 }
+/* 📰 ⚠ 요청 — 「뉴스에 온라인 대전 관련 소식 나오는 거 없애자」.
+   notify() 는 addNews + flash 다 — 티어·배치·연승 알림이 전부 구단 뉴스에 쌓이고 있었다.
+   대전은 구단 서사와 무관하니 화면 배너(flash)로만 알린다. */
 function pvpTierPost(r){
   try{
     if(!pvpOn() || !r || !pvpNickClaimed()) return;
@@ -64874,23 +66724,23 @@ function pvpTierPost(r){
       try{
         if(placedNow){
           const T=pvpTierOf(lp);
-          notify(`🎯 <b>배치 완료</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, "good");
+          flash(`🎯 <b>배치 완료</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, "good");
         } else if(pl<TIER_PLACE_N){
-          notify(`🎯 <b>배치 ${pl}/${TIER_PLACE_N}</b> — ${TIER_PLACE_N-pl}경기 더 치르면 티어가 정해집니다 <span class="small">(이번 판 ${dLpT>=0?"+":""}${dLpT})</span>`, dLpT>=0?"info":"warn");
+          flash(`🎯 <b>배치 ${pl}/${TIER_PLACE_N}</b> — ${TIER_PLACE_N-pl}경기 더 치르면 티어가 정해집니다 <span class="small">(이번 판 ${dLpT>=0?"+":""}${dLpT})</span>`, dLpT>=0?"info":"warn");
         } else {
           const T=pvpTierOf(lp), T0=pvpTierOf(Math.max(0, lp-dLpT));
           if(T.t.k!==T0.t.k || T.div!==T0.div){
-            notify(`🏅 <b>${dLpT>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, dLpT>=0?"good":"warn");
+            flash(`🏅 <b>${dLpT>=0?"승급":"강등"}</b> — <b style="color:${T.t.c}">${pvpTierLbl(T,15)}</b> (${lp} LP)`, dLpT>=0?"good":"warn");
           } else {
-            notify(`🏅 시즌 LP <b>${dLpT>=0?"+":""}${dLpT}</b> → ${lp} LP <span class="small">(${pvpTierLbl(T,13)})</span>`, dLpT>=0?"info":"warn");
+            flash(`🏅 시즌 LP <b>${dLpT>=0?"+":""}${dLpT}</b> → ${lp} LP <span class="small">(${pvpTierLbl(T,13)})</span>`, dLpT>=0?"info":"warn");
           }
         }
       }catch(e){}
       /* 🔥 연승 알림 — 보너스가 붙은 판, 연승이 이어지는 판, 끊긴 판 세 가지 */
       try{
-        if(stBonus>0) notify(`🔥 <b>${stNow}연승 달성!</b> 연승 보너스 <b style="color:var(--gold)">+${stBonus} LP</b>`, "good");
-        else if(stNow>=3) notify(`🔥 <b>${stNow}연승</b> 진행 중 — ${pvpStreakNext(stNow)}연승에서 보너스 LP`, "info");
-        else if(stBroke) notify(`💔 <b>${stBroke}연승이 끊겼습니다.</b>`, "warn");
+        if(stBonus>0) flash(`🔥 <b>${stNow}연승 달성!</b> 연승 보너스 <b style="color:var(--gold)">+${stBonus} LP</b>`, "good");
+        else if(stNow>=3) flash(`🔥 <b>${stNow}연승</b> 진행 중 — ${pvpStreakNext(stNow)}연승에서 보너스 LP`, "info");
+        else if(stBroke) flash(`💔 <b>${stBroke}연승이 끊겼습니다.</b>`, "warn");
       }catch(e){}
       return fbSet("tier/"+key, rec).then(ok2=>{
         /* 규칙을 아직 안 올려 쓰기가 막혔다면 화면이 그 사실을 알려 준다 */
@@ -65401,6 +67251,7 @@ function pvpView(){
     ${pk?`<div class="card"><h3>상대: <span style="color:var(--gold)">${pk.mgr}</span>의 ${pk.name} <span class="small">— 전력 ${(pk.stars||3).toFixed(1)}★</span>${(PVP.reCount|0)?` <span class="small" style="color:var(--gold)">· 🔁 ${(PVP.reCount|0)+1}번째 판</span>`:""}</h3>
       <p style="margin:2px 0 6px">${pvpH2HLine(pk.mgr)}${pvpTierTag(pk.mgr)}${pvpSeriesLine()}</p>
       ${ck.notes.length?`<div class="msg warn">⚠ ${ck.notes.join(" · ")}</div>`:""}
+      ${pvpWxLine()}
       ${(function(){
         /* ⚠ 제보 — 선수 표 대신 「내 선발 vs 상대 선발」 포메이션 그림. 전술 수정 후 돌아오면
            pvpLobbySquadSync 가 재렌더해 실시간으로 갱신된다. */
@@ -65483,6 +67334,7 @@ function pvpView(){
           ? `<button class="mini sel" style="padding:8px 16px;border-color:var(--gold);color:var(--gold)" onclick="pvpRematch()">⚔️ 한 판 더${PVP.oppRe?" (상대 대기 중)":""}</button>` : ""}
         <button class="mini" onclick="pvpReset();show('pvp')">로비로</button>
       </div></div>
+    ${(function(){ try{ return pvpRepCards(); }catch(e){ return ""; } })()}
     ${logHtml}`;
   }
   return `<h2>⚔️ 온라인 대전</h2><div class="card"><p>경기 진행 중…</p></div>`;
@@ -65497,7 +67349,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260823-1720";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260824-1024";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
