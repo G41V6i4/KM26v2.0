@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260831-2035-->
+<!--B:20260901-0210-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -12154,6 +12154,17 @@ function forfeitUserMatch(uf, okN){
 /* 라운드 마무리: 유저 경기 결과 반영 + AI 경기 일괄 시뮬 + 후처리 */
 function completeRound(M){
   const ut=userTeam();
+  /* 🛑 ⚠ 제보 — 「일정 및 훈련 탭을 눌러도 아무 반응이 없는데 왜 이런 걸까요 ㅠㅠ」
+     순위표 밖의 경기(CWC·EACL·연습경기·승강PO·온라인)는 각자의 pending 표식으로 갈라졌는데,
+     그 표식이 사라진 채(경기 중 저장·재접속 등) 이 함수로 흘러들면 리그 결과로 기록된다.
+     그러면 G.teams 에 없는 임시 클럽 id(cwc_eu_bar 등)가 G.results 에 박히고,
+     일정 화면이 그 줄을 그리다 죽어 탭 자체가 안 열린다.
+     → 표식이 아니라 경기 자체(M.opts.noTable)로 판단해 리그 장부에서 제외한다. */
+  if(M && M.opts && (M.opts.noTable || M.opts.friendly || M.opts.pvp || M.opts.cwc || M.opts.eacl)){
+    try{ applyMatchResult(M); }catch(e){}
+    try{ saveGame(); }catch(e){}
+    return {type:"round", skipped:1};
+  }
   if(M){
     applyMatchResult(M);
     const div=ut.div, r=div===1?G.r1:G.r2;
@@ -20376,6 +20387,14 @@ function migrateLoadedG(){
   /* 🏅 트로피 캐비닛 — 같은 대회·같은 시즌에 성적이 겹쳐 쌓인 기록을 정리한다(제보) */
   /* 🏟️ 제보 — 구단 표식이 없던 시절의 구장 사업. 지금 맡은 구단의 것으로 본다
      (팀을 옮긴 뒤라면 이 세이브에서는 그 사업이 사라지지만, 남의 구단 공사가 뜨는 것보다 낫다) */
+  /* 🧹 ⚠ 제보 — 이미 장부에 박힌 「존재하지 않는 구단」 결과를 걷어낸다.
+     CWC 임시 클럽(cwc_eu_bar 등)이 리그 결과로 썰인 세이브가 그대로는 일정 탭을 열 수 없다. */
+  step("결과 장부 정리", ()=>{
+    if(!Array.isArray(G.results) || !G.results.length) return;
+    const n=G.results.length;
+    G.results=G.results.filter(r=>r && G.teams[r.hid] && G.teams[r.aid]);
+    if(G.results.length!==n){ try{ console.warn("삭제된 유령 결과:", n-G.results.length); }catch(_){} }
+  });
   step("구장 사업 소유 정리", ()=>{
     try{ if(G.stad && !G.stad.tid && !G.jobless && G.userTeamId) G.stad.tid=G.userTeamId; }catch(e){}
   });
@@ -37313,7 +37332,10 @@ let ftTab="cal";
 function ftShow(k){ if(k) ftTab=k; show("fixtures"); }
 function fixtures(){
   const t=userTeam();
-  const my=G.results.filter(r=>r.s===G.season&&(r.hid===t.id||r.aid===t.id)).slice(-40);
+  /* ⚠ 제보 — 구단 정보가 없는 결과 한 줄이 섞이면 이 화면 전체가 그려지지 않았다.
+     이제는 그런 줄은 건너뛰고 나머지를 그린다 — 탭이 멈추는 일은 다시 없다. */
+  const my=G.results.filter(r=>r.s===G.season&&(r.hid===t.id||r.aid===t.id)
+                              &&G.teams[r.hid]&&G.teams[r.aid]).slice(-40);
   const rows=my.map(r=>{
     const h=G.teams[r.hid], a=G.teams[r.aid];
     const win = (r.hid===t.id&&r.hg>r.ag)||(r.aid===t.id&&r.ag>r.hg);
@@ -72535,7 +72557,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260831-2035";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260901-0210";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
