@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-7900-->
+<!--B:20260912-8000-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1947,6 +1947,28 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .gmRes.lose{color:#ff7b72}
 @keyframes gmPop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 .gmRolling{opacity:.55;pointer-events:none}
+
+/* 🃏 블랙잭 — 카드 */
+.gmBJ{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
+.gmRow{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:center;min-height:82px}
+.gmWho{font-size:12px;color:#bfe6cd;min-width:74px;text-align:right;opacity:.9;font-weight:700}
+.pcard{width:54px;height:78px;border-radius:7px;background:linear-gradient(160deg,#fff,#eef1f5);
+  border:1px solid #b6bec8;box-shadow:0 3px 8px rgba(0,0,0,.45);
+  display:flex;flex-direction:column;justify-content:space-between;padding:5px 6px;
+  font-weight:900;color:#1b2430;position:relative;animation:pcIn .34s cubic-bezier(.2,.8,.3,1) both}
+.pcard.red{color:#d92b3a}
+.pcard b{font-size:15px;line-height:1}
+.pcard i{font-style:normal;font-size:15px;align-self:flex-end;line-height:1}
+.pcard u{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;
+  font-size:25px;text-decoration:none;opacity:.92}
+.pcard.back{background:repeating-linear-gradient(45deg,#1f4c8c,#1f4c8c 5px,#17386a 5px,#17386a 10px);
+  border-color:#0f2647;box-shadow:0 3px 8px rgba(0,0,0,.5), inset 0 0 0 3px #2b62ad}
+@keyframes pcIn{from{opacity:0;transform:translateY(-16px) rotate(-8deg) scale(.9)}to{opacity:1;transform:none}}
+.gmTot{font-size:13px;font-weight:800;padding:3px 9px;border-radius:99px;background:#0c2318;border:1px solid #2c5c40;color:#cfeddb}
+.gmTot.bust{color:#ff7b72;border-color:#f8514966}
+.gmTot.bj{color:#ffd76a;border-color:#e0a52c88}
+@media(max-width:560px){ .pcard{width:44px;height:64px} .pcard b,.pcard i{font-size:12.5px} .pcard u{font-size:20px} .gmWho{min-width:0} }
+
 @media(max-width:560px){ .gmReel{width:46px;height:62px} .gmReel .gmStrip span{height:62px;line-height:62px;font-size:27px} }
 
 </style>
@@ -30828,6 +30850,7 @@ function gamHeat(bet){
 function gamPlay(kind){
   const M=me(), g=gamOf();
   if(GAM_BUSY) return;                       // 🎬 굴러가는 중 — 연타 방지
+  if(bjLive()){ flash("🃏 블랙잭 판이 진행 중입니다 — 먼저 끝내세요.","warn"); return; }
   if(G.phase==="sacked"){ flash("지금은 그럴 때가 아닙니다.","warn"); return; }
   if(gamBanned()){ flash(`⛔ 협회 징계 중입니다 — ${Math.ceil((g.banUntil-(G.day||0)))}일 남았습니다.`,"warn"); return; }
   const bet=Math.round((parseFloat(GAM_AMT)||0)*100)/100;
@@ -30982,6 +31005,15 @@ function gmSlotHtml(syms, hit){
 /* 지금 무대에 무엇을 세워 둘 것인가 — 판을 돌리기 전(대기)과 돌린 뒤(결과) */
 function gamStage(){
   const g=gamOf(), L=g.last;
+  /* 🃏 블랙잭 판이 걸려 있으면 무대는 카드 테이블이다 */
+  if(g.bj){
+    const B=g.bj, w=(B.res&&B.res.net>0);
+    return `<div class="gmStage${w?" win":""}" id="gmStage" style="min-height:190px">${bjTable()}</div>
+      <div class="gmRes ${B.stage==="done"?(B.res.net>0?"win":(B.res.net===0?"":"lose")):""}" id="gmRes">${
+        B.stage==="done" ? (B.res.net>0?`+${B.res.net.toFixed(2)}억`:(B.res.net===0?"±0":`−${Math.abs(B.res.net).toFixed(2)}억`)) : "히트 또는 스탠드"
+      }</div>
+      ${B.stage==="done"?`<div class="small" style="text-align:center;color:var(--sub);margin-top:-4px">${B.msg}</div>`:""}`;
+  }
   const kind=(GAM_BUSY&&GAM_BUSY.kind) || (L&&L.kind) || "coin";
   let inner="", cls="";
   if(kind==="coin"){
@@ -31039,6 +31071,131 @@ function gamRoll(kind, res, cb){
     }
   }catch(e){ cb&&cb(); }
 }
+
+/* ═══ 🃏 블랙잭 (요청) ═══════════════════════════════════════════
+   지하 카지노 규칙 — 딜러는 소프트 17 에서도 한 장 더 받고, 블랙잭 배당은 ×2.2(6:5)다.
+   더블·스플릿은 없다. 싸구려 판일수록 규칙이 손님에게 박하다 — 그래서 환수율이 약 97% 다
+   (동전 97.5% · 슬롯 91% 사이). 한 판마다 새 덱을 쓰므로 카운팅은 통하지 않는다. */
+const BJ_PAY_WIN=2.0, BJ_PAY_BJ=2.2;      // 판돈 포함 반환액 (푸시는 ×1)
+const BJ_SUIT=[["♠",0],["♥",1],["♦",1],["♣",0]];
+const BJ_RANK=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+function bjDeck(){
+  const d=[];
+  for(const [sy,red] of BJ_SUIT) for(const r of BJ_RANK) d.push({r, s:sy, red});
+  for(let i=d.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=d[i]; d[i]=d[j]; d[j]=t; }
+  return d;
+}
+function bjVal(hand){
+  let t=0, a=0;
+  for(const c of hand){
+    if(c.r==="A"){ a++; t+=11; }
+    else if(c.r==="J"||c.r==="Q"||c.r==="K"||c.r==="10") t+=10;
+    else t+=(+c.r);
+  }
+  while(t>21 && a>0){ t-=10; a--; }
+  return t;
+}
+function bjSoft(hand){                       // 에이스를 11 로 쓰고 있는가 (소프트 핸드)
+  let t=0, a=0;
+  for(const c of hand){ if(c.r==="A"){a++;t+=11;} else if("JQK".indexOf(c.r)>=0||c.r==="10") t+=10; else t+=(+c.r); }
+  let soft=false;
+  while(t>21 && a>0){ t-=10; a--; }
+  return a>0;
+}
+function bjNat(hand){ return hand.length===2 && bjVal(hand)===21; }
+function bjLive(){ const g=gamOf(); return !!(g.bj && g.bj.stage==="play"); }
+function bjStart(){
+  const M=me(), g=gamOf();
+  if(GAM_BUSY || bjLive()) return;
+  if(G.phase==="sacked"){ flash("지금은 그럴 때가 아닙니다.","warn"); return; }
+  if(gamBanned()){ flash(`⛔ 협회 징계 중입니다 — ${Math.ceil((g.banUntil-(G.day||0)))}일 남았습니다.`,"warn"); return; }
+  const bet=Math.round((parseFloat(GAM_AMT)||0)*100)/100;
+  if(!(bet>0)){ flash("걸 금액을 입력하세요.","warn"); return; }
+  if(bet>M.cash){ flash("보유 현금이 모자랍니다.","warn"); return; }
+  if(bet>gamMax()){ flash(`한 판 상한은 ${gamMax().toFixed(2)}억입니다.`,"warn"); return; }
+  mePay(-bet, null);
+  g.bets++; g.lost=Math.round(((g.lost||0)+bet)*100)/100;
+  g.sAmt=Math.round(((g.sAmt||0)+bet)*100)/100;
+  if(bet>=(g.big||0)) g.big=bet;
+  const d=bjDeck();
+  const you=[d.pop(), d.pop()], dl=[d.pop(), d.pop()];
+  g.bj={deck:d, you, dl, bet, stage:"play", res:null, msg:""};
+  g.last=null;
+  /* 자연 블랙잭 — 그 자리에서 끝난다 */
+  if(bjNat(you) || bjNat(dl)){ bjFinish(); return; }
+  saveGame(); show("mylife");
+}
+function bjHit(){
+  const g=gamOf(); if(!bjLive() || GAM_BUSY) return;
+  const B=g.bj;
+  B.you.push(B.deck.pop());
+  if(bjVal(B.you)>=21){ bjFinish(); return; }
+  saveGame(); show("mylife");
+}
+function bjStand(){
+  const g=gamOf(); if(!bjLive() || GAM_BUSY) return;
+  bjFinish();
+}
+/* 딜러가 규칙대로 받고, 승부를 가른다 */
+function bjFinish(){
+  const M=me(), g=gamOf(), B=g.bj; if(!B) return;
+  const you=bjVal(B.you);
+  const natY=bjNat(B.you), natD=bjNat(B.dl);
+  if(!natY && !natD && you<=21){
+    /* 딜러 — 17 미만이면 무조건, 소프트 17 이면 한 장 더 (지하 카지노 규칙) */
+    let guard=0;
+    while(guard++<12){
+      const v=bjVal(B.dl);
+      if(v<17 || (v===17 && bjSoft(B.dl))) B.dl.push(B.deck.pop());
+      else break;
+    }
+  }
+  const dl=bjVal(B.dl);
+  let pay=0, msg="";
+  if(natY && natD){ pay=B.bet; msg="양쪽 다 블랙잭 — 무승부입니다."; }
+  else if(natY){ pay=B.bet*BJ_PAY_BJ; msg="🃏 블랙잭! 배당 ×2.2"; }
+  else if(natD){ pay=0; msg="딜러가 블랙잭입니다."; }
+  else if(you>21){ pay=0; msg=`버스트 (${you}) — 딜러가 가져갑니다.`; }
+  else if(dl>21){ pay=B.bet*BJ_PAY_WIN; msg=`딜러 버스트 (${dl}) — 이겼습니다!`; }
+  else if(you>dl){ pay=B.bet*BJ_PAY_WIN; msg=`${you} 대 ${dl} — 이겼습니다!`; }
+  else if(you<dl){ pay=0; msg=`${you} 대 ${dl} — 졌습니다.`; }
+  else { pay=B.bet; msg=`${you} 대 ${dl} — 무승부(푸시), 판돈을 돌려받습니다.`; }
+  pay=Math.round(pay*100)/100;
+  if(pay>0){ mePay(pay, null); g.won=Math.round(((g.won||0)+pay)*100)/100; }
+  const net=Math.round((pay-B.bet)*100)/100;
+  B.stage="done"; B.res={pay, net}; B.msg=msg;
+  g.last={kind:"bj", bet:B.bet, pay, net, line:`🃏 ${msg}`,
+          detail:`나 ${you} · 딜러 ${dl}`, res:null, t:(G.day||0)};
+  gamHeat(B.bet);
+  meLog(`${net>=0?"＋":"－"}${Math.abs(net).toFixed(2)}억 · 🃏 블랙잭 (판돈 ${B.bet.toFixed(2)}억)`);
+  if(pay>=B.bet*2 && pay>=3){ g.heat=clamp((g.heat||0)+4, 0, 100); }
+  try{ gamCatchRoll(); }catch(e){}
+  saveGame(); show("mylife");
+}
+/* 판을 치운다 — 다음 판으로 */
+function bjClear(){ const g=gamOf(); g.bj=null; show("mylife"); }
+/* 🎨 카드 한 장 */
+function bjCardHtml(c, hide, i){
+  if(hide) return `<div class="pcard back" style="animation-delay:${(i||0)*0.09}s"></div>`;
+  return `<div class="pcard ${c.red?"red":""}" style="animation-delay:${(i||0)*0.09}s">
+    <b>${c.r}<br><span style="font-size:12px">${c.s}</span></b><u>${c.s}</u><i>${c.r}</i></div>`;
+}
+function bjTable(){
+  const g=gamOf(), B=g.bj; if(!B) return "";
+  const live=(B.stage==="play");
+  const you=bjVal(B.you);
+  const dl= live ? bjVal([B.dl[0]]) : bjVal(B.dl);
+  const yc = you>21 ? " bust" : (bjNat(B.you)?" bj":"");
+  const dc = (!live && dl>21) ? " bust" : ((!live&&bjNat(B.dl))?" bj":"");
+  return `<div class="gmBJ">
+    <div class="gmRow"><span class="gmWho">딜러</span>
+      ${B.dl.map((c,i)=>bjCardHtml(c, live && i>0, i)).join("")}
+      <span class="gmTot${dc}">${live?`${dl} + ?`:dl}</span></div>
+    <div class="gmRow"><span class="gmWho">나</span>
+      ${B.you.map((c,i)=>bjCardHtml(c,false,i)).join("")}
+      <span class="gmTot${yc}">${you}${bjSoft(B.you)&&you<21?" (소프트)":""}</span></div>
+  </div>`;
+}
 function gamCard(){
   const M=me(), g=gamOf();
   const net=Math.round(((g.won||0)-(g.lost||0))*100)/100;
@@ -31049,7 +31206,9 @@ function gamCard(){
   const hTxt = heat>=45?"매우 위험" : heat>=22?"주목받는 중" : heat>=8?"소문이 돈다" : "조용함";
   const L=g.last;
   const banned=gamBanned();
-  const btn=(k,l,tip)=>`<button class="mini gmBtn" ${banned?"disabled style=\"opacity:.4;padding:10px 14px\"":`style="padding:10px 14px;border-color:var(--gold);color:var(--gold);font-weight:800"`} title="${tip}" onclick="gamPlay('${k}')">${l}</button>`;
+  const bjOn=bjLive();                       // 🃏 판이 걸려 있으면 다른 게임은 잠근다
+  const lock=banned||bjOn;
+  const btn=(k,l,tip)=>`<button class="mini gmBtn" ${lock?"disabled style=\"opacity:.4;padding:10px 14px\"":`style="padding:10px 14px;border-color:var(--gold);color:var(--gold);font-weight:800"`} title="${tip}" ${lock?"":`onclick="gamPlay('${k}')"`}>${l}</button>`;
   const pk=(k,v,l)=>`<button class="mini ${GAM_PICK[k]===v?"sel":""}" style="padding:5px 12px" onclick="gamPickSet('${k}','${v}')">${l}</button>`;
   return `<div class="card">
     <h3>🎰 지하 카지노 <span class="small">— 감독 사비를 겁니다. 구단 돈은 걸 수 없습니다</span></h3>
@@ -31064,7 +31223,7 @@ function gamCard(){
     ${(net<=-3)?`<div class="msg warn" style="margin-top:9px">🧾 지금까지 <b>${Math.abs(net).toFixed(2)}억</b>을 잃었습니다.
       <span class="small">세 게임 모두 오래 할수록 잃도록 설계돼 있습니다 — 본전을 노리는 판이 제일 위험합니다.</span></div>`:""}
     ${gamStage()}
-    ${L&&!GAM_BUSY?`<div class="small" style="text-align:center;color:var(--sub);margin-top:-4px">
+    ${L&&!GAM_BUSY&&!g.bj?`<div class="small" style="text-align:center;color:var(--sub);margin-top:-4px">
       ${L.detail} · 판돈 ${L.bet.toFixed(2)}억${L.net>0?` → 배당 <b style="color:var(--green)">${L.pay.toFixed(2)}억</b>`:" → 꽝"}</div>`:""}
     <div style="margin-top:11px">
       <div class="small" style="color:var(--sub);margin-bottom:4px">판돈 <span style="opacity:.8">— 한 판 상한 <b>${mx.toFixed(2)}억</b></span></div>
@@ -31099,8 +31258,24 @@ function gamCard(){
         ${btn("slot","🎰 돌린다", "3개 일치 2% · 2개 일치 37%")}
       </div>
     </div>
+    <div style="margin-top:13px;padding-top:11px;border-top:1px solid var(--line)">
+      <div style="margin-bottom:5px"><b>🃏 블랙잭</b> <span class="small" style="color:var(--sub)">— 승리 ×${BJ_PAY_WIN} · 블랙잭 ×${BJ_PAY_BJ} · 무승부 판돈 반환</span></div>
+      ${bjOn?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="mini" style="padding:10px 18px;border-color:var(--gold);color:var(--gold);font-weight:800" onclick="bjHit()">🃏 히트</button>
+        <button class="mini" style="padding:10px 18px;font-weight:800" onclick="bjStand()">✋ 스탠드</button>
+        <span class="small" style="color:var(--sub)">판돈 ${(g.bj.bet||0).toFixed(2)}억 · 21 을 넘기면 그 자리에서 집니다</span>
+      </div>`
+      : (g.bj?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="mini" style="padding:10px 18px;border-color:var(--gold);color:var(--gold);font-weight:800" onclick="bjClear()">🔄 판을 치운다</button>
+        <span class="small" style="color:var(--sub)">다음 판을 시작하려면 먼저 판을 치우세요</span>
+      </div>`
+      :`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="mini gmBtn" ${banned?"disabled style=\"opacity:.4;padding:10px 14px\"":`style="padding:10px 18px;border-color:var(--gold);color:var(--gold);font-weight:800"`} ${banned?"":`onclick="bjStart()"`}>🃏 딜</button>
+        <span class="small" style="color:var(--sub)">딜러는 소프트 17 에서도 한 장 더 받습니다 · 더블·스플릿 없음</span>
+      </div>`)}
+    </div>
     <p class="small" style="margin-top:12px;color:var(--sub)">
-      세 게임 모두 <b>기대값이 판돈보다 낮습니다</b> — 오래 할수록 잃습니다. 그게 도박입니다.<br>
+      네 게임 모두 <b>기대값이 판돈보다 낮습니다</b> — 오래 할수록 잃습니다. 그게 도박입니다.<br>
       진짜 위험은 돈이 아닙니다. K리그 감독이 판돈 오가는 자리에 앉아 있는 게 알려지면
       <b>기사가 나고, 구단주 신뢰가 깎이고, 협회가 움직입니다.</b> 판이 클수록 눈에 띕니다.</p>
   </div>`;
@@ -78270,7 +78445,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-7900";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-8000";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
