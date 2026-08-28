@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-7400-->
+<!--B:20260912-7700-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -16820,6 +16820,52 @@ function ageDecline(p, drop){ // 33세 이상: 세부 능력치도 함께 하락
 /* 📜 AI 계약 연차 정책 — ⚠ 제보: 「AI 구단 계약이 대부분 1~2년이라 보스만 룰과 타 구단
    제의에 매우 취약하다. 어린 선수일수록 장기(최대 5년), 30세 이상은 (레전드가 아니면)
    줄여 가는 현명한 재계약을 학습했으면 좋겠다」. 재계약·영입·유스·FA 전 경로가 이걸 쓴다. */
+/* 🌱 ⚠ 제보 원문 — 「AI 구단들이 포텐 160 이상인데도 현재 어빌만 놓고 FA 대상자로 선정한다.
+   일정 포텐 이상의 어린 선수는 절대 시장에 풀지 말고, 어빌이 부족하면 임대를 보내서라도
+   끝까지 키워 쓰거나 팔아야 한다」. 실측(3시즌): FA 시장에 포텐 160+ 25세 이하가 9~13명씩
+   쌓였고, OVR 75~78 급이 3시즌째 주인을 못 찾고 남아 있었다(쟈고 28→30세).
+   ─ 「놓아주면 안 되는 자원」을 한 곳에서 정의한다. 방출·계약만료 두 경로가 함께 쓴다. */
+function aiKeepTalent(p){
+  try{
+    if(!p) return false;
+    const age=G.season-(p.by||2000);
+    const pot=dispPot(p);
+    if(age<=25 && pot>=150) return true;      // 어리고 재능 있으면 무조건 잡는다
+    if(age<=28 && pot>=170) return true;      // 특급 재능은 조금 더 늦게까지
+    if(age<=30 && p.ovr>=76) return true;      // 지금 당장 리그 최상급이면 나이와 무관하게 잡는다
+    if(age<=32 && p.ovr>=77) return true;      // 리그 파괴급 (제보 — 31세 야잔 · 실측 32세 OVR78 유출 후 77 로)
+    return false;
+  }catch(e){ return false; }
+}
+/* 🔁 재능은 있는데 지금 스쿼드에 자리가 없다 — 방출 대신 임대를 보낸다 (요청) */
+function aiLoanOutYoung(from, p){
+  try{
+    if(!from || !p || p.loan || p.army) return false;
+    const mv=marketValue(p)||1;
+    const cands=[];
+    for(const id in G.teams){
+      const t=G.teams[id];
+      if(!t || t===from || t.isUser || isArmyTeam(t)) continue;
+      if((t.players||[]).length>=30) continue;
+      if(p.ovr < teamOVR(t)-8) continue;                 // 그 팀에서도 못 뛸 수준이면 의미가 없다
+      if(frnQ(p) && t.players.filter(q=>frnQ(q)).length >= (t.div===1?6:5)) continue;
+      cands.push(t);
+    }
+    if(!cands.length) return false;
+    /* 출전 기회가 있는 곳 — 아래 리그·약팀 우선 */
+    cands.sort((a,b)=>(teamOVR(a)+(a.div===1?4:0))-(teamOVR(b)+(b.div===1?4:0)));
+    const to=cands[Math.floor(Math.random()*Math.min(4, cands.length))];
+    from.players.splice(from.players.indexOf(p),1);
+    to.players.push(p);
+    p.loan={own:from.id, to:to.id, until:G.season+1, half:false, share:0.5, buy:false, fee:null,
+            s:G.season, apps0:p.apps||0, mv0:mv, backR:null, inbound:1};
+    try{ clearClubBaggage(p, clamp((p.morale||70)+6, 30, 99)); joinClub(to, p, false); }catch(e){}
+    p.ct=Math.max(p.ct||0, 2);                            // 원소속과의 계약은 살려 둔다
+    if(p.ovr>=68 || dispPot(p)>=170)
+      addNews(`🔁 ${from.short}, ${p.name}(${G.season-(p.by||2000)}세) ${to.short}으로 임대 — 출전 시간을 주기 위한 결정`, null, "club");
+    return true;
+  }catch(e){ return false; }
+}
 function aiCtYears(p){
   const age=G.season-(p.by||2000);
   if(age<=23) return 4+R(2);                 // 4~5년 — 유망주는 길게 묶는다
@@ -17007,14 +17053,26 @@ function startNewSeason(){
            한다」. 젊은 핵심의 비싼 연봉은 놓아줄 이유가 아니라 다시 잡거나 팔 이유다 —
            연봉 부담 감액을 젊은 상위 자원(27세 이하 · OVR 70+)에게는 거의 적용하지 않는다. */
         const youngStar = age<=27 && p.ovr>=70;
+        /* 🌱 ⚠ 제보 — 「포텐 160 이상인데 현재 어빌만 보고 FA 대상자로 선정한다」.
+           여태 keepP 가 p.ovr 만 봤다. 잠재력을 함께 본다 — 어리고 재능 있으면 지금 못해도 잡는다. */
+        {
+          const _pot=dispPot(p);
+          if(age<=23)      keepP=Math.max(keepP, _pot>=170?0.999 : _pot>=150?0.995 : _pot>=140?0.985 : keepP);
+          else if(age<=26) keepP=Math.max(keepP, _pot>=170?0.995 : _pot>=150?0.985 : _pot>=140?0.96  : keepP);
+          else if(age<=28) keepP=Math.max(keepP, _pot>=175?0.98  : _pot>=160?0.95  : keepP);
+        }
         if(load>1.55){ keepP *= youngStar ? 0.92 : 0.55; why="wage"; }
+        /* 🚫 놓아주면 안 되는 자원 — 연봉 부담이 있어도 재계약이 정답이다 (요청) */
+        if(aiKeepTalent(p)) keepP=Math.max(keepP, 0.985);
         if(Math.random()<keepP){ p.ct=aiCtYears(p); p.wage=Math.max(p.wage, wageExpect(p.ovr,p.frn,t.div)); }   // 어릴수록 길게 (제보 — 보스만 방어)
         else{
           p._faWhy=why;
           /* 💰 놓아줄 선수라도 그냥 잃지는 않는다 — 계약이 끝나기 전에 팔아 이적료를 회수한다.
              좋은 선수일수록 사겠다는 구단이 있고, 그만큼 시장에는 나오지 않는다. */
           if(!tryPreExpirySale(t, p)){
-            if(youngStar){
+            /* 🔁 재능은 있는데 자리가 없어서 놓으려던 경우 — 임대로 돌린다 (요청) */
+            if(age<=24 && dispPot(p)>=150 && aiLoanOutYoung(t, p)){ p._faWhy=null; }
+            else if(youngStar || aiKeepTalent(p)){
               /* 사겠다는 곳조차 없으면(예산 사정 등) 공짜로 내보내는 대신 1~2년 더 데리고
                  간다 — FA는 나이 들었거나 평범한 선수의 길이다 (제보). */
               p.ct=aiCtYears(p); p.wage=Math.max(p.wage, wageExpect(p.ovr,p.frn,t.div)); p._faWhy=null;
@@ -18495,6 +18553,10 @@ function aiReleaseCheck(){
     const cands=t.players.filter(p=>{
       const age=G.season-p.by, ctExp=(p.ct||1)<=1;
       if(p.army) return false;                    // 복무 중인 선수는 대상이 아니다
+      /* 🌱 ⚠ 제보 — 여기가 「포텐 160짜리 신민하가 FA 로 풀린」 경로다. 정원 초과 정리는
+         현재 능력만 보고 잘라서, 아직 안 자란 특급 유망주가 제일 먼저 걸렸다. */
+      if(aiKeepTalent(p)) return false;
+      if(age<=24 && dispPot(p)>=140) return false;
       if(_over && p.ovr<=avg-3) return true;      // 정원 초과 — 평균에 못 미치면 정리 대상
       if(over && p.ovr<=avg-5 && age>=26) return true;
       return age>=34 || (ctExp&&age>=30) || (ctExp&&p.ovr<=avg-9);
@@ -18687,18 +18749,25 @@ function genOffers(){
      ─ 좋은 선수가 먼저 팔리고, 그 선수를 실제로 필요로 하는 구단이 데려간다.
      ═══════════════════════════════════════════════════════════ */
   if(G.freeAgents && G.freeAgents.length){
-    /* 시장에 사람이 쌓여 있을수록 거래도 활발하다 */
-    const tries=1+Math.floor(Math.min(3, G.freeAgents.length/25));
+    /* 시장에 사람이 쌓여 있을수록 거래도 활발하다.
+       ⚠ 실측(3시즌) — OVR 76 짜리가 3시즌째 시장에 남아 있었다(쟈고 28→30세). 시장 인원도
+       92→146 으로 계속 불었다. 시도 횟수와 성사율이 둘 다 모자랐다.
+       ─ 좋은 자원이 있으면 그만큼 더 자주, 더 확실하게 움직인다 (요청 — 「AI 구단도 필사적으로」). */
+    const _hotFA=G.freeAgents.filter(q=>q && !q.army && (q.ovr>=70 || dispPot(q)>=155)).length;
+    const tries=1+Math.floor(Math.min(3, G.freeAgents.length/25))+Math.min(4, Math.floor(_hotFA/2));
     for(let n=0; n<tries; n++){
-      if(Math.random()>=0.34) continue;
+      if(Math.random() >= (_hotFA>0 ? 0.82 : 0.34)) continue;
       if(!G.freeAgents.length) break;
       /* 능력 가중 추첨 — 표본을 여럿 뽑아 그중 가장 나은 선수가 자리를 찾는다.
          나이가 많으면 그만큼 손이 덜 간다. */
       let fa=null, bs=-1e9;
-      const sample=Math.min(G.freeAgents.length, 14);
+      const sample=Math.min(G.freeAgents.length, 24);   // ⚠ 14 → 24 (좋은 자원이 묻히지 않게)
       for(let i=0;i<sample;i++){
         const c=pick(G.freeAgents); if(!c || c.army) continue;
-        const sc=(c.ovr||60) + Math.random()*9 - Math.max(0,(G.season-(c.by||2000))-30)*1.4;
+        const _cAge=G.season-(c.by||2000);
+        /* 🌱 잠재력도 값이다 — 어리고 재능 있는 FA 는 지금 능력이 낮아도 서로 데려가려 한다 */
+        const _potB=Math.max(0, (dispPot(c)-140))*(_cAge<=24?0.10:_cAge<=27?0.05:0);
+        const sc=(c.ovr||60) + _potB + Math.random()*9 - Math.max(0,_cAge-30)*1.4;
         if(sc>bs){ bs=sc; fa=c; }
       }
       if(!fa) continue;
@@ -18706,7 +18775,9 @@ function genOffers(){
       const want=Object.values(G.teams).filter(t2=>{
         if(t2.isUser || isArmyTeam(t2) || (t2.players||[]).length>=32) return false;
         if(ceAusterity(t2.id)) return false;                           // 🏢 긴축재정 — 지갑을 닫았다
-        if(fa.ovr < teamOVR(t2)-4) return false;                       // 수준이 한참 아래면 관심이 없다
+        /* 좋은 자원·유망주는 문턱을 넓게 본다 — 상위 팀도 「공짜면 데려간다」 (요청) */
+        const _hot2=(fa.ovr>=70 || (dispPot(fa)>=155 && (G.season-(fa.by||2000))<=25));
+        if(fa.ovr < teamOVR(t2)-(_hot2?9:4)) return false;              // 수준이 한참 아래면 관심이 없다
         if(frnQ(fa) && t2.players.filter(q=>frnQ(q)).length >= (t2.div===1?6:5)) return false;   // 외국인 쿼터
         /* ⚠ 정원을 9명으로 잡았더니 수비수(구단 평균 12.8명)는 사실상 아무 데도 못 갔다.
            대분류별 실제 보유 인원에 맞춘다. */
@@ -19817,6 +19888,123 @@ function osAiPick(p){
   let r=Math.random()*tot;
   for(const c of cand){ r-=c.w; if(r<=0) return c.t; }
   return cand[cand.length-1].t;
+}
+/* 🏃 ⚠ 제보 원문 — 「AI 구단이 이적시장 열릴 때부터 적극적으로 움직이지 않는다. 하이재킹을
+   당하거나 먼저 찜 해놓은 선수가 다른 구단으로 이적해서 기회를 잃어본 적이 없다. 이적시장
+   이튿날부터 적극적으로 움직이게 해 달라」.
+   ─ 해외 시장에는 이미 osLink(관심 → 마감 → 계약) 배관이 있는데 국내 시장에는 없었다.
+     같은 구조를 K리그 안에도 놓는다: AI 가 「우리 스쿼드에서 제일 약한 자리」를 보고
+     다른 구단의 알맞은 선수에게 관심을 건다. 마감까지 감독이 못 채가면 그 구단이 데려간다.
+   ─ 유저가 협상 중인 선수는 마감이 미뤄진다(해외 시장과 같은 원칙) — 협상 중 증발은 사고다. */
+const DOM_LINK_MAX=3;              // 리그 전체에서 동시에 진행되는 영입 추진 건수
+/* 포지션별 리그 평균 — 팀 평균과 비교하면 눈금이 어긋난다(GK 는 체계적으로 낮게 나와
+   ⚠ 실측에서 국내 영입이 전부 골키퍼로 쏠렸다). 같은 포지션끼리 비교한다. 하루 캐시. */
+let _DOMPA=null, _DOMPA_D=-1;
+function domPosAvg(){
+  if(_DOMPA && _DOMPA_D===(G.day||0)) return _DOMPA;
+  const sum={GK:0,DF:0,MF:0,FW:0}, cnt={GK:0,DF:0,MF:0,FW:0};
+  try{
+    for(const id in G.teams){ const t=G.teams[id]; if(!t||isArmyTeam(t)) continue;
+      const by={GK:[],DF:[],MF:[],FW:[]};
+      for(const q of (t.players||[])){ if(!q||q.loan||q.army) continue; if(by[q.pos]) by[q.pos].push(q.ovr||60); }
+      for(const pos in by){ const a2=by[pos].sort((x,y)=>y-x).slice(0, pos==="GK"?1:pos==="DF"?4:3);
+        for(const v of a2){ sum[pos]+=v; cnt[pos]++; } } }
+  }catch(e){}
+  const out={}; for(const k in sum) out[k]= cnt[k]? sum[k]/cnt[k] : 66;
+  _DOMPA_D=(G.day||0); return (_DOMPA=out);
+}
+function domWeakPos(t){
+  try{
+    /* 「팀 수준 대비 그 자리가 약한가」를 본다 (요청 원문 — 스쿼드 어빌 대비 부족한 포지션).
+       다만 포지션마다 OVR 눈금이 체계적으로 다르므로(GK 가 낮게 나온다) 리그의 포지션 편차를
+       빼고 비교한다. 안 그러면 모든 구단이 골키퍼만 사러 다닌다(실측). */
+    const PA=domPosAvg();
+    const all=(PA.GK+PA.DF+PA.MF+PA.FW)/4;
+    const base=teamOVR(t);
+    const need=[];
+    for(const pos of ["GK","DF","MF","FW"]){
+      const grp=(t.players||[]).filter(q=>q.pos===pos && !q.loan && !q.army).sort((a,b)=>b.ovr-a.ovr);
+      const top=(pos==="GK")?1:(pos==="DF")?4:3;
+      const want=base + ((PA[pos]||all)-all);          // 이 팀이라면 이 자리에 있어야 할 수준
+      if(grp.length<top+1) { need.push({pos, gap:(pos==="GK"?1.0:2.0)}); continue; }
+      const core=grp.slice(0,top).reduce((s2,q)=>s2+q.ovr,0)/top;
+      const gap=want-core;
+      if(gap>0.5) need.push({pos, gap});
+    }
+    need.sort((a,b)=>b.gap-a.gap);
+    return need[0]||null;
+  }catch(e){ return null; }
+}
+function tickDomesticAI(){
+  try{
+    if(!G.teams || G.jobless || G.phase==="sacked") return;
+    if(typeof transferOpen!=="function" || !transferOpen()) return;
+    const w=windowInfo();
+    if(!w.open || (w.week===1 && (G.day||0)%7<1)) { /* 첫날은 감독에게 양보한다 (요청) */ }
+    const day=G.day||0;
+    G.domLink=Array.isArray(G.domLink)?G.domLink:[];
+    /* ① 진행 중인 건 — 마감이 되면 계약한다 */
+    for(let i=G.domLink.length-1;i>=0;i--){
+      const L=G.domLink[i];
+      const to=G.teams[L.tid], from=G.teams[L.fid];
+      const p=from&&(from.players||[]).find(q=>q.id===L.pid);
+      if(!to||!from||!p||p.loan){ G.domLink.splice(i,1); continue; }
+      if(G.nego && G.nego.pid===L.pid){ L.due=Math.max(L.due, day+5); continue; }   // 협상 중이면 미룬다
+      if(day<L.due) continue;
+      const fee=Math.round(Math.min(marketValue(p)*(0.85+Math.random()*0.35), Math.max(0.1,(to.budget||0)))*10)/10;
+      if((to.budget||0)<fee || (to.players||[]).length>=32){ G.domLink.splice(i,1); continue; }
+      to.budget=Math.round(((to.budget||0)-fee)*10)/10;
+      from.budget=Math.round(((from.budget||0)+fee)*10)/10;
+      from.players.splice(from.players.indexOf(p),1);
+      to.players.push(p);
+      try{ clearClubBaggage(p, 72); joinClub(to, p); p.ct=aiCtYears(p);
+           p.wage=Math.round(Math.max(p.wage||0, wageExpect(p.ovr,p.frn,to.div))*10)/10; }catch(e){}
+      G.domLink.splice(i,1);
+      addNews(`💸 <b>${to.name}</b>, ${from.short} ${p.name}(${G.season-(p.by||2000)}세 ${POS_KO[p.pos]||p.pos}) 영입 — 이적료 ${fee}억`, "warn", "club",
+        {cat:"transfer", ic:"💸", tone:-1, tid:to.id,
+         head:`${to.short}, ${p.name} 영입 완료`, sub:`이적료 ${fee}억. 관심을 두고 있던 구단들은 한발 늦었다.`, src:"K리그 공식"});
+      try{ if(slFind && slFind(p.id)) flash(`💸 관심 목록의 <b>${p.name}</b>이(가) ${to.short}으로 갔습니다 — 한발 늦었습니다.`,"warn"); }catch(e){}
+    }
+    /* ② 새 관심 — 이적시장 이튿날부터 (요청) */
+    if(day<1) return;
+    if(G.domLink.length>=DOM_LINK_MAX) return;
+    if(Math.random()>=0.55) return;
+    const clubs=Object.values(G.teams).filter(t=>!t.isUser && !isArmyTeam(t) && !ceAusterity(t.id)
+      && (t.players||[]).length<31 && (t.budget||0)>3);
+    if(!clubs.length) return;
+    const to=pick(clubs);
+    const need=domWeakPos(to); if(!need) return;
+    const _mine=(to.players||[]).filter(q=>q.pos===need.pos && !q.loan && !q.army).sort((a,b)=>b.ovr-a.ovr);
+    /* 주전 라인의 「가장 약한 고리」를 기준으로 삼는다 — 그보다 나으면 전력 보강이다 */
+    const _topN=(need.pos==="GK")?1:(need.pos==="DF")?4:3;
+    const curBest=_mine.length? (_mine[Math.min(_topN,_mine.length)-1].ovr) : 0;
+    /* 그 자리를 실제로 메워 줄 선수 — 다른 AI 구단의 여유 자원 (유저 선수는 제안 경로가 따로 있다) */
+    const pool=[];
+    for(const id in G.teams){
+      const from=G.teams[id];
+      if(!from || from===to || from.isUser || isArmyTeam(from)) continue;
+      if((from.players||[]).length<=21) continue;
+      for(const q of (from.players||[])){
+        if(!q || q.loan || q.army) continue;
+        if(q.pos!==need.pos) continue;
+        if(q.ovr < curBest+0.5) continue;                   // 주전 라인의 약한 고리보다 나아야 산다
+        if(aiKeepTalent(q) && Math.random()<0.72) continue;  // 원소속이 웬만해선 안 판다
+        if(frnQ(q) && to.players.filter(x=>frnQ(x)).length>=(to.div===1?6:5)) continue;
+        if(marketValue(q) > (to.budget||0)) continue;
+        pool.push({q, from});
+      }
+    }
+    if(!pool.length) return;
+    pool.sort((a,b)=>b.q.ovr-a.q.ovr);
+    const tgt=pool[Math.floor(Math.random()*Math.min(5, pool.length))];
+    if(G.domLink.some(L=>L.pid===tgt.q.id)) return;
+    G.domLink.push({pid:tgt.q.id, tid:to.id, fid:tgt.from.id, due:day+3+R(5)});
+    const nm=tgt.q.name;
+    addNews(`📰 <b>${to.name}</b>, ${tgt.from.short} ${nm} 영입 추진 — ${POS_KO[need.pos]||need.pos} 보강이 급하다`, null, "club",
+      {cat:"transfer", ic:"📰", tone:0, tid:to.id,
+       head:`${to.short}, ${nm} 영입 추진`, sub:`${to.short}는 ${POS_KO[need.pos]||need.pos} 자리를 시즌 내내 고민해 왔다. 협상은 마무리 단계로 알려졌다.`, src:pick(MEDIA)});
+    try{ if(slFind && slFind(tgt.q.id)) flash(`📰 관심 목록의 <b>${nm}</b>에게 <b>${to.short}</b>이(가) 접근했습니다 — 서두르세요.`,"warn"); }catch(e){}
+  }catch(e){}
 }
 function tickOverseasAI(){
   if(!G.teams || !userTeam() || G.phase==="sacked") return;
@@ -53472,7 +53660,8 @@ function oneTouchEval(a, b, opps, gk){
           오면 30m 밖까지 그냥 때렸다 — 하이라이트에 남는 건 대부분 이쪽이다.
        ─ 같은 눈금(0 자제 · 1 보통 · 2 적극)을 여기에도 건다. */
     let _ls=1; try{ _ls=clamp(TAC(a.team).longShot, 0, 2); }catch(e){ _ls=1; }
-    s *= (0.42 + _ls*0.58);                               // 0 → 0.42배 · 1 → 1.00배 · 2 → 1.58배
+    /* ⚠ 재계측(제보 재확인) — 자제 쪽을 더 누른다. 가운데(1.00)·적극(1.58)은 그대로. */
+    s *= _ls<1 ? (0.30 + _ls*0.70) : (1.00 + (_ls-1)*0.58);   // 0 → 0.30배 · 1 → 1.00배 · 2 → 1.58배
   }
   /* 상황 가산 — 스펙이 지목한 장면들 */
   if(b.isCross && b.crossType===CROSS_TYPE.CUTBACK) s += 0.30;   // 컷백 — 원터치의 교과서
@@ -54865,8 +55054,8 @@ function evaluateShot(a, opps, ctx){
     const lsDecay = far<=1 ? (1-far*0.30) : Math.max(0.05, 0.70-(far-1)*0.44);
     const skDecay = far<=1 ? 1            : Math.max(0.15, 1-(far-1)*0.55);
     score += lsLerp(LS_PREF,ls)*lsDecay + ((a.lngSkill||0.6)-0.6)*lsLerp(LS_SKILL,ls)*skDecay;
-    // "자제" 쪽으로 밀수록 통로가 열려 있어도 굳이 때리지 않는다
-    if(ls<0.5) score -= 0.25*(1-ls*2);
+    // "자제" 쪽으로 밀수록 통로가 열려 있어도 굳이 때리지 않는다 (⚠ 재계측 — 0.25→0.36)
+    if(ls<0.5) score -= 0.36*(1-ls*2);
   }
   /* 🎯 28m 밖 — 프로 선수는 여기서 그냥 때리지 않는다. 때린다면 이유가 있다:
      골키퍼가 골문을 비우고 나와 있을 때다. 그 명분이 없으면 거리만큼 값을 깎는다. */
@@ -56068,7 +56257,7 @@ function evaluatePassOptions(carrier, mates, opps, ctx){
      이 둘이 「짧게 돌린다 / 앞으로 붙인다」의 실제 내용이다. */
   const _pT = clamp((ctx.passTac==null?1:ctx.passTac)-1, -1, 1);
   const _pDist = clamp(1 - _pT*0.42, 0.58, 1.42);   // 롱볼 ×0.58 · 짧게 ×1.42
-  const _pProg = 1.35 + _pT*0.40;                   // 짧게 0.95 · 롱볼 1.75
+  const _pProg = 1.35 + _pT*0.55;                   // 짧게 0.80 · 롱볼 1.90 (⚠ 재계측 — 전진 성향 폭 확대)
   for(const m of mates){
     if(m.id===carrier.id) continue;
     const dx=(m.x-carrier.x)*PITCH_AR, dy=m.y-carrier.y;
@@ -63713,7 +63902,13 @@ class MatchSim{
                   bu.state===BU_STATE.PROGRESS) && bu.press<0.55){
           const A2=(a.p&&a.p.attr)||{};
           const cmp2=clamp(attr20(A2.cmp!=null?A2.cmp:60)/20, 0.15, 1);
-          base *= 0.46 + (1-cmp2)*0.22;      // 침착한 선수일수록 더 빨리 돌린다
+          /* 🎚️ ⚠ 제보 — 「패스 템포가 수비수에게는 적용 안 된다」. 이 빠른 순환 배수가 템포
+             슬라이더와 무관하게 걸려 후방에서 템포 차이가 절반쯤 지워졌다(실측 DF 3.2~4.2s vs
+             MF 3.8~4.2s). 보통·빠름은 예전 그대로, 느리게 쪽으로 갈수록 순환 가속이 풀린다. */
+          const _ov2=0.46 + (1-cmp2)*0.22;
+          const _tk2=this.tempoK(a.side);                        // 0.70(매우 빠름)~1.30(매우 느림)
+          const _mix2=clamp((1.30-_tk2)/0.30, 0, 1);             // 1.0 이하(보통~빠름)=1 → 예전과 동일
+          base *= 1 - (1-_ov2)*_mix2;        // 템포 보통·빠름이면 예전 배수 그대로, 느리면 가속 해제
         }
       }
       /* ⚠ 압박이 강하면 소유 시간을 줄이는 보정을 넣어 봤지만(1.16-press*0.66),
@@ -64324,7 +64519,11 @@ class MatchSim{
          되돌린다. 태클이 늘면 파울도 늘지만, 지금 파울은 90분 환산 18.3 회로
          실축(22)보다 낮아 여유가 있다. 그리고 실축에서 파울의 주된 출처는
          공중볼이 아니라 <b>태클</b>이다 — 구성이 제자리를 찾는 쪽이다. */
-      if(Math.random() > (slide?0.006:0.009)*markEdge/(TEMPO*1.5)*(0.8+T.tackle*0.2)) continue;
+      /* 🎚️ ⚠ 제보 — 「압박이 좀 너무 적극적인 느낌」. 실측: 압박 0 팀의 태클 20·파울 16이
+         압박 4 팀(23·23)과 거의 같았다 — 시도율이 태클 강도만 보고 압박 지시를 안 읽었다.
+         압박을 내리면 덜 달려들고(견제 위주), DELAY(지연) 목적자는 발을 아낀다. 보통(1.0)은 그대로. */
+      const _prK=(0.72+((T.press!=null?T.press:1))*0.28) * ((o._pressPurpose===PRESS_PURPOSE.DELAY)?0.55:1);
+      if(Math.random() > (slide?0.006:0.009)*markEdge/(TEMPO*1.5)*(0.8+T.tackle*0.2)*_prK) continue;
       const atk=o.tackleSkill*(0.75+T.tackle*0.18)*(slide?1.28:1.0);   // 슬라이딩이 성공률은 더 높다
       // 퍼스트 터치가 나쁘면 압박에서 볼이 발에서 튄다 — 태클을 버티는 힘도 떨어진다
       const keep=carrier.dribSkill*1.25*(0.72+(carrier.firstTouch||0.6)*0.46);
@@ -71771,6 +71970,7 @@ function stepDay(){
   try{ armyAutoFloor(); }catch(e){}  // 상무 정원이 위험하게 비면 연맹이 채운다
   try{ facDailyTick(); }catch(e){}   // 🏛️ 구단 박물관·투어 — 경기가 없는 날도 번다
   try{ tickOverseasAI(); }catch(e){} // 해외 시장 — 타 구단도 뛰어든다 (이적시장 기간만)
+  try{ tickDomesticAI(); }catch(e){} // 🏃 국내 시장 — AI 도 약한 자리를 메우러 움직인다 (요청)
   try{ scoutTick(); }catch(e){}     // 🔎 스카우트 — 파견 기간이 차면 보고가 한 건씩 올라온다
   try{ acMonthTick(); }catch(e){}   // 🎩 코치진 월 급여 — 매달 1일, 이적 예산에서
   try{ acNegoRivalTick(); }catch(e){} // 🏃 협상 중인 스태프를 타 구단이 채 간다 (우수 이상)
@@ -76425,7 +76625,14 @@ function cmSquadPack(){
     return {tn:cmEsc(t.name,16), sh:cmEsc(t.short,8),
       col:/^#[0-9a-fA-F]{3,8}$/.test(t.col||"")?t.col:"#2a6ee8",
       sn:G.season|0, dv:t.div|0, rk:rk|0, av:Math.round(av*10)/10, to:Math.round(to*10)/10, vl:val,
-      tac:{formation:cmEsc((t.tactic&&t.tactic.formation)||"4-3-3",8)}, pl};
+      /* ⚠ 제보 원문 — 「커뮤니티 오류 발견했어요. 제 글 보시면 4-2-1-3인데 4-3-1-2로
+         표시되어 있네요」. 원인 — 여기만 t.tactic.formation(드롭다운에서 고른 키)을 그대로
+         실었다. 감독이 선수를 끌어다 실제 배치를 바꾸면 전술창·라인업·PvP 는 전부
+         formationLabel(실제 슬롯에서 센 이름)을 보여주는데 커뮤니티만 옛 키를 보여줬다.
+         재현: 4-3-1-2 선택 후 드래그로 4-2-1-3 배치 → 전술창 "4-2-1-3" · 글 "4-3-1-2".
+         ─ 화면과 같은 근거(formationLabel)를 쓴다. 실패하면 예전처럼 저장 키로 떨어진다. */
+      tac:{formation:cmEsc((function(){ try{ return formationLabel(t, xi) || (t.tactic&&t.tactic.formation) || "4-3-3"; }
+                                        catch(e){ return (t.tactic&&t.tactic.formation)||"4-3-3"; } })(), 8)}, pl};
   }catch(e){ return null; }
 }
 /* 스쿼드 카드 렌더 — 전술판 그림 + 요약 줄 + 선발 명단 */
@@ -77684,7 +77891,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-7400";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-7700";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
