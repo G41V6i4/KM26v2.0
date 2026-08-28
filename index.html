@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-7700-->
+<!--B:20260912-7900-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1896,6 +1896,58 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
   .cmRule{margin-left:0;text-align:left}
 }
 
+/* ═══ 🎰 도박 — 실제로 굴러가는 판 (요청: 「CSS로 게임들을 이미지화, 진짜 게임하는 것처럼」) ═══ */
+.gmStage{display:flex;align-items:center;justify-content:center;min-height:104px;
+  background:radial-gradient(ellipse at 50% 30%,#1b4d33,#0f2a1d 70%);
+  border:1px solid #2c5c40;border-radius:10px;padding:12px;margin:8px 0;
+  box-shadow:inset 0 2px 14px rgba(0,0,0,.55);perspective:700px;overflow:hidden}
+.gmStage.win{border-color:#3fb95088;box-shadow:inset 0 2px 14px rgba(0,0,0,.5),0 0 16px #3fb95033}
+
+/* 🪙 동전 */
+.gmCoinBox{width:76px;height:76px;perspective:600px}
+.gmCoin{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transition:transform 1.15s cubic-bezier(.22,.7,.25,1)}
+.gmCoin i{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-style:normal;font-weight:900;font-size:23px;backface-visibility:hidden;
+  border:3px solid #b8860b;box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 0 14px rgba(255,255,255,.22)}
+.gmCoin .gcF{background:linear-gradient(150deg,#ffe08a,#e0a52c 55%,#b8860b);color:#5a3c05}
+.gmCoin .gcB{background:linear-gradient(150deg,#dfe6ee,#a9b4c2 55%,#7d8a99);color:#2b3542;transform:rotateY(180deg)}
+
+/* 🎲 주사위 */
+.gmDiceBox{width:74px;height:74px;perspective:600px}
+.gmDice{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transition:transform 1.15s cubic-bezier(.2,.72,.24,1)}
+.gmDice i{position:absolute;width:74px;height:74px;border-radius:12px;background:linear-gradient(150deg,#fdfdfd,#d7dde5);
+  border:1px solid #aab3bd;box-shadow:inset 0 0 12px rgba(0,0,0,.14);
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:9px;gap:2px}
+.gmDice i b{width:12px;height:12px;border-radius:50%;background:#22282f;align-self:center;justify-self:center;
+  box-shadow:inset 0 -1px 2px rgba(255,255,255,.35)}
+.gmDice .d1{transform:translateZ(37px)}
+.gmDice .d2{transform:rotateY(90deg) translateZ(37px)}
+.gmDice .d3{transform:rotateY(180deg) translateZ(37px)}
+.gmDice .d4{transform:rotateY(-90deg) translateZ(37px)}
+.gmDice .d5{transform:rotateX(90deg) translateZ(37px)}
+.gmDice .d6{transform:rotateX(-90deg) translateZ(37px)}
+
+/* 🎰 슬롯 */
+.gmSlot{display:flex;gap:7px;padding:9px 11px;border-radius:10px;
+  background:linear-gradient(#2a1b10,#150d07);border:2px solid #7a5a2a;
+  box-shadow:inset 0 0 16px rgba(0,0,0,.7), 0 0 0 3px #3b2a14}
+.gmReel{width:56px;height:74px;overflow:hidden;border-radius:6px;position:relative;
+  background:linear-gradient(#f6f2e8,#ddd6c6);box-shadow:inset 0 4px 8px rgba(0,0,0,.35),inset 0 -4px 8px rgba(0,0,0,.35)}
+.gmReel .gmStrip{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;align-items:center;will-change:transform}
+.gmReel .gmStrip span{height:74px;line-height:74px;font-size:33px;text-align:center;width:100%}
+.gmReel::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(rgba(0,0,0,.30),transparent 34%,transparent 66%,rgba(0,0,0,.30))}
+.gmSlot.hit .gmReel{box-shadow:inset 0 4px 8px rgba(0,0,0,.3),inset 0 -4px 8px rgba(0,0,0,.3),0 0 12px #ffd76a}
+
+/* 결과 배너 */
+.gmRes{margin-top:9px;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.3px}
+.gmRes.win{color:#4ade80;text-shadow:0 0 14px #3fb95055;animation:gmPop .45s ease-out}
+.gmRes.lose{color:#ff7b72}
+@keyframes gmPop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.gmRolling{opacity:.55;pointer-events:none}
+@media(max-width:560px){ .gmReel{width:46px;height:62px} .gmReel .gmStrip span{height:62px;line-height:62px;font-size:27px} }
 
 </style>
 </head>
@@ -30729,6 +30781,330 @@ function mgrDebtCard(){
     <p class="small" style="margin-top:9px;color:var(--sub)">미납금은 <b>순자산에서 부채로 잡힙니다.</b> 남아 있는 동안 감독 평판에도 영향을 줍니다.</p>
   </div>`;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   🎰 도박 — ⚠ 요청 원문 「자산 메뉴에서 [기부] 탭 오른쪽에 [도박] 탭을 만들자.
+      거기서 보유현금을 걸고 도박게임을 하는거지」.
+   ─ 설계 원칙 ─────────────────────────────────────────────────
+     · 주식·부동산·사채와 같은 「감독 사생활」 계열이다. 공짜 돈이 아니라 위험이어야 한다.
+       세 게임 모두 하우스 엣지를 넣어 기대값이 1 아래다(오래 하면 반드시 잃는다).
+     · 진짜 위험은 돈이 아니라 <b>직업</b>이다. K리그 감독이 도박판에 앉아 있는 게 알려지면
+       기사가 나고, 구단주 신뢰와 평판이 깎이고, 협회 조사까지 간다. 판이 클수록 위험도 크다.
+     · 크게 잃고 있으면 화면이 그 사실을 정직하게 알려 준다.
+   ═══════════════════════════════════════════════════════════════ */
+/* ⚠ 설계 검산 — 처음에 슬롯을 3개 일치 ×24 · 2개 일치 ×1.6 으로 잡았더니 환수율이
+   107.8% 로 <b>플레이어에게 유리</b>했다(기호 7종: 3개 일치 2.04% · 2개 일치 36.7%).
+   그대로 뒀으면 돌리기만 해도 돈이 불어나는 「도박」이 될 뻔했다. 2개 일치를 1.15 로 낮춰
+   환수율 91.2% 로 맞춘다 — 잭팟(×24)의 손맛은 그대로 두고 기대값만 1 아래로.
+     환수율: 동전 97.5% · 주사위 홀짝 97.5% · 숫자 지목 90.0% · 슬롯 91.2% */
+const GAM_EDGE={coin:1.95, dOdd:1.95, dNum:5.4, slot3:24, slot2:1.15};
+const GAM_SYM=["🍒","🔔","🍋","⭐","💎","7️⃣","🍀"];
+const GAM_BAN_D=28;            // 협회 징계 — 이 기간 동안 판에 못 앉는다
+let GAM_AMT="", GAM_PICK={coin:"H", dice:"odd", num:1};
+let GAM_BUSY=null;          // 🎬 지금 굴러가는 중 — 연출이 끝날 때까지 버튼을 잠근다
+function gamOf(){
+  const M=me();
+  if(!M.gam) M.gam={bets:0, won:0, lost:0, heat:0, s:G.season, sAmt:0, big:0, banUntil:0, last:null, caught:0};
+  const g=M.gam;
+  if(g.s!==G.season){ g.s=G.season; g.sAmt=0; }     // 시즌이 바뀌면 그 해 판돈만 리셋(이력은 남는다)
+  return g;
+}
+function gamBanned(){ const g=gamOf(); return (g.banUntil||0)>(G.day||0); }
+/* 한 판 상한 — 순자산에 비례하되 절대 상한을 둔다. 무한 배팅으로 게임을 부수지 않게. */
+function gamMax(){
+  const M=me();
+  let nw=0; try{ nw=netWorth()/1e8; }catch(e){ nw=M.cash; }
+  return Math.max(0.1, Math.round(Math.min(Math.max(1, nw*0.15), Math.max(0.1, M.cash))*100)/100);
+}
+function gamSetAmt(v){ GAM_AMT=String(v||"").replace(/[^0-9.]/g,""); }
+function gamPickSet(k,v){ GAM_PICK[k]=(k==="num")?clamp(parseInt(v,10)||1,1,6):v; show("mylife"); }
+function gamAmtQuick(f){ const M=me(); GAM_AMT=String(Math.round(Math.min(gamMax(), M.cash*f)*100)/100); show("mylife"); }
+/* 판이 끝날 때마다 열기(heat)가 오른다 — 판돈이 클수록, 자주 할수록 */
+function gamHeat(bet){
+  const g=gamOf(), M=me();
+  const rel=clamp(bet/Math.max(0.5, M.cash+bet), 0, 1);
+  g.heat=clamp((g.heat||0) + 0.35 + rel*1.6 + (bet>=5?0.5:0), 0, 100);
+}
+function gamPlay(kind){
+  const M=me(), g=gamOf();
+  if(GAM_BUSY) return;                       // 🎬 굴러가는 중 — 연타 방지
+  if(G.phase==="sacked"){ flash("지금은 그럴 때가 아닙니다.","warn"); return; }
+  if(gamBanned()){ flash(`⛔ 협회 징계 중입니다 — ${Math.ceil((g.banUntil-(G.day||0)))}일 남았습니다.`,"warn"); return; }
+  const bet=Math.round((parseFloat(GAM_AMT)||0)*100)/100;
+  if(!(bet>0)){ flash("걸 금액을 입력하세요.","warn"); return; }
+  if(bet>M.cash){ flash("보유 현금이 모자랍니다.","warn"); return; }
+  if(bet>gamMax()){ flash(`한 판 상한은 ${gamMax().toFixed(2)}억입니다.`,"warn"); return; }
+  mePay(-bet, null);
+  g.bets++; g.lost=Math.round(((g.lost||0)+bet)*100)/100;
+  g.sAmt=Math.round(((g.sAmt||0)+bet)*100)/100;
+  if(bet>=(g.big||0)) g.big=bet;
+  let pay=0, line="", detail="", res=null;
+  if(kind==="coin"){
+    const r=Math.random()<0.5?"H":"T";
+    res=r;
+    const hit=(r===GAM_PICK.coin);
+    detail=`${r==="H"?"앞면":"뒷면"} — 내 선택 ${GAM_PICK.coin==="H"?"앞면":"뒷면"}`;
+    if(hit) pay=bet*GAM_EDGE.coin;
+    line=`🪙 동전이 ${r==="H"?"앞면":"뒷면"}으로 떨어졌습니다.`;
+  } else if(kind==="dice"){
+    const r=1+Math.floor(Math.random()*6);
+    res=r;
+    if(GAM_PICK.dice==="num"){
+      detail=`주사위 ${r} — 내 지목 ${GAM_PICK.num}`;
+      if(r===GAM_PICK.num) pay=bet*GAM_EDGE.dNum;
+    } else {
+      const odd=(r%2===1);
+      detail=`주사위 ${r}(${odd?"홀":"짝"}) — 내 선택 ${GAM_PICK.dice==="odd"?"홀":"짝"}`;
+      if((odd&&GAM_PICK.dice==="odd")||(!odd&&GAM_PICK.dice==="even")) pay=bet*GAM_EDGE.dOdd;
+    }
+    line=`🎲 주사위가 ${r} 을(를) 보였습니다.`;
+  } else {
+    const a=[0,0,0].map(()=>GAM_SYM[Math.floor(Math.random()*GAM_SYM.length)]);
+    res=a;
+    detail=a.join(" ");
+    if(a[0]===a[1]&&a[1]===a[2]) pay=bet*GAM_EDGE.slot3;
+    else if(a[0]===a[1]||a[1]===a[2]||a[0]===a[2]) pay=bet*GAM_EDGE.slot2;
+    line=`🎰 ${a.join(" ")}`;
+  }
+  pay=Math.round(pay*100)/100;
+  if(pay>0){ mePay(pay, null); g.won=Math.round(((g.won||0)+pay)*100)/100; }
+  const net=Math.round((pay-bet)*100)/100;
+  g.last={kind, bet, pay, net, line, detail, res, t:(G.day||0)};
+  gamHeat(bet);
+  /* 📒 가계부에는 판마다 남긴다 — 나중에 「내가 얼마를 태웠나」를 볼 수 있게 */
+  meLog(`${net>=0?"＋":"－"}${Math.abs(net).toFixed(2)}억 · 🎰 ${kind==="coin"?"동전":kind==="dice"?"주사위":"슬롯"} (판돈 ${bet.toFixed(2)}억)`);
+  /* 대박은 소문이 난다 — 큰 배당은 그 자체로 발각 위험이다 */
+  if(pay>=bet*8 && pay>=3){ g.heat=clamp((g.heat||0)+6, 0, 100);
+    try{ pushSocial(pick([
+      "감독님 어제 어디서 목격됐다는 소문 도는데 진짜냐",
+      "우리 감독 요즘 씀씀이가 좀 이상하다는 얘기가 있던데"]), -1); }catch(e){} }
+  /* 🎬 발각 판정과 화면 갱신은 연출이 끝난 뒤에 — 굴러가는 중에 화면이 갈아엎히면 안 된다 */
+  saveGame();
+  GAM_BUSY={kind};
+  try{
+    const box=document.getElementById("gmStage");
+    if(box){
+      const btns=document.querySelectorAll("#main .gmBtn");
+      btns.forEach(b=>b.classList.add("gmRolling"));
+      const rs=document.getElementById("gmRes");
+      if(rs){ rs.className="gmRes"; rs.textContent="…"; }
+      gamRoll(kind, res, ()=>{
+        GAM_BUSY=null;
+        try{ gamCatchRoll(); }catch(e){}
+        saveGame(); show("mylife");
+      });
+      return;
+    }
+  }catch(e){}
+  GAM_BUSY=null;
+  try{ gamCatchRoll(); }catch(e){}
+  show("mylife");
+}
+/* 🚨 발각 — 열기가 높을수록 기자·협회의 눈에 걸린다 */
+function gamCatchRoll(force){
+  const g=gamOf(), M=me(), t=userTeam();
+  if(G.jobless && !force) { g.heat=clamp((g.heat||0)*0.9,0,100); return false; }
+  const h=g.heat||0;
+  const p=clamp((h-12)/260, 0, 0.16);
+  if(!force && Math.random()>=p) return false;
+  g.caught=(g.caught||0)+1;
+  g.heat=clamp(h*0.35, 0, 100);
+  const hard=(g.caught>=2 || (g.big||0)>=8);
+  const nm=t?t.short:"구단";
+  if(hard){
+    /* 협회 조사 — 벌금 + 활동 정지(도박 금지). 승부조작 의혹까지 번진다. */
+    const fine=Math.round(Math.min(Math.max(1, (g.big||1)*0.8), 12)*100)/100;
+    try{ mgrFine(fine, "도박 물의"); }catch(e){}
+    g.banUntil=(G.day||0)+GAM_BAN_D;
+    try{ adjustTrust("owner", -12, "감독 도박 물의"); adjustTrust("fans", -8, "감독 도박 물의"); }catch(e){}
+    try{ if(G.press) G.press.rel=clamp((G.press.rel||50)-14, 0, 100); }catch(e){}
+    try{ G.mgrRepMod=(G.mgrRepMod||0)-4; }catch(e){}
+    try{ sponScandal("감독 도박 물의", 2); }catch(e){}
+    addNews(`🚨 <b>${nm} 감독, 도박 물의로 협회 조사</b> — 제재금 ${fine}억`, "warn", "club",
+      {cat:"club", ic:"🚨", tone:-1, tid:(t?t.id:null),
+       head:`${nm} 감독 도박 물의 — 협회 조사 착수`,
+       sub:`복수의 목격담이 이어졌다. 협회는 제재금과 함께 재발 방지를 요구했다. 승부조작과의 연관성은 확인되지 않았다.`,
+       src:"K리그 공식"});
+    notify(`🚨 <b>도박이 발각됐습니다.</b> 제재금 <b>${fine}억</b> · 구단주 신뢰 −12 · 팬 신뢰 −8<br><span class="small">${GAM_BAN_D}일간 판에 앉을 수 없습니다.</span>`,"warn");
+    try{
+      socialFill(["감독이 도박이라니... 진짜 실망이다","성적도 성적인데 이건 좀 아니지","구단은 뭐하고 있었냐",
+        "이런 사람한테 우리 팀을 맡긴 거였나"], 3+R(2), -1, {t:nm});
+      fmkFill([["{t} 감독 도박 물의 ㄷㄷ 이거 커지겠는데",-1],
+        ["감독 도박 = 승부조작 의심부터 받는다 그게 이 바닥",-1],
+        ["{t} 프런트 지금 머리 아프겠다",-1]], 2+R(2), {t:nm});
+    }catch(e){}
+  } else {
+    /* 첫 발각 — 기사 한 줄과 경고 */
+    try{ adjustTrust("owner", -5, "감독 사생활 구설"); }catch(e){}
+    try{ if(G.press) G.press.rel=clamp((G.press.rel||50)-5, 0, 100); }catch(e){}
+    addNews(`📰 <b>${nm} 감독, 사생활 구설</b> — "판돈이 오가는 자리에 있었다"는 목격담`, "warn", "club");
+    notify(`📰 <b>기자에게 포착됐습니다.</b> 구단주 신뢰 −5 · 언론 관계 −5<br><span class="small">한 번 더 걸리면 협회가 움직입니다.</span>`,"warn");
+    try{ socialFill(["감독님 그 소문 사실 아니죠?","기사 봤는데 좀 그렇더라","실력으로만 말해주셨으면 좋겠다"], 2+R(2), -1, {t:nm}); }catch(e){}
+  }
+  return true;
+}
+/* 하루가 지나면 열기는 식는다 — 다만 완전히 사라지지는 않는다 */
+function gamDayTick(){
+  try{
+    const M=me(); if(!M || !M.gam) return;
+    const g=M.gam;
+    g.heat=clamp((g.heat||0)*0.86, 0, 100);
+    if(g.heat>=18 && Math.random()<0.04) gamCatchRoll(true);
+  }catch(e){}
+}
+
+/* ── 🎨 판을 그린다 (요청 — 「CSS로 이미지화, 진짜 게임하는 것처럼」) ─────────────
+   결과는 gamPlay 가 이미 정했다. 여기서는 그 결과로 <b>끝나도록</b> 굴려 보여 줄 뿐이다.
+   (연출이 결과를 바꾸지 않는다 — 애니메이션 중 새로고침해도 값은 그대로다) */
+const GM_PIP={1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]};
+function gmDiceFace(n){
+  const on=GM_PIP[n]||[];
+  let h="";
+  for(let i=0;i<9;i++) h += on.indexOf(i)>=0 ? "<b></b>" : "<span></span>";
+  return h;
+}
+/* 주사위 큐브를 그 숫자가 정면에 오도록 돌리는 각 */
+const GM_DROT={1:[0,0], 2:[0,-90], 3:[0,180], 4:[0,90], 5:[-90,0], 6:[90,0]};
+function gmCoinHtml(face){
+  const deg = face==="T" ? 180 : 0;
+  return `<div class="gmCoinBox"><div class="gmCoin" id="gmCoin" style="transform:rotateY(${deg}deg)">
+    <i class="gcF">앞</i><i class="gcB">뒤</i></div></div>`;
+}
+function gmDiceHtml(n){
+  const R=GM_DROT[n]||[0,0];
+  return `<div class="gmDiceBox"><div class="gmDice" id="gmDice" style="transform:rotateX(${R[0]}deg) rotateY(${R[1]}deg)">
+    ${[1,2,3,4,5,6].map(k=>`<i class="d${k}">${gmDiceFace(k)}</i>`).join("")}</div></div>`;
+}
+function gmSlotHtml(syms, hit){
+  return `<div class="gmSlot ${hit?"hit":""}" id="gmSlot">${syms.map((sy,i)=>
+    `<div class="gmReel"><div class="gmStrip" id="gmStrip${i}"><span>${sy}</span></div></div>`).join("")}</div>`;
+}
+/* 지금 무대에 무엇을 세워 둘 것인가 — 판을 돌리기 전(대기)과 돌린 뒤(결과) */
+function gamStage(){
+  const g=gamOf(), L=g.last;
+  const kind=(GAM_BUSY&&GAM_BUSY.kind) || (L&&L.kind) || "coin";
+  let inner="", cls="";
+  if(kind==="coin"){
+    inner=gmCoinHtml((L&&L.kind==="coin")?L.res:GAM_PICK.coin);
+  } else if(kind==="dice"){
+    inner=gmDiceHtml((L&&L.kind==="dice")?L.res:1);
+  } else {
+    const sy=(L&&L.kind==="slot"&&L.res)?L.res:[GAM_SYM[0],GAM_SYM[3],GAM_SYM[5]];
+    inner=gmSlotHtml(sy, !!(L&&L.kind==="slot"&&L.net>0));
+  }
+  if(L && L.net>0 && !GAM_BUSY) cls=" win";
+  return `<div class="gmStage${cls}" id="gmStage">${inner}</div>
+    <div class="gmRes ${L?(L.net>0?"win":"lose"):""}" id="gmRes">${
+      GAM_BUSY ? "…" : (L ? (L.net>0?`+${L.net.toFixed(2)}억`:`−${Math.abs(L.net).toFixed(2)}억`) : "&nbsp;")
+    }</div>`;
+}
+/* 실제로 굴린다 — DOM 을 직접 만져서 화면 전체를 다시 그리지 않는다 */
+function gamRoll(kind, res, cb){
+  try{
+    const st=document.getElementById("gmStage");
+    if(!st){ cb&&cb(); return; }
+    if(kind==="coin"){
+      st.innerHTML=gmCoinHtml("H");
+      const el=document.getElementById("gmCoin");
+      const end=(res==="T"?180:0)+1800;                 // 다섯 바퀴 돌고 결과 면으로
+      requestAnimationFrame(()=>{ el.style.transform=`rotateY(${end}deg)`; });
+      setTimeout(()=>{ cb&&cb(); }, 1180);
+    } else if(kind==="dice"){
+      st.innerHTML=gmDiceHtml(1);
+      const el=document.getElementById("gmDice");
+      const R=GM_DROT[res]||[0,0];
+      requestAnimationFrame(()=>{ el.style.transform=`rotateX(${R[0]+720}deg) rotateY(${R[1]+1080}deg)`; });
+      setTimeout(()=>{ cb&&cb(); }, 1180);
+    } else {
+      /* 릴 세 개 — 긴 띠를 위로 굴려 마지막 칸이 결과가 되게 하고, 하나씩 순서대로 멈춘다 */
+      st.innerHTML=gmSlotHtml(res, false);
+      const H=(window.innerWidth<=560)?62:74;
+      for(let i=0;i<3;i++){
+        const strip=document.getElementById("gmStrip"+i); if(!strip) continue;
+        const spin=14+i*4;                                // 릴마다 도는 양이 다르다
+        let h="";
+        for(let k=0;k<spin;k++) h+=`<span>${GAM_SYM[Math.floor(Math.random()*GAM_SYM.length)]}</span>`;
+        h+=`<span>${res[i]}</span>`;
+        strip.innerHTML=h;
+        strip.style.transition="none";
+        strip.style.transform="translateY(0)";
+        const dist=spin*H;
+        const dur=0.85+i*0.28;
+        requestAnimationFrame(()=>{
+          strip.style.transition=`transform ${dur}s cubic-bezier(.16,.62,.2,1)`;
+          strip.style.transform=`translateY(-${dist}px)`;
+        });
+      }
+      setTimeout(()=>{ cb&&cb(); }, 1560);
+    }
+  }catch(e){ cb&&cb(); }
+}
+function gamCard(){
+  const M=me(), g=gamOf();
+  const net=Math.round(((g.won||0)-(g.lost||0))*100)/100;
+  const mx=gamMax();
+  const a=Math.round((parseFloat(GAM_AMT)||0)*100)/100;
+  const heat=Math.round(g.heat||0);
+  const hCol = heat>=45?"#f85149" : heat>=22?"#ff9d5c" : heat>=8?"#d29922" : "#3fb950";
+  const hTxt = heat>=45?"매우 위험" : heat>=22?"주목받는 중" : heat>=8?"소문이 돈다" : "조용함";
+  const L=g.last;
+  const banned=gamBanned();
+  const btn=(k,l,tip)=>`<button class="mini gmBtn" ${banned?"disabled style=\"opacity:.4;padding:10px 14px\"":`style="padding:10px 14px;border-color:var(--gold);color:var(--gold);font-weight:800"`} title="${tip}" onclick="gamPlay('${k}')">${l}</button>`;
+  const pk=(k,v,l)=>`<button class="mini ${GAM_PICK[k]===v?"sel":""}" style="padding:5px 12px" onclick="gamPickSet('${k}','${v}')">${l}</button>`;
+  return `<div class="card">
+    <h3>🎰 지하 카지노 <span class="small">— 감독 사비를 겁니다. 구단 돈은 걸 수 없습니다</span></h3>
+    <div class="stkSum">
+      <div><span>보유 현금</span><b class="money">${moneyEok(M.cash)}</b></div>
+      <div><span>누적 손익</span><b style="color:${net>=0?"var(--green)":"#f85149"}">${net>=0?"+":""}${net.toFixed(2)}억</b></div>
+      <div><span>지금까지</span><b>${g.bets||0}판</b></div>
+      <div><span>발각 위험</span><b style="color:${hCol}">${hTxt}</b></div>
+    </div>
+    ${banned?`<div class="msg warn" style="margin-top:9px">⛔ <b>협회 징계 중</b> — ${Math.ceil(g.banUntil-(G.day||0))}일간 판에 앉을 수 없습니다.</div>`:""}
+    ${heat>=22&&!banned?`<div class="msg warn" style="margin-top:9px">👀 <b>주변의 눈이 늘었습니다.</b> 판을 쉬면 소문은 가라앉습니다 — 계속하면 기사가 납니다.</div>`:""}
+    ${(net<=-3)?`<div class="msg warn" style="margin-top:9px">🧾 지금까지 <b>${Math.abs(net).toFixed(2)}억</b>을 잃었습니다.
+      <span class="small">세 게임 모두 오래 할수록 잃도록 설계돼 있습니다 — 본전을 노리는 판이 제일 위험합니다.</span></div>`:""}
+    ${gamStage()}
+    ${L&&!GAM_BUSY?`<div class="small" style="text-align:center;color:var(--sub);margin-top:-4px">
+      ${L.detail} · 판돈 ${L.bet.toFixed(2)}억${L.net>0?` → 배당 <b style="color:var(--green)">${L.pay.toFixed(2)}억</b>`:" → 꽝"}</div>`:""}
+    <div style="margin-top:11px">
+      <div class="small" style="color:var(--sub);margin-bottom:4px">판돈 <span style="opacity:.8">— 한 판 상한 <b>${mx.toFixed(2)}억</b></span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="text" inputmode="decimal" placeholder="금액(억)" value="${GAM_AMT}" oninput="gamSetAmt(this.value)"
+               style="width:120px;padding:8px;background:#0d1117;border:1px solid var(--line);border-radius:6px;color:var(--txt)">
+        <button class="mini" style="padding:5px 10px" onclick="gamAmtQuick(0.1)">10%</button>
+        <button class="mini" style="padding:5px 10px" onclick="gamAmtQuick(0.25)">25%</button>
+        <button class="mini" style="padding:5px 10px" onclick="gamAmtQuick(1)">최대</button>
+      </div>
+    </div>
+    <div style="margin-top:13px;padding-top:11px;border-top:1px solid var(--line)">
+      <div style="margin-bottom:5px"><b>🪙 동전 던지기</b> <span class="small" style="color:var(--sub)">— 적중 ×${GAM_EDGE.coin}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${pk("coin","H","앞면")} ${pk("coin","T","뒷면")}
+        ${btn("coin","🪙 던진다", "50% · 배당 1.95배")}
+      </div>
+    </div>
+    <div style="margin-top:13px;padding-top:11px;border-top:1px solid var(--line)">
+      <div style="margin-bottom:5px"><b>🎲 주사위</b> <span class="small" style="color:var(--sub)">— 홀짝 ×${GAM_EDGE.dOdd} · 숫자 지목 ×${GAM_EDGE.dNum}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${pk("dice","odd","홀")} ${pk("dice","even","짝")} ${pk("dice","num","숫자 지목")}
+        ${GAM_PICK.dice==="num"?`<select onchange="gamPickSet('num',this.value)" style="padding:5px">
+          ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${GAM_PICK.num===n?"selected":""}>${n}</option>`).join("")}</select>`:""}
+        ${btn("dice","🎲 굴린다", "홀짝 50% · 숫자 지목 16.7%")}
+      </div>
+    </div>
+    <div style="margin-top:13px;padding-top:11px;border-top:1px solid var(--line)">
+      <div style="margin-bottom:5px"><b>🎰 슬롯머신</b> <span class="small" style="color:var(--sub)">— 3개 일치 ×${GAM_EDGE.slot3} · 2개 일치 ×${GAM_EDGE.slot2}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="small" style="opacity:.7">${GAM_SYM.join(" ")}</span>
+        ${btn("slot","🎰 돌린다", "3개 일치 2% · 2개 일치 37%")}
+      </div>
+    </div>
+    <p class="small" style="margin-top:12px;color:var(--sub)">
+      세 게임 모두 <b>기대값이 판돈보다 낮습니다</b> — 오래 할수록 잃습니다. 그게 도박입니다.<br>
+      진짜 위험은 돈이 아닙니다. K리그 감독이 판돈 오가는 자리에 앉아 있는 게 알려지면
+      <b>기사가 나고, 구단주 신뢰가 깎이고, 협회가 움직입니다.</b> 판이 클수록 눈에 띕니다.</p>
+  </div>`;
+}
 /* 💝 기부 화면 — 무직이면 잠긴다 */
 function donCard(){
   const why=donBlockWhy();
@@ -30982,6 +31358,8 @@ function mylifeView(){
     body=stkView();
   } else if(meTab==="don"){
     body=donCard();
+  } else if(meTab==="gam"){
+    body=gamCard();
   } else if(meTab==="debt"){
     body=mgrDebtCard();
   } else {
@@ -31032,7 +31410,7 @@ function mylifeView(){
     <div class="card"><h3>👔 감독 위신</h3><div style="font-size:26px;color:var(--gold)">${pres}</div>
       <p class="small" style="margin-top:6px">선수 영입 설득력과 재계약 성공률에 반영됩니다.<br>집 ${h.pres>=0?"+":""}${h.pres} · 부동산 ${Math.min(15,M.props.length*3).toFixed(0)} · 현금 ${clamp(M.cash*0.05,0,10).toFixed(1)}</p></div>
   </div>
-  <div style="margin:10px 0">${tab("home","🏠 거주")} ${tab("prop","🏢 부동산")} ${tab("stock","📈 주식")} ${tab("shop","🛍️ 쇼핑 · 선물")} ${tab("bank","🏦 은행")} ${tab("don","💝 기부")}${(M.debt||0)>0?" "+tab("debt","⚖️ 미납금"):""} ${tab("log","📒 가계부")}</div>
+  <div style="margin:10px 0">${tab("home","🏠 거주")} ${tab("prop","🏢 부동산")} ${tab("stock","📈 주식")} ${tab("shop","🛍️ 쇼핑 · 선물")} ${tab("bank","🏦 은행")} ${tab("don","💝 기부")} ${tab("gam","🎰 도박")}${(M.debt||0)>0?" "+tab("debt","⚖️ 미납금"):""} ${tab("log","📒 가계부")}</div>
   ${body}`;
 }
 /* ---------- 공통 렌더 ---------- */
@@ -71971,6 +72349,7 @@ function stepDay(){
   try{ facDailyTick(); }catch(e){}   // 🏛️ 구단 박물관·투어 — 경기가 없는 날도 번다
   try{ tickOverseasAI(); }catch(e){} // 해외 시장 — 타 구단도 뛰어든다 (이적시장 기간만)
   try{ tickDomesticAI(); }catch(e){} // 🏃 국내 시장 — AI 도 약한 자리를 메우러 움직인다 (요청)
+  try{ gamDayTick(); }catch(e){}     // 🎰 도박 — 소문(열기)은 하루마다 식는다
   try{ scoutTick(); }catch(e){}     // 🔎 스카우트 — 파견 기간이 차면 보고가 한 건씩 올라온다
   try{ acMonthTick(); }catch(e){}   // 🎩 코치진 월 급여 — 매달 1일, 이적 예산에서
   try{ acNegoRivalTick(); }catch(e){} // 🏃 협상 중인 스태프를 타 구단이 채 간다 (우수 이상)
@@ -77891,7 +78270,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-7700";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-7900";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
