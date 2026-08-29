@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260913-1400-->
+<!--B:20260913-3400-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -10102,6 +10102,7 @@ function tickInjuryDays(){
   try{ const ut=userTeam(); if(ut) for(const p of (ut.players||[])) if(painOn(p)) p.cond=Math.min(p.cond||90, 72); }catch(e){}
   walk(G.freeAgents, false);      // FA도 시간이 흐르면 낫는다
   walk(G.overseas, false);
+  try{ devUnattachedTick(); }catch(e){}   // 🧳 무적 선수도 매일 조금씩 변한다 (아래 주석)
   /* 🌏 해외 클럽(EACL·CWC)도 시간이 흐르면 낫는다 — 유저전에서 다친 선수가 시즌 내내
      부상자 명단에 갇혀 있었다 (제보 — 컨디션·회복 패치의 해외 구단 동일 적용) */
   try{ for(const k in (G.eaclClubs||{})){ const c=G.eaclClubs[k]; if(c&&c.s===G.season&&c.t) walk(c.t.players, false); } }catch(e){}
@@ -15571,6 +15572,26 @@ function matchDayRecoverAll(){
   if(G._mdRecDay===d) return;
   G._mdRecDay=d;
   for(const id in G.teams){ try{ matchDayRecover(G.teams[id]); }catch(e){} }
+}
+/* ═══ 🧳 무적 선수의 발달 ══════════════════════════════════════════════════════
+   ⚠ 제보 확인 — developPlayer 를 부르는 곳이 <b>세 곳 모두 팀 단위 루프</b>여서,
+      FA 시장·해외 시장 선수는 <b>성장도 하락도 전혀 없었다.</b> 능력치가 얼어붙은 채
+      리그만 흘러가, 몇 시즌 지나면 시장에 「나이만 먹고 실력은 그대로인」 선수가 쌓인다.
+   ─ 소속이 없으니 훈련 환경도 없다. 2부 수준 환경·최저 시설·감독 없음으로 된 대역 소속을
+      만들어 그대로 통과시킨다. 출전 기록(p.mn)이 0 이라 playShare 도 0 —
+      즉 「안 뛰니까 늘지 않는다」가 저절로 성립하고, 나이 곡선만큼 서서히 내려간다.
+   ⚠ 해외 진열대 선수는 제외한다 — 그쪽은 원본 정의 기준으로 나이를 되돌리는 목록이라
+      (startNewSeason 의 나이 고정 주석 참고) 능력만 계속 깎이면 전설이 몇 시즌 만에
+      허수아비가 된다. 원본이 없는 항목만 늙고 깎인다. */
+const FREE_ENV={id:"__free", div:2, trainLv:1, isUser:false, players:[]};
+function devUnattachedTick(){
+  const _dev=(p)=>{ try{ developPlayer(FREE_ENV, p, null); }catch(e){} };
+  for(const p of (G.freeAgents||[])) _dev(p);
+  if(Array.isArray(G.overseas) && G.overseas.length){
+    let def=null;
+    try{ def={}; for(const d of OVERSEAS_DEF) def[d.name]=1; }catch(e){ def=null; }
+    for(const p of G.overseas) if(!def || !def[p.osKey||p.name]) _dev(p);
+  }
 }
 function applyDayToTeam(t, pl){
   try{ famUseTick(t); }catch(e){}      // 📋 실전 감각은 하루씩 옅어진다
@@ -54878,8 +54899,24 @@ function oneTouchEval(a, b, opps, gk){
   if(b.state==="LOOSE") s += 0.10;                        // 흐른 공 — 잡을 여유가 없다
   if(aerial) s -= 0.10;                                   // 공중볼은 기본적으로 어렵다
 
-  /* 문턱 — 박스 안은 낮게, 밖은 높게. 골문에서 멀수록 "합리적"이기 어렵다 */
-  const need = inBox ? 1.30 : 1.66;
+  /* 문턱 — 박스 안은 낮게, 밖은 높게. 골문에서 멀수록 "합리적"이기 어렵다.
+     📏 20260913-1800 호출 스택 계측(n=4) — 슛이 어디서 나오는지 전수로 셌다:
+         원터치(여기)        <b>17.0/경기 · 53%</b>
+         크로스 받아 때리기     11.25
+         잡고 판단해서 슛(evaluateShot)  3.0   ← 사실상 죽은 길이다
+         세트피스              1.0
+       즉 SHOT_BIAS 도 1대1 하한선도 슛 총량의 손잡이가 아니었다. <b>원터치가 수도꼭지다.</b>
+       (앞선 두 시도: SHOT_BIAS -0.71 → 슛 -2.3 · 하한선 조이기 → 슛 -1.15. 둘 다 헛다리)
+     ─ 실축 총 슛 23 에 맞추려면 원터치를 절반 가까이 줄여야 한다. */
+  /* 📏 20260913-2000 — 거리대별 슛(실축 추정치와 비교):
+        근거리(<11m)  7.0  ≈ 6   ✓
+        중거리(11~20m) <b>17.2</b>  vs 9   ← 초과분이 전부 여기다
+        장거리(>20m)  5.3  vs 8   (오히려 모자란다)
+     ─ 문턱을 계단(박스 안/밖)이 아니라 <b>거리 함수</b>로 바꾼다. 6m 탭인은 그대로 두고
+       11~17m 의 「받자마자 그냥 때리기」만 강하게 누른다. */
+  /* ⚠ 돌파·태클 시도를 줄이면 캐리어가 공을 덜 잃어 공격이 길어지고 슛이 되레 는다
+     (2400→2600 실측: 슛 24.9→27.9). 그 되돌아온 몫을 여기서 다시 깎는다. */
+  const need = inBox ? (1.32 + clamp((g.distM-6)/11, 0, 1)*0.75) : 1.98;
   const ok = s>=need;
   return {ok, score:s, need, g, blk, inBox, aerial, speedK, inLine, faceK};
 }
@@ -55023,7 +55060,23 @@ const GK_HOLD_MAX=3.2;             // 🧤 키퍼가 공을 안고 버틸 수 �
       즉 손잡이가 <b>둘</b>이다. save 계수만으로는 60% 언저리에서 포화하고,
       나머지는 아래 근거리(14m 안) 도달 감쇠가 쥐고 있었다. 둘을 같이 풀어야 실축에 닿는다.
    ⚠ 0.97 상한에 걸려 있던 것도 함께 열었다(아래 clamp). */
-const SAVE_BASE=1.00;
+/* 📏 20260913-1900 짝지은 계측(같은 시드 30쌍) — 원터치 문턱을 올린 뒤:
+      슛 35.6→29.0 · 유효슛 <b>8.63(실축 8 — 이미 맞다)</b> · 골 3.2→<b>4.2</b> · 선방률 66.8→<b>50.8</b>
+   즉 남은 문제는 슛의 개수가 아니라 <b>유효슛의 전환율</b>이다.
+     지금  8.63 유효슛 → 4.2 골 = 전환 48.7%
+     실축  8.0  유효슛 → 2.45 골 = 전환 30.6% (선방률 70%)
+   ⚠ 쓰레기 중거리슛이 사실 「쉬운 선방」으로 선방률을 떠받치고 있었다 — 그걸 걷어내니
+      선방률이 16pp 무너졌다. 골키퍼 자체를 올려야 한다. */
+/* ⚠ 태클·돌파를 실축 수준으로 내리자 선방률이 71 → 60.6 으로 도로 무너졌다.
+   수비 경합이 줄면 공격수가 더 좋은 자리에서 때린다(근거리슛 5.9→7.5) — 대가를 키퍼가 치른다.
+   1.22 → 66.8% · 1.30 → 60.6%(경합 감소 후) → 1.45 로 다시 올린다. */
+/* ⚠ 되풀이되는 저울 — 공격을 살리는 변화(경합 감소·박스 침투)는 매번 선방률을 끌어내린다.
+   더 좋은 자리에서 때리니 당연하다. 그때마다 키퍼를 같이 올려야 한다.
+   1.45→66.5% · 1.55→66.7% · 1.64→66.8% · (박스 침투 후) 59.4% → 1.92 */
+/* 📏 세 번 재 보니 1.80→64.7% · 1.86→75.2% · 1.92→74.1% 로 <b>단조롭지 않다</b> —
+   n=30 에서 선방률의 짝 차이 SE 가 5pp 안팎이라 이 구간은 노이즈에 묻힌다.
+   같은 세 빌드의 골은 2.43 · 1.87 · 2.03 (평균 2.1, 실축 2.45) 이므로 조금 내린다. */
+const SAVE_BASE=1.74;
 const SHOT_DIV=46;          // 거리 감쇠 분모 — 작을수록 먼 거리 슛이 줄어든다
 /* 🎯 「키퍼와 1대1」 하한선이 성립하는 최소 골문 각(rad) — evaluateShot 주석 참고.
    0.30 ≈ 17°: 정면 24m 에서 보이는 골문 각. 측면 12m·전방 12m 지점(0.31)은 통과,
@@ -55035,7 +55088,10 @@ const SHOT_1V1_ANGLE=0.30;
       정규 90분으로 다시 재니 -2.58 이 팀당 15.9슛 · 경기당 3.0골로 실제에 가장 가깝다. */
 /* ⚠ 시계 배율을 2→1 로 내리면서 경기당 시뮬 시간이 2배가 됐다.
       같은 성향이면 슛도 2배로 나온다(실측 팀당 36회) — 그만큼 문턱을 올린다. */
-const SHOT_BIAS=-3.40;
+/* 📏 회귀 하네스 n=20 기준선(20260913-1600): 슛 36.4 · 골 3.45 · 유효슛% 27.8
+   실축 K리그: 슛 23 · 골 2.45 · 유효슛% 35 → 슛을 37% 줄여야 한다.
+   ADJ 0.16→0 과 함께 문턱을 0.55 더 올려 기울기를 잰다. */
+const SHOT_BIAS=-3.95;
 const BLOCK_W=GOAL_HALF*0.55+0.022;   // 수비수가 몸으로 가릴 수 있는 폭
 const SHOT_SPEED=0.275;     // 슛한 공의 비행 속도 (패스보다 빠르다) — 0.239에서 +15% (체감 상향 요청)
 const SHOT_MIN_TICKS=5;     // 아무리 가까워도 이만큼은 날아간다 — 순간이동하지 않게
@@ -55636,12 +55692,16 @@ function meTuneSet(k, v){
       (3경기 계측: 공중볼 8.0 · 땅볼 경합 3.7 · 잡아채기 2.7 · 태클 파울은 거의 0)
       실축에서 공중 경합 파울은 전체의 15~20% 지 절반이 아니다.
       낙하점 경주로 경합 자체가 2배가 됐는데 확률을 덜 내린 탓이다. */
-const AERIAL_FOUL_P=0.075;   // 공중볼 경합에서 파울이 날 확률 (0.045 는 과했다 — 파울 16/90분)
+/* ⚠ 공중볼 경합이 경기당 250회나 잡히므로 이 확률 하나가 파울 총량을 지배한다
+   (0.075 × 250 ≈ 19회 = 파울 30회의 3분의 2). 실축 파울 24회에 맞춰 내린다. */
+const AERIAL_FOUL_P=0.042;   // 공중볼 경합에서 파울이 날 확률 (0.050 → 파울 28.3. 실축 24)
 const SHIRT_FOUL_P=0.0055;   // 제쳐진 수비수가 잡아챌 틱당 확률 (0.0110 → 절반)
 const TACKLE_WON_FOUL=0.40;  // 「공은 따냈는데 파울」 배율 — evW.won 에 곱한다
 const TAKEON_RANGE=0.042;    // 이 거리(약 2.8m) 안에서 앞을 막고 있으면 돌파 대상
-const TAKEON_TRY=0.040;       // 드리블 중 틱당 돌파 시도 확률
-const TAKEON_COOL=1.1;       // 같은 선수의 연속 돌파 쿨다운(초)
+/* 📏 20260913-2100 계측 — 돌파 101.7/경기(양 팀 합) = 팀당 <b>50.9</b>.
+   실축(Opta) 팀당 take-on 은 18~20 회다. 2.6배 과다 — 시도율과 쿨다운을 함께 조인다. */
+const TAKEON_TRY=0.0040;      // 0.040 → 0.015(102) → 0.009(72) → 0.0055(58) → 0.0040. 실축 ~40
+const TAKEON_COOL=2.6;       // 같은 선수의 연속 돌파 쿨다운(초) — 1.1 은 한 장면에서 같은 선수가 너무 여러 번 붙었다
 const TAKEON_POW=3.2;        // 능력치 차이를 증폭하는 지수 — 클수록 슈퍼스타가 더 압도적
 const TAKEON_STAGGER=1.5;
 const TAKEON_FAIL_LOSS=0.72;  // 돌파 실패 시 볼을 잃을 확률
@@ -55678,8 +55738,10 @@ const COMPACT_MAX=0.76;       // 볼이 우리 박스 앞까지 왔을 때의 �
 /* 🧹 패스 길목 차단 반경 배수. 스윕(선분) 판정으로 바꾸면서 0.62 → 0.53 으로 내렸다 —
    같은 반경으로 선분을 보면 차단이 117 → 143 회/경기로 늘어 패스 성공률이 실축(78~82%)
    아래로 떨어졌다. 총량은 예전 수준에 두고, 바뀌는 건 <b>어디서 끊기느냐</b>다. */
-const ITC_MUL=0.53;
-const ITC_BLIND_M=2.2;        // 🧹 발끝 사각 — 찬 공이 이만큼 나가기 전에는 길목 차단이 성립하지 않는다
+/* ⚠ 실패의 구성을 바꾼다 — 오차를 키운 만큼 인터셉트를 줄여야 총 성공률이 유지된다.
+   차단 154/경기(패스의 18.6%)는 실축의 6~8배다. */
+const ITC_MUL=0.31;   /* 0.53 → 0.38(차단 154→122) → 0.31. 실축 패스 성공률 80% */
+const ITC_BLIND_M=3.2;        // 🧹 발끝 사각 — 찬 공이 이만큼 나가기 전에는 길목 차단이 성립하지 않는다 (2.2 →)
 /* 🧹 ⚠ 폐기된 손잡이 기록 — 한때 길목 차단을 「확률 하나」로 눌렀다(ITC_REACT).
    선분 판정만 넣었을 때 차단 총량은 그대로인데(114→119) 골이 2.3 → 4.8 로 두 배가 됐고
    (상대 박스 근처 차단이 1.7 → 4.8 회/경기), 그걸 확률로 되눌렀던 것이다.
@@ -55708,7 +55770,7 @@ const ITC_BLIND_M=2.2;        // 🧹 발끝 사각 — 찬 공이 이만큼 나
    무너졌다. 깨끗한 차단은 수비수가 안전한 자리에서 공을 갖는 것이고, 굴절은 아무도
    못 가진 공을 만드는 것 — 둘의 값이 완전히 다르다. 창을 좁혀 굴절을 예외로 둔다. */
 const ITC_CLEAN=0.06;      // 공보다 이만큼(초) 먼저 닿으면 발을 대고 <b>깔끔하게</b> 끊는다
-const ITC_TOUCH=-0.04;     // 이만큼까지 늦어도 발끝은 닿는다 — 굴절(DEFLECT)
+const ITC_TOUCH=0.00;      // 이만큼까지 늦어도 발끝은 닿는다 — 굴절(DEFLECT) (-0.04 → 굴절 68회 억제)
 /* ⚡ 능력치에서 나오는 상수는 경기 중 바뀌지 않는다 — 선수마다 한 번만 계산해 붙여 둔다.
    (passCutP 가 후보 하나당 여러 번 부르므로 여기서 attr20 을 매번 돌리면 그대로 렉이 된다) */
 function itcConst(o){
@@ -55851,8 +55913,10 @@ function lbAnt(p){
   const A=(p&&p.p&&p.p.attr)||{};
   return clamp((attr20(A.ant!=null?A.ant:60)*0.68 + attr20(A.cnt!=null?A.cnt:60)*0.32)/20, 0.15, 1);
 }
-const SHOT_BIAS_ADJ=0.16;   // 시계가 2배로 흐르는 만큼 슛 빈도를 올려 90분 기록을 채운다    // 슛 남발 억제 (1대1 하한선은 그대로 유지된다)
-const CROSS_ADJ=0.05;         // 크로스 남발 억제   // 포지션 규율 (테스트에서 조정 가능)
+/* ⚠ 이 값은 「시계가 2배로 흐르던 시절」 90분 기록을 채우려고 올려 둔 보정이었다.
+   시계를 1:1 로 되돌린 뒤에도 남아 있어 이중 계산이 되고 있었다 → 0 으로 내린다. */
+const SHOT_BIAS_ADJ=0.00;    // 슛 남발 억제 (1대1 하한선은 그대로 유지된다)
+const CROSS_ADJ=0.30;         // 크로스 남발 억제 (0.05 → 박스에 사람이 생기자 47.4회/경기. 실축 38)   // 포지션 규율 (테스트에서 조정 가능)
 const SPACING_R=0.055;       // 같은 팀끼리 유지하려는 간격 (약 3.7m) — 서로 겹쳐 뛰지 않게
 const SPACING_PUSH=0.006;    // 그 간격을 지키려 목표를 옆으로 미는 힘
 const PUSH_MAX=0.011;        // 한 틱에 밀려나는 최대 거리 (약 0.75m)
@@ -56475,8 +56539,15 @@ function evaluateShot(a, opps, ctx){
         24m 안이면 무조건 0.70+ 를 줬다 — 골문이 8° 로 보이는 터치라인 옆에서도 「키퍼와 1대1」.
         리드 패스가 윙어를 그 자리로 자유롭게 보내기 시작하자 그대로 터졌다.
      ─ 골문이 보여야 1대1 이다. SHOT_1V1_ANGLE 미만이면 하한선을 주지 않는다(아래 통로 보너스만). */
-  if(nb>0.055 && g.distM<24 && nearOpp>0.042 && g.angle>=SHOT_1V1_ANGLE){
-    let _floor = 0.70 + clamp((24-g.distM)/24,0,1)*0.80;
+  /* 📏 20260913-1700 계측 — SHOT_BIAS 를 0.71 올렸는데 슛이 2.3 밖에 안 줄었다(36.4→34.1).
+     이유가 여기 있다: 일반 경로의 슛 점수는 q·SHOT_GAIN + SHOT_BIAS ≈ <b>-0.9</b> 라
+     사실상 아무도 그 길로는 쏘지 않는다. 슛은 거의 전부 이 하한선에서 나온다 —
+     즉 <b>이 블록이 슛 수도꼭지다.</b> SHOT_BIAS 를 만지는 건 장거리 슛만 건드린다.
+     거리별 실측(n=6): 0-11m 9.3 · 11-18m <b>17.0</b> · 18-24m 5.3 · 24-31m 2.7
+     11~18m 가 절반이다. 실축은 이 구간이 7 안팎 — 「박스 앞에 자유롭게 도착해서 그냥 때린다」.
+     ─ 몸 공간·통로 문턱을 올리고, 하한선이 거리를 따라 훨씬 가파르게 떨어지게 한다. */
+  if(nb>0.068 && g.distM<24 && nearOpp>0.055 && g.angle>=SHOT_1V1_ANGLE){
+    let _floor = 0.30 + clamp((24-g.distM)/24,0,1)*1.15;
     /* 🎯 「득점보다는 패스」 — 예전에는 이 하한선이 특성을 통째로 덮어써서, 패스를 선호하는
        선수도 박스 안이면 무조건 때렸다(특성이 화면에만 있고 움직임에는 닿지 않았다).
        골문 앞 확실한 기회(7m 안)는 그대로 때리되, 박스 밖 어정쩡한 각에서는 동료를 먼저 본다. */
@@ -56862,9 +56933,17 @@ const PASS_TYPE={SHORT:"SHORT", LONG:"LONG", THROUGH:"THROUGH", LEAD:"LEAD", SWI
      가로 오차 = 좌우로 빗나감
    ⚠ 모든 값은 여기서 튜닝한다.
 ═══════════════════════════════════════════════════════════════ */
+/* 📏 20260913-2700 계측(n=4, 패스 2867회) — 실행 오차가 사실상 없었다:
+      조준 오차 평균 <b>가로 0.46m · 세로 1.6%</b> · 등급 PERFECT 66% · MISDIRECTED 2.4%
+      그 결과 패스 실패 227회 중 차단 154 + 굴절 68 = <b>222회</b> — 실패가 전부 인터셉트다.
+   실축은 반대다. 패스 실패의 대부분은 「잘못 찬 공」이 흐르거나 라인을 넘는 것이고,
+   인터셉트(Opta)는 패스의 2~3% 에 지나지 않는다. 그래서 실축에서는 소유를 잃어도
+   대개 <b>루즈볼</b>이 되지, 상대에게 깨끗이 넘어가지 않는다 — 이게 우리 엔진에서
+   전환(트랜지션)이 과하게 잦은 구조적 이유다.
+   ─ 오차를 실축 수준(짧은 패스 가로 1.2~1.5m)으로 키우고, 대신 인터셉트를 줄인다. */
 const PE={
-  LAT: 0.135,    // 가로 오차 기준(iso ≈ 9m) — 실력·난이도로 곱해진다
-  LON: 0.32,     // 세로 오차 기준(비율) — 세기 조절 실패
+  LAT: 0.340,    // 가로 오차 기준(iso ≈ 9m) — 실력·난이도로 곱해진다 (0.135 → 계측 기반)
+  LON: 0.520,    // 세로 오차 기준(비율) — 세기 조절 실패 (0.32 →)
   BODY: 0.55,    // 몸 방향이 어긋날 때의 난이도 가중
   PRESS_R: 0.075,
   ONE_TOUCH: 0.42
@@ -61862,8 +61941,10 @@ class MatchSim{
       // 정면 돌파 — 기술이 절반, 나머지는 첫 두 걸음(가속)과 빠져나가는 속도(최고속)
       : AK(a,"dribSkill")*0.52 + AK(a,"accelSkill")*0.30 + AK(a,"topSpeed")*0.18;
     // 수비도 마찬가지다. 발이 느린 센터백은 태클이 아무리 좋아도 윙어를 못 따라간다.
-    const def = AK(target,"tackleSkill")*0.46 + AK(target,"accelSkill")*0.22
-              + AK(target,"topSpeed")*0.18 + AK(target,"posSkill")*0.14;
+    /* 📏 계측 — 돌파 성공률 68.5%(실축 50%). 능력치 배분은 그대로 두고 수비 쪽 저울만 올린다.
+       pWin=r/(1+r), r=(atk/def)^3.2 이므로 def×1.26 이면 0.685 → 0.50 이 된다. */
+    const def = (AK(target,"tackleSkill")*0.46 + AK(target,"accelSkill")*0.22
+              + AK(target,"topSpeed")*0.18 + AK(target,"posSkill")*0.14) * 1.26;
     // 비율 대결 — 1.5배 잘하면 이길 확률이 크게 벌어진다
     const r=Math.pow(atk/Math.max(0.05,def), TAKEON_POW);
     const pWin = clamp(r/(1+r), 0.06, 0.94);
@@ -64215,8 +64296,13 @@ class MatchSim{
     // 압박이 극심하고 옵션도 나쁘면 걷어낸다(롱볼)
     // 역할: 안정형 수비수/안정형 풀백/인버티드 풀백은 애매하면 그냥 걷어낸다
     const cf=FX(carrier,"clearFirst");
-    const wantClear = (cf>0 && best.score < -0.25+cf*0.55 && selfPress > 1.1-cf*0.55)
-                   || (best.score<-0.25 && selfPress>1.1);
+    /* ⚠ 회귀 하네스 첫 실행에서 잡힌 크래시(2026-09-13): opts 가 비면 best 가 undefined 인데
+       여기서만 무방비로 .score 를 읽어 경기가 통째로 터졌다(다른 자리는 전부 !best 를 본다).
+       패스 후보가 하나도 없다 = 갇혔다 → 걷어내는 게 맞는 판단이다. */
+    const _bScore = best ? best.score : -9;
+    const wantClear = !best
+                   || (cf>0 && _bScore < -0.25+cf*0.55 && selfPress > 1.1-cf*0.55)
+                   || (_bScore<-0.25 && selfPress>1.1);
     if(wantClear){
       /* 걷어내기 전에 「안전한 한 발」을 찾는다 — 침착성·기술이 좋을수록 잘 빼낸다.
          안정형 수비수(clearFirst)는 애초에 그냥 걷어내는 쪽을 선호한다. */
@@ -64646,6 +64732,9 @@ class MatchSim{
                   - Math.max(0, cr.dist*ISO_TO_M-26)*0.005 - _bodyPen, 0.10, 1);
     b.crossQ=q;
     /* 오차는 「길이(공 진행 방향)」와 「폭(좌우)」을 나눠서 낸다 — 그래야 종류가 생긴다 */
+    /* ⚠ 되돌림 — 오차를 키우면(0.030/0.056 → 0.042/0.076) 크로스 성공률이 <b>더 올라갔다</b>
+       (36.0% → 40.0%). 공이 더 흩어지면 박스 안 사람 수가 늘어난 지금은 오히려 누군가에게
+       닿기 때문이다. 성공률의 손잡이가 아니다 — 집계 기준(crossHit) 쪽이었다. */
     const base = cr.traj===CROSS_TRAJ.LOW ? 0.030 : 0.056;
     const eLen=(Math.random()-0.5)*2*base*(1.25-q)*1.30;
     const eLat=(Math.random()-0.5)*2*base*(1.25-q)*1.55;
@@ -64712,6 +64801,61 @@ class MatchSim{
     const defs=this.side(this.opp(carrier.side));
     b.offsideAt = isOffsidePos(cr.to, carrier, defs, carrier.dir)
                 ? {x:cr.to.x, y:cr.to.y, by:carrier.side} : null;
+  }
+  /* 🎯 크로스가 우리 편에게 닿았다 — 한 곳에서만 센다.
+     ⚠ 여태 이 집계가 <b>giveTo 경로에만</b> 있었다. 그런데 크로스의 가장 좋은 결말인
+        「그대로 머리로 마무리」·「원터치 슛」은 전부 그 앞에서 return 하므로 한 번도 안 세였다.
+        크로스 성공률이 실축(25%)의 3분의 2로 찍힌 이유가 계수가 아니라 <b>계산</b>이었다. */
+  crossHit(a){
+    const b=this.ball;
+    if(!b.isCross || !b._passer) return;
+    if(a && a.side===b._passer.side) this.stats[b._passer.side].crossOk++;
+    b.isCross=false;
+  }
+  /* 🏃 크로스 예비 침투
+     📏 실측(n=4, 크로스 186회) — 크로스를 <b>올리는 순간</b> 박스 안 우리 선수가 평균 0.55명,
+        57%(106/186)는 <b>한 명도 없다</b>. 수비수조차 평균 1.2명이라 박스가 텅 비어 있다.
+     원인: 침투 배정이 startCross 안, 즉 <b>공이 이미 발을 떠난 뒤</b>에만 돌았다.
+        비행 1.3~2.3초에 «최대 두 명»이 달려 봐야 25m 밖에서 출발하면 못 닿는다.
+        그래서 크로스 성공률이 14~18%(실축 25%)에 머물렀다.
+     ─ 실축은 윙어가 「올릴 자세」를 잡는 순간 이미 니어·중앙·파포스트로 들어가 있다.
+       캐리어가 크로스를 올릴 만한 자리(깊고 넓은 곳)에 들어오면 그때부터 배정한다.
+     ⚠ 전원을 쏟아붓지 않는다 — 세 존에 한 명씩, 그것도 이미 앞에 나가 있는 선수만. */
+  boxPrep(){
+    const b=this.ball;
+    if(b.state!=="SETTLED" || b.setPiece) return;
+    if(this._bpAt!=null && this.t-this._bpAt<0.5) return;
+    const carrier=this.byId(b.ownerId);
+    if(!carrier || carrier.slot==="GK") return;
+    const dir=carrier.dir;
+    if(advOf(carrier, dir)<0.60 || Math.abs(carrier.y-0.5)<0.20) return;
+    this._bpAt=this.t;
+    /* ⚠ 오프사이드 — 존이 최종 수비수 뒤라면 그 자리로 부르면 안 된다(실측 오프사이드 8.4/경기,
+       실축 4). 침투 지점을 라인 앞으로 당겨 놓는다 — 실제 공격수도 라인에 맞춰 선다. */
+    let _line;
+    try{ _line=offsideLineX(this.side(this.opp(carrier.side)), dir); }catch(e){ _line=null; }
+    let zpts;
+    try{ zpts=crossZonePoints(carrier, dir).filter(p=>p.z===CZONE.NEAR||p.z===CZONE.CENTRAL||p.z===CZONE.FAR); }
+    catch(e){ return; }
+    const mates=this.side(carrier.side);
+    const taken={};
+    for(const p of zpts){
+      let best=null, bd=1e9;
+      for(const m of mates){
+        if(m===carrier || m.slot==="GK" || taken[m.id]) continue;
+        const band=SLOT_BAND[m.slot];
+        if(band!=="FW" && band!=="AM" && band!=="MF") continue;
+        if(advOf(m, dir)<0.50) continue;              // 아직 뒤에 있는 선수는 부르지 않는다
+        const d=HYP((p.x-m.x)*PITCH_AR, p.y-m.y);
+        if(d>0.30) continue;                          // 20m 밖이면 제때 못 온다
+        if(d<bd){ bd=d; best=m; }
+      }
+      if(!best) continue;
+      taken[best.id]=1;
+      let _tx=p.x;
+      if(_line!=null) _tx = dir>0 ? Math.min(_tx, _line-0.016) : Math.max(_tx, _line+0.016);   /* 0.006 → 오프사이드 8.7/경기(실축 4) */
+      best._chase={x:clamp01(_tx), y:p.y, until:this.t+1.6};
+    }
   }
   /* 골키퍼의 공중볼 처리 — 박스로 떨어지는 뜬 공을 직접 나와서 잡거나 쳐낸다.
      여태 골키퍼는 크로스가 머리 위로 지나가도 아무 반응이 없었다. 그래서 공중 장악력(aer)이
@@ -65041,11 +65185,16 @@ class MatchSim{
           if(w.side===b._passer.side) this.stats[b._passer.side].passOk++;
           else this.stats[b._passer.side].lost++;
           // 박스 안에서 뜬 공을 따낸 공격수는 잡지 않고 그대로 머리로 마무리한다
+          /* 🎯 경합에서 우리 편이 따냈다 = 크로스 성공.
+             ⚠ 다만 <b>박스 안</b>에서 따낸 것만 센다. 30m 밖에서 우리 미드필더가 머리로
+                따낸 공을 「크로스 성공」이라 부르지는 않는다(실축 집계 기준). */
+          if(w.side===b._passer.side && inBox(w, w.dir)) this.crossHit(w); else if(b.isCross) b.isCross=false;
           if(w.side===b._passer.side && w.slot!=="GK"){
             const hg=shotGeom(w);
             if(hg.distM<16 && (hg.gx-w.x)*w.dir>0.01 &&
                firstTouchShoot(w, hg, b, this.side(this.opp(w.side)),
-                               (b._spBall?0.90:0.74)+(w.headSkill||0.6)*0.26)){
+                               ((b._spBall?0.90:0.74)+(w.headSkill||0.6)*0.26)
+                               * clamp(1-(hg.distM-6)/16, 0.35, 1))){   /* 📏 11~18m 헤더슛 과다 — 거리 감쇠 */
               const gk2=this.side(this.opp(w.side)).find(o=>o.slot==="GK");
               /* ⚽ 뜬 공을 따냈다면 그건 「머리」다. 발로 편하게 마무리하는 공이 아니다.
                  ⚠ 여태 chooseShotType 이 낙하 시점 높이(z≈0)만 보고 근거리 슛으로 처리해,
@@ -65141,12 +65290,14 @@ class MatchSim{
       }
       if(rc && HYP((rc.x-b.x)*PITCH_AR, rc.y-b.y) < reachR){
         this.stats[b._passer.side].passOk++;
+        this.crossHit(rc);                      // 🎯 겨냥한 선수에게 닿았다
         // 경합 상대가 붙지 않은 크로스라도, 박스 안이라면 잡지 않고 그대로 머리로 마무리한다
         if(b.aerial && rc.side===b._passer.side && rc.slot!=="GK"){
           const hg=shotGeom(rc);
           if(hg.distM<17 && (hg.gx-rc.x)*rc.dir>0.005 &&
              firstTouchShoot(rc, hg, b, this.side(this.opp(rc.side)),
-                             0.68+(rc.headSkill||0.6)*0.20)){
+                             (0.68+(rc.headSkill||0.6)*0.20)
+                             * clamp(1-(hg.distM-6)/16, 0.35, 1))){   /* 📏 거리 감쇠 */
             const gk2=this.side(this.opp(rc.side)).find(o=>o.slot==="GK");
             this.resolveShot(rc, hg, chooseShotType(rc, hg, meetBall, gk2)); return;
           }
@@ -65163,8 +65314,9 @@ class MatchSim{
           }
           if(near && nd<AERIAL_RANGE && near.side===b._passer.side){
             const hg=shotGeom(near);
-            if(hg.distM<17 && (hg.gx-near.x)*near.dir>0.005 && Math.random()<0.66+(near.headSkill||0.6)*0.22){
+            if(hg.distM<17 && (hg.gx-near.x)*near.dir>0.005 && Math.random()<(0.66+(near.headSkill||0.6)*0.22)*clamp(1-(hg.distM-6)/16, 0.35, 1)){
               this.stats[b._passer.side].passOk++;
+              this.crossHit(near);              // 🎯 겨냥은 빗나갔어도 우리 편 머리에 닿았다
               const gk2=this.side(this.opp(near.side)).find(o=>o.slot==="GK");
               this.resolveShot(near, hg, chooseShotType(near, hg, meetBall, gk2)); return;
             }
@@ -65472,6 +65624,13 @@ class MatchSim{
            문턱을 크게 웃도는 상황(컷백을 정면으로 받는 등)은 오히려 잡는 것보다 낫다. */
         const marg=clamp((ot.score-ot.need)*0.55, 0, 0.30);
         const acc=clamp(0.92+ot.faceK*0.18+ot.inLine*0.12+(ot.speedK-0.8)*0.16+marg, 0.80, 1.32);
+        /* ⚠ 통계 버그 — 크로스를 원터치로 때리는 건 <b>크로스의 가장 좋은 결말</b>인데,
+           여기서 return 해 버려 아래 crossOk 집계를 건너뛰었다. 그래서 크로스 성공률이
+           8% 대(실축 25%)로 찍혔다. 먼저 세고 나간다. */
+        if(b.isCross && b._passer){
+          if(a.side===b._passer.side) this.stats[b._passer.side].crossOk++;
+          b.isCross=false;
+        }
         this.resolveShot(a, ot.g, type, {oneTouch:true, accK:acc});
         return;
       }
@@ -66188,9 +66347,19 @@ class MatchSim{
          압박 4 팀(23·23)과 거의 같았다 — 시도율이 태클 강도만 보고 압박 지시를 안 읽었다.
          압박을 내리면 덜 달려들고(견제 위주), DELAY(지연) 목적자는 발을 아낀다. 보통(1.0)은 그대로. */
       const _prK=(0.72+((T.press!=null?T.press:1))*0.28) * ((o._pressPurpose===PRESS_PURPOSE.DELAY)?0.55:1);
-      if(Math.random() > (slide?0.006:0.009)*markEdge/(TEMPO*1.5)*(0.8+T.tackle*0.2)*_prK) continue;
+      /* ⚠⚠ 위 문단의 「되돌린다」 판단은 <b>단위를 틀린 것</b>이었다.
+         「태클 16.7회 vs 실축 30~40」에서 16.7 은 <b>팀당</b>, 30~40 은 <b>경기 합계</b>였다.
+         팀당 16.7 = 경기 33 이므로 그때 이미 실축과 맞았는데, 두 배로 올려 경기 54 회
+         (팀당 27) 가 됐다. 실축 Opta 팀당 태클은 15~19 회다. 다시 내린다. */
+      if(Math.random() > (slide?0.0030:0.0045)*markEdge/(TEMPO*1.5)*(0.8+T.tackle*0.2)*_prK) continue;   /* 0.0037/0.0056 → 태클 40.1. 실축 32 */
       const atk=o.tackleSkill*(0.75+T.tackle*0.18)*(slide?1.28:1.0);   // 슬라이딩이 성공률은 더 높다
       // 퍼스트 터치가 나쁘면 압박에서 볼이 발에서 튄다 — 태클을 버티는 힘도 떨어진다
+      /* ⚠ 되돌림(20260913-2500 실측) — 태클 성공률을 낮추려고 keep 을 1.25→1.89 로 올렸더니
+         ① 성공률은 그대로였고(74.3%) ② 캐리어가 안 뺏기니 공격이 길어져 <b>슛 24.9→29.2</b>,
+         중거리슛 12.1→15.3, 크로스 37.6→43.5 로 되레 부풀었다.
+         계산도 틀렸다 — 이미 keep(≈0.75) > atk(≈0.56) 이라 P=1-keep/(2·atk) 이 성립하지 않고,
+         집계되는 tackleWon 에는 이 대결 말고 <b>다른 출처</b>도 섞여 있다(61947).
+         태클 성공률은 여기서 만질 수 있는 손잡이가 아니다. 원복한다. */
       const keep=carrier.dribSkill*1.25*(0.72+(carrier.firstTouch||0.6)*0.46);
       /* 🧤 박스 안에서 공을 다루는 키퍼 — 손에 든 공은 뺏을 수 없다 (실제 규칙).
          박스 밖 발밑 공은 여전히 태클 대상이다. */
@@ -67191,7 +67360,7 @@ class MatchSim{
          ⚠ 한 번은 이 완화가 실패한 것처럼 보였는데(선방률 56.4% → 53.1%), 그건 SAVE_BASE 가
             0.76 이던 빌드와 0.88 이던 빌드를 맞대 놓고 잰 <b>대조 실수</b>였다.
             다른 값을 전부 고정하고 다시 재니 59.8% → 65.4% 로 분명히 움직인다. */
-      if(!isPen && g.distM<14) reach *= 0.70 + (g.distM/14)*0.24;   /* 7m→0.82 · 11m→0.89 · 14m→0.94 */
+      if(!isPen && g.distM<14) reach *= 0.90 + (g.distM/14)*0.10;   /* 7m→0.95 · 11m→0.979 · 14m→1.0 (0.70+0.24 → 0.84+0.15 → 여기) */
       /* 착탄점까지의 실제 거리 — 좌우와 높이를 함께 본다 (§28·§31·§32) */
       /* 서 있는 위치 — Positioning 이 낮으면 각을 조금 잘못 잡고 서 있다 */
       const gy=(gk?gk.y:0.5) + gkPosError(gk, this.ball);
@@ -68212,6 +68381,7 @@ class MatchSim{
     this.updateBallControlState();
     this.moveReferee();
     this.moveAgents();
+    this.boxPrep();          // 🏃 크로스가 날아오기 <b>전에</b> 박스로 들어간다
     /* 🎚️ 속도 평활 갱신 — 이동이 끝난 직후 한 번. 판단(decide)은 이 아래에서 돌므로
        같은 틱의 최신 값을 본다. 선수당 숫자 두 개, 곱셈 두 번이면 된다. */
     for(const _a of this.agents){
@@ -79829,7 +79999,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260913-1400";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260913-3400";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
