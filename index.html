@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-9800-->
+<!--B:20260912-9900-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -6342,6 +6342,21 @@ function assignAITactics(t){
                       T.mentality=Math.random()<0.3?R(2):2;
                       T.tackle=Math.random()<0.4?3+R(2):R(3);       // 약팀은 거친 몸싸움에 의존하는 경향
                       T.longShot=Math.random()<0.4?3+R(2):R(3); }
+  /* ⚠ 배선 감사 — AI 는 press·line·pass·tempo·width·counter·mentality·tackle·longShot 아홉 개만
+     뽑고 있었다. defGap·transSpd·crossFq 는 물론 새로 넣은 defCommit·marking·trap 까지
+     전부 기본값 2(보통)로 고정이라, <b>AI 감독끼리 수비 색깔이 전혀 안 갈렸다</b>.
+     나머지도 여기서 뽑는다 — 라인·성향과 결이 맞도록 묶어서 정한다. */
+  T.defGap   = (T.line<=1 ? R(2) : (T.line>=3 ? 2+R(3) : 1+R(3)));      // 낮은 라인 = 좁게
+  T.transSpd = (T.press>=3 ? 2+R(3) : (T.press<=1 ? R(3) : 1+R(3)));    // 압박 팀이 전환도 빠르다
+  T.crossFq  = (T.width>=3 ? 2+R(3) : (T.pass>=3 ? 2+R(2) : 1+R(3)));   // 넓게·롱볼이면 크로스가 는다
+  /* 🛡️ 수비 가담 인원 — 라인이 낮고 수비적일수록 전원이 내려온다 */
+  T.defCommit = clamp(2 + (T.line<=1?1:0) + (T.mentality<=1?1:0) - (T.line>=3?1:0)
+                        - (T.mentality>=3?1:0) + (Math.random()<0.30?1:0) - (Math.random()<0.30?1:0), 0, 4);
+  /* 🧷 마킹 — 압박이 세면 대인 쪽, 내려앉으면 지역 쪽. 약팀은 대인에 기대는 경향 */
+  T.marking = clamp(2 + (T.press>=3?1:0) - (T.line<=1?1:0)
+                      + (str<69 && Math.random()<0.35?1:0) + (Math.random()<0.25?1:0) - (Math.random()<0.25?1:0), 0, 4);
+  /* 🪤 트랩 — 높은 라인의 무기다. 낮은 라인은 거의 안 쓴다 */
+  T.trap = T.line<=1 ? R(2) : clamp((T.line>=3 ? 2 : 1) + R(3) - 1, 0, 4);
   /* 감독의 색깔 — 공격 성향 감독은 무게를 앞으로, 수비 성향 감독은 실리로 (이정효 19/15 → 닥공) */
   const c=(typeof coachOf==="function")?coachOf(t):null;
   if(c){
@@ -37702,13 +37717,20 @@ function applyPreset(k){
   // 중거리 슛 성향도 프리셋에 맞춘다 — 티키타카는 한 번 더 만들고, 롱볼·역습은 과감하게 때린다
   // 🚌 선수비 후역습 = 수비 간격 「매우 좁게」(defGap 0) — 낮은 라인·수비 성향과 합쳐 텐백이 된다
   /* ⚠ 배선 감사 — crossFq 가 모든 프리셋에서 빠져 있어, 프리셋을 갈아타도 크로스 빈도만 남았다 */
-  const P={tiki: {pass:0,tempo:2,press:3,line:3,width:1,counter:0,mentality:2,tackle:1,longShot:0,defGap:2,crossFq:1},
-           gegen:{pass:2,tempo:4,press:4,line:4,width:2,counter:1,mentality:4,tackle:4,longShot:3,defGap:2,crossFq:2},
-           long: {pass:4,tempo:3,press:1,line:1,width:4,counter:3, mentality:2,tackle:2,longShot:4,defGap:2,crossFq:3},
+  /* ⚠ 배선 감사 2 — transSpd·defCommit·marking·trap 도 빠져 있었다. 특히 park(선수비 후역습)에
+     defCommit 이 없어 <b>텐백 프리셋인데 가담 인원이 보통</b>이었다. 다섯 개 모두 값을 박는다. */
+  const P={tiki: {pass:0,tempo:2,press:3,line:3,width:1,counter:0,mentality:2,tackle:1,longShot:0,defGap:2,crossFq:1,
+                  transSpd:3,defCommit:1,marking:1,trap:3},
+           gegen:{pass:2,tempo:4,press:4,line:4,width:2,counter:1,mentality:4,tackle:4,longShot:3,defGap:2,crossFq:2,
+                  transSpd:4,defCommit:1,marking:3,trap:4},
+           long: {pass:4,tempo:3,press:1,line:1,width:4,counter:3, mentality:2,tackle:2,longShot:4,defGap:2,crossFq:3,
+                  transSpd:2,defCommit:2,marking:2,trap:1},
            /* 🚌 park 의 press 0→2: 텐백 실측에서 press 0 은 블록 「안」의 슈터 도전까지 죽여 실점 17/3경기,
               press 2 는 10/3경기. 깊어진 앵커의 회랑이 전방 추격을 어차피 막아서 압박 2 여도 버스는 유지된다 */
-           park: {pass:3,tempo:0,press:2,line:0,width:0,counter:4, mentality:0,tackle:2,longShot:2,defGap:0,crossFq:2},
-           def:  {pass:2,tempo:2,press:2,line:2,width:2,counter:2,mentality:2,tackle:2,longShot:2,defGap:2,crossFq:2}}[k];
+           park: {pass:3,tempo:0,press:2,line:0,width:0,counter:4, mentality:0,tackle:2,longShot:2,defGap:0,crossFq:2,
+                  transSpd:1,defCommit:4,marking:0,trap:0},
+           def:  {pass:2,tempo:2,press:2,line:2,width:2,counter:2,mentality:2,tackle:2,longShot:2,defGap:2,crossFq:2,
+                  transSpd:2,defCommit:2,marking:2,trap:2}}[k];
   Object.assign(T,P); noteTacticChange(t, liveM?0.35:1); if(liveM) liveM.xiDirty=true; refreshTactics();
 }
 /* 전술 탭 재렌더 통합 진입점 — 경기 중 전술 화면이면 renderLiveTactics, 아니면 평상시 tactics 탭 */
@@ -55642,7 +55664,10 @@ function passCutP(carrier, to, opps, dist, passSkill){
 }
 /* 차단 확률이 패스 점수를 깎는 무게. 예전의 laneBlocked*1.2 를 대신한다 —
    이건 대용치가 아니라 <b>진짜 확률</b>이므로 더 무겁게 본다. */
-const PASS_CUT_W=2.40;
+/* ⚠ 폐기 — 1단계에서 `- pCut*PASS_CUT_W` 로 쓰던 무게. EV 형태
+   ((1−P잃음)×Value − P잃음×Risk)로 재조립하면서 이 역할이 통째로 흡수됐다. 남겨 두면
+   「어딘가에서 쓰이겠지」 하고 다시 만지게 되므로 값이 아니라 기록으로 둔다.
+   const PASS_CUT_W=2.40; */
 const PASS_REFINE_N=5;     // 진짜 확률 모델로 다시 재는 상위 후보 수 (2단 랭킹)
 /* ═══ 🎯 Pass Decision Model ⓪ — 위치 가치 (실측) ═══════════════════════════════════
    ⚠ 2단계(EV 재구성)가 실패한 원인이 여기 있었다 — <b>Value 에 단위가 없었다.</b>
@@ -79631,7 +79656,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-9800";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-9900";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
