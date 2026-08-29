@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-9000-->
+<!--B:20260912-9100-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -406,6 +406,14 @@ body.matchFS .fmPitchPane{max-width:none;}
 .pitchCaption{background:linear-gradient(#0c141b,#0a0f14); border:1px solid #23372b; border-top:none; border-radius:0 0 10px 10px; padding:10px 12px; font-size:13.5px; line-height:1.6; min-height:44px;
   border-left:4px solid var(--cbar,#30363d); transition:border-color .45s ease;}
 .pitchCaption.hot{border-left-color:#e3b341;}
+/* 🎬 흐름 알림 막대 — 「전술을 손볼 틈」을 알리되, 창을 대신 열어 주지는 않는다 (제보) */
+.lvNudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:#141a10;border:1px solid #3d4a24;border-top:none;padding:8px 12px;font-size:12.5px;
+  color:#dbe3ea;animation:lvNudgeIn .18s ease-out}
+.lvNudge .lvNudgeTxt{flex:1;min-width:180px;line-height:1.5}
+.lvNudge button{padding:5px 11px;font-size:12px}
+.lvNudge .lvNudgeGo{border-color:var(--gold);color:var(--gold);font-weight:800}
+@keyframes lvNudgeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .evt-goal{color:var(--goalc, var(--gold)); font-weight:700; border-radius:5px; padding:2px 4px; margin:-2px -4px;}
 .evt-goal.goal-pop{animation:goalPop 1.4s ease-out 2;}
 @keyframes goalPop{
@@ -38119,8 +38127,22 @@ function resumeStashedHL(){
   liveHL.lastAdv=nowMs(); lastHLTick=null;
   setMatchMode(MATCH_MODE.HIGHLIGHT);   // 시계는 장면이 끝날 때까지 계속 멈춰 있다
 }
+/* 🎬 흐름 알림 막대 — 「지금이 손볼 틈」이라고 알려 주기만 한다. 창은 감독이 직접 연다 (제보).
+   같은 막대가 이미 떠 있으면 문구만 갈아 끼운다 — 겹쳐 쌓이지 않는다. */
+function lvNudgeShow(html){
+  const el=document.getElementById("lvNudge"); if(!el) return;
+  el.innerHTML=`<span class="lvNudgeTxt">${html}</span>
+    <button class="mini lvNudgeGo" onclick="lvNudgeHide();openLiveTactics()">📋 전술 손보기</button>
+    <button class="mini" onclick="lvNudgeHide()">그대로 간다</button>`;
+  el.classList.remove("hidden");
+}
+function lvNudgeHide(){
+  const el=document.getElementById("lvNudge");
+  if(el){ el.classList.add("hidden"); el.innerHTML=""; }
+}
 function openLiveTactics(){
   if(!liveM || liveM.done) return;
+  try{ lvNudgeHide(); }catch(e){}
   try{ if(liveSim){ liveM._flowClock=liveSim.clock; liveM._flowSnap={hS:(liveM.st&&liveM.st.hS)||0, aS:(liveM.st&&liveM.st.aS)||0}; } }catch(e){}   // 🎬 전술창 자체가 개입 기회 — 가뭄 시계 리셋
   /* ⚔️ 제보 — 온라인 대전은 양 팀 모두 클론이라 isUser 가 없다. 대전이면 통과시킨다 */
   if(!(liveM.home.isUser || liveM.away.isUser || (liveM.opts && liveM.opts.pvp))) return;
@@ -70905,6 +70927,7 @@ function liveLayout(M, tag){
         <div id="lvSpdPanel" class="lvSpdPanel hidden">${lvSpdPanelHtml()}</div>
         <div id="goalPanel" class="goalPanel hidden"></div>
       </div>
+      <div id="lvNudge" class="lvNudge hidden"></div>
       <div id="pitchCaption" class="pitchCaption">킥오프를 기다리는 중...</div>
       <div class="small" style="text-align:left; margin-top:6px; color:var(--sub)">2D 매치엔진 2.0 by 청백적시메오네</div>
     </div>
@@ -71108,7 +71131,8 @@ function liveTick(){
   // HIGHLIGHT_MODE(2D 연출 중)에는 경기 시계를 멈춘다 — 장면이 다 끝나고 TEXT_MODE로 돌아와야 다음 분으로
   // 넘어간다. 그래야 "전반 종료·후반전 시작"같은 경기 상태가 화면에 나오는 장면보다 앞서가지 않는다.
   if(matchMode===MATCH_MODE.HIGHLIGHT || revealQueue.length || revealTimer || current2DScene){
-    if(liveM && liveSim){ liveM._flowClock=liveSim.clock; liveM._flowSnap={hS:(liveM.st&&liveM.st.hS)||0, aS:(liveM.st&&liveM.st.aS)||0}; }   // 🎬 장면이 나오는 동안 가뭄 시계 리셋
+    if(liveM && liveSim){ liveM._flowClock=liveSim.clock; liveM._flowSnap={hS:(liveM.st&&liveM.st.hS)||0, aS:(liveM.st&&liveM.st.aS)||0};   // 🎬 장면이 나오는 동안 가뭄 시계 리셋
+      try{ lvNudgeHide(); }catch(e){} }                                                    // 장면이 나왔다 — 「가뭄」 알림은 내린다
     /* ⚠ PvP — 호스트 탭이 백그라운드면 rAF 가 죽어 하이라이트가 영영 안 끝난다.
        상대가 실시간으로 기다린다 — 여기서 장면을 밀어 준다 (stepLiveSim 안전망과 동일 수법). */
     if(liveM.opts && liveM.opts.pvp && document.hidden && typeof liveHL!=="undefined" && liveHL){
@@ -71122,6 +71146,9 @@ function liveTick(){
   }
   // 이전 틱에서 하프타임이 우선 처리되어 미뤄진 부상/퇴장 알림이 있으면, 다음 분으로 넘어가기 전에 먼저 처리
   // (재생 중인 장면이 있으면 그게 끝난 뒤에 — 퇴장 장면보다 전술창이 먼저 뜨지 않게)
+  /* ⚠ 여기는 「장면 재생 중이면 안 연다」 가드가 없어 보이지만, 바로 위 조기 return 이
+     matchMode·revealQueue·revealTimer·current2DScene 를 이미 걸러 낸다 — 여기 닿았다면
+     장면은 끝난 뒤다. (아래쪽 짝은 stepLiveSim 이 그 틱에 장면을 시작할 수 있어서 직접 본다) */
   if(liveM.needsSubPause && !liveHL){ liveM.needsSubPause=false;
     if(!(liveM.opts&&liveM.opts.pvp)) { openLiveTactics(); return; } }
   // 교체 — 잠깐 멈추고 해설이 읽어 준다. 양 팀 모두, 바꾼 인원 수만큼 차례로.
@@ -71160,16 +71187,23 @@ function liveTick(){
       liveM._flowSnap={hS:st.hS||0, aS:st.aS||0};
       const _pt=(st.hP||0)+(st.aP||0);                     // ⚠ st.hP 는 틱 카운트 — 백분율로 바꿔 보여준다
       const _hp=_pt>0?Math.round(100*(st.hP||0)/_pt):50;
-      try{ flash(`📊 큰 장면 없이 ${FLOW_PAUSE_MIN}분 — 그동안 슈팅 ${liveM.home.short} ${dHS} : ${dAS} ${liveM.away.short} · 점유 ${_hp}:${100-_hp}. 전술을 손볼 틈입니다.`, "info"); }catch(e){}
-      openLiveTactics();
+      /* ⚠ 제보 원문 — 「경기 중에 교체창이 켜지는 버그가 있다」.
+         버그가 아니라 이 안전망이었다 — 15분 동안 큰 장면이 없으면 <b>전술창을 대신 열어</b> 줬다.
+         하이라이트를 「결정적 장면만」으로 보면 무장면 구간이 20~83분까지 가므로 한 경기에
+         여러 번 튀어나왔고, 보고 있던 화면을 밀어내니 「저절로 켜진다」로 읽혔다.
+         ─ 이제 <b>열지 않는다.</b> 흐름 요약과 함께 「전술 손보기」 버튼만 띄우고,
+           들어갈지 말지는 감독이 정한다. 무시하면 그대로 경기가 흐른다. */
+      try{ lvNudgeShow(`📊 큰 장면 없이 <b>${FLOW_PAUSE_MIN}분</b> — 그동안 슈팅 ${liveM.home.short} <b>${dHS}</b> : <b>${dAS}</b> ${liveM.away.short} · 점유 ${_hp}:${100-_hp}`); }catch(e){}
       return;
     }
   }
   if(liveM.htBreak){ liveM.htBreak=false;
+    try{ lvNudgeHide(); }catch(e){}
     if(liveM.opts&&liveM.opts.pvp){ pvpHalftime(); return; }
     livePaused=true; showHalftimeTalk(liveM); return; }
   if(liveM.done){
     if(liveTimer){clearInterval(liveTimer); liveTimer=null;}
+    try{ lvNudgeHide(); }catch(e){}
     updLiveCtrl("ft");
     // 경기가 끝나는 경로가 여럿이라(하이라이트 종료·시간 만료) 자막은 여기서 한 번에 마무리한다
     const cap=document.getElementById("pitchCaption");
@@ -79093,7 +79127,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-9000";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-9100";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
