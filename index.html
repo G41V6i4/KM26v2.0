@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-8000-->
+<!--B:20260912-8800-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -326,7 +326,8 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
 @keyframes goalflash{0%{color:#fff}50%{color:var(--gold);text-shadow:0 0 18px #e3b341}100%{color:#fff}}
 .lvMin{font-size:15px; color:var(--gold); font-weight:700; margin-top:6px;}
 /* 2D 매치엔진 (바둑알 시각화) */
-#pitch2d,#pvpCv{width:100%; height:auto; display:block; border-radius:8px; border:1px solid var(--line); background:#143a24; transition:opacity .22s, filter .22s;}   /* ⚔️ 게스트 캔버스도 같은 규칙 (제보: 화면 크기 동일) */
+#pitch2d,#pvpCv{width:100%; height:auto; display:block; border-radius:8px; border:none; background:#0d2418;
+  transition:opacity .22s, filter .22s; box-shadow:0 2px 10px rgba(0,0,0,.45);}   /* ⚔️ 게스트 캔버스도 같은 규칙 (제보: 화면 크기 동일) */
 /* ── FM식 경기 풀스크린 — 경기 중에는 메인 메뉴·상단 바를 감추고 경기창이 화면을 채운다 ── */
 /* 경기 중에도 메인 메뉴·날짜 바 모두 표시 (사용자 요청) — matchFS는 여백·레이아웃 조정만 담당 */
 body.matchFS #main{max-width:none; padding:8px 16px;}
@@ -372,11 +373,37 @@ body.matchFS .fmPitchPane{max-width:none;}
 .pitchMode.on{color:#f85149; font-weight:700;}
 /* 코멘터리 강조 — 골·선방 같은 중요한 순간에 CommentaryManager가 동적으로 붙인다 */
 .pitchCaption{transition:background .2s;}
-.pitchWrap{position:relative}
+/* 🏟️ 구장 프레임 (요청 — 「경기장을 좀 더 고급스럽게」) — 캔버스 바깥을 스타디움처럼 감싼다 */
+.pitchWrap{position:relative;
+  padding:6px;border-radius:12px;
+  background:linear-gradient(160deg,#1a2a20,#0d1a13 45%,#0a1410);
+  box-shadow:0 10px 28px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+  border:1px solid #23372b}
+.pitchWrap::before{content:"";position:absolute;inset:6px;border-radius:8px;pointer-events:none;z-index:2;
+  box-shadow:inset 0 0 34px rgba(0,0,0,.55), inset 0 0 3px rgba(180,255,205,.10)}
+/* 조명탑 — 위쪽 두 곳에서 빛이 쏟아진다 */
+.pitchWrap::after{content:"";position:absolute;inset:6px;border-radius:8px;pointer-events:none;z-index:2;
+  background:radial-gradient(ellipse 42% 34% at 22% -6%, rgba(200,235,255,.13), transparent 70%),
+             radial-gradient(ellipse 42% 34% at 78% -6%, rgba(200,235,255,.13), transparent 70%)}
+.pitchWrap>*{position:relative;z-index:1}
+
+/* 💥 중요 순간 화면 흔들림 (요청) — 세기는 --shk 로 이벤트가 정한다 */
+.pitchWrap.shake{animation:pitchShake .46s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes pitchShake{
+  0%{transform:translate(0,0) rotate(0)}
+  12%{transform:translate(calc(var(--shk,2px)*-1), calc(var(--shk,2px)*.55)) rotate(calc(var(--shkR,.3deg)*-1))}
+  26%{transform:translate(var(--shk,2px), calc(var(--shk,2px)*-.7)) rotate(var(--shkR,.3deg))}
+  40%{transform:translate(calc(var(--shk,2px)*-.75), calc(var(--shk,2px)*-.35)) rotate(calc(var(--shkR,.3deg)*-.6))}
+  55%{transform:translate(calc(var(--shk,2px)*.6), calc(var(--shk,2px)*.5)) rotate(calc(var(--shkR,.3deg)*.5))}
+  72%{transform:translate(calc(var(--shk,2px)*-.35), calc(var(--shk,2px)*-.25)) rotate(calc(var(--shkR,.3deg)*-.25))}
+  88%{transform:translate(calc(var(--shk,2px)*.18), calc(var(--shk,2px)*.12)) rotate(0)}
+  100%{transform:translate(0,0) rotate(0)}}
+@media(prefers-reduced-motion:reduce){ .pitchWrap.shake{animation:none} }
+
 .pitchCaption.cmt-big{font-size:15.5px; font-weight:700; letter-spacing:.2px;}
 .pitchCaption.cmt-flash{animation:cmtFlash .5s ease-out 2;}
 @keyframes cmtFlash{0%{filter:brightness(2.2)} 60%{filter:brightness(1.15)} 100%{filter:brightness(1)}}
-.pitchCaption{background:#0a0f14; border:1px solid var(--line); border-top:none; border-radius:0 0 8px 8px; padding:10px 12px; font-size:13.5px; line-height:1.6; min-height:44px;
+.pitchCaption{background:linear-gradient(#0c141b,#0a0f14); border:1px solid #23372b; border-top:none; border-radius:0 0 10px 10px; padding:10px 12px; font-size:13.5px; line-height:1.6; min-height:44px;
   border-left:4px solid var(--cbar,#30363d); transition:border-color .45s ease;}
 .pitchCaption.hot{border-left-color:#e3b341;}
 .evt-goal{color:var(--goalc, var(--gold)); font-weight:700; border-radius:5px; padding:2px 4px; margin:-2px -4px;}
@@ -1947,6 +1974,106 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .gmRes.lose{color:#ff7b72}
 @keyframes gmPop{0%{transform:scale(.6);opacity:0}55%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 .gmRolling{opacity:.55;pointer-events:none}
+
+/* ═══ 🎰 카지노 연출 강화 (요청 — 「전체적인 디테일을 살려달라」) ═══════════ */
+/* 네온 간판 */
+.gmNeon{display:flex;align-items:center;justify-content:center;gap:9px;margin:2px 0 8px;
+  font-weight:900;font-size:15px;letter-spacing:1px;color:#ffe9a8;
+  text-shadow:0 0 6px #ffb74d,0 0 16px #ff8f00,0 0 30px #ff6f0088;animation:gmFlick 4.5s infinite}
+.gmNeon s{width:44px;height:2px;border-radius:2px;text-decoration:none;
+  background:linear-gradient(90deg,transparent,#ff9d3c,transparent);box-shadow:0 0 8px #ff8f00}
+@keyframes gmFlick{0%,97%,100%{opacity:1}97.5%{opacity:.35}98%{opacity:1}98.6%{opacity:.5}99.2%{opacity:1}}
+.gmSfxBtn{margin-left:auto;background:none;border:1px solid #3a4657;color:#8b97a6;border-radius:6px;
+  padding:2px 8px;font-size:12px;cursor:pointer;text-shadow:none}
+.gmSfxBtn:hover{color:#e6edf3;border-color:#5a6a7e}
+
+/* 무대 — 긴장 연출 */
+.gmStage{transition:transform .18s ease, box-shadow .25s ease}
+.gmStage.tense{animation:gmShake .09s infinite;transform:scale(1.045)}
+@keyframes gmShake{0%{transform:scale(1.045) translate(0,0)}25%{transform:scale(1.045) translate(-1.6px,1px)}
+  50%{transform:scale(1.045) translate(1.4px,-1.2px)}75%{transform:scale(1.045) translate(-1px,-1px)}
+  100%{transform:scale(1.045) translate(1.2px,1.4px)}}
+.gmStage.win{animation:gmGlow 1.1s ease-out}
+@keyframes gmGlow{0%{box-shadow:inset 0 2px 14px rgba(0,0,0,.5),0 0 0 #ffd76a00}
+  35%{box-shadow:inset 0 2px 14px rgba(0,0,0,.3),0 0 42px #ffd76aaa}
+  100%{box-shadow:inset 0 2px 14px rgba(0,0,0,.5),0 0 16px #3fb95033}}
+
+/* 코인 비 */
+.gmRain{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+.gmRain i{position:absolute;top:-8%;font-style:normal;font-size:26px;
+  animation:gmFall linear forwards;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+@keyframes gmFall{0%{transform:translateY(0) rotate(0);opacity:0}
+  8%{opacity:1}100%{transform:translateY(115vh) rotate(620deg);opacity:.9}}
+
+/* 카드 — 덱에서 날아와 뒤집힌다 */
+.pcard{width:54px;height:78px;border-radius:7px;position:relative;perspective:520px;
+  background:none;border:none;box-shadow:none;padding:0;animation:none}
+.pcard .pcIn{position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transition:transform .62s cubic-bezier(.3,.75,.25,1)}
+.pcard.hid .pcIn{transform:rotateY(180deg)}
+.pcard .pcF{position:absolute;inset:0;border-radius:7px;backface-visibility:hidden;
+  display:flex;flex-direction:column;justify-content:space-between;padding:5px 6px;
+  font-weight:900;color:#1b2430;box-shadow:0 3px 8px rgba(0,0,0,.45);
+  background:linear-gradient(160deg,#fff,#eef1f5);border:1px solid #b6bec8}
+.pcard.red .pcF.fr{color:#d92b3a}
+.pcard .pcF.bk{transform:rotateY(180deg);
+  background:repeating-linear-gradient(45deg,#1f4c8c,#1f4c8c 5px,#17386a 5px,#17386a 10px);
+  border-color:#0f2647;box-shadow:0 3px 8px rgba(0,0,0,.5), inset 0 0 0 3px #2b62ad}
+.pcard .pcF b{font-size:15px;line-height:1}
+.pcard .pcF i{font-style:normal;font-size:15px;align-self:flex-end;line-height:1}
+.pcard .pcF u{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;
+  font-size:25px;text-decoration:none;opacity:.92}
+.pcard.deal{animation:pcFly .46s cubic-bezier(.18,.72,.24,1) both}
+@keyframes pcFly{0%{opacity:0;transform:translate(150px,-70px) rotate(22deg) scale(.82)}
+  60%{opacity:1}100%{opacity:1;transform:none}}
+/* 히든 카드 — 열리기 직전 떨림 */
+.pcard.tremble{animation:pcTrem .09s 6}
+@keyframes pcTrem{0%{transform:translate(0,0)}25%{transform:translate(-2px,1px) rotate(-1.4deg)}
+  50%{transform:translate(2px,-1px) rotate(1.2deg)}75%{transform:translate(-1px,-1px)}100%{transform:translate(1px,1px)}}
+/* 버스트 — 잿빛으로 죽는다 */
+.gmBJ.bust .pcard .pcF{filter:grayscale(1) brightness(.62);transition:filter .5s}
+.gmBJ.bust .pcard{animation:pcBust .5s ease-out}
+@keyframes pcBust{0%{transform:none}20%{transform:translateY(-5px) rotate(-3deg)}
+  55%{transform:translateY(4px) rotate(2.5deg)}100%{transform:translateY(2px) rotate(1deg)}}
+
+/* 합계 배지 — 21 이 가까워질수록 붉어진다 */
+.gmTot{font-size:13px;font-weight:800;padding:3px 10px;border-radius:99px;
+  background:#0c2318;border:1px solid #2c5c40;color:#cfeddb;transition:all .3s}
+.gmTot.w16{color:#ffe07a;border-color:#e3b34188;background:#2a2410}
+.gmTot.w17{color:#ffb457;border-color:#e0852c99;background:#2c1f0d;box-shadow:0 0 10px #e0852c44}
+.gmTot.w18{color:#ff7d5c;border-color:#f8514999;background:#2c1410;box-shadow:0 0 12px #f8514955;animation:gmPulse 1s infinite}
+.gmTot.bust{color:#ff5f56;border-color:#f85149;background:#2c1010;box-shadow:0 0 16px #f8514977}
+.gmTot.bj{color:#ffd76a;border-color:#e0a52c;background:#2a2208;box-shadow:0 0 16px #ffd76a66}
+@keyframes gmPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+
+/* 베팅 칩 버튼 */
+.gmChips{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.gmChip{border:none;border-radius:99px;padding:7px 15px;font-weight:800;font-size:13px;cursor:pointer;
+  color:#2a1a05;background:linear-gradient(160deg,#ffe08a,#e8b53c 60%,#c98f1c);
+  box-shadow:0 3px 0 #96690f, 0 4px 9px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.55);
+  transition:transform .1s, box-shadow .1s}
+.gmChip:hover{transform:translateY(-1px);box-shadow:0 4px 0 #96690f,0 6px 13px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.6)}
+.gmChip:active{transform:translateY(3px);box-shadow:0 0 0 #96690f,0 2px 5px rgba(0,0,0,.4)}
+.gmChip.alt{color:#e9f1f7;background:linear-gradient(160deg,#4a5a70,#39485c 60%,#2b3646);box-shadow:0 3px 0 #1e2733,0 4px 9px rgba(0,0,0,.4)}
+.gmBet{width:128px;padding:9px 11px;background:#0b1016;border:1px solid #3a4657;border-radius:8px;
+  color:#ffe9a8;font-weight:800;font-size:15px;text-align:center;letter-spacing:.4px}
+.gmBet:focus{outline:none;border-color:#e0a52c;box-shadow:0 0 0 2px #e0a52c33}
+/* 판돈 칸 바로 아래 경고 (요청 — 상단 배너는 PC 에서 너무 멀다) */
+.gmWarn{margin-top:7px;padding:7px 11px;border-radius:7px;font-size:13px;font-weight:700;
+  background:#2c1410;border:1px solid #f8514977;color:#ff9d8f;animation:gmWIn .22s ease-out}
+@keyframes gmWIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+
+/* 게임 실행 버튼 */
+.gmGo{border:none;border-radius:9px;padding:10px 20px;font-weight:800;font-size:14px;cursor:pointer;
+  color:#231704;background:linear-gradient(160deg,#ffdc7d,#e6a92e 60%,#c2841a);
+  box-shadow:0 3px 0 #8d5f10,0 5px 12px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.5);
+  transition:transform .1s, box-shadow .1s, filter .2s}
+.gmGo:hover{transform:translateY(-1px)}
+.gmGo:active{transform:translateY(3px);box-shadow:0 0 0 #8d5f10,0 2px 5px rgba(0,0,0,.4)}
+.gmGo.gray{color:#dbe4ec;background:linear-gradient(160deg,#55637a,#3c4859 60%,#2c3644);box-shadow:0 3px 0 #1f2833,0 5px 12px rgba(0,0,0,.4)}
+.gmGo[disabled]{opacity:.35;filter:grayscale(.7);cursor:not-allowed;transform:none;box-shadow:none}
+@media(max-width:560px){ .pcard{width:44px;height:64px} .pcard .pcF b,.pcard .pcF i{font-size:12.5px} .pcard .pcF u{font-size:20px} }
+
 
 /* 🃏 블랙잭 — 카드 */
 .gmBJ{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
@@ -6157,16 +6284,7 @@ function assignAITactics(t){
       : lean<=-2 ? ["4-1-4-1","5-3-2","4-4-1-1","5-2-1-2"]
       : ["4-4-2","4-2-3-1","4-3-3","3-5-2"];
     if(Math.random()<0.75) T.formation=pick(FPOOL);   // 극단 전술(2-3-5·7-2-1)은 시즌 편성에 쓰지 않는다
-    /* 🔀 국면 형태 — AI 감독도 쓴다 (요청: 「상대 감독도 이런 전술을 택할 수 있니?」)
-       전술 이해도(tac)가 높은 감독일수록 국면 변형을 시즌 정체성으로 갖는다.
-       공격 성향 → 공격 시 3-2-5 · 수비 성향 → 수비 시 4-4-2/5-4-1 블록. */
-    T.atkShape="keep"; T.defShape="keep";
-    { const _tq2=(c.tac-15)/5;
-      if(lean>=2 && Math.random()<0.22+Math.max(0,_tq2)*0.30) T.atkShape="325";
-      else if(lean<=-2 && Math.random()<0.25+Math.max(0,_tq2)*0.28)
-        T.defShape=((c.def-c.att)>=4 || Math.random()<0.40)?"541d":"442d";
-      else if(Math.random()<0.08+Math.max(0,_tq2)*0.10)
-        T[Math.random()<0.5?"atkShape":"defShape"]=Math.random()<0.5?"325":"442d"; }
+    /* ⚠ 요청 — 「국면 포메이션은 없애자. 너무 극단적이었던 것 같다」. AI 채택도 함께 걷어냈다. */
   }
   assignAIRoles(t);
 }
@@ -6519,7 +6637,6 @@ function aiPlanFor(t, opp, isHome){
      그러지 않으면 적용된 값 위에 또 얹혀 정찰과 실제가 어긋난다 */
   const T=t._planBase0 || t.tactic;
   const P={formation:T.formation}; for(const k of TAC_KEYS) P[k]=T[k];
-  P.atkShape=T.atkShape||"keep"; P.defShape=T.defShape||"keep";   // 🔀 국면 형태도 플랜에 실린다
   let gap=0; try{ gap=teamOVR(opp)-teamOVR(t); }catch(e){}
   const jd=(c.judg-15)/5, tq=(c.tac-15)/5;
   const rnd=planRand(`${G.season}|${t.id}|${opp.id}|${isHome?1:0}`);
@@ -6531,9 +6648,7 @@ function aiMatchPlan(M, t, opp, isHome){
   if(!P) return;
   const T=t.tactic;
   const base={formation:T.formation}; for(const k of TAC_KEYS) base[k]=T[k];
-  base.atkShape=T.atkShape||"keep"; base.defShape=T.defShape||"keep";
   T.formation=P.formation; for(const k of TAC_KEYS) T[k]=P[k];
-  T.atkShape=P.atkShape||"keep"; T.defShape=P.defShape||"keep";
   t._planBase0=base;                       // 정찰이 원래 판을 볼 수 있게 남겨 둔다
   (M._planBase=M._planBase||{})[t.id]=base;
 }
@@ -6543,19 +6658,16 @@ function _aiPlanBody(T, c, gap, jd, tq, opp, rnd){
   /* ① 전력 차 대응 — 언더독은 내려앉고, 압도적이면 무게를 싣는다. 전술 좋은 감독일수록 과감하다 */
   if(gap>=2.5){
     T.mentality=clamp(T.mentality-1,0,4); T.line=clamp(T.line-1,0,4); T.counter=clamp(T.counter+1,0,4); changed=true;
-    if(rnd()<0.28+tq*0.30) T.defShape=gap>=4?"541d":"442d";   // 🔀 언더독은 수비 블록 형태로 내려앉는다
     if(gap>=4.5 && rnd()<0.45+tq*0.35){
       /* 상대가 압도적이면 아예 버스를 세우고 시작하는 감독도 있다 — 🚌 이제 진짜 텐백까지 */
       const bus=["5-3-2","4-1-4-1","5-2-1-2"];
       T.formation = (gap>=7 && (c.def-c.att)>=1 && rnd()<0.30) ? "7-2-1"
         : bus[Math.floor(rnd()*bus.length)];
       T.defGap=0; T.line=0;   // 🚌 텐백 = 매우 좁게 + 매우 낮은 라인 (토글 폐지)
-      T.defShape="541d";       // 🔀 버스 = 수비 시 5-4-1 블록까지
       changed=true;
     }
   } else if(gap<=-2.5){
     T.mentality=clamp(T.mentality+1,0,4); T.press=clamp(T.press+1,0,4); changed=true;
-    if(rnd()<0.25+tq*0.30) T.atkShape="325";   // 🔀 압도적이면 공격 시 3-2-5 변형으로 벽을 두드린다
     const atk=["4-3-3","4-2-2-2","3-4-3"];
     if(gap<=-4.5 && (c.att-c.def)>=1 && rnd()<0.35+tq*0.30){ T.formation=atk[Math.floor(rnd()*atk.length)]; changed=true; }
   }
@@ -6582,7 +6694,6 @@ function aiPlanRestore(M){
     const b=M._planBase[tid];
     for(const k of TAC_KEYS) if(b[k]!=null) t.tactic[k]=b[k];
     if(b.formation) t.tactic.formation=b.formation;
-    t.tactic.atkShape=b.atkShape||"keep"; t.tactic.defShape=b.defShape||"keep";
     delete t._planBase0;
   }
   M._planBase=null;
@@ -21036,6 +21147,16 @@ function migrateLoadedG(){
   /* 🆔 번호부터 맞춘다 — 마이그레이션 도중에 선수가 새로 만들어지는 단계(긴급 등록·스쿼드 보강)가
      있어서, 여기서 PID 를 올려 두지 않으면 그 선수들이 기존 번호를 물고 나온다. */
   step("선수 번호 선점", ()=>{ PID=nextPid(); });
+  /* 🔀 국면 포메이션 폐지 (요청 — 「너무 극단적이었던 것 같다」). 구세이브에 남은 형태 키를 지운다.
+     남겨 두면 아무 일도 하지 않는 값이 전술 서명·프리셋 비교에 섞여 친숙도 계산이 흔들린다. */
+  step("국면 형태 정리", ()=>{
+    for(const id in G.teams){ const t2=G.teams[id]; if(!t2) continue;
+      if(t2.tactic){ delete t2.tactic.atkShape; delete t2.tactic.defShape; }
+      delete t2._shapeAdj;
+      const ps=t2.tactic&&t2.tactic.presets;
+      if(Array.isArray(ps)) for(const q of ps) if(q){ delete q.atkShape; delete q.defShape; }
+    }
+  });
   step("전술 기본값", ()=>{ for(const id in G.teams){ const tc=G.teams[id].tactic||{};
     G.teams[id].tactic={...TAC_DEF, formation:tc.formation||"4-3-3", ...tc};
     if(!Array.isArray(G.teams[id].tactic.benchSel)) G.teams[id].tactic.benchSel=[]; } });
@@ -22504,12 +22625,16 @@ function drawSimWatch(cv, simOverride){
   const IX=(o)=> (o._rx===undefined||far(o)) ? o.x : lerp(o._rx, o.x, AL);
   const IY=(o)=> (o._ry===undefined||far(o)) ? o.y : lerp(o._ry, o.y, AL);
   const K2=cvK(cv);
+  _trailTick++;                          // 💨 잔상 샘플링 주기
   for(const a of s.agents){
     const isGK=a.slot==="GK";
     /* 흰 링(볼 소유) — 재생 중에는 "그 프레임의" 소유자를 따라간다. 안 그러면 리플레이에서
        드리블하는 선수를 놔두고, 장면이 끝난 시점의 소유자(예: 공 잡은 키퍼)에게 링이 붙는다. */
     const owner = (s._hlOwner!==undefined) ? (s._hlOwner===a.id) : (s.ball.ownerId===a.id);
-    const ax=IX(a), ay=IY(a);
+    let ax=IX(a), ay=IY(a);
+    /* 🤜 몸싸움 떨림 — 부딪힌 직후 짧게 (요청) */
+    { const _jt=(a._hlJit!==undefined && a._hlJit!==null) ? a._hlJit : jitterOf(a, s.t);
+      if(_jt){ ax=clamp01(ax+_jt.dx); ay=clamp01(ay+_jt.dy); } }
     const af=lerpAngle(a._rf, a.face, AL);
     const R0=isGK?6.2:5.6;   // FM 비율 — 바둑알 지름 ≈2m (11/9.5px는 3.5~4m 상당이었다)
     /* 🦘 점프 — 재생 중에는 프레임에 적어 둔 값(_hlJ), 관전 중에는 지금 시각으로 계산 (요청) */
@@ -22517,6 +22642,12 @@ function drawSimWatch(cv, simOverride){
     const _jl = _jz>0.02 ? _jz*JUMP_LIFT*K2 : 0;      // 화면에서 위로 띄우는 픽셀
     const _R0 = R0*(1+ (_jz>0.02?_jz*JUMP_GROW:0));
     const _P  = (px0,py0)=>{ const c=pitchToCanvasXY(cv, px0, py0); return {x:c.x, y:c.y-_jl}; };
+    /* 💨 빠르게 달리면 지나온 자리에 잔상이 남는다 (요청) — 바둑알보다 먼저 그려 뒤에 깔린다 */
+    { const _dc=isGK?(a.side==="h"?gkH:gkA):(a.side==="h"?hCol:aCol);
+      const _tk=trailK(a);
+      trailPush(a, ax, ay, _tk);
+      drawTrail(ctx, cv, a, _dc, R0);
+      a._tpx=a.x; a._tpy=a.y; }
     drawDotXY(ctx, cv, ax, ay, isGK?(a.side==="h"?gkH:gkA):(a.side==="h"?hCol:aCol), R0, _jz);
     if(a.face!==undefined){            // 바라보는 방향 — 바둑알 앞에 붙는 작은 삼각형
       const c0=_P(ax, ay);
@@ -30767,7 +30898,20 @@ function donSetAmt(v){ DON_AMT=String(v||"").replace(/[^0-9.]/g,""); }
 function donToggleAnon(){ DON_ANON=DON_ANON?0:1; show("mylife"); }
 function hmlSet(v){ HML_AMT=String(v||"").replace(/[^0-9.]/g,""); }
 function meSelGift(k){ meGiftSel=(meGiftSel===k)?"":k; show("mylife"); }
-function meSetTab(k){ meTab=k; show("mylife"); }
+function meSetTab(k){
+  /* ⚠ 제보 — 「결과가 나온 상태에서 다른 메뉴 갔다 들어와도 결과 화면이 유지된다」.
+     판을 떠나면 결과는 치운다. 진행 중인 블랙잭 핸드(판돈이 이미 걸린 판)는 남긴다. */
+  if(meTab==="gam" && k!=="gam") gamLeave();
+  meTab=k; show("mylife");
+}
+function gamLeave(){
+  try{
+    GAM_LAST=null; GAM_BUSY=null;
+    const g=gamOf();
+    if(g.bj && g.bj.stage!=="play") g.bj=null;    // 끝난 판은 치운다 (진행 중이면 그대로)
+    const r=document.getElementById("gmRain"); if(r) r.remove();
+  }catch(e){}
+}
 /* ⚖️ 미납금 상환 화면 — 주식·부동산으로 불린 돈으로도 갚을 수 있다 */
 let DEBT_AMT="";
 function debtSetAmt(v){ DEBT_AMT=String(v||"").replace(/[^0-9.]/g,""); }
@@ -30824,6 +30968,28 @@ const GAM_SYM=["🍒","🔔","🍋","⭐","💎","7️⃣","🍀"];
 const GAM_BAN_D=28;            // 협회 징계 — 이 기간 동안 판에 못 앉는다
 let GAM_AMT="", GAM_PICK={coin:"H", dice:"odd", num:1};
 let GAM_BUSY=null;          // 🎬 지금 굴러가는 중 — 연출이 끝날 때까지 버튼을 잠근다
+let GAM_WARN="";            // ⚠ 제보 — 판돈 경고는 상단 배너 대신 「입력칸 바로 아래」에 띄운다
+function gamWarn(msg){
+  GAM_WARN=msg||"";
+  try{
+    const el=document.getElementById("gmWarn");
+    if(el){ el.innerHTML = msg?`⚠️ ${msg}`:""; el.style.display=msg?"":"none";
+      if(msg){ el.classList.remove("gmWarn"); void el.offsetWidth; el.classList.add("gmWarn"); }
+      return; }
+  }catch(e){}
+  if(msg) show("mylife");
+}
+/* 판돈이 올바른가 — 세 게임과 블랙잭이 같은 검사를 쓴다 */
+function gamBetOk(){
+  const M=me(), g=gamOf();
+  if(gamBanned()){ gamWarn(`협회 징계 중입니다 — ${Math.ceil((g.banUntil-(G.day||0)))}일 남았습니다.`); return 0; }
+  const bet=Math.round((parseFloat(GAM_AMT)||0)*100)/100;
+  if(!(bet>0)){ gamWarn("걸 금액을 입력하세요."); return 0; }
+  if(bet>M.cash){ gamWarn(`보유 현금이 모자랍니다 — 지금 ${moneyEok(M.cash)} 있습니다.`); return 0; }
+  if(bet>gamMax()){ gamWarn(`한 판 상한은 ${gamMax().toFixed(2)}억입니다.`); return 0; }
+  gamWarn("");
+  return bet;
+}
 function gamOf(){
   const M=me();
   if(!M.gam) M.gam={bets:0, won:0, lost:0, heat:0, s:G.season, sAmt:0, big:0, banUntil:0, last:null, caught:0};
@@ -30833,10 +30999,19 @@ function gamOf(){
 }
 function gamBanned(){ const g=gamOf(); return (g.banUntil||0)>(G.day||0); }
 /* 한 판 상한 — 순자산에 비례하되 절대 상한을 둔다. 무한 배팅으로 게임을 부수지 않게. */
+/* 한 판 상한 — ⚠ 요청 「판돈 상한을 자산에 더 비례해서 높일 수 있게」.
+   예전에는 순자산의 15% 로 일률이라, 자산이 불어도 상한이 답답하게 따라왔다.
+   ─ 이제 자산 구간마다 비율이 커진다(누진). 판을 키울 수 있는 사람은 크게 걸 수 있다.
+       순자산 10억 → 2.2억 · 50억 → 15억 · 100억 → 34억 · 200억 → 76억 · 1000억 → 420억
+     한 판에 전부를 걸 수는 없게 최대 42% 로 묶었다 — 클릭 한 번에 파산하는 판은 게임이 아니다.
+     「가진 현금」도 절대 넘지 못하고, 판이 클수록 발각 위험(gamHeat)이 그만큼 빨리 오른다. */
 function gamMax(){
   const M=me();
   let nw=0; try{ nw=netWorth()/1e8; }catch(e){ nw=M.cash; }
-  return Math.max(0.1, Math.round(Math.min(Math.max(1, nw*0.15), Math.max(0.1, M.cash))*100)/100);
+  nw=Math.max(0, nw);
+  const rate = nw>=500 ? 0.42 : nw>=200 ? 0.38 : nw>=100 ? 0.34 : nw>=50 ? 0.30 : nw>=20 ? 0.26 : 0.22;
+  const cap = Math.max(2, nw*rate);
+  return Math.max(0.1, Math.round(Math.min(cap, Math.max(0.1, M.cash))*100)/100);
 }
 function gamSetAmt(v){ GAM_AMT=String(v||"").replace(/[^0-9.]/g,""); }
 function gamPickSet(k,v){ GAM_PICK[k]=(k==="num")?clamp(parseInt(v,10)||1,1,6):v; show("mylife"); }
@@ -30852,11 +31027,7 @@ function gamPlay(kind){
   if(GAM_BUSY) return;                       // 🎬 굴러가는 중 — 연타 방지
   if(bjLive()){ flash("🃏 블랙잭 판이 진행 중입니다 — 먼저 끝내세요.","warn"); return; }
   if(G.phase==="sacked"){ flash("지금은 그럴 때가 아닙니다.","warn"); return; }
-  if(gamBanned()){ flash(`⛔ 협회 징계 중입니다 — ${Math.ceil((g.banUntil-(G.day||0)))}일 남았습니다.`,"warn"); return; }
-  const bet=Math.round((parseFloat(GAM_AMT)||0)*100)/100;
-  if(!(bet>0)){ flash("걸 금액을 입력하세요.","warn"); return; }
-  if(bet>M.cash){ flash("보유 현금이 모자랍니다.","warn"); return; }
-  if(bet>gamMax()){ flash(`한 판 상한은 ${gamMax().toFixed(2)}억입니다.`,"warn"); return; }
+  const bet=gamBetOk(); if(!bet) return;
   mePay(-bet, null);
   g.bets++; g.lost=Math.round(((g.lost||0)+bet)*100)/100;
   g.sAmt=Math.round(((g.sAmt||0)+bet)*100)/100;
@@ -30892,7 +31063,7 @@ function gamPlay(kind){
   pay=Math.round(pay*100)/100;
   if(pay>0){ mePay(pay, null); g.won=Math.round(((g.won||0)+pay)*100)/100; }
   const net=Math.round((pay-bet)*100)/100;
-  g.last={kind, bet, pay, net, line, detail, res, t:(G.day||0)};
+  GAM_LAST={kind, bet, pay, net, line, detail, res, t:(G.day||0)};   /* 화면 상태 — 세이브에 남지 않는다 (제보) */
   gamHeat(bet);
   /* 📒 가계부에는 판마다 남긴다 — 나중에 「내가 얼마를 태웠나」를 볼 수 있게 */
   meLog(`${net>=0?"＋":"－"}${Math.abs(net).toFixed(2)}억 · 🎰 ${kind==="coin"?"동전":kind==="dice"?"주사위":"슬롯"} (판돈 ${bet.toFixed(2)}억)`);
@@ -30915,6 +31086,7 @@ function gamPlay(kind){
         GAM_BUSY=null;
         try{ gamCatchRoll(); }catch(e){}
         saveGame(); show("mylife");
+        try{ gamWinFx(net, bet); }catch(e){}
       });
       return;
     }
@@ -30976,6 +31148,69 @@ function gamDayTick(){
   }catch(e){}
 }
 
+
+/* ═══ 🎬 카지노 연출 엔진 (요청) ═══════════════════════════════════════════
+   ⚠ 제보 — 「결과가 나온 상태에서 다른 메뉴 갔다 들어와도 결과 화면이 계속 유지된다」.
+      원인: 마지막 판 결과를 세이브에 남는 g.last 에 담아 뒀다. 결과는 「지금 이 화면에서
+      방금 일어난 일」이므로 세이브가 아니라 화면 상태다 — 전역으로 옮기고, 탭을 떠나면 지운다. */
+let GAM_LAST=null;                 // 방금 판의 결과 (세이브에 남지 않는다)
+let GAM_AC=null;
+function gamSfxOn(){ return !(G.opt && G.opt.gamSfx===0); }
+function gamSfxToggle(){ G.opt=G.opt||{}; G.opt.gamSfx = gamSfxOn()?0:1; saveGame(); show("mylife"); }
+/* 🔔 소리 — 파일 없이 합성한다. 짧고 작게. */
+function gamSfx(kind){
+  if(!gamSfxOn()) return;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    if(!GAM_AC) GAM_AC=new AC();
+    const ac=GAM_AC; if(ac.state==="suspended") ac.resume();
+    const t0=ac.currentTime;
+    const play=(f,at,dur,vol,type)=>{
+      const o=ac.createOscillator(), g2=ac.createGain();
+      o.type=type||"triangle"; o.frequency.value=f;
+      g2.gain.setValueAtTime(0.0001, t0+at);
+      g2.gain.exponentialRampToValueAtTime(vol, t0+at+0.012);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t0+at+dur);
+      o.connect(g2); g2.connect(ac.destination); o.start(t0+at); o.stop(t0+at+dur+0.05);
+    };
+    if(kind==="jack"){ [1046.5,1318.5,1568,2093,2637].forEach((f,i)=>play(f,i*0.085,0.6,0.13)); }
+    else if(kind==="win"){ [880,1108.7,1318.5].forEach((f,i)=>play(f,i*0.075,0.5,0.11)); }
+    else if(kind==="lose"){ play(233,0,0.30,0.05,"sawtooth"); play(175,0.10,0.34,0.045,"sawtooth"); }
+    else if(kind==="card") play(1400,0,0.06,0.035,"square");
+    else if(kind==="tick") play(760,0,0.05,0.05,"square");
+    else if(kind==="tense") play(320,0,0.10,0.035,"square");
+    else play(660,0,0.12,0.06);
+  }catch(e){}
+}
+/* 🪙 코인 비 — 이겼을 때 화면 전체에 쏟아진다 */
+function gamRain(big){
+  try{
+    const old=document.getElementById("gmRain"); if(old) old.remove();
+    const w=document.createElement("div"); w.className="gmRain"; w.id="gmRain";
+    const n=big?46:24;
+    const S=big?["🪙","💰","💎","🪙","⭐"]:["🪙","🪙","💰"];
+    let h="";
+    for(let i=0;i<n;i++){
+      const x=Math.random()*100, d=(big?1.5:1.3)+Math.random()*1.1, dl=Math.random()*(big?0.7:0.45);
+      const sz=(big?20:18)+Math.random()*(big?20:14);
+      h+=`<i style="left:${x}%;font-size:${sz}px;animation-duration:${d}s;animation-delay:${dl}s">${S[Math.floor(Math.random()*S.length)]}</i>`;
+    }
+    w.innerHTML=h; document.body.appendChild(w);
+    setTimeout(()=>{ try{ w.remove(); }catch(e){} }, (big?2900:2300));
+  }catch(e){}
+}
+/* 이긴 판의 마무리 — 소리 + 코인 + 무대 발광 */
+function gamWinFx(net, bet){
+  if(!(net>0)) { gamSfx("lose"); return; }
+  const big = net >= (bet||1)*4;
+  gamSfx(big?"jack":"win");
+  gamRain(big);
+}
+/* 😬 긴장 — 멈추기 직전 줌인 + 미세한 떨림 */
+function gamTense(on){
+  try{ const st=document.getElementById("gmStage"); if(!st) return;
+    if(on){ st.classList.add("tense"); gamSfx("tense"); } else st.classList.remove("tense"); }catch(e){}
+}
 /* ── 🎨 판을 그린다 (요청 — 「CSS로 이미지화, 진짜 게임하는 것처럼」) ─────────────
    결과는 gamPlay 가 이미 정했다. 여기서는 그 결과로 <b>끝나도록</b> 굴려 보여 줄 뿐이다.
    (연출이 결과를 바꾸지 않는다 — 애니메이션 중 새로고침해도 값은 그대로다) */
@@ -31004,7 +31239,7 @@ function gmSlotHtml(syms, hit){
 }
 /* 지금 무대에 무엇을 세워 둘 것인가 — 판을 돌리기 전(대기)과 돌린 뒤(결과) */
 function gamStage(){
-  const g=gamOf(), L=g.last;
+  const g=gamOf(), L=GAM_LAST;
   /* 🃏 블랙잭 판이 걸려 있으면 무대는 카드 테이블이다 */
   if(g.bj){
     const B=g.bj, w=(B.res&&B.res.net>0);
@@ -31040,13 +31275,15 @@ function gamRoll(kind, res, cb){
       const el=document.getElementById("gmCoin");
       const end=(res==="T"?180:0)+1800;                 // 다섯 바퀴 돌고 결과 면으로
       requestAnimationFrame(()=>{ el.style.transform=`rotateY(${end}deg)`; });
-      setTimeout(()=>{ cb&&cb(); }, 1180);
+      setTimeout(()=>{ gamTense(true); }, 780);
+      setTimeout(()=>{ gamTense(false); cb&&cb(); }, 1180);
     } else if(kind==="dice"){
       st.innerHTML=gmDiceHtml(1);
       const el=document.getElementById("gmDice");
       const R=GM_DROT[res]||[0,0];
       requestAnimationFrame(()=>{ el.style.transform=`rotateX(${R[0]+720}deg) rotateY(${R[1]+1080}deg)`; });
-      setTimeout(()=>{ cb&&cb(); }, 1180);
+      setTimeout(()=>{ gamTense(true); }, 780);
+      setTimeout(()=>{ gamTense(false); cb&&cb(); }, 1180);
     } else {
       /* 릴 세 개 — 긴 띠를 위로 굴려 마지막 칸이 결과가 되게 하고, 하나씩 순서대로 멈춘다 */
       st.innerHTML=gmSlotHtml(res, false);
@@ -31066,8 +31303,11 @@ function gamRoll(kind, res, cb){
           strip.style.transition=`transform ${dur}s cubic-bezier(.16,.62,.2,1)`;
           strip.style.transform=`translateY(-${dist}px)`;
         });
+        setTimeout(()=>{ gamSfx("tick"); }, dur*1000);      // 릴이 하나씩 딸깍 멈춘다
       }
-      setTimeout(()=>{ cb&&cb(); }, 1560);
+      /* 😬 마지막 릴이 멈추기 직전 — 줌인 + 미세한 떨림 (요청) */
+      setTimeout(()=>{ gamTense(true); }, 1080);
+      setTimeout(()=>{ gamTense(false); cb&&cb(); }, 1560);
     }
   }catch(e){ cb&&cb(); }
 }
@@ -31108,19 +31348,15 @@ function bjStart(){
   const M=me(), g=gamOf();
   if(GAM_BUSY || bjLive()) return;
   if(G.phase==="sacked"){ flash("지금은 그럴 때가 아닙니다.","warn"); return; }
-  if(gamBanned()){ flash(`⛔ 협회 징계 중입니다 — ${Math.ceil((g.banUntil-(G.day||0)))}일 남았습니다.`,"warn"); return; }
-  const bet=Math.round((parseFloat(GAM_AMT)||0)*100)/100;
-  if(!(bet>0)){ flash("걸 금액을 입력하세요.","warn"); return; }
-  if(bet>M.cash){ flash("보유 현금이 모자랍니다.","warn"); return; }
-  if(bet>gamMax()){ flash(`한 판 상한은 ${gamMax().toFixed(2)}억입니다.`,"warn"); return; }
+  const bet=gamBetOk(); if(!bet) return;
   mePay(-bet, null);
   g.bets++; g.lost=Math.round(((g.lost||0)+bet)*100)/100;
   g.sAmt=Math.round(((g.sAmt||0)+bet)*100)/100;
   if(bet>=(g.big||0)) g.big=bet;
   const d=bjDeck();
   const you=[d.pop(), d.pop()], dl=[d.pop(), d.pop()];
-  g.bj={deck:d, you, dl, bet, stage:"play", res:null, msg:""};
-  g.last=null;
+  g.bj={deck:d, you, dl, bet, stage:"play", res:null, msg:"", seenY:0, seenD:0};
+  GAM_LAST=null;
   /* 자연 블랙잭 — 그 자리에서 끝난다 */
   if(bjNat(you) || bjNat(dl)){ bjFinish(); return; }
   saveGame(); show("mylife");
@@ -31129,12 +31365,33 @@ function bjHit(){
   const g=gamOf(); if(!bjLive() || GAM_BUSY) return;
   const B=g.bj;
   B.you.push(B.deck.pop());
-  if(bjVal(B.you)>=21){ bjFinish(); return; }
+  gamSfx("card");
+  if(bjVal(B.you)>=21){
+    /* 버스트·21 — 잠깐 보여 주고 정산한다 (숫자가 바뀌는 걸 볼 시간) */
+    saveGame(); show("mylife");
+    GAM_BUSY={kind:"bj"};
+    setTimeout(()=>{ GAM_BUSY=null; bjFinish(); }, 620);
+    return;
+  }
   saveGame(); show("mylife");
 }
 function bjStand(){
   const g=gamOf(); if(!bjLive() || GAM_BUSY) return;
-  bjFinish();
+  /* 🎬 요청 — 「스탠드를 누르면 딜러 카드가 뒤집히기 직전 0.5초간 미세하게 떨리며 천천히 열린다」 */
+  const card=document.getElementById("pc_d1");
+  if(!card){ bjFinish(); return; }
+  GAM_BUSY={kind:"bj"};
+  gamTense(true); gamSfx("tense");
+  card.classList.add("tremble");
+  setTimeout(()=>{
+    try{ card.classList.remove("tremble"); card.classList.remove("hid"); gamSfx("card"); }catch(e){}
+    setTimeout(()=>{
+      gamTense(false);
+      GAM_BUSY=null;
+      const B=gamOf().bj; if(B){ B.seenD=B.dl.length; }   // 이미 보인 카드는 다시 날아오지 않는다
+      bjFinish();
+    }, 760);                                              // 천천히 열리는 시간
+  }, 540);                                                // 떨림 0.5초
 }
 /* 딜러가 규칙대로 받고, 승부를 가른다 */
 function bjFinish(){
@@ -31164,37 +31421,54 @@ function bjFinish(){
   if(pay>0){ mePay(pay, null); g.won=Math.round(((g.won||0)+pay)*100)/100; }
   const net=Math.round((pay-B.bet)*100)/100;
   B.stage="done"; B.res={pay, net}; B.msg=msg;
-  g.last={kind:"bj", bet:B.bet, pay, net, line:`🃏 ${msg}`,
+  GAM_LAST={kind:"bj", bet:B.bet, pay, net, line:`🃏 ${msg}`,
           detail:`나 ${you} · 딜러 ${dl}`, res:null, t:(G.day||0)};
   gamHeat(B.bet);
   meLog(`${net>=0?"＋":"－"}${Math.abs(net).toFixed(2)}억 · 🃏 블랙잭 (판돈 ${B.bet.toFixed(2)}억)`);
   if(pay>=B.bet*2 && pay>=3){ g.heat=clamp((g.heat||0)+4, 0, 100); }
   try{ gamCatchRoll(); }catch(e){}
   saveGame(); show("mylife");
+  try{ gamWinFx(net, B.bet); }catch(e){}
 }
 /* 판을 치운다 — 다음 판으로 */
 function bjClear(){ const g=gamOf(); g.bj=null; show("mylife"); }
 /* 🎨 카드 한 장 */
-function bjCardHtml(c, hide, i){
-  if(hide) return `<div class="pcard back" style="animation-delay:${(i||0)*0.09}s"></div>`;
-  return `<div class="pcard ${c.red?"red":""}" style="animation-delay:${(i||0)*0.09}s">
-    <b>${c.r}<br><span style="font-size:12px">${c.s}</span></b><u>${c.s}</u><i>${c.r}</i></div>`;
+function bjCardHtml(c, hide, i, fresh, side){
+  /* 🃏 앞뒤 두 면을 가진 3D 카드 — 뒤집기(flip)와 「덱에서 날아오기」를 함께 쓴다 (요청) */
+  const cls=`pcard${c.red?" red":""}${hide?" hid":""}${fresh?" deal":""}`;
+  return `<div class="${cls}" id="pc_${side}${i}" style="animation-delay:${(i||0)*0.09}s">
+    <div class="pcIn">
+      <div class="pcF fr"><b>${c.r}<br><span style="font-size:12px">${c.s}</span></b><u>${c.s}</u><i>${c.r}</i></div>
+      <div class="pcF bk"></div>
+    </div></div>`;
+}
+/* 합계 배지 색 — 21 이 가까워질수록 붉어진다 (요청: 16 노랑 → 17 주황 → 18 빨강) */
+function bjTotCls(v, hand, done){
+  if(v>21) return " bust";
+  if(hand && bjNat(hand)) return " bj";
+  if(v>=18) return " w18";
+  if(v===17) return " w17";
+  if(v===16) return " w16";
+  return "";
 }
 function bjTable(){
   const g=gamOf(), B=g.bj; if(!B) return "";
   const live=(B.stage==="play");
   const you=bjVal(B.you);
   const dl= live ? bjVal([B.dl[0]]) : bjVal(B.dl);
-  const yc = you>21 ? " bust" : (bjNat(B.you)?" bj":"");
-  const dc = (!live && dl>21) ? " bust" : ((!live&&bjNat(B.dl))?" bj":"");
-  return `<div class="gmBJ">
+  const bust=(you>21);
+  /* 이미 화면에 있던 카드는 다시 날아오지 않는다 — 새로 받은 장만 딜 연출 */
+  const sY=B.seenY||0, sD=B.seenD||0;
+  const html=`<div class="gmBJ${bust?" bust":""}" id="gmBJ">
     <div class="gmRow"><span class="gmWho">딜러</span>
-      ${B.dl.map((c,i)=>bjCardHtml(c, live && i>0, i)).join("")}
-      <span class="gmTot${dc}">${live?`${dl} + ?`:dl}</span></div>
+      ${B.dl.map((c,i)=>bjCardHtml(c, live && i>0, i, i>=sD, "d")).join("")}
+      <span class="gmTot${live?"":bjTotCls(dl, B.dl, true)}">${live?`${dl} + ?`:dl}</span></div>
     <div class="gmRow"><span class="gmWho">나</span>
-      ${B.you.map((c,i)=>bjCardHtml(c,false,i)).join("")}
-      <span class="gmTot${yc}">${you}${bjSoft(B.you)&&you<21?" (소프트)":""}</span></div>
+      ${B.you.map((c,i)=>bjCardHtml(c,false,i,i>=sY,"y")).join("")}
+      <span class="gmTot${bjTotCls(you, B.you)}">${you}${bjSoft(B.you)&&you<21?" (소프트)":""}${bust?" 버스트":""}</span></div>
   </div>`;
+  B.seenY=B.you.length; B.seenD=B.dl.length;
+  return html;
 }
 function gamCard(){
   const M=me(), g=gamOf();
@@ -31204,14 +31478,16 @@ function gamCard(){
   const heat=Math.round(g.heat||0);
   const hCol = heat>=45?"#f85149" : heat>=22?"#ff9d5c" : heat>=8?"#d29922" : "#3fb950";
   const hTxt = heat>=45?"매우 위험" : heat>=22?"주목받는 중" : heat>=8?"소문이 돈다" : "조용함";
-  const L=g.last;
+  const L=GAM_LAST;
   const banned=gamBanned();
   const bjOn=bjLive();                       // 🃏 판이 걸려 있으면 다른 게임은 잠근다
   const lock=banned||bjOn;
-  const btn=(k,l,tip)=>`<button class="mini gmBtn" ${lock?"disabled style=\"opacity:.4;padding:10px 14px\"":`style="padding:10px 14px;border-color:var(--gold);color:var(--gold);font-weight:800"`} title="${tip}" ${lock?"":`onclick="gamPlay('${k}')"`}>${l}</button>`;
+  const btn=(k,l,tip)=>`<button class="gmGo gmBtn" ${lock?"disabled":`onclick="gamPlay('${k}')"`} title="${tip}">${l}</button>`;
   const pk=(k,v,l)=>`<button class="mini ${GAM_PICK[k]===v?"sel":""}" style="padding:5px 12px" onclick="gamPickSet('${k}','${v}')">${l}</button>`;
   return `<div class="card">
-    <h3>🎰 지하 카지노 <span class="small">— 감독 사비를 겁니다. 구단 돈은 걸 수 없습니다</span></h3>
+    <div class="gmNeon"><s></s>🎰 지하 카지노<s></s>
+      <button class="gmSfxBtn" title="효과음 켜기/끄기" onclick="gamSfxToggle()">${gamSfxOn()?"🔊":"🔇"}</button></div>
+    <p class="small" style="text-align:center;color:var(--sub);margin:-4px 0 8px">감독 사비를 겁니다 — 구단 돈은 걸 수 없습니다</p>
     <div class="stkSum">
       <div><span>보유 현금</span><b class="money">${moneyEok(M.cash)}</b></div>
       <div><span>누적 손익</span><b style="color:${net>=0?"var(--green)":"#f85149"}">${net>=0?"+":""}${net.toFixed(2)}억</b></div>
@@ -31226,14 +31502,18 @@ function gamCard(){
     ${L&&!GAM_BUSY&&!g.bj?`<div class="small" style="text-align:center;color:var(--sub);margin-top:-4px">
       ${L.detail} · 판돈 ${L.bet.toFixed(2)}억${L.net>0?` → 배당 <b style="color:var(--green)">${L.pay.toFixed(2)}억</b>`:" → 꽝"}</div>`:""}
     <div style="margin-top:11px">
-      <div class="small" style="color:var(--sub);margin-bottom:4px">판돈 <span style="opacity:.8">— 한 판 상한 <b>${mx.toFixed(2)}억</b></span></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <input type="text" inputmode="decimal" placeholder="금액(억)" value="${GAM_AMT}" oninput="gamSetAmt(this.value)"
-               style="width:120px;padding:8px;background:#0d1117;border:1px solid var(--line);border-radius:6px;color:var(--txt)">
-        <button class="mini" style="padding:5px 10px" onclick="gamAmtQuick(0.1)">10%</button>
-        <button class="mini" style="padding:5px 10px" onclick="gamAmtQuick(0.25)">25%</button>
-        <button class="mini" style="padding:5px 10px" onclick="gamAmtQuick(1)">최대</button>
+      <div class="small" style="color:var(--sub);margin-bottom:5px">판돈
+        <span style="opacity:.8">— 한 판 상한 <b style="color:var(--gold)">${mx.toFixed(2)}억</b>
+        <span style="opacity:.7">(순자산이 커질수록 상한도 함께 올라갑니다)</span></span></div>
+      <div class="gmChips">
+        <input type="text" inputmode="decimal" class="gmBet" placeholder="금액(억)" value="${GAM_AMT}"
+               oninput="gamSetAmt(this.value)">
+        <button class="gmChip" onclick="gamAmtQuick(0.1)">10%</button>
+        <button class="gmChip" onclick="gamAmtQuick(0.25)">25%</button>
+        <button class="gmChip" onclick="gamAmtQuick(0.5)">50%</button>
+        <button class="gmChip alt" onclick="gamAmtQuick(1)">올인</button>
       </div>
+      <div id="gmWarn" class="${GAM_WARN?"gmWarn":""}" style="${GAM_WARN?"":"display:none"}">${GAM_WARN?"⚠️ "+GAM_WARN:""}</div>
     </div>
     <div style="margin-top:13px;padding-top:11px;border-top:1px solid var(--line)">
       <div style="margin-bottom:5px"><b>🪙 동전 던지기</b> <span class="small" style="color:var(--sub)">— 적중 ×${GAM_EDGE.coin}</span></div>
@@ -31261,16 +31541,16 @@ function gamCard(){
     <div style="margin-top:13px;padding-top:11px;border-top:1px solid var(--line)">
       <div style="margin-bottom:5px"><b>🃏 블랙잭</b> <span class="small" style="color:var(--sub)">— 승리 ×${BJ_PAY_WIN} · 블랙잭 ×${BJ_PAY_BJ} · 무승부 판돈 반환</span></div>
       ${bjOn?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <button class="mini" style="padding:10px 18px;border-color:var(--gold);color:var(--gold);font-weight:800" onclick="bjHit()">🃏 히트</button>
-        <button class="mini" style="padding:10px 18px;font-weight:800" onclick="bjStand()">✋ 스탠드</button>
+        <button class="gmGo" ${GAM_BUSY?"disabled":`onclick="bjHit()"`}>🃏 히트</button>
+        <button class="gmGo gray" ${GAM_BUSY?"disabled":`onclick="bjStand()"`}>✋ 스탠드</button>
         <span class="small" style="color:var(--sub)">판돈 ${(g.bj.bet||0).toFixed(2)}억 · 21 을 넘기면 그 자리에서 집니다</span>
       </div>`
       : (g.bj?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <button class="mini" style="padding:10px 18px;border-color:var(--gold);color:var(--gold);font-weight:800" onclick="bjClear()">🔄 판을 치운다</button>
+        <button class="gmGo" onclick="bjClear()">🔄 판을 치운다</button>
         <span class="small" style="color:var(--sub)">다음 판을 시작하려면 먼저 판을 치우세요</span>
       </div>`
       :`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <button class="mini gmBtn" ${banned?"disabled style=\"opacity:.4;padding:10px 14px\"":`style="padding:10px 18px;border-color:var(--gold);color:var(--gold);font-weight:800"`} ${banned?"":`onclick="bjStart()"`}>🃏 딜</button>
+        <button class="gmGo gmBtn" ${banned?"disabled":`onclick="bjStart()"`}>🃏 딜</button>
         <span class="small" style="color:var(--sub)">딜러는 소프트 17 에서도 한 장 더 받습니다 · 더블·스플릿 없음</span>
       </div>`)}
     </div>
@@ -31622,6 +31902,8 @@ function show(v){
      준비 화면부터 다시 보여 준다. */
   try{ if((inPreTactics||inLineupPreview) && v!=="match") preTacAway=true; }catch(e){}
   const VIEWPREV=VIEW;
+  /* 🎰 자산 화면을 떠나면 도박 결과 화면도 치운다 (제보 — 다시 들어와도 결과가 남아 있었다) */
+  try{ if(VIEWPREV==="mylife" && v!=="mylife" && meTab==="gam" && typeof gamLeave==="function") gamLeave(); }catch(e){}
   VIEW=v;
   document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
   {
@@ -37002,44 +37284,6 @@ function fmSquadTable(t, xi, slotOf, mb, rest, sulking, injured){
         <span style="opacity:.5">■</span> 해본 적 없는 자리</span></div>`:""}
   </div>`;
 }
-/* 🔀 국면 형태 표시명 — 큐레이션 키를 사람 눈 표기로 */
-function shapeLabel(sh){ return ({"325":"3-2-5","235":"2-3-5","442d":"4-4-2","541d":"5-4-1"})[sh]||sh; }
-/* ⚠️ 전술 어긋남 경고 (요청) — 형태·성향·역할이 서로 반대로 가면 띄운다 */
-function tacWarnBar(t){
-  try{
-    const raw=Object.assign({}, TAC_DEF, t.tactic);
-    const warns=[];
-    const atkSh=t.tactic.atkShape, defSh=t.tactic.defShape;
-    const isExtremeAtk = atkSh==="325"||atkSh==="235"||atkSh==="2-3-5"||atkSh==="3-4-3";
-    if(isExtremeAtk && raw.mentality<=1)
-      warns.push("공격 전개 형태는 극단적인데 플레이 성향이 수비적입니다 — 높이 서기만 하고 과감함이 없어 득점력이 크게 떨어집니다.");
-    if((defSh==="541d"||defSh==="442d") && raw.mentality>=3)
-      warns.push("수비 블록 형태로 내려앉는데 플레이 성향이 공격적입니다 — 블록 압축이 풀려 형태의 효과가 약해집니다.");
-    /* 역할 어긋남 — 전방 자리를 받을 슬롯의 점유자가 전진 성향 없는 역할이면 */
-    if(atkSh && atkSh!=="keep"){
-      const fm=t.tactic.formation||"4-3-3";
-      /* t.tactic.slot 은 직접 드래그한 선수만 담는다 — 화면이 쓰는 계산(computeRenderSlots)으로 점유를 얻는다 */
-      let _occ=null; try{ _occ=computeRenderSlots(t, xiStrength(t).xi); }catch(e){}
-      const m=shapeMapFor(fm, atkSh, "ATT", _shapeRoleAdj(t, fm, _occ));
-      if(m){
-        const rsl=_occ||t.tactic.slot||{};
-        const bySlot={}; for(const pid in rsl) bySlot[rsl[pid]]=+pid;
-        let bad=0;
-        for(const sl in m){
-          if(m[sl].x<=0.55) continue;
-          const pid=bySlot[sl]; if(pid==null) continue;
-          const p=(t.players||[]).find(q=>q.id===pid); if(!p) continue;
-          const rd=getRole(t,p,sl); const R=ROLE_BY_KEY[rd.r];
-          const fx=R?R.fx(rd.d):null;
-          if(((fx&&fx.fwd)||0)<=0) bad++;
-        }
-        if(bad>=2) warns.push(`전방 자리를 받을 선수 중 <b>${bad}명</b>의 역할이 전진 성향이 없습니다 — 공격 형태가 미적지근해집니다. (카드의 역할 버튼으로 조정)`);
-      }
-    }
-    if(!warns.length) return "";
-    return `<div class="msg warn" style="margin:8px 0">${warns.map(w=>"⚠️ "+w).join("<br>")}</div>`;
-  }catch(e){ return ""; }
-}
 function tactics(){
   const t=userTeam();
   const S=xiStrength(t); const xi=S.xi;
@@ -37108,7 +37352,6 @@ function tactics(){
   </div>
   ${fmTopBar(t, xi, liveFormName)}
   ${xiInfo}
-  ${tacWarnBar(t)}
   ${tacShareBar()}
   ${tacDetailOpen?`<div class="fmDetailPane">${tacticDetailCard(t, xi)}</div>`:""}
   <div class="fmBody">
@@ -37305,14 +37548,6 @@ function tacticDetailCard(t, xi){
            다만 분석가가 없으면 한 수만, 좋으면 전부 올라온다. */
         let _gap=null; try{ _gap=teamOVR(opp)-teamOVR(t); }catch(e){}
         let tips=scoutAdvice(styleName(_oppView), OT, _gap);
-        /* 🔀 상대 국면 형태 정찰 (요청) — 분석 기본(11) 이상이면 형태 변형까지 읽어 준다 */
-        try{
-          const _ov=(_oppView&&_oppView.tactic)||{};
-          if(_anL>=11 && _ov.atkShape && _ov.atkShape!=="keep")
-            tips.unshift(`공격 때 <b>${shapeLabel(_ov.atkShape)}</b>로 변형하는 팀입니다 — 공을 끊는 순간 <b>풀백 뒷공간</b>이 열립니다. 역습 한 방을 준비하세요.`);
-          if(_anL>=11 && _ov.defShape && _ov.defShape!=="keep")
-            tips.unshift(`수비 때 <b>${shapeLabel(_ov.defShape)} 블록</b>으로 내려앉는 팀입니다 — 정면 승부보다 <b>폭을 넓혀</b> 블록부터 벌리세요.`);
-        }catch(e){}
         const cap = _anL>=14 ? 9 : _anL>=11 ? 3 : _anL>0 ? 2 : 1;
         tips=tips.slice(0, cap);
         return `<div class="small" style="margin-top:3px;line-height:1.65">${tips.map(x=>`→ ${x}`).join("<br>")}
@@ -37348,13 +37583,6 @@ function tacticDetailCard(t, xi){
     "블록이 서는 높이. 높으면 상대를 가두고 오프사이드를 잡지만 뒷공간이 열리고, 낮으면 뒷공간을 지운다 — 간격·성향과 합쳐 블록 압축을 정한다")}
   ${seg("수비 간격","defGap",null,
     "수비 시 줄 사이·선수 사이 간격. 매우 낮은 라인 + 매우 좁게면 톱까지 두 줄로 내려앉는 텐백 · 넓게 = 커버는 넓지만 라인 사이를 내준다")}
-  ${(()=>{ const shSel=(key,opts)=>`<select class="fmSel" onchange="setTacShape('${key}',this.value)">${opts.map(([v,n])=>`<option value="${v}" ${(raw[key]||"keep")===v?"selected":""}>${n}</option>`).join("")}</select>`;
-    const _formsA=formListSorted().filter(f=>f!=="2-3-5").map(f=>[f, f]);
-    const _formsD=formListSorted().filter(f=>f!=="4-4-2").map(f=>[f, f]);
-    return `<tr><th>공격 전개 형태</th><td>${shSel("atkShape",[["keep","포메이션 유지"],["325","3-2-5"],["235","2-3-5"], ..._formsA])}</td>
-      <td class="small">소유가 정착되면 이 형태로 벌린다 — 선수 자리는 그대로, 서는 위치만 바뀐다. 어떤 포메이션이든 공격 형태로 쓸 수 있다(풀백 전진 포함)</td></tr>
-    <tr><th>수비 블록 형태</th><td>${shSel("defShape",[["keep","포메이션 유지"],["442d","4-4-2"],["541d","5-4-1"], ..._formsD])}</td>
-      <td class="small">수비 국면에 이 형태의 블록으로 내려선다 — 어떤 포메이션이든 가능. 라인·간격 압축이 그 위에 겹친다</td></tr>`; })()}
   ${seg("공수전환 속도","transSpd",null,
     "빠르게 = 탈취·상실 순간 전원이 뛰어서 새 형태로 간다(형태 회복 빠름 · 체력 소모↑) · 느리게 = 다리를 아끼지만 전환 순간이 취약하다")}
   ${seg("공격 폭","width",null,
@@ -37382,14 +37610,6 @@ function tacPreview(el, key){
     const now=box.querySelector(".tacNow b");
     if(now) now.textContent=tacLabel(key, v);
   }catch(e){}
-}
-/* 🔀 국면별 형태 선택 — 슬라이더(0~4)가 아닌 범주형이라 setTac 과 별도 */
-function setTacShape(key,val){
-  const t=userTeam();
-  t.tactic[key]=(val==="keep")?"keep":val;
-  noteTacticChange(t, liveM?0.35:1);
-  if(liveM) liveM.xiDirty=true;
-  refreshTactics();
 }
 function setTac(key,val){
   /* 🔭 접속 목록에 뿌리는 선발 스냅샷을 새로 만들게 한다 (요청: 상대 포메이션 보기) */
@@ -52695,52 +52915,172 @@ function pitchToCanvasXY(cv, nx, ny){
   const w=cv.width-2*px, h=cv.height-2*py;
   return {x:px+nx*w, y:py+ny*h};
 }
+/* ⚠ 요청 — 「매치엔진 경기장을 좀 더 고급스럽게」.
+   예전 그림은 단색 잔디 + 흰 선이 전부였고, 코너 아크·페널티 스팟·페널티 아크(D)가 아예 없었다.
+   ─ 실제 구장에서 눈에 들어오는 순서대로 쌓는다:
+     ① 스탠드(관중석) → ② 잔디 그라데이션 → ③ 잔디 깎은 줄무늬 → ④ 골문 앞 닳은 자국
+     → ⑤ 규격에 맞는 흰 선 전부 → ⑥ 골망 → ⑦ 조명 하이라이트 · 비네팅
+   좌표는 예전 값을 그대로 쓴다 — 경기 로직(골 판정·박스 판정)이 이 숫자를 공유한다. */
+/* ⚡ 구장 바닥은 매 프레임 다시 그릴 필요가 없다 — 크기별로 한 번 그려 두고 그대로 찍는다.
+   (새 그림은 그라데이션을 열네 개 만든다. 60fps 로 매번 만들면 특히 모바일에서 아깝다) */
+let _PITCH_CACHE=null;
 function drawPitchBase(ctx, cv){
+  try{
+    const key=cv.width+"x"+cv.height;
+    if(!_PITCH_CACHE || _PITCH_CACHE.key!==key){
+      const oc=document.createElement("canvas");
+      oc.width=cv.width; oc.height=cv.height;
+      _pitchPaint(oc.getContext("2d"), oc);
+      _PITCH_CACHE={key, cv:oc};
+    }
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.drawImage(_PITCH_CACHE.cv, 0, 0);
+    return;
+  }catch(e){}
+  _pitchPaint(ctx, cv);
+}
+function _pitchPaint(ctx, cv){
   const kpb=cvK(cv);
   const W=cv.width, H=cv.height;
   const px=PITCH_PAD_X*kpb, py=PITCH_PAD_Y*kpb;   // 좌우는 넉넉하게, 위아래는 종전대로
   const pw=W-2*px, ph=H-2*py;
   ctx.clearRect(0,0,W,H);
-  /* 경기장 밖 — 잔디가 아닌 어두운 바닥. 여기로 나간 공은 「밖」이라는 게 한눈에 보인다 */
-  ctx.fillStyle="#0c1f14"; ctx.fillRect(0,0,W,H);
-  /* 잔디 — 라인 안쪽만 */
-  ctx.fillStyle="#143a24"; ctx.fillRect(px,py,pw,ph);
-  ctx.fillStyle="rgba(255,255,255,.025)";
-  for(let i=0;i<8;i+=2) ctx.fillRect(px+i*pw/8, py, pw/8, ph);
+
+  /* ── ① 스탠드 — 잔디 밖은 관중석이다. 어둡게 깔고 좌석 결을 얹는다 */
+  {
+    const bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,"#0a1b13"); bg.addColorStop(0.5,"#0d2418"); bg.addColorStop(1,"#081610");
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    ctx.save(); ctx.globalAlpha=0.5;
+    const seat=Math.max(2, 2.6*kpb);
+    ctx.fillStyle="rgba(255,255,255,.035)";
+    for(let y=0;y<H;y+=seat*2){ ctx.fillRect(0,y,W,seat); }        // 좌석 단
+    ctx.restore();
+  }
+
+  /* ── ② 잔디 — 위에서 아래로 빛이 떨어지는 결 */
+  {
+    const g=ctx.createLinearGradient(0,py,0,py+ph);
+    g.addColorStop(0,"#1c5231"); g.addColorStop(0.42,"#17462a"); g.addColorStop(1,"#123a22");
+    ctx.fillStyle=g; ctx.fillRect(px,py,pw,ph);
+  }
+  /* ── ③ 잔디 깎은 줄무늬 — 세로 12 줄, 밝고 어두운 결이 번갈아 */
+  {
+    const NB=12, bw=pw/NB;
+    for(let i=0;i<NB;i++){
+      ctx.fillStyle = (i%2===0) ? "rgba(255,255,255,.045)" : "rgba(0,0,0,.045)";
+      ctx.fillRect(px+i*bw, py, bw, ph);
+    }
+    /* 잔디결 위로 흐르는 옅은 빛 — 조명 반사 */
+    const sh=ctx.createLinearGradient(px,py,px+pw,py+ph);
+    sh.addColorStop(0,"rgba(255,255,255,.05)"); sh.addColorStop(0.45,"rgba(255,255,255,0)");
+    sh.addColorStop(1,"rgba(255,255,255,.035)");
+    ctx.fillStyle=sh; ctx.fillRect(px,py,pw,ph);
+  }
+  /* ── ④ 골문 앞·센터서클 닳은 자국 — 실제 구장의 흙 자국 */
+  {
+    ctx.save();
+    const wear=(cx,cy,rx,ry,al)=>{
+      const rg=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(rx,ry));
+      rg.addColorStop(0,`rgba(120,96,58,${al})`); rg.addColorStop(1,"rgba(120,96,58,0)");
+      ctx.save(); ctx.translate(cx,cy); ctx.scale(1, ry/Math.max(rx,ry)); ctx.translate(-cx,-cy);
+      ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(cx,cy,Math.max(rx,ry),0,Math.PI*2); ctx.fill(); ctx.restore();
+    };
+    wear(px+pw*0.045, H/2, pw*0.055, ph*0.15, 0.085);
+    wear(W-px-pw*0.045, H/2, pw*0.055, ph*0.15, 0.085);
+    wear(W/2, H/2, pw*0.05, ph*0.11, 0.05);
+    ctx.restore();
+  }
+
   /* 🪧 골대 뒤 광고판 — 「여기가 끝」이라는 경계선 */
-  ctx.fillStyle="rgba(255,255,255,.07)";
-  const adW=Math.max(3, 4*kpb);
-  ctx.fillRect(px-px*0.86, py+ph*0.10, adW, ph*0.80);
-  ctx.fillRect(W-px+px*0.86-adW, py+ph*0.10, adW, ph*0.80);
-  ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=2*kpb;
+  {
+    const adW=Math.max(3, 4*kpb);
+    const ad=(x)=>{
+      const g2=ctx.createLinearGradient(x,0,x+adW,0);
+      g2.addColorStop(0,"rgba(255,255,255,.16)"); g2.addColorStop(1,"rgba(255,255,255,.05)");
+      ctx.fillStyle=g2; ctx.fillRect(x, py+ph*0.10, adW, ph*0.80);
+    };
+    ad(px-px*0.86); ad(W-px+px*0.86-adW);
+  }
+
+  /* ── ⑤ 흰 선 — 규격대로 전부 */
+  const boxW=pw*0.16, boxH=ph*0.5, boxY=py+(ph-boxH)/2;
+  const gaW=pw*0.06, gaH=ph*0.24, gaY=py+(ph-gaH)/2;
+  const goalH=ph*0.14, goalY=py+(ph-goalH)/2;
+  const goalD=pw*GOAL_NET_DEPTH;                     // 골 깊이 = 물리 골망 깊이와 일치
+  ctx.save();
+  ctx.strokeStyle="rgba(255,255,255,.82)"; ctx.lineWidth=2*kpb;
+  ctx.shadowColor="rgba(255,255,255,.30)"; ctx.shadowBlur=3*kpb;   // 선이 살짝 빛난다
   ctx.strokeRect(px,py,pw,ph);
   ctx.beginPath(); ctx.moveTo(W/2,py); ctx.lineTo(W/2,H-py); ctx.stroke();
   ctx.beginPath(); ctx.arc(W/2,H/2,ph*0.16,0,Math.PI*2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(W/2,H/2,3,0,Math.PI*2); ctx.fillStyle="#fff"; ctx.fill();
-  const boxW=pw*0.16, boxH=ph*0.5, boxY=py+(ph-boxH)/2;
   ctx.strokeRect(px,boxY,boxW,boxH); ctx.strokeRect(W-px-boxW,boxY,boxW,boxH);
-  const gaW=pw*0.06, gaH=ph*0.24, gaY=py+(ph-gaH)/2;
   ctx.strokeRect(px,gaY,gaW,gaH); ctx.strokeRect(W-px-gaW,gaY,gaW,gaH);
-  const goalH=ph*0.14, goalY=py+(ph-goalH)/2;
-  const goalD=pw*GOAL_NET_DEPTH;                     // 골 깊이 = 물리 골망 깊이와 일치
-  ctx.strokeRect(px-goalD,goalY,goalD,goalH); ctx.strokeRect(W-px,goalY,goalD,goalH);
-  /* 🥅 골망 — 그물눈. 공이 이 안에 멈춰야 골이라는 게 한눈에 보인다 */
+  /* 페널티 아크(D) — 박스 밖으로 나온 반원만 그린다 */
+  {
+    const spotX=px+pw*0.105, arcR=ph*0.16;
+    const a=Math.acos(clamp((px+boxW-spotX)/arcR, -1, 1));
+    ctx.beginPath(); ctx.arc(spotX, H/2, arcR, -a, a); ctx.stroke();
+    const spotX2=W-spotX;
+    ctx.beginPath(); ctx.arc(spotX2, H/2, arcR, Math.PI-a, Math.PI+a); ctx.stroke();
+  }
+  /* 코너 아크 — 네 귀퉁이 */
+  {
+    const cr=Math.max(4, 7*kpb);
+    ctx.beginPath(); ctx.arc(px,py,cr,0,Math.PI/2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(px,H-py,cr,-Math.PI/2,0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(W-px,py,cr,Math.PI/2,Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.arc(W-px,H-py,cr,Math.PI,Math.PI*1.5); ctx.stroke();
+  }
+  ctx.restore();
+  /* 스팟 — 센터·페널티 */
+  {
+    ctx.fillStyle="rgba(255,255,255,.92)";
+    const dot=(x,y,r)=>{ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); };
+    dot(W/2,H/2, 2.6*kpb);
+    dot(px+pw*0.105, H/2, 2.4*kpb);
+    dot(W-px-pw*0.105, H/2, 2.4*kpb);
+  }
+
+  /* ── ⑥ 골망 — 안쪽으로 갈수록 촘촘하고 어둡다 */
   ctx.save();
-  ctx.strokeStyle="rgba(255,255,255,.22)"; ctx.lineWidth=1;
   const mesh=Math.max(3, 3.2*kpb);
   for(const gx0 of [px-goalD, W-px]){
+    const inner = (gx0<W/2);                                    // 왼쪽 골대는 바깥이 왼쪽
+    const gg=ctx.createLinearGradient(gx0,0,gx0+goalD,0);
+    gg.addColorStop(0, inner?"rgba(0,0,0,.30)":"rgba(0,0,0,.06)");
+    gg.addColorStop(1, inner?"rgba(0,0,0,.06)":"rgba(0,0,0,.30)");
+    ctx.fillStyle=gg; ctx.fillRect(gx0, goalY, goalD, goalH);
+    ctx.strokeStyle="rgba(255,255,255,.26)"; ctx.lineWidth=1;
     ctx.beginPath();
     for(let x=gx0+mesh; x<gx0+goalD; x+=mesh){ ctx.moveTo(x, goalY); ctx.lineTo(x, goalY+goalH); }
     for(let y=goalY+mesh; y<goalY+goalH; y+=mesh){ ctx.moveTo(gx0, y); ctx.lineTo(gx0+goalD, y); }
     ctx.stroke();
   }
   /* 골포스트 — 골망보다 진하게. 공이 포스트 바깥으로 지나갔는지가 분명해진다 */
-  ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=2.4*kpb;
+  ctx.strokeStyle="rgba(255,255,255,.95)"; ctx.lineWidth=2.8*kpb;
+  ctx.shadowColor="rgba(0,0,0,.5)"; ctx.shadowBlur=3*kpb;
   ctx.beginPath();
   ctx.moveTo(px, goalY); ctx.lineTo(px, goalY+goalH);
   ctx.moveTo(W-px, goalY); ctx.lineTo(W-px, goalY+goalH);
   ctx.stroke();
   ctx.restore();
+
+  /* ── ⑦ 조명 — 네 모서리 조명탑이 만드는 밝은 웅덩이 + 가장자리 비네팅 */
+  ctx.save();
+  ctx.globalCompositeOperation="lighter";
+  for(const [lx,ly] of [[px+pw*0.18,py+ph*0.10],[W-px-pw*0.18,py+ph*0.10],
+                        [px+pw*0.18,H-py-ph*0.10],[W-px-pw*0.18,H-py-ph*0.10]]){
+    const lg=ctx.createRadialGradient(lx,ly,0,lx,ly,pw*0.34);
+    lg.addColorStop(0,"rgba(215,240,255,.075)"); lg.addColorStop(1,"rgba(215,240,255,0)");
+    ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(lx,ly,pw*0.34,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+  {
+    const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.30, W/2,H/2,Math.max(W,H)*0.72);
+    vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,.34)");
+    ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+  }
 }
 /* 🦘 ⚠ 요청 — 「선수가 점프할 때도 선수 바둑알이 약간 커지는 효과를 넣어 줘. 그림자도 생기고」.
    공(drawBallZ)과 같은 원리다 — 탑뷰에서 「떴다」를 알 수 있는 건 그림자와의 간격, 그리고 커진 크기뿐.
@@ -52757,6 +53097,79 @@ function jumpZOf(a, now){
     if(k<=0 || k>=1) return 0;
     return Math.sin(Math.PI*k)*(a._jh||1);
   }catch(e){ return 0; }
+}
+/* 🤜 ⚠ 요청 — 「헤더 경합이나 태클 상황에서 두 바둑알이 부딪힐 때 미세하게 좌우로 떠는 효과」.
+   탑뷰에서 몸싸움은 그림으로 남는 게 없다 — 붙었다가 한쪽이 공을 갖는 결과만 보인다.
+   부딪힌 두 선수를 짧게 떨어 「지금 몸이 부딪혔다」를 눈에 보이게 한다.
+   ─ 점프(jumpZOf)와 같은 방식: 시각(_jt)과 세기(_jp)만 에이전트에 적어 두고 그리기가 읽는다.
+     화면 상태라 세이브에는 남지 않는다. */
+const PITCH_AR_INV=1/1.55;   // 좌우 진폭 보정 — 화면에서 가로가 늘어나 있으므로 그만큼 줄인다
+const JIT_DUR=0.34;          // 떨림이 이어지는 시간(초)
+const JIT_AMP=0.0034;        // 최대 진폭 (피치 폭 기준 ≈0.37m)
+const JIT_HZ=26;             // 떨리는 속도
+function jitterOf(a, now){
+  try{
+    if(!a || a._jt===undefined) return null;
+    const k=(now-a._jt)/JIT_DUR;
+    if(k<=0 || k>=1) return null;
+    const decay=(1-k)*(1-k);                       // 처음 크게, 빠르게 잦아든다
+    const amp=JIT_AMP*(a._jp||1)*decay;
+    const ph=(a.seed||0)*0.7;                      // 선수마다 위상이 달라야 「같이 흔들리는」 느낌이 안 난다
+    return {dx:Math.sin((now-a._jt)*JIT_HZ*Math.PI*2 + ph)*amp*PITCH_AR_INV,
+            dy:Math.cos((now-a._jt)*JIT_HZ*Math.PI*2*0.83 + ph)*amp*0.72};
+  }catch(e){ return null; }
+}
+/* 💨 ⚠ 요청 — 「선수가 빠르게 달릴 때 뒤에 은은한 잔상이 남도록」.
+   공간 압박감의 정체는 「저 선수가 지금 얼마나 빠른가」다. 탑뷰에서 그건 속도로만 보이는데,
+   바둑알은 등속으로 움직여도 똑같이 보인다. 지나온 자리에 흐려지는 잔상을 남겨
+   「달리는 중」과 「걷는 중」이 한눈에 갈리게 한다.
+   ─ 기준: RUN(0.0657) 부터 옅게 보이기 시작해 SPRINT(0.1029) 에서 가장 진하다.
+     잔상은 화면 상태일 뿐이라 에이전트에만 남고 세이브에는 들어가지 않는다. */
+/* ⚠ SPD 는 이 아래에서 선언된다(const) — 로드 시점에 읽으면 TDZ 오류가 난다.
+   실행 시점에 한 번만 읽어 캐시한다. */
+let _TRZ=null;
+function trailThr(){ if(!_TRZ) _TRZ={min:SPD.RUN*0.92, full:SPD.SPRINT}; return _TRZ; }
+const TRAIL_N=7;                   // 남기는 잔상 개수
+const TRAIL_GAP=2;                 // 몇 프레임마다 한 점씩 찍는가
+let _trailTick=0;
+/* 지금 이 선수가 얼마나 빠른가 (0=잔상 없음 · 1=최대) */
+function trailK(a){
+  try{
+    let v=a.spd;
+    if(v===undefined || v===null){
+      if(a._tpx===undefined) return 0;
+      v=Math.hypot((a.x-a._tpx)*PITCH_AR, a.y-a._tpy)/SIM_DT;
+    }
+    const Z=trailThr();
+    return clamp((v-Z.min)/Math.max(1e-6,(Z.full-Z.min)), 0, 1);
+  }catch(e){ return 0; }
+}
+/* 잔상 좌표를 쌓는다 — 그리기 직전에 호출한다 */
+function trailPush(a, nx, ny, k){
+  if(!a._trail) a._trail=[];
+  if(k<=0.02){ if(a._trail.length) a._trail.length=Math.max(0, a._trail.length-1); return; }
+  if(_trailTick % TRAIL_GAP) return;
+  a._trail.push({x:nx, y:ny, k});
+  if(a._trail.length>TRAIL_N) a._trail.shift();
+}
+/* 잔상을 그린다 — 오래된 점일수록 작고 투명하다 */
+function drawTrail(ctx, cv, a, color, r){
+  const T=a._trail; if(!T || T.length<2) return;
+  const k2=cvK(cv);
+  ctx.save();
+  for(let i=0;i<T.length;i++){
+    const t=T[i];
+    const age=(i+1)/T.length;                       // 0=가장 오래됨 · 1=가장 최근
+    /* 은은하게 — 진하면 잔상이 아니라 「사람이 늘어난 것」처럼 보인다.
+       실측으로 0.30 은 화면에서 거의 안 보였고 0.55 는 인원이 늘어 보였다. 0.42 로 잡는다. */
+    const al=0.42*age*age*clamp(t.k,0,1);
+    if(al<0.012) continue;
+    const {x,y}=pitchToCanvasXY(cv, t.x, t.y);
+    ctx.globalAlpha=al;
+    ctx.beginPath(); ctx.arc(x, y, r*k2*(0.52+age*0.40), 0, Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+  }
+  ctx.restore();
 }
 function drawDotXY(ctx, cv, nx, ny, color, r, jz){
   const k=cvK(cv), {x,y}=pitchToCanvasXY(cv,nx,ny);
@@ -56616,93 +57029,10 @@ function slotUsed(team, slot){
   }
   return !!(team._suSet && team._suSet[slot]);
 }
-/* 🔀 국면별 형태 (요청 — 「공격시/수비시 포메이션」). 포메이션(슬롯)은 하나로 두고,
-   국면이 되면 앵커만 형태 목표 좌표로 모핑한다 — 라볼피아나·텐백과 같은 방식이라
-   역할·마킹·능숙도 등 슬롯에 묶인 시스템과 충돌하지 않는다.
-   좌표는 전진도(0=자기 골문) 기준. 매핑은 포메이션×형태별로 한 번만 계산해 캐시:
-   기본 앵커와 목표점을 (깊이, 좌우) 순으로 정렬해 순서대로 짝짓는다 — 가장 깊은 선수가
-   가장 깊은 자리로, 왼쪽 선수는 왼쪽으로. */
-const PHASE_SHAPES={
-  "325":[[0.30,0.28],[0.28,0.50],[0.30,0.72],[0.46,0.40],[0.46,0.60],
-         [0.68,0.10],[0.71,0.31],[0.73,0.50],[0.71,0.69],[0.68,0.90]],
-  "235":[[0.29,0.38],[0.29,0.62],[0.47,0.26],[0.47,0.50],[0.47,0.74],
-         [0.68,0.10],[0.71,0.31],[0.73,0.50],[0.71,0.69],[0.68,0.90]],
-  "442d":[[0.145,0.18],[0.135,0.40],[0.135,0.60],[0.145,0.82],
-          [0.295,0.18],[0.275,0.40],[0.275,0.60],[0.295,0.82],[0.43,0.42],[0.43,0.58]],
-  "541d":[[0.135,0.13],[0.125,0.31],[0.115,0.50],[0.125,0.69],[0.135,0.87],
-          [0.27,0.21],[0.255,0.40],[0.255,0.60],[0.27,0.79],[0.42,0.50]]
-};
-const _shapeMapCache={};
-/* 🔀 형태 소스는 둘 — 큐레이션 좌표(PHASE_SHAPES)와 「게임의 모든 포메이션」(요청 — 「325/235만?
-   포메이션이 얼마나 많은데」). 포메이션을 형태로 쓰면 그 포메이션의 압축 앵커에 국면 시프트를
-   얹는다: 공격 +0.06(풀백·윙백은 fbPush 만큼 추가 +0.11) · 수비 -0.045. */
-function _shapePoints(shape, ph){
-  if(PHASE_SHAPES[shape]) return PHASE_SHAPES[shape].map(p=>({x:p[0], y:p[1], band:null}));
-  const fs=FORMATION_SHAPE[shape];
-  if(!fs) return null;
-  const COMPACT=0.52, MIDX=0.44;
-  return fs.map(([band,sl])=>{
-    const b=SLOT_XY[sl]||SLOT_XY.CM;
-    let x=MIDX+(b.x-MIDX)*COMPACT;
-    const fbw=(sl==="LB"||sl==="RB"||sl==="LWB"||sl==="RWB");
-    if(ph==="ATT") x+= 0.06 + (fbw?0.11:0);
-    else if(ph==="DEF") x-=0.045;
-    return {x:clamp01(x), y:b.y, band};
-  });
-}
-/* 🔀 역할 인지 매핑 (제보 — 「형태가 선수 역할과 잘 맞물리나?」). 슬롯 기하로만 짝지으면
-   4-4-2 → 3-2-5 에서 풀백 둘 다 후방 3에 묶인다 — 완성형 윙백(공격)을 줘도 천장에 걸렸다.
-   그 슬롯에 앉은 선수의 「역할 전진 성향(fx.fwd)」을 정렬 키에 섞는다: 공격 역할은 앞 자리,
-   수비 역할은 뒷자리를 받는다. 팀 전술 서명(_sig)이 바뀔 때만 재계산해 캐시. */
-function _shapeRoleAdj(team, formation, occ){
-  try{
-    const t=team; if(!t || !t.tactic) return null;
-    /* ⚠ 원인 — 처음에는 t._sig 로 캐시를 갱신했는데, tacticSig 에는 역할·슬롯 배치가
-       안 들어간다. 역할을 바꾸거나 선수를 드래그해도 sig 가 그대로라 낡은 배치로
-       전방 자리를 계산했다(경고 배지·경기 중 앵커 둘 다). — 내용 해시로 직접 재다. */
-    const rsl=occ||t._slotOcc||t.tactic.slot||{};
-    const rmap=t.tactic.role||{};
-    let ch=0;
-    for(const pid in rsl){ const s2=""+rsl[pid]; ch=(ch*33 + (+pid) + s2.length*7 + s2.charCodeAt(0))|0; }
-    for(const pid in rmap){ const rd=rmap[pid]; if(!rd||!rd.r) continue;
-      ch=(ch*33 + (+pid) + rd.r.length*11 + rd.r.charCodeAt(0)*3 + (rd.d?rd.d.charCodeAt(0):0))|0; }
-    const sig=formation+"|"+ch;
-    if(t._shapeAdj && t._shapeAdj.sig===sig) return t._shapeAdj;
-    const bySlot={}; for(const pid in rsl) bySlot[rsl[pid]]=+pid;
-    const adj={}; let hash=0;
-    for(const [band,s2] of (FORMATION_SHAPE[formation]||[])){
-      const pid=bySlot[s2]; if(pid==null) continue;
-      const p=(t.players||[]).find(q=>q.id===pid); if(!p) continue;
-      const rd=getRole(t,p,s2); const R=ROLE_BY_KEY[rd.r];
-      const fx=R?R.fx(rd.d):null;
-      const v=clamp((fx&&fx.fwd)||0, -1, 1);
-      if(v){ adj[s2]=v; hash=(hash*31 + Math.round(v*20) + s2.length)|0; }
-    }
-    return (t._shapeAdj={sig, adj, hash});
-  }catch(e){ return null; }
-}
-function shapeMapFor(formation, shape, ph, roleAdj){
-  const key=formation+"|"+shape+"|"+(ph||"")+"|"+(roleAdj?roleAdj.hash:0);
-  if(_shapeMapCache[key]!==undefined) return _shapeMapCache[key];
-  const fs=FORMATION_SHAPE[formation];
-  const pts=_shapePoints(shape, ph);
-  if(!fs || !pts) return (_shapeMapCache[key]=null);
-  const COMPACT=0.52, MIDX=0.44;   // ⚠ tacticalAnchorXY 의 압축 상수와 같은 값이어야 한다
-  const _adj=(roleAdj&&roleAdj.adj)||{};
-  const slots=fs.map(x=>x[1]).map(sl=>{
-    const b=SLOT_XY[sl]||SLOT_XY.CM;
-    /* 역할 가중 0.28 — 실측: 다른 슬롯도 저마다 역할 fwd 를 가져 서열이 통째로 뒤집히진 않는다.
-       공격 역할 풀백은 윙이 아니라 「피벗」 자리를 받는다(진첸코식 인버티드) — 윙은 측면 미드필더 몫.
-       수비 역할 풀백은 백3 에 합류. 이게 의도한 맞물림이다(더 올리면 기하가 무너진다). */
-    return {sl, x:MIDX+(b.x-MIDX)*COMPACT + (_adj[sl]||0)*0.28, y:b.y};
-  });
-  const ord=(a,b)=>(a.x-b.x)||(a.y-b.y);
-  const so=[...slots].sort(ord);
-  const po=[...pts].sort(ord);
-  const map={};
-  for(let i=0;i<so.length && i<po.length;i++) map[so[i].sl]=po[i];
-  return (_shapeMapCache[key]=map);
-}
+/* ⚠ 요청 — 「국면 포메이션은 없애자. 너무 극단적이었던 것 같다」.
+   공격시/수비시 형태(PHASE_SHAPES · shapeMapFor · _shapeRoleAdj · 앵커 모핑)를 통째로 걷어냈다.
+   포메이션은 다시 하나다 — 국면에 따라 달라지는 건 라인·간격·성향(기존 슬라이더)뿐이다.
+   ─ 남겨 둔 것: team._slotOcc(경기 시점 실제 슬롯 배치)는 능숙도 적립이 쓰므로 그대로 둔다. */
 function tacticalAnchorXY(team, slot, phase, isHome){
   const T=TAC(team);
   const base=SLOT_XY[slot]||SLOT_XY.CM;
@@ -56742,16 +57072,6 @@ function tacticalAnchorXY(team, slot, phase, isHome){
   const _busT = (phase!=="ATT")
     ? clamp((blockComp(T)-0.58)/0.30, 0, 1)*({FW:0.155, AM:0.105, MF:0.045, DM:0.02}[SLOT_BAND[slot]]||0) : 0;
   let x=clamp01(bx + lineShift + (slot==="GK"?0:phaseShift-_busT));
-  /* 🔀 국면별 형태 모핑 — 공격이면 atkShape, 수비면 defShape 목표로 앵커를 끌어간다(80%).
-     20% 는 원래 슬롯 성분으로 남겨 역할 개성·좌우 정체성이 완전히 죽지 않게 한다. */
-  if(slot!=="GK" && T.raw){
-    const _sh = phase==="ATT" ? T.raw.atkShape : T.raw.defShape;
-    if(_sh && _sh!=="keep"){
-      const _m=shapeMapFor(T.formation, _sh, phase, _shapeRoleAdj(team, T.formation));
-      const _tp=_m && _m[slot];
-      if(_tp){ x=clamp01(x+(_tp.x-x)*0.80); y=clamp01(y+(_tp.y-y)*0.80); }
-    }
-  }
   const p={x, y:clamp01(y)};
   return isHome ? p : mirrorXY(p);
 }
@@ -59779,7 +60099,6 @@ class MatchSim{
         if(tm && !tm.isUser && tm.tactic){
           const c={formation: tm.tactic.formation};
           for(const kk of TAC_KEYS) c[kk]=tm.tactic[kk];
-          c.atkShape=tm.tactic.atkShape||"keep"; c.defShape=tm.tactic.defShape||"keep";
           this._tacBase[k2]=c;
         }
       }
@@ -59895,7 +60214,7 @@ class MatchSim{
      화면 하단 패널에 흐를 문장이다. 문자중계 로그(M.events)와는 완전히 별개로,
      하이라이트로 잘려 나갈 구간만 쓰이고 시즌 기록에는 남지 않는다.
      프레임과 같은 링버퍼 방식이라 "되감아 보여주기"가 그대로 성립한다. */
-  cap(side, pool, vars, rt){
+  cap(side, pool, vars, rt, meta){
     if(!this.recording || !pool) return;
     /* 🎙️ 해설 감사(제보) — 같은 틀의 한 줄이 30초 안에 또 나온 비율 16.5%. 걷어내기 한 줄이 경기당 137번,
        공중볼 68번 — 일어난 모든 일을 중계하니 로봇처럼 들렸다. 루틴 풀(패스 연결·걷어내기·인터셉트·공중볼)에
@@ -59922,7 +60241,7 @@ class MatchSim{
     } else {
       _txt=F_(pool, vars||{});
     }
-    this.caps.push({t:this.t, side, txt:_txt, rt:rt?1:0});
+    this.caps.push(Object.assign({t:this.t, side, txt:_txt, rt:rt?1:0}, meta||{}));
     if(this.caps.length>HL_CAP_MAX) this.caps.shift();
   }
   /* ── 📓 내러티브 이벤트 로그 ────────────────────────────────
@@ -59937,6 +60256,12 @@ class MatchSim{
     if(this.evlog.length>EVLOG_MAX) this.evlog.shift();
   }
   nm(a){ return a && a.p ? a.p.name : "선수"; }
+  /* 🤜 몸이 부딪혔다 — 관련된 선수들을 짧게 떨게 한다 (요청) */
+  jitter(list, pow){
+    try{ for(const a of (Array.isArray(list)?list:[list])){
+      if(!a) continue; a._jt=this.t; a._jp=pow||1;
+    } }catch(e){}
+  }
   /* ═══ 👻 그라운드를 떠난 선수 보관 ═════════════════════════════════
      ⚠ 제보 — 「PK 상황에서 아무도 없는데 투명 선수가 차고, GOAL 팝업에 이름이 안 떴다」.
         퇴장·교체 아웃·부상 이탈로 agents 에서 빠진 선수는 하이라이트를 되감을 때
@@ -60211,7 +60536,13 @@ class MatchSim{
     if(this.emitEvents){
       const nm=scorer&&scorer.p?scorer.p.name:"선수";
       const txt = ax ? F_(COMM.goalA,{p:nm, a:ax.p.name}) : F_(COMM.goal,{p:nm});
-      this.say(side, txt, "goal", {kind:"sim_goal", side, scorerId:sh.shooterId});
+      /* 💥 ⚠ 요청 — 「강력한 중거리 슛이 터졌을 때 화면을 미세하게 흔든다」.
+         세기는 거리와 슛 종류가 정한다: 가까운 골은 잔잔하게, 먼 거리의 강슛은 크게.
+         화면(=하이라이트)이 그 장면에 도달할 때 흔들리도록 이벤트에 실어 보낸다. */
+      const _shk = clamp(0.34 + Math.max(0, (sh.distM||0)-14)/26
+                    + ((sh.type===SHOT_TYPE.POWER)?0.30:0)
+                    + ((sh.type===SHOT_TYPE.VOLLEY)?0.18:0), 0.30, 1.35);
+      this.say(side, txt, "goal", {kind:"sim_goal", side, scorerId:sh.shooterId, shake:_shk});
       try{ this.maybeDissentSim(this.opp(side)); }catch(e){}
     }
   }
@@ -60225,9 +60556,9 @@ class MatchSim{
       const xi=onPitch(sd).map(x=>x.p);
       const slotOf=computeRenderSlots(sd.team, xi);
       /* ⚠ 원인 — t.tactic.slot 은 감독이 직접 끌어다 놓을 때만 채워진다. 시뮬 에이전트의
-         실제 슬롯(computeRenderSlots)은 저장되지 않아, _shapeRoleAdj 가 대부분의 팀에서
-         빈 배치를 읽었다 = 역할-형태 맞물림이 실전에서 죽어 있었다(계측 프로브만
-         tj.tactic.slot 을 손으로 채워서 통과). 경기 시점 점유를 팀에 실어 준다. */
+         실제 슬롯(computeRenderSlots)은 어디에도 남지 않는다.
+         경기 뒤 능숙도 적립(gainPosFam·gainRoleFam)이 「실제로 뛴 자리」를 알아야 하므로
+         경기 시점 점유를 팀에 실어 준다. */
       /* 🎓 교체로 빠진 선수도 정산 때 「그 경기에서 뛴 자리」가 남아야 한다 — 덮지 않고 병합 */
       sd.team._slotOcc=Object.assign({}, sd.team._slotOcc||{}, slotOf);
       for(const x of onPitch(sd)){
@@ -60314,9 +60645,9 @@ class MatchSim{
       /* 상대 벤치가 지금 꺼내 든 전술 — 유저가 경기 중에 바꾼 것까지 그대로 읽는다 */
       let oT=null; try{ oT=TAC(this.rec(this.opp(key)).team); }catch(e){}
       if(gd<=-1 && min>=pf.tLose2){              // 지고 있고 시간이 없다 — 총공세
-        want={mentality:4, line:4, press:4, tempo:4, counter:0, atkShape:"325"};
+        want={mentality:4, line:4, press:4, tempo:4, counter:0};
         newForm=FORM_ATK[T.formation]||null;
-        msg=`총공세로 나서겠다는 뜻이겠죠. 라인을 완전히 끌어올립니다! 공격 전개는 3-2-5 변형입니다.`;
+        msg=`총공세로 나서겠다는 뜻이겠죠. 라인을 완전히 끌어올립니다!`;
         /* 🔥 마지막 승부수 — 80분 넘어 두 골 이상 뒤지면 수비를 둘만 남기고 전부 앞으로.
            공격 성향 감독일수록, 전술 능력이 좋을수록 과감하게 꺼낸다. */
         if(min>=80 && gd<=-2 && Math.random() < 0.10 + Math.max(0,(c?c.att-c.def:0))*0.05 + Math.max(0,tq)*0.06){
@@ -60325,23 +60656,21 @@ class MatchSim{
         }
       } else if(gd<=-1 && (min>=pf.tLose1 || urgent)){   // 지고 있다 — 공격적으로
         want={mentality:3, line:Math.min(4,(T.line||2)+1), press:Math.min(4,(T.press||2)+1)};
-        if(Math.random()<0.30+Math.max(0,tq)*0.35) want.atkShape="325";   // 🔀 형태로도 무게를 싣는다
         if(Math.random()<0.45) newForm=FORM_ATK[T.formation]||null;
         msg=urgent ? `실점하자마자 벤치가 바로 반응합니다. 무게를 앞으로 싣는군요.`
                    : `좀 더 공격적으로 나서는 것 같군요. 압박의 강도도 올라갑니다.`;
       } else if(gd>=2 && min>=pf.tLead2){        // 넉넉히 이기고 있다 — 잠근다
-        want={mentality:0, line:0, press:1, counter:4, defShape:"541d"};
+        want={mentality:0, line:0, press:1, counter:4};
         newForm=FORM_DEF[T.formation]||null;
-        msg=`완전히 내려서는 것 같군요. 수비 때는 5-4-1 블록입니다 — 승부를 굳히려는 모습입니다.`;
+        msg=`완전히 내려서는 것 같군요. 승부를 굳히려는 모습입니다.`;
       } else if(gd===1 && min>=84){              // 🔒 한 골 차 종반 — 버스를 세운다
-        want={mentality:0, line:0, press:0, counter:3, tempo:0, defShape:"541d"};
+        want={mentality:0, line:0, press:0, counter:3, tempo:0};
         if(Math.random() < 0.14 + Math.max(0,(c?c.def-c.att:0))*0.06){
           newForm="7-2-1";
           msg=`7-2-1! 아예 버스를 세웁니다 — 한 골을 지키겠다는 뜻입니다.`;
         } else { newForm=FORM_DEF[T.formation]||null; msg=`남은 시간, 완전히 내려앉습니다.`; }
       } else if(gd>=1 && min>=pf.tLead1){        // 한 골 차 리드 — 실리로
         want={mentality:1, line:Math.max(0,(T.line||2)-1), counter:3};
-        if(Math.random()<0.35+Math.max(0,tq)*0.25) want.defShape="442d";   // 🔀 두 줄 블록으로 실리
         if(Math.random()<0.40) newForm=FORM_DEF[T.formation]||null;
         msg=`좀 더 내려서는 것 같군요. 역습을 노리겠다는 계산입니다.`;
       }
@@ -60522,9 +60851,9 @@ class MatchSim{
       const xi=onPitch(sd).map(x=>x.p);
       const slotOf=computeRenderSlots(sd.team, xi);
       /* ⚠ 원인 — t.tactic.slot 은 감독이 직접 끌어다 놓을 때만 채워진다. 시뮬 에이전트의
-         실제 슬롯(computeRenderSlots)은 저장되지 않아, _shapeRoleAdj 가 대부분의 팀에서
-         빈 배치를 읽었다 = 역할-형태 맞물림이 실전에서 죽어 있었다(계측 프로브만
-         tj.tactic.slot 을 손으로 채워서 통과). 경기 시점 점유를 팀에 실어 준다. */
+         실제 슬롯(computeRenderSlots)은 어디에도 남지 않는다.
+         경기 뒤 능숙도 적립(gainPosFam·gainRoleFam)이 「실제로 뛴 자리」를 알아야 하므로
+         경기 시점 점유를 팀에 실어 준다. */
       sd.team._slotOcc=slotOf;
       for(const x of onPitch(sd)){
         const slot = x.p.pos==="GK" ? "GK" : (slotOf[x.p.id]||"CM");
@@ -62171,20 +62500,6 @@ class MatchSim{
           const _cap=_oB(bR.x)-WM_BEHIND;
           if(_oB(tx)>_cap){ const _c=clamp01(Math.max(0.06,_cap)); tx=clamp01(a.dir>0?_c:1-_c);
             const _lagW=(_oB(a.x)-_cap)*ISO_TO_M*PITCH_AR; if(_lagW>6) spd=Math.max(spd, SPD.RUN); }
-        }
-        /* 🔀 국면별 공격 형태의 후방 담당 천장 (요청 — 3-2-5/2-3-5).
-           앵커 모핑만으로는 의도·잔여라인 스테이지에 씻겨 빌드 인원이 0.9명에 그쳤다(목표 3).
-           형태상 목표가 후방(x<0.52)인 슬롯은 그 앞으로 나가지 못하게 천장을 건다 — 10d 패턴. */
-        if(phase==="ATT" && T.raw && T.raw.atkShape && T.raw.atkShape!=="keep" &&
-           !(carrier && a.id===carrier.id) && !a._chase && !b.setPiece && a.slot!=="GK" &&
-           !(a._lavo||a._lavoWide||a._cb3lap)){
-          const _sm=shapeMapFor(T.formation, T.raw.atkShape, "ATT", _shapeRoleAdj(a.team, T.formation));
-          const _tp=_sm && _sm[a.slot];
-          if(_tp && _tp.x<0.52){
-            const _o2=v=>a.dir>0?v:1-v;
-            const _capS=_tp.x+0.09;
-            if(_o2(tx)>_capS){ const _c2=clamp01(_capS); tx=clamp01(a.dir>0?_c2:1-_c2); }
-          }
         }
         /* 🏃 10d 풀백 전진 천장 — 임무·성향별 상한, 위험하면 상대 윙어 + 여유, 반대쪽이 올라가 있으면 하프라인 (fbRisk 주석) */
         if(phase==="ATT" && (a.slot==="LB"||a.slot==="RB"||a.slot==="LWB"||a.slot==="RWB") &&
@@ -65090,6 +65405,8 @@ class MatchSim{
       const fresh=(this.ball._ftAt!==undefined && this.t-this.ball._ftAt<0.8) ? 1.18 : 1.0;
       const won = atk*Math.random() > keep*fresh*Math.random();
       this.evl("TACKLE", o, {won:won?1:0, vic:carrier.id, vicNm:this.nm(carrier), slide:slide?1:0});
+      /* 🤜 태클 — 발이 들어가는 순간 둘 다 흔들린다. 슬라이딩이 더 거칠다 (요청) */
+      try{ this.jitter([o, carrier], slide?1.35:0.95); }catch(e){}
       st.tackle++; if(slide){ st.slide++; o._down=this.t+SLIDE_COMMIT*(won?0.55:1.0); }
       if(won){
         /* §11 공을 뺏음 + 위험 접촉 — 성공했지만 파울일 수 있다 */
@@ -66259,6 +66576,11 @@ class MatchSim{
           /* 🥅 ⚠ 통계는 세면서 하이라이트 트리거가 없었다 — 골대 맞고 나온 장면이 안 보였다 */
           try{ this.markHighlight("wood", sh.side, HL_W.wood); }catch(e){}
           this.evl("SHOT_OUT", this.byId(sh.shooterId), {k:"POST"});
+          /* 💥 골대를 때리는 소리는 경기장에서 제일 큰 소리다 — 세게 흔든다 (요청) */
+          if(this.emitEvents){ try{
+            const _wn=this.nm(this.byId(sh.shooterId));
+            this.cap(sh.side, COMM.lvPost, {p:_wn}, true, {shake:1.25});
+          }catch(e){} }
           this.lastAssist=null;                     // 골대 굴절 — 이후 득점은 도움 없음 (규정)
           this.lastEvent={kind:hitBar?"CROSSBAR":"POST", side:sh.side, t:this.t};
           b.x=clamp01(gx - (gx>0.5?1:-1)*0.004); b.y=clamp01(yAt); b.z=Math.max(0,zAt);
@@ -66742,6 +67064,8 @@ class MatchSim{
     for(const a of near){ const s=sc(a); if(s>ws){ ls=ws; lose=win; ws=s; win=a; } else if(s>ls){ ls=s; lose=a; } }
     if(!win) return null;
     if(lose && lose.side===win.side) lose=near.find(a=>a.side!==win.side)||lose;
+    /* 🤜 땅볼 경합 — 어깨가 부딪히는 순간 (요청) */
+    try{ this.jitter(near, 0.85); }catch(e){}
     try{ for(const a of near){ const st=this.stats[a.side]; st.duel=(st.duel||0)+1; } }catch(e){}
     try{ const st=this.stats[win.side]; st.duelWon=(st.duelWon||0)+1; }catch(e){}
     /* ③ 파울 — 밀리는 쪽이 발을 넣는다. 공격성이 높을수록 자주 (박스 안에서는 훨씬 조심한다) */
@@ -66831,6 +67155,8 @@ class MatchSim{
       a._jdur=JUMP_DUR*(0.88+Math.random()*0.20);
       a._jh=(a===best?1.0:0.78)*(0.80+((a.jump||0.6)*0.40));
     }
+    /* 🤜 공중 경합 — 몸이 부딪히는 순간. 붙은 전원이 흔들린다 (요청) */
+    try{ if(near.length>=2) this.jitter(near, 1.0); }catch(e){}
     for(const a of near) this.stats[a.side].aerial++;
     if(best){ this.stats[best.side].aerialWon++; this.cap(best.side, COMM.lvAerial, {p:this.nm(best)}); }
     // 공중볼은 몸이 부딪히는 경합이라 파울이 잦다 — 진 쪽이 밀거나 팔을 쓴다
@@ -66928,11 +67254,26 @@ class MatchSim{
       const cf=condFactor(sd.team);
       for(const x of onPitch(sd)){
         const a=this.agents.find(q=>q.id===x.p.id);
-        // 평균적인 1분 이동량을 1.0으로 본다 — 그보다 많이 뛰었으면 그만큼 더 지친다
-        const work = a ? clamp((a._work||0)/(STAM_REF_RUN*mins), 0.55, 1.45) : 1;
+        /* 평균적인 1분 이동량을 1.0으로 본다 — 그보다 많이 뛰었으면 그만큼 더 지친다.
+           ⚠ 제보 원문 — 「압박을 조금이라도 높이면 체력이 확확 깎여서 압박하는 전술을 못 쓸 정도」.
+           실측(90분 · 같은 시드): 분당 소모 압박0 0.31 · 압박2 0.53 · 압박4 0.68 →
+              종료 평균 체력 71 / 58 / 45, 압박 4 는 <b>전원이 66 미만</b>에 최저 25(바닥)였다.
+           원인은 이동량 자체가 아니다 — 총 이동거리는 10.2km 대 9.9km 로 오히려 비슷했다.
+              로우블록은 몇 명만 뛰고 나머지가 하한(0.55)에 붙는데, 압박은 <b>전원이 중간값</b>을
+              받아 팀 평균 배수가 통째로 올라간다. 구조는 맞지만 폭(0.55~1.45 · 2.6배)이 과했다.
+           ─ 폭을 좁히고(0.68~1.28) 완만한 곡선을 씌워 극단을 눌렀다. 압박이 여전히 더 비싸되,
+             90분을 버틸 수는 있는 선택이 된다. */
+        const _wRaw = a ? (a._work||0)/(STAM_REF_RUN*mins) : 1;
+        const work = Math.pow(clamp(_wRaw, 0.68, 1.28), 0.72);
         if(a) a._work=0;
         // 타고난 체력(nat)·지구력(sta)이 좋으면 덜 지친다
-        const natK = x.p.attr ? clamp(1.24 - (attr20(x.p.attr.nat)-10)*0.026 - (attr20(x.p.attr.sta)-10)*0.014, 0.72, 1.26) : 1;
+        let natK = x.p.attr ? clamp(1.24 - (attr20(x.p.attr.nat)-10)*0.026 - (attr20(x.p.attr.sta)-10)*0.014, 0.72, 1.26) : 1;
+        /* 💪 지구력은 「많이 뛴 날」에 값어치를 해야 한다 — 압박 전술을 스쿼드로 감당하는 길.
+           평균 이상으로 뛴 만큼만 적용되므로, 서 있는 선수에게는 아무 차이가 없다. */
+        if(work>1 && x.p.attr){
+          const _sta=clamp(attr20(x.p.attr.sta)/20, 0.15, 1);
+          natK *= 1 - (work-1)*(_sta-0.55)*0.95;
+        }
         /* 🧤 골키퍼는 90분 내내 뛰어다니지 않는다 — 같은 시간을 소화해도 훨씬 덜 지친다.
            이동량(work)에 하한(0.55)이 걸려 있어 실제 활동량 차이가 다 반영되지 못했다. */
         const gkK = (x.p.pos==="GK" || x.slot==="GK") ? GK_STAM_K : 1;
@@ -67188,7 +67529,6 @@ class MatchSim{
         const tm=this.rec(k2).team; if(!tm || tm.isUser || !tm.tactic) continue;
         for(const kk of TAC_KEYS) if(base[kk]!=null) tm.tactic[kk]=base[kk];
         if(base.formation) tm.tactic.formation=base.formation;
-        tm.tactic.atkShape=base.atkShape||"keep"; tm.tactic.defShape=base.defShape||"keep";
       }
     }catch(e){}
   }
@@ -67571,8 +67911,30 @@ function revealScore(e){
     if(sc){ sc.textContent=`${shownHg} : ${shownAg}`; sc.classList.remove("flash"); void sc.offsetWidth; sc.classList.add("flash"); }
   }
 }
+/* 💥 ⚠ 요청 — 「골대를 맞추거나 강력한 중거리 슛이 터졌을 때 경기장 전체를 미세하게 흔든다」.
+   ⚠ 시뮬은 화면보다 앞서 굴러간다 — 시뮬이 그 순간에 흔들면 스포일러이자 타이밍이 어긋난다.
+     그래서 「화면이 그 장면의 자막을 띄우는 순간」(setCaption2D)에 흔든다. 하이라이트 재생이든
+     실시간 관전이든 사람이 보는 그 순간과 정확히 맞는다.
+   세기(p)는 이벤트가 실어 온다: 골은 거리·슛 종류로, 골대 강타는 고정 1.25. */
+function pitchShake(p){
+  try{
+    const w=document.querySelector(".pitchWrap"); if(!w) return;
+    const k=clamp(+p||0.6, 0.15, 1.4);
+    w.style.setProperty("--shk", (2.6*k).toFixed(2)+"px");
+    w.style.setProperty("--shkR", (0.30*k).toFixed(2)+"deg");
+    w.classList.remove("shake"); void w.offsetWidth;      // 연달아 터져도 다시 시작한다
+    w.classList.add("shake");
+    clearTimeout(pitchShake._t);
+    pitchShake._t=setTimeout(()=>{ try{ w.classList.remove("shake"); }catch(e){} }, k>=1 ? 620 : 460);
+  }catch(e){}
+}
 function setCaption2D(e, styleKey){
   revealScore(e);
+  /* 💥 이 자막이 화면에 뜨는 그 순간에 흔든다 (요청) */
+  try{
+    const _sk = (e && e.shake) || (e && e.scene && e.scene.shake) || 0;
+    if(_sk) pitchShake(_sk);
+  }catch(e2){}
   const style = styleKey!==undefined ? styleKey : (e.scene ? COMM_STYLE[e.scene.kind] : undefined);
   COMMENTARY.printRaw(e.txt, style, {
     minute: e.noTime ? null : e.min,
@@ -71788,8 +72150,7 @@ function renderCoachAdvice(){
       add(6, `🧱 점유율 <b>${c.poss}%</b>. 내주고 버티는 그림입니다. 이대로 지킬 거면 라인을 더 내리고, 뒤집을 거면 압박을 올려야 합니다.`, "def");
     if(c.passOk!=null && c.passOk<70)
       add(5, `📉 패스 성공률 <b>${c.passOk}%</b>. 압박에 걸려 계속 끊깁니다. 패스를 짧게 가져가거나 템포를 한 칸 낮춰 정리하시죠.`);
-    if(c.crossOk!=null && c.cross>=6 && c.crossOk<20
-       && !(opp.tactic&&opp.tactic.defShape&&opp.tactic.defShape!=="keep"))   /* 🔀 상대가 블록 형태면 「좁혀라」가 형태 조언(넓혀라)과 정면충돌한다 — 블록 읽기에 양보 */
+    if(c.crossOk!=null && c.cross>=6 && c.crossOk<20)
       add(5, `🎯 크로스 ${c.cross}번 중 <b>${c.crossOk}%</b>만 닿았습니다. 박스 안에 머리가 없습니다 — 폭을 좁혀 중앙으로 파고드는 게 낫습니다.`, "att");
     if(c.takeOnPct!=null && c.takeOnPct<35)
       add(7, `🚧 돌파 성공률 <b>${c.takeOnPct}%</b>. 일대일로는 안 뚫립니다. 2대1 패스나 측면 오버래핑으로 숫자를 만들어야 합니다.`, "att");
@@ -71844,26 +72205,6 @@ function renderCoachAdvice(){
       if(OT.press>=1.5 && c.lost>=c.pass*0.22 && c.pass>50)
         add(4, `🕵️ 상대 압박이 강한데 후방에서 계속 빼앗기고 있습니다(로스트 ${c.lost}회).
           짧은 빌드업을 고집하기보다 한 번씩 길게 넘겨 압박을 벗겨야 합니다.`, "def");
-      /* 🔀 상대 국면 형태 읽기 (요청 — 「수석코치의 조언도 이런거 관련해서 할 수 있니?」) */
-      try{
-        const _osh=(opp.tactic)||{};
-        if(_osh.defShape && _osh.defShape!=="keep" && c.poss>=50 && diff<=0)
-          add(5, `🔀 상대가 수비 때 <b>${shapeLabel(_osh.defShape)} 블록</b>으로 내려앉습니다. 정면은 잠겨 있습니다 —
-            <b>폭을 넓혀</b> 블록을 좌우로 벌리고, 측면 크로스와 중거리로 두드리세요.`);
-        if(_osh.atkShape && _osh.atkShape!=="keep" && diff>=0)
-          add(5, `🔀 상대가 공격 때 <b>${shapeLabel(_osh.atkShape)}</b>로 변형해 올라옵니다. 그만큼 <b>풀백 뒷자리가 빕니다</b> —
-            공을 끊는 즉시 그 측면 뒷공간으로 역습하세요.`, "def");
-      }catch(e){}
-      /* ⚠️ 우리 형태-성향 어긋남 — 전술창 경고 배지(tacWarnBar)와 같은 기준을 경기 중에도 짚는다 */
-      try{
-        const _mr=T.raw||{};
-        if((_mr.atkShape==="325"||_mr.atkShape==="235"||_mr.atkShape==="2-3-5"||_mr.atkShape==="3-4-3") && (_mr.mentality|0)<=1)
-          add(3, `⚠️ 공격 형태는 <b>${shapeLabel(_mr.atkShape)}</b>인데 성향이 수비적입니다 — 높이 서기만 하고 찌르질 못합니다.
-            성향을 올리거나 형태를 되돌리시죠.`);
-        if((_mr.defShape==="541d"||_mr.defShape==="442d") && (_mr.mentality|0)>=3)
-          add(3, `⚠️ 수비 블록(<b>${shapeLabel(_mr.defShape)}</b>)을 쓰면서 성향이 공격적입니다 — 블록 압축이 풀립니다.
-            둘 중 하나를 고르셔야 합니다.`, "def");
-      }catch(e){}
     }
   }
 
@@ -78445,7 +78786,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-8000";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-8800";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
