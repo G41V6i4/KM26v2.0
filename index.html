@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-9100-->
+<!--B:20260912-9800-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -5550,9 +5550,10 @@ function matchBench(t){ // 실제 경기에 교체 투입 가능한 9명 (사용
    엔진 곳곳의 `(T.press-1)*0.35` 같은 계산식은 예전 3단계(0·1·2)를 전제로 쓰였는데,
    0~4를 2로 나누면 중앙값(1)과 범위가 그대로라 계산식을 하나도 안 고쳐도 된다.
    대신 `HI(T.line)` 같은 "정확히 최대치" 비교만 임계값 비교(HI/LO/MID)로 바꿨다. */
-const TAC_KEYS=["pass","tempo","press","line","width","mentality","tackle","longShot","counter","crossFq","defGap","transSpd"];
+const TAC_KEYS=["pass","tempo","press","line","width","mentality","tackle","longShot","counter","crossFq","defGap","transSpd","defCommit","marking","trap"];
 const TAC_STEPS=5;                    // 0,1,2,3,4
-const TAC_DEF={pass:2,tempo:2,press:2,line:2,width:2,counter:2,mentality:2,tackle:2,longShot:2,crossFq:2,defGap:2,transSpd:2};
+const TAC_DEF={pass:2,tempo:2,press:2,line:2,width:2,counter:2,mentality:2,tackle:2,longShot:2,crossFq:2,defGap:2,transSpd:2,
+               defCommit:2,marking:2,trap:2};
 /* ⚡ 역습 강도 — 예전에는 켜고 끄는 스위치(boolean)였다. 5단계 슬라이더로 바꾸면서
    옛 세이브·프리셋의 true/false 도 그대로 읽히도록 여기서 한 번에 숫자로 환산한다.
    0 안 함 · 1 가끔 · 2 보통 · 3 적극 · 4 극단적 */
@@ -5583,7 +5584,8 @@ function TAC(src){
     if(c!==undefined && c.f===_tc.formation && c.a===_tc.mentality && c.b===_tc.pass
        && c.c===_tc.tempo && c.d===_tc.press && c.e===_tc.line && c.g===_tc.width
        && c.h===_tc.tackle && c.i===_tc.longShot && c.j===_tc.counter && c.k===_tc.crossFq
-       && c.l===_tc.defGap && c.m===_tc.transSpd) return c.o;
+       && c.l===_tc.defGap && c.m===_tc.transSpd
+       && c.n===_tc.defCommit && c.p===_tc.marking && c.q===_tc.trap) return c.o;
   }
   const raw=Object.assign({}, TAC_DEF, (src && src.tactic) ? src.tactic : (src||{}));
   const o={formation:raw.formation, raw};
@@ -5595,7 +5597,8 @@ function TAC(src){
     /* ⚠ 세이브에 딸려 나가면 안 된다 — 열거되지 않는 속성으로 붙인다 */
     const c={f:_tc.formation, a:_tc.mentality, b:_tc.pass, c:_tc.tempo, d:_tc.press,
              e:_tc.line, g:_tc.width, h:_tc.tackle, i:_tc.longShot, j:_tc.counter,
-             k:_tc.crossFq, l:_tc.defGap, m:_tc.transSpd, o};
+             k:_tc.crossFq, l:_tc.defGap, m:_tc.transSpd,
+             n:_tc.defCommit, p:_tc.marking, q:_tc.trap, o};
     try{ Object.defineProperty(_tc, "_tacC", {value:c, enumerable:false, writable:true, configurable:true}); }
     catch(e){}
   }
@@ -5617,7 +5620,10 @@ const TAC_LABELS={
   counter:   ["역습 안 함","가끔","보통","적극","극단적 역습"],
   crossFq:   ["거의 안 올림","자제","보통","적극","매우 적극"],
   defGap:    ["매우 좁게","좁게","보통","넓게","매우 넓게"],
-  transSpd:  ["매우 느리게","느리게","보통","빠르게","매우 빠르게"]};
+  transSpd:  ["매우 느리게","느리게","보통","빠르게","매우 빠르게"],
+  defCommit: ["톱은 안 내려옴","최소 인원","보통","적극 가담","전원 블록"],
+  marking:   ["완전 지역방어","지역 위주","혼합","대인 위주","강한 대인방어"],
+  trap:      ["트랩 안 씀","가끔","보통","자주","매우 자주"]};
 function tacLabel(key, v){ return (TAC_LABELS[key]||[])[clamp(Math.round(v),0,4)] || String(v); }
 /* ── 자유 배치(zone) 시스템: 선수의 "타고난 포지션(p.pos)"과 별개로, 전술판에서 드래그로 지정한
    실제 배치 라인을 관리한다. GK는 항상 고정이며 재배치 불가. 미지정 시 타고난 포지션이 기본값. ── */
@@ -37645,8 +37651,14 @@ function tacticDetailCard(t, xi){
     "거칠게 = 태클·슬라이딩을 아끼지 않는다(파울·카드·부상 위험↑) · 신중하게 = 붙어서 견제만, 상대에게 시간을 내준다")}
   ${seg("수비 라인","line",null,
     "블록이 서는 높이. 높으면 상대를 가두고 오프사이드를 잡지만 뒷공간이 열리고, 낮으면 뒷공간을 지운다 — 간격·성향과 합쳐 블록 압축을 정한다")}
-  ${seg("수비 간격","defGap",null,
+  ${seg("수비 폭","defGap",null,
     "수비 시 줄 사이·선수 사이 간격. 매우 낮은 라인 + 매우 좁게면 톱까지 두 줄로 내려앉는 텐백 · 넓게 = 커버는 넓지만 라인 사이를 내준다")}
+  ${seg("수비 가담 인원","defCommit",null,
+    "수비 시 몇 명이 블록에 들어오는가. 올리면 윙백이 백라인까지 내려와 5백이 되고 앞선 한 명이 미드필드 줄에 합류한다(3-5-2 → 5-4-1) · 대신 이동 거리·체력 소모가 늘고 역습 시 앞에 사람이 없다")}
+  ${seg("마킹 방식","marking",null,
+    "지역 = 자기 구역을 지킨다(형태가 안 깨지지만 좋은 선수를 자유롭게 둔다) · 대인 = 상대를 따라간다(플레이메이커를 지우지만 끌려다니며 공간을 내준다)")}
+  ${seg("오프사이드 트랩","trap",null,
+    "라인을 밀어 올려 상대를 걸어낸다. 자주 쓰면 상대 침투를 지우지만 한 번 뚫리면 곧바로 1대1이다 · 낮은 라인에서는 값이 줄어든다")}
   ${seg("공수전환 속도","transSpd",null,
     "빠르게 = 탈취·상실 순간 전원이 뛰어서 새 형태로 간다(형태 회복 빠름 · 체력 소모↑) · 느리게 = 다리를 아끼지만 전환 순간이 취약하다")}
   ${seg("공격 폭","width",null,
@@ -54845,10 +54857,22 @@ const GK_DIVE_V=0.0297;    // ×(67/70)
 const GK_REACH_BASE=0.020;         // 가만히 서서 닿는 범위 (약 1.3m)
 const GK_HAND_Z=0.012;             // 손이 편하게 닿는 높이 (약 0.8m)
 const GK_RECOVER=0.85;             // 다이빙 후 일어나는 데 걸리는 시간
+const GK_HOLD_MAX=3.2;             // 🧤 키퍼가 공을 안고 버틸 수 있는 최대 시간(초) — 넘으면 그냥 찬다
 /* 선방 기준선. ⚠ 제보 — 「1대1이 너무 안 들어간다」.
    실측(2경기): 유효슈팅 17회 중 선방 15 · 골 2 = 선방률 88%. 실제 축구는 70% 안팎이다.
    이 값은 키퍼의 「도달 범위 배수」로 쓰이므로, 내리면 구석으로 간 슛에 손이 덜 닿는다. */
-const SAVE_BASE=0.76;
+/* 🧤 선방률 보정 (제보 「골이 너무 많이 터진다」의 <b>직접 원인</b>).
+   ⚠ 진단 — 슛(26 vs 실축 23)도 유효슛 비율(26% vs 35%)도 실축보다 얌전한데,
+      <b>유효슛이 들어가는 비율만</b> 크게 높았다. 선방률 39~56% (실제 축구 69~71%).
+   ⚠ 계측 계단 (n=14 · 같은 시드 · 다른 값은 전부 고정):
+        SAVE_BASE 0.76 → 선방률 39.3% · 골 4.64
+        SAVE_BASE 1.00 → 선방률 59.8% · 골 3.64
+        SAVE_BASE 1.15 → 선방률 59.7% · 골 3.43   ← 더 올려도 안 움직인다(포화)
+        1.00 + 근거리 도달 감쇠 완화 → 선방률 <b>65.4%</b> · 골 <b>2.57</b> · 슛 24.4
+      즉 손잡이가 <b>둘</b>이다. save 계수만으로는 60% 언저리에서 포화하고,
+      나머지는 아래 근거리(14m 안) 도달 감쇠가 쥐고 있었다. 둘을 같이 풀어야 실축에 닿는다.
+   ⚠ 0.97 상한에 걸려 있던 것도 함께 열었다(아래 clamp). */
+const SAVE_BASE=1.00;
 const SHOT_DIV=46;          // 거리 감쇠 분모 — 작을수록 먼 거리 슛이 줄어든다
 /* 🎯 「키퍼와 1대1」 하한선이 성립하는 최소 골문 각(rad) — evaluateShot 주석 참고.
    0.30 ≈ 17°: 정면 24m 에서 보이는 골문 각. 측면 12m·전방 12m 지점(0.31)은 통과,
@@ -55391,6 +55415,7 @@ const GDUEL_LOOSE=0.20;       // 아무도 못 잡고 공이 튀어 나갈 확�
 const GDUEL_FOUL=0.13;        // 밀리는 쪽이 반칙으로 끊을 확률 (공격성으로 커진다)
 const LOOSE_MAXT=6.0;         // 아무도 못 잡으면 이 시간 뒤 가장 가까운 선수에게
 const LOOSE_GRACE=0.7;        // 튄 직후 — 공이 빠르고 몸이 흐트러져 아무도 잡지 못한다
+const LOOSE_LEAD=0.85;        // 🏃 흐른 공 경주 — 이 초만큼 앞을 보고 달린다 (도착 예상 지점)
 /* 🥾 걷어내기 착지점 상한 (공격 방향 전진도) — clearBall 주석 참고.
    0.80 = 상대 골라인에서 22m. 착지 속도 15~19m/s 인 공이 첫 바운드(×0.58)와 마찰로 죽기까지
    약 10m 를 더 가므로(실측 sp1 16.7 → sp5 1.3m/s), 이보다 앞에 떨어뜨리면 골라인을 넘는다. */
@@ -55499,7 +55524,173 @@ const DISCIPLINE_SOFT=0.105;  // 앵커에서 이 거리(약 7m)를 넘으면 �
 const DISCIPLINE_MAX=0.78;    // 되당기는 최대 비율
 const DEF_DISC=0.80;          // 수비 시 규율 완화 배수 (낮을수록 블록이 촘촘해진다)
 const COMPACT_MAX=0.76;       // 볼이 우리 박스 앞까지 왔을 때의 좌우 압축 상한
-const ITC_MUL=0.62;           // 패스 길목 차단 반경 배수
+/* 🧹 패스 길목 차단 반경 배수. 스윕(선분) 판정으로 바꾸면서 0.62 → 0.53 으로 내렸다 —
+   같은 반경으로 선분을 보면 차단이 117 → 143 회/경기로 늘어 패스 성공률이 실축(78~82%)
+   아래로 떨어졌다. 총량은 예전 수준에 두고, 바뀌는 건 <b>어디서 끊기느냐</b>다. */
+const ITC_MUL=0.53;
+const ITC_BLIND_M=2.2;        // 🧹 발끝 사각 — 찬 공이 이만큼 나가기 전에는 길목 차단이 성립하지 않는다
+/* 🧹 ⚠ 폐기된 손잡이 기록 — 한때 길목 차단을 「확률 하나」로 눌렀다(ITC_REACT).
+   선분 판정만 넣었을 때 차단 총량은 그대로인데(114→119) 골이 2.3 → 4.8 로 두 배가 됐고
+   (상대 박스 근처 차단이 1.7 → 4.8 회/경기), 그걸 확률로 되눌렀던 것이다.
+   ─ 지금은 확률이 아니라 <b>시간</b>으로 가른다(ITC_CLEAN·ITC_TOUCH·defenderTime 주석).
+     확률은 「왜 끊겼는지」를 설명하지 못하고 능력치가 결과에 닿지도 않는다. */
+/* 🧠 길목 읽기 — 패스가 나가는 순간 「저기로 가면 끊는다」를 알아채는 기본 확률.
+   ⚠ 제보 원문 — 「수비수가 읽고 나가는 동작이 없다. 근데 이건 수비수뿐만 아니라 미드필더,
+      공격수도 있어야 하는 움직임이다」.
+      맞다 — 압박 나간 스트라이커가 백패스를 읽고 튀어나가는 것, 미드필더가 횡패스 길목으로
+      한 발 먼저 움직이는 것이 실제 축구의 인터셉트다. 그래서 포지션을 가리지 않는다.
+   ⚠ 대가도 같이 진다 — 읽고 나간 선수는 자기 자리를 <b>비운다</b>. 잘못 읽으면 그 공간이
+      그대로 열린다. 그래서 「닿을 수 있을 때만」 나가고, 한 패스에 한 명만 나간다. */
+/* ⚠ LANE_READ_P·LANE_READ_MARGIN 도 같은 이유로 걷어냈다 — 「읽고 나갈까」를 확률로 굴리지
+   않는다. 궤적 위에서 ballTime vs defenderTime 이 가장 여유 있는 지점을 찾고,
+   그 여유(slack)가 INTERCEPT / DEFLECT / PASS 를 정한다. */
+/* ═══ 🧠 인터셉트 — 확률이 아니라 「시간」으로 판정한다 ═══════════════════════════════════
+   요청 원문 — 「인터셉트 로직을 확률 하나로 더 세게 만드는 건 추천하지 않아. 대신
+     PASS → trajectory → interception point 탐색 → 후보 수비수 → 각 수비수의 도달 시간
+     → ballTime vs defenderTime → INTERCEPT / DEFLECT / PASS 로 만드는 게 맞아.
+     defenderTime = distance ÷ effective speed + reaction delay + turn penalty + decision penalty」
+   ─ 그 말이 맞다. 확률은 「왜 끊겼는지」를 설명하지 못하고, 능력치가 결과에 닿지도 않는다.
+     아래 세 함수가 그 모델이다. 쓰이는 능력치:
+       pos 수비시 위치 선정 · ant 예측력 · cnt 집중력 · dec 판단력 · acc 가속도 · pac 주력 · agi 민첩성 */
+/* ⚠ 두 문턱 사이의 폭이 곧 <b>굴절의 양</b>이다. 0.16 / -0.12 로 열었더니 굴절이 경기당
+   69회 — 그만큼 흐른 공이 생겼고, 그 혼전이 전부 기회로 바뀌어 선방률이 65% → 57% 로
+   무너졌다. 깨끗한 차단은 수비수가 안전한 자리에서 공을 갖는 것이고, 굴절은 아무도
+   못 가진 공을 만드는 것 — 둘의 값이 완전히 다르다. 창을 좁혀 굴절을 예외로 둔다. */
+const ITC_CLEAN=0.06;      // 공보다 이만큼(초) 먼저 닿으면 발을 대고 <b>깔끔하게</b> 끊는다
+const ITC_TOUCH=-0.04;     // 이만큼까지 늦어도 발끝은 닿는다 — 굴절(DEFLECT)
+/* ⚡ 능력치에서 나오는 상수는 경기 중 바뀌지 않는다 — 선수마다 한 번만 계산해 붙여 둔다.
+   (passCutP 가 후보 하나당 여러 번 부르므로 여기서 attr20 을 매번 돌리면 그대로 렉이 된다) */
+function itcConst(o){
+  let c=o&&o._itcC;
+  if(c) return c;
+  const A=(o&&o.p&&o.p.attr)||{};
+  const g=(k,fb)=>clamp(attr20(A[k]!=null?A[k]:(fb||60))/20, 0.15, 1);
+  c={
+    react: clamp(REACT_MAX - (g("ant",60)*0.62 + g("cnt",60)*0.38)*(REACT_MAX-REACT_MIN)*1.05,
+                 REACT_MIN*0.85, REACT_MAX),
+    lunge: SPD.SPRINT*(0.62+g("agi",60)*0.55+g("bal",60)*0.18),
+    vTop:  SPD.SPRINT*paceMul(o),
+    accK:  0.86+g("acc",60)*0.28,
+    turnK: TURN_PEN_MAX*(1.25-g("agi",60)*0.55),
+    decT:  DEC_PEN_MAX*(1.15-(g("dec",60)*0.58 + g("pos",60)*0.42))
+  };
+  try{ Object.defineProperty(o, "_itcC", {value:c, enumerable:false, writable:true, configurable:true}); }
+  catch(e){ o._itcC=c; }
+  return c;
+}
+/* 반응 지연 — 공이 발을 떠난 뒤 「지금 나가야 한다」를 알아채기까지. 예측·집중이 줄인다 */
+function itcReact(o){ return itcConst(o).react; }
+/* 발을 뻗어 옆으로 덮는 속도 — 전력질주와 다르다. 민첩성·균형이 정한다 */
+function itcLunge(o){ return itcConst(o).lunge; }
+/* 그 지점까지 실제로 걸리는 시간 (요청한 네 항의 합) */
+function defenderTime(o, px, py, passer){
+  const C=itcConst(o);
+  const dx=(px-o.x)*PITCH_AR, dy=py-o.y, d=HYP(dx,dy);
+  /* ① 거리 ÷ 실효 속도 — 짧은 거리는 최고 속도에 닿기 전에 끝난다(가속도가 여기서 갈린다) */
+  const vEff=C.vTop*clamp(0.48 + (d/0.075)*0.52, 0.48, 1)*C.accK;
+  /* ③ 방향 전환 — 지금 달리던 쪽과 반대로 가야 하면 그만큼 더 걸린다. 민첩성이 줄인다 */
+  let turn=0;
+  { const vx=(o.vx||0)*PITCH_AR, vy=(o.vy||0), sp=HYP(vx,vy);
+    if(sp>1e-6 && d>1e-6) turn=(1-(vx*dx+vy*dy)/(sp*d))*0.5*C.turnK;
+  }
+  /* ④ 판단 — 좋은 패서는 길목을 숨기므로 그만큼 판단이 늦는다 */
+  const dec=C.decT*(passer ? clamp(0.80+(passer.passSkill||0.6)*0.42, 0.80, 1.30) : 1);
+  /* ② 반응 지연 + ③ + ④ + ① */
+  return C.react + turn + dec + d/Math.max(1e-6, vEff);
+}
+const TURN_PEN_MAX=0.34;   // 완전히 반대 방향으로 몸을 돌리는 데 드는 최대 시간(초)
+const DEC_PEN_MAX=0.26;    // 판단에 드는 최대 시간(초)
+/* ═══ 🎯 Pass Decision Model ① — 패스 성공 확률 ════════════════════════════════════
+   ⚠ 요청 원문 — 「지금 엔진은 이 요소들을 상당 부분 각각 따로 가지고 있지만, 앞으로는
+      이것들을 하나의 Pass Decision Model 로 묶는 게 중요해」.
+   ⚠ 가장 큰 불일치부터 없앤다 — <b>판단과 실행이 서로 다른 모델을 보고 있었다.</b>
+      실행(advancePass·startLaneCut)은 defenderTime 으로 「누가 언제 그 지점에 닿는가」를
+      재는데, 정작 패스를 <b>고를 때</b>는 laneBlocked 라는 스칼라 대용치를 봤다.
+      그래서 엔진이 「끊길 걸 알면서 차는」 상태였다. 같은 모델을 판단에도 쓴다.
+   ─ 돌려주는 값은 <b>차단당할 확률</b>(0~1)이다. 실행 쪽 문턱(ITC_TOUCH ~ ITC_CLEAN)과
+     같은 자리에 중심을 둔 로지스틱이라, 예측과 결과가 같은 자를 쓴다.
+   ⚠ 비용 — 경로에서 11m 밖 상대는 후보에서 빼고(대개 2~3명), 각 후보마다 3점만 훑는다. */
+function passCutP(carrier, to, opps, dist, passSkill){
+  const sx=carrier.x, sy=carrier.y, tx=to.x, ty=to.y;
+  const L=(dist>0?dist:HYP((tx-sx)*PITCH_AR, ty-sy));
+  if(L<0.04 || !opps || !opps.length) return 0;
+  const T=Math.max(0.10, L/(PASS_SPEED*clamp(0.75+(passSkill||0.6)*0.45, 0.60, 1.30)));
+  const tMin=Math.min(0.80, (ITC_BLIND_M/ISO_TO_M)/L);
+  const dx=(tx-sx)*PITCH_AR, dy=ty-sy, L2=dx*dx+dy*dy;
+  let best=-9;
+  for(const o of opps){
+    if(o.slot==="GK") continue;
+    const ax=(o.x-sx)*PITCH_AR, ay=o.y-sy;
+    let t=L2>1e-12 ? (ax*dx+ay*dy)/L2 : 0;
+    t=clamp(t, tMin, 0.92);
+    const gap=HYP(ax-dx*t, ay-dy*t);
+    if(gap>0.14) continue;                       // 경로에서 10m 밖 — 후보가 아니다
+    const C=itcConst(o);
+    /* ⚠ 실행 쪽과 자를 맞춘다. 이미 길목 안(차단 반경)에 서 있는 상대에게는
+       「거기까지 뛰어가는 시간」을 물리면 안 된다 — 공이 그에게로 온다.
+       그때는 advancePass 와 똑같이 <b>반응 시간 vs 발 뻗기</b>로만 잰다.
+       (이 구분이 없어서 1차 캘리브레이션이 「예측 5% · 실제 17.8%」로 크게 빗나갔다) */
+    const ir=CTRL_RADIUS*ITC_MUL*(0.72+((o.posSkill||0.6)*0.5+(o.decSkill||0.6)*0.5)*0.56)
+            *(1.30-(carrier.passSkill||0.6)*0.42);
+    let slack;
+    if(gap<=ir) slack = (T*t - C.react) - gap/C.lunge;
+    else        slack = T*t - defenderTime(o, sx+(tx-sx)*t, sy+(ty-sy)*t, carrier);
+    if(slack>best) best=slack;
+  }
+  if(best<=-9) return 0;                          // 경로에 아무도 없다
+  return clamp(1/(1+Math.exp(-(best-0.01)/0.085)), 0, 0.97);
+}
+/* 차단 확률이 패스 점수를 깎는 무게. 예전의 laneBlocked*1.2 를 대신한다 —
+   이건 대용치가 아니라 <b>진짜 확률</b>이므로 더 무겁게 본다. */
+const PASS_CUT_W=2.40;
+const PASS_REFINE_N=5;     // 진짜 확률 모델로 다시 재는 상위 후보 수 (2단 랭킹)
+/* ═══ 🎯 Pass Decision Model ⓪ — 위치 가치 (실측) ═══════════════════════════════════
+   ⚠ 2단계(EV 재구성)가 실패한 원인이 여기 있었다 — <b>Value 에 단위가 없었다.</b>
+      「전진 1」과 「대가 1」이 같은 자가 아닌 채로 확률과 곱하니 저울이 안 맞았고,
+      계수를 손으로 맞추는 일이 되어 EV 로 묶기 전보다 오히려 나빠졌다
+      (백패스 296 → 450회 · 슛 25.7 → 10.5 · 골 2.9 → 0.75).
+   ─ 그래서 먼저 <b>단위</b>를 만든다. 이 표는 실측이다(8경기):
+      「그 구역을 거친 소유가 골로 끝난 비율」. 행=진행도 6구간(0 우리 골문 ~ 5 상대 골문),
+      열=레인 5구간. 표본이 얇은 칸의 노이즈를 피하려고, 매끈한 슛 확률(3.2% → 30.4%)을
+      모양으로 삼고 전체 전환율(≈0.115)로 눈금을 맞췄다.
+   ⚠ 이 값의 단위는 <b>골 확률</b>이다. 그래서 Value 도 Risk 도 같은 자를 쓴다:
+        Value = V(받는 자리) − V(지금 자리)      … 성공하면 오르는 골 기대값
+        Risk  = V(받는 자리를 상대 기준으로)      … 잃으면 상대가 얻는 골 기대값 */
+const ZONE_V=[
+  [0.0037,0.0036,0.0059,0.0026,0.0045],
+  [0.0039,0.0039,0.0059,0.0037,0.0039],
+  [0.0040,0.0048,0.0052,0.0039,0.0048],
+  [0.0069,0.0062,0.0056,0.0061,0.0063],
+  [0.0140,0.0132,0.0105,0.0108,0.0120],
+  [0.0350,0.0305,0.0411,0.0322,0.0328]
+];
+function zoneValue(x, y, dir){
+  const adv = dir>0 ? x : 1-x;
+  const a = clamp(Math.floor(adv*6), 0, 5);
+  const l = y<0.20?0 : y<0.40?1 : y<0.60?2 : y<0.80?3 : 4;
+  return ZONE_V[a][l];
+}
+/* 골 확률(0~0.041)을 기존 점수 눈금으로 옮기는 배율. 좋은 전진 패스 한 번이
+   대략 1.3 안팎이 되도록 잡았다 — 다른 가점들(원투 0.70, 오프사이드 −1.85)과 같은 자리. */
+const EV_K=180;
+const EV_NOISE=1.10;       // 🧠 판단력에 따른 EV 추정 오차의 폭 (판단력 최상 ≈0.4 · 최하 ≈1.3)
+/* ═══ ⚠ 2단계(EV 재구성) 시도 기록 — 되돌렸다 ═══════════════════════════════════════
+   score = P × Value − (1−P) × Risk 로 묶어 보았다. Value(전진·압박 탈출·공간·위치)와
+   Risk(그 자리에서 잃는 대가)를 갈라 놓고, 성공 확률로 저울질하는 형태다.
+   ⚠ 결과 — <b>팀이 후방 순환에 갇혔다.</b> EV 는 구조적으로 안전한 선택에 유리하다:
+      성공 확률 0.95 짜리 백패스는 Value 를 거의 그대로 받고 대가도 거의 안 문다.
+        1차(prog×1.0)  : 백패스 296 → 450회 · 슛 25.7 → 10.5 · 골 2.9 → 0.75
+        2차(눌림 손실을 확률로 이관 + prog×1.45) : 백패스 345 · 슛 19.8 · 골 1.75
+        3차(prog×2.10 + 전진 가치 ×1.4)          : 백패스 219 · 슛 17.8 · 골 1.0
+                                                   그런데 패스 성공률 69.5% 로 붕괴
+      전진 가중을 올리면 이번엔 막힌 길로 밀어 넣어 성공률이 무너진다 — 두 축을 동시에
+      맞춰야 하는 보정 문제이고, n=4 로는 그 지점을 못 찾는다.
+   ─ 남은 진단: EV 자체가 틀린 게 아니라 <b>Value 의 단위가 없다</b>는 게 문제다.
+      「전진 1」과 「대가 1」이 같은 자가 아니라서 둘을 곱셈으로 묶으면 저울이 안 맞는다.
+      다시 한다면 Value 를 <b>골 기대값(xG 증분)</b> 같은 실제 단위로 먼저 정의하고,
+      그 단위로 Risk 도 재야 한다(상대에게 넘어갔을 때의 실점 기대값).
+      그러면 계수를 손으로 맞출 필요가 없어진다 — 그게 이 재구성의 원래 취지였다.
+   ⚠ 그 전까지는 1단계(passCutP)만 얹은 지금 형태를 유지한다. */
 /* 👁️ 흐른 공을 읽는 눈 — 예측력(어디로 갈지) + 집중력(늦지 않고 반응하는지).
    0.15(최하) ~ 1.0(최상), 리그 평균 약 0.66. */
 function lbAnt(p){
@@ -55573,7 +55764,12 @@ const CB_PRESS_NEAR=0.085;   // CB 가 압박을 나가는 건 캐리어가 이 
        PRESS(캐리어가 CB_PRESS_NEAR 안) · BLOCK_SHOT(슛 임박) · SECOND(뜬 공이 내 구역에 떨어짐).
      COVER·COVER_WIDE·DROP 은 CB 에게 주지 않는다 — 측면 빈 자리는 셰이프 매니저의 폭 재분배가 이미 맡는다.
      MARK 는 「내 구역 점유자」에게만 — 밀착이 필요할 때 LINE 에서 MARK 로 올라가는 자세 변화다. */
-const CB_ZONE_ONLY=true;     // false 면 예전 경합으로 되돌아간다 (비교 실험용)
+/* 🧷 마킹 방식 (세부 전술) — 예전에는 상수 하나로 못 박혀 있었다("false 면 예전 경합으로
+   되돌아간다 — 비교 실험용"). 두 모드가 이미 구현돼 있는데 감독이 못 골랐다.
+     지역 방어 : CB·풀백이 자기 구역을 지킨다. 형태가 안 깨지는 대신 좋은 선수를 자유롭게 둔다.
+     대인 방어 : 상대를 따라간다. 플레이메이커를 지우지만 끌려다니며 공간을 내준다.
+   marking 0~2 (기본 1). 1.05 미만이면 지역, 그 위면 대인 쪽으로 간다. */
+function zoneMarkOn(T){ return !T || T.marking==null || T.marking < 1.05; }
 const MARK_STICK=0.22;       // 잡고 있던 대상 유지 가점 (markBest)
 /* 🧱 수비 B-2 — 풀백·윙백의 측면 구역 책임. CB 를 압박에서 빼자 그 몫이 풀백에게 갔다
    (실측 FB PRESS 11 → 19%, 마크 48 → 41%, 골사이드 45 → 33%). 같은 원칙을 측면에 적용한다:
@@ -56813,7 +57009,9 @@ function nextOptions(m, carrier, mates, opps, dir){
   return {n:cnt, fwd:bestFwd};
 }
 function findBestPass(carrier, mates, opps, ctx){
-  const opts=evaluatePassOptions(carrier, mates, opps, ctx);
+  /* ⚡ act() 가 이미 한 번 평가해 둔 목록이 있으면 그대로 쓴다 — 한 번의 판단에서
+     findBestPass 가 2~4번 불리는데(옵션 → 플랜 변환), 그때마다 전 후보를 다시 재고 있었다. */
+  const opts=(ctx && ctx.opts) ? ctx.opts : evaluatePassOptions(carrier, mates, opps, ctx);
   if(!opts.length) return null;
   /* 🔭 상위 후보만 한 수 앞을 본다 — 받은 뒤 이어갈 곳이 없으면 값을 깎는다.
      시야가 좋은 선수일수록 이걸 잘 읽는다. */
@@ -56903,7 +57101,14 @@ function findBestPass(carrier, mates, opps, ctx){
   const wideSwitch = Math.abs(opt.to.y-carrier.y)>0.34 && distM>24;
   if(thru && Math.random() < thruP)                            type=PASS_TYPE.THROUGH;
   else if(wideSwitch && Math.random() < 0.10+_vis*0.34)        type=PASS_TYPE.SWITCH;
-  else if(rsp>0.35 && distM<30 && Math.random() < 0.12+_vis*0.42) type=PASS_TYPE.LEAD;
+  /* ⚠ ① 공격적인 패스의 <b>생성 빈도</b> (요청 — 「인터셉트율만 보는 게 아니라 생성률도 같이 봐야 한다」).
+     실측: LEAD 가 경기당 <b>134.6회</b>(팀당 67회) 나왔다. 조건이 「동료가 움직이는 중」
+     (rsp>0.35 = 전력질주의 35%)이기만 하면 최대 54% 확률이라, <b>옆으로·뒤로 걷는 동료</b>
+     에게도 앞으로 찔러 주는 패스가 나갔다. 그 공이 전부 수비 뒷공간으로 향하니
+     1대1 찬스가 계속 났다.
+     ─ 실제로 「앞으로 붙여 주는 패스」는 ⓐ 앞으로 달리는 동료에게 ⓑ 그 앞이 열려 있을 때다. */
+  else if(rsp>0.55 && (vSx(opt.to)*carrier.dir)>0.0006 && distM<30
+          && Math.random() < 0.06+_vis*0.26)                  type=PASS_TYPE.LEAD;
   else if(distM > longGate || (opt.laneRisk||0) > 0.7)         type=PASS_TYPE.LONG;
   else if(((opt.to.x-carrier.x)*carrier.dir) < -0.02)          type=PASS_TYPE.BACK;
   else                                                          type=PASS_TYPE.SHORT;
@@ -57119,6 +57324,11 @@ const PAIR_CENTER={LCB:"CB", RCB:"CB"};
    1.0 = 그대로(24m — 센터백 사이가 뻥 뚫려 스트라이커가 걸어 들어온다)
    0.46 = 11.1m — 실제 백4의 센터백 간격. 중앙 슛이 크게 줄어드는 대신 수비가 단단해진다. */
 const PAIR_TIGHT=0.46;
+/* 🛡️ 수비 가담의 <b>비대칭</b> — 같은 밴드라도 한 명이 더 내려온다.
+   투톱(LS/RS)이 늘 같이 내려오면 5-4-1 이 아니라 5-3-2 밖에 안 나온다.
+   앵커는 (전술·슬롯·국면)만 보는 순수 함수라 「둘 중 누가」를 팀 상태로 못 고른다 —
+   그래서 슬롯으로 못 박는다. 오른쪽(RS·RW·RAM)이 내려오는 쪽이다. */
+const DROP_ASYM={ RS:1.75, LS:0.45, RW:1.45, LW:0.70, RAM:1.35, LAM:0.80, RM:1.20, LM:0.85 };
 /* 그 슬롯에 실제로 선수가 서 있는가 — 전술판이 저장해 둔 슬롯 맵을 본다.
    매 틱 여러 번 불리므로 팀별로 캐시해 두고, 슬롯 맵이 바뀌면 다시 계산한다. */
 function slotUsed(team, slot){
@@ -57177,16 +57387,26 @@ function tacticalAnchorXY(team, slot, phase, isHome){
   const isFB = (slot==="LB"||slot==="RB");
   const isWB = (slot==="LWB"||slot==="RWB");
   // 윙백은 풀백보다 더 올라간다 — 그게 윙백이다
+  const _dc = (T.defCommit!=null ? T.defCommit : 1);          // 0~2 — 수비 가담 인원
   const fbPush = (phase==="ATT" && (isFB||isWB)) ? ((isWB?0.125:0.11)+(T.mentality-1)*0.03) : 0;
+  /* 🛡️ 반대편 — 가담을 올리면 수비 시 윙백이 백라인 깊이까지 내려온다.
+     3-5-2 기준 윙백 DEF 앵커 0.193 → 0.138, 3백(0.093)과 간격 0.045 < SH_SPLIT(0.052)
+     이라 shapeLines 가 <b>다섯을 한 줄로</b> 묶는다 = 백5. */
+  const fbDrop = (phase!=="ATT" && (isFB||isWB)) ? Math.max(0, (_dc-1))*0.055 : 0;
   const phaseShift = (phase==="ATT" ? (0.06+(T.mentality-1)*0.035) : -(0.045+(2-T.mentality)*0.012)) + fbPush;
   /* 🚌 텐백(전원 수비) (제보 — 「현대축구에서는 페널티 박스 안에서 수비를 많이 하거든? 우리 매치엔진은
      그렇지가 않더라고. 톱까지 전원 페널티박스 안에서 수비 가담하는 빽빽한 두줄수비, 전술 옵션으로」).
      실측(lowblock.js): 상대가 우리 진영 42m 안 소유 중일 때 기본 전술 박스 안 0.45명(중앙값 0),
      최수비 전술로도 1.11명·30m 안 5.9명·톱 50m — 로우블록이라는 그림 자체가 없었다.
      수비 국면 앵커부터 앞선일수록 끌어내린다(공격 국면은 그대로 — 역습은 살아야 한다). */
+  /* 🛡️ 수비 가담 인원 (세부 전술) — 예전에는 blockComp(라인·간격·성향에서 파생)만 보고
+     감독이 직접 못 건드렸고, <b>밴드 균일</b>이라 투톱이 늘 같이 내려왔다.
+     ─ 이제 감독이 정하고, 슬롯별로 비대칭이다. 3-5-2 라면 RS 한 명만 미드필드 줄까지
+       내려와 5-4-1 이 된다. 앵커가 바뀌면 shapeLines 가 라인 구성을 저절로 다시 잡는다. */
+  const _busK = clamp(clamp((blockComp(T)-0.58)/0.30, 0, 1) + (_dc-1)*0.62, 0, 1.7);
   const _busT = (phase!=="ATT")
-    ? clamp((blockComp(T)-0.58)/0.30, 0, 1)*({FW:0.155, AM:0.105, MF:0.045, DM:0.02}[SLOT_BAND[slot]]||0) : 0;
-  let x=clamp01(bx + lineShift + (slot==="GK"?0:phaseShift-_busT));
+    ? _busK * ({FW:0.155, AM:0.105, MF:0.045, DM:0.02}[SLOT_BAND[slot]]||0) * (DROP_ASYM[slot]||1) : 0;
+  let x=clamp01(bx + lineShift + (slot==="GK"?0:phaseShift-_busT-fbDrop));
   const p={x, y:clamp01(y)};
   const _out = isHome ? p : mirrorXY(p);
   _ac[slot]={x:_out.x, y:_out.y};
@@ -57244,6 +57464,7 @@ function evaluatePassOptions(carrier, mates, opps, ctx){
         화면에만 있고 경기에는 없던 시야·예측력에 값어치를 준다.
      리그 평균(60)에서 약 1.0, 바닥 0.52 ~ 천장 1.44. */
   const _cAnt=clamp(attr20(_cA.ant!=null?_cA.ant:60)/20, 0.15, 1);
+  const _cDec=clamp(attr20(_cA.dec!=null?_cA.dec:60)/20, 0.15, 1);   // 🧠 판단력 — EV 추정 오차
   const _eye=0.36 + _cVis*0.72 + _cAnt*0.36;
   const _cLng=clamp(carrier.lngSkill!=null?carrier.lngSkill:0.6, 0.1, 1.2);
   const _bu=ctx.bu||null;
@@ -57304,11 +57525,53 @@ function evaluatePassOptions(carrier, mates, opps, ctx){
        병목이었다. 다시 시도한다면 채점이 아니라 <b>실행</b> 쪽(리드 패스 선택률)을 손대야 한다. */
     const recvPress=pressureOn(m, opps, ctx.press);
     const blocked=laneBlocked(carrier, m, opps);
+
     const recvAdv = dir>0 ? m.x : 1-m.x;                  // 0=자기 골문, 1=상대 골문
     const recvOwn = 1-(dir>0?m.x:1-m.x);                  // 0=상대 골문 쪽, 1=우리 골문 쪽
     // 우리 골문에 가까운 선수일수록, 그가 압박받고 있으면 패스 리스크가 급격히 커진다
-    let score = prog*_pProg - distPen - recvPress*(0.55+recvOwn*2.4) - blocked*1.2
-              + Math.max(0, recvAdv-0.52)*1.0;            // 상대 진영으로 연결할수록 가점
+    /* ⚠ 1차 점수는 <b>싼 대용치</b>(laneBlocked)로 매긴다 — 진짜 확률 모델(passCutP)은
+       아래에서 상위 후보에게만 돌린다. 2단 랭킹: 싸게 거르고, 비싸게 고른다.
+       (전 후보에게 돌렸더니 틱당 0.45 → 0.96ms 로 두 배가 됐다 — 실측) */
+    /* ═══ 🎯 ② EV — 이제 Value 와 Risk 가 같은 단위(골 확률)를 쓴다 ═══════════════
+       Value : 성공하면 오르는 골 기대값 + 압박 탈출 + 공간
+       Risk  : 잃으면 상대가 얻는 골 기대값 (그 자리에서)
+       score = (1−P잃음) × Value − P잃음 × Risk
+       ⚠ 잃을 확률은 「끊기는 것」만이 아니다 — 눌린 채 받으면 거기서 잃는다.
+          그 항을 값어치 쪽 감점으로 두면 확률과 곱해지지 않아, 「확실히 성공하는
+          백패스」와 「받자마자 뺏길 백패스」의 대가가 같아진다(2단계 1차 실패 원인). */
+    const _vNow = zoneValue(carrier.x, carrier.y, dir);
+    const _gain = (zoneValue(m.x, m.y, dir) - _vNow) * EV_K;
+    /* 🫁 압박 탈출 — 예전에는 selfPress 가 백패스 가점(최대 0.18)에만 붙어 있어,
+       전진 패스로 빠져나가는 선택에는 아무 값도 얹지 않았다. */
+    const escape = clamp((ctx.selfPress||0) - recvPress, 0, 1.2) * 0.30;
+    /* 🌿 공간 창출 — 받는 사람 주변이 얼마나 비어 있는가. 없던 항이다. */
+    let _nearO=9;
+    for(const o of opps){
+      if(o.slot==="GK") continue;
+      const d2=HYP((o.x-m.x)*PITCH_AR, o.y-m.y);
+      if(d2<_nearO) _nearO=d2;
+    }
+    const space = clamp((_nearO-0.045)/0.10, 0, 1) * 0.15;
+    const pressLoss = clamp(recvPress*0.55, 0, 0.60);
+    const evRisk = zoneValue(m.x, m.y, -dir) * EV_K;
+    /* ═══ 🦶 ③ 발 방향 + 실행 오차 ═══════════════════════════════════════════════
+       ⚠ carrier.face 는 여태 패스 <b>선택</b>에 한 번도 안 들어갔다(수신자의 침투 판단에만).
+          그래서 등지고 있는 선수가 등 뒤로 정확한 패스를 아무렇지 않게 찔렀다.
+       ⚠ 이 항이 캘리브레이션 잔차의 정체이기도 하다 — 1단계 모델은 「공이 의도한 자리로
+          정확히 간다」고 가정했고, 그래서 「안전」 구간(예측 5%)의 실제 차단률이 15.5% 였다.
+          빗나간 공이 끊긴다. 그 몫을 여기서 확률에 넣는다. */
+    let faceOff=0;
+    if(carrier.face!==undefined){
+      let df=Math.atan2(dy, dx)-carrier.face;
+      while(df>Math.PI) df-=Math.PI*2; while(df<-Math.PI) df+=Math.PI*2;
+      faceOff=Math.abs(df)/Math.PI;                 // 0=정면 · 1=완전히 등짐
+    }
+    const _tec=clamp(attr20((_cA.tec!=null?_cA.tec:60))/20, 0.15, 1);   // 개인기 — 몸이 안 돌아가도 처리한다
+    /* 실행 실패 확률 — 몸 방향(돌아서 차야 하는 각) + 거리 대비 패스 능력 */
+    const execLoss = clamp(faceOff*0.42*(1.30-_tec*0.55)
+                         + Math.max(0, dist-0.22)*0.60*(1.35-(ctx.passSkill||0.6)*0.75),
+                         0, 0.50);
+    let score = _gain*_pProg/1.35 - distPen - blocked*1.2 + escape + space;
     /* 🧲 플레이메이커 유인 (제보 — 미드필더 역할 감사) — DLP(pm 1.0)의 패스 수가 일반 DM과
        -5~+20%로 차이가 없었고, 4-2-3-1의 10번은 경기당 패스 33~56회로 피벗(83~96)의 절반이었다.
        역할에 pm을 줘도 "공이 그를 찾아가는" 구조가 없어서다 — 동료의 패스 대상 평가는
@@ -57413,9 +57676,38 @@ function evaluatePassOptions(carrier, mates, opps, ctx){
       const spd_=(m.topSpeed!=null?m.topSpeed:0.6)-0.60;
       score += spd_*(iw>0?1.6:0.7)*fw;
     }
-    out.push({to:m, score, dist, forward, blocked, recvPress});
+    /* 1차 점수 — 진짜 확률은 아래 2단 랭킹에서 다시 넣는다(여기선 대용치로 근사) */
+    const _value=score;
+    const _oth=1-(1-pressLoss)*(1-execLoss);        // 끊김 말고 잃는 경로 (눌림 · 실행 실패)
+    const _pl0=clamp(blocked*0.85 + (1-clamp(blocked*0.85,0,0.95))*_oth, 0.02, 0.97);
+    score = (1-_pl0)*_value - _pl0*evRisk;
+    /* ═══ 👁️ ④ 시야 — 「보이지 않는 옵션은 고를 수 없다」 ═════════════════════════
+       ⚠ 여태 시야(vis)는 <b>침투 가점에 곱해지는 계수</b>였다. 그러면 시야가 낮은 선수도
+          모든 옵션을 다 보고 값만 조금 다르게 매기는 셈이다. FM 은 그렇게 다루지 않는다 —
+          시야는 <b>선택지의 개수</b>를 정한다. 등 뒤·먼 쪽 옵션은 시야가 낮으면 못 본다. */
+    const seeP=clamp(0.42 + _cVis*0.72 - faceOff*0.60
+                     - clamp((dist-0.22)/0.36, 0, 1)*0.28, 0.06, 1);
+    if(seeP<0.999 && Math.random()>seeP) continue;   // 이번 판단에서는 안 보였다
+    out.push({to:m, score, value:_value, evRisk, otherLoss:_oth, dist, forward, blocked, recvPress, pCut:null});
   }
   out.sort((a,b)=>b.score-a.score);
+  /* 🎯 ② 상위 후보만 진짜 확률로 다시 잰다 — 대용치(blocked*1.2)를 빼고 pCut 을 넣는다.
+     실제로 겨루는 건 늘 상위 몇 개뿐이므로, 아래쪽까지 비싸게 계산할 이유가 없다. */
+  {
+    const K=Math.min(PASS_REFINE_N, out.length);
+    const _ps=ctx.passSkill||carrier.passSkill||0.6;
+    for(let i=0;i<K;i++){
+      const o=out[i];
+      o.pCut=passCutP(carrier, o.to, opps, o.dist, _ps);
+      /* 대용치를 걷어내고 진짜 확률로 다시 조립한다 */
+      const pLose=clamp(o.pCut + (1-o.pCut)*o.otherLoss, 0.02, 0.97);
+      o.score = (1-pLose)*(o.value + o.blocked*1.2) - pLose*o.evRisk;
+      /* 🧠 ④ 판단력 — 「EV 를 얼마나 정확히 재는가」. 가중치가 아니라 <b>추정 오차</b>다.
+         판단력 낮은 선수는 좋은 옵션과 나쁜 옵션의 값을 헷갈려 가끔 나쁜 쪽을 고른다. */
+      o.score += (Math.random()-0.5)*EV_NOISE*(1.35-_cDec);
+    }
+    if(K>1) out.sort((a,b)=>b.score-a.score);
+  }
   return out;
 }
 /* ── 오프더볼 역할 ──
@@ -58839,6 +59131,8 @@ function laneBest(a, carrier, threats, dir, wMul){
 /* 압박 나간 선수를 제외한 나머지에게 역할을 배분한다 */
 function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
   ball = ball || (carrier ? {x:carrier.x, y:carrier.y} : {x:0.5, y:0.5});
+  /* 🧷 마킹 방식 (세부 전술) — 지역이면 자기 구역, 대인이면 상대를 따라간다 */
+  const _zoneMk = zoneMarkOn(TAC(mine[0] && mine[0].team));
   const ownGoalX = dir>0 ? 0.015 : 0.985;       // 우리가 지켜야 할 골문
   const gaps = exposedFlanks(mine, dir);        // 올라가 있던 측면 수비들 (전원)
   const gap = gaps[0] || null;                  // 그중 가장 많이 나가 있던 한 명 — 구멍 등록용
@@ -58928,7 +59222,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
     const band=SLOT_BAND[a.slot]||"MF";
     const isCB=(a.slot==="CB"||a.slot==="LCB"||a.slot==="RCB");
     let f;
-    if(CB_ZONE_ONLY && isCB){
+    if(_zoneMk && isCB){
       /* ↔️ 3백 슬라이드 (제보 — 「쓰리백 한정으로는 이런 움직임이 나오긴 해야 해. 그게 실제 축구 포지셔닝이거든」).
          3백·5백(CB 슬롯 사용)의 좌우 CB 는 예외 — 같은 쪽 윙백이 올라간 측면 구멍을 1순위로 슬라이드해 메운다.
          가운데 CB 와 반대쪽 CB 가 남아 존을 지키고, COVER_WIDE 역할은 존마크 대상(LINE·COVER)에서 빠지므로
@@ -59011,14 +59305,14 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
        실측 CB DROP 10% — 그 시간 동안 스트라이커를 아무도 안 잡았다. */
     let _cbHold=false;
     if(a.slot==="CB"||a.slot==="LCB"||a.slot==="RCB"){
-      if(CB_ZONE_ONLY) _cbHold=true;             // 🧱 수비 B — CB 는 DROP 하지 않는다
+      if(_zoneMk) _cbHold=true;             // 🧱 수비 B — CB 는 DROP 하지 않는다
       else for(const o of threats){
         if(Math.abs(o.x-ownGoalX)*PITCH_AR*ISO_TO_M<CB_ZONE_X && Math.abs(o.y-a.y)<CB_ZONE_Y){ _cbHold=true; break; }
       }
     }
     if(!((_mfBand==="DM"||_mfBand==="MF") && _hot) && !_cbHold){
       let pick=null, bd=1e9;
-      const _fbSide=(CB_ZONE_ONLY && (a.slot==="LB"||a.slot==="RB"||a.slot==="LWB"||a.slot==="RWB") && a.home) ? (a.home.y<0.5?-1:1) : 0;
+      const _fbSide=(_zoneMk && (a.slot==="LB"||a.slot==="RB"||a.slot==="LWB"||a.slot==="RWB") && a.home) ? (a.home.y<0.5?-1:1) : 0;
       /* 🌀 DROP 유지 — 포메이션 계측(빌드 1700 작업 중)에서 측면 미드필더의 역할 전환이 분당 32~34회,
          그중 DROP 관련이 절반이었고 DROP 의 중앙값 지속 시간이 <b>1.0초</b>였다. 빈 자리 장부(vacated)는
          「앵커에서 8m 이상」 문턱에 걸린 선수 목록이라 매 틱 흔들리는데, DROP 은 pickDef 밖에서 배정되어
@@ -59092,9 +59386,9 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
     /* 🧱 수비 B — CB 는 「내 구역 점유자」만 마크 후보로 본다. 예전엔 11m 안 아무나(윙어·미드필더) 잡았다. */
     const _isCB0=(a.slot==="CB"||a.slot==="LCB"||a.slot==="RCB");
     const _isFB0=(a.slot==="LB"||a.slot==="RB"||a.slot==="LWB"||a.slot==="RWB");
-    const _thr = (CB_ZONE_ONLY && _isCB0)
+    const _thr = (_zoneMk && _isCB0)
       ? threats.filter(o=>Math.abs(o.x-ownGoalX)*PITCH_AR*ISO_TO_M<CB_ZONE_X && Math.abs(o.y-a.y)<CB_ZONE_Y)
-      : (CB_ZONE_ONLY && (_isFB0 || wmDuty(a)>=WM_DUTY_MIN) && a.home && Math.abs(a.home.y-0.5)>0.06)
+      : (_zoneMk && (_isFB0 || wmDuty(a)>=WM_DUTY_MIN) && a.home && Math.abs(a.home.y-0.5)>0.06)
       /* 🧱 B-2 — 풀백(과 🔁 측면 미드필더)은 자기 측면의 상대만 잡는다 (안으로 들어온 윙어까지는 따라간다) */
       ? threats.filter(o=>(o.y-0.5)*(a.home.y<0.5?-1:1) > -FB_SIDE_MIN)
       : threats;
@@ -61637,6 +61931,7 @@ class MatchSim{
       const T=TAC(mine[0].team);
       // 수비 시 볼에 가장 가까운 두 명이 압박을 나간다
       let pressers=[];
+      const _zoneMk = zoneMarkOn(T);          // 🧷 마킹 방식 (세부 전술)
       // 공이 죽어 있는 동안에는 아무도 공을 향해 달려들지 않는다.
       // (이게 없으면 코너킥·프리킥에서 상대 선수가 공 바로 앞까지 붙어버린다)
       if(phase==="DEF" && !b.setPiece){
@@ -61728,14 +62023,14 @@ class MatchSim{
               const _dc=HYP((carrier.x-a.x)*PITCH_AR, carrier.y-a.y);
               /* 🎭 스토퍼(CD/St press +0.35)는 한 발이 길고, 커버(Cv press 0)는 그대로 (CB 역할 점검) */
               if(_dc>CB_PRESS_NEAR*(1+clamp(FX(a,"press"),0,0.6))){
-                if(CB_ZONE_ONLY) s0-=1.5;                 // 🧱 수비 B — 코앞이 아니면 나가지 않는다
+                if(_zoneMk) s0-=1.5;                 // 🧱 수비 B — 코앞이 아니면 나가지 않는다
                 else for(const o of this.side(this.opp(key))){
                   if(o.slot==="GK"||o===carrier) continue;
                   if(Math.abs(o.x-_gX0)*PITCH_AR*ISO_TO_M<CB_ZONE_X && Math.abs(o.y-a.y)<CB_ZONE_Y){ s0-=1.5; break; }
                 }
               }
             }
-            if(CB_ZONE_ONLY && ((a.slot==="LB"||a.slot==="RB"||a.slot==="LWB"||a.slot==="RWB") || wmDuty(a)>=WM_DUTY_MIN) && a.home && Math.abs(a.home.y-0.5)>0.06){
+            if(_zoneMk && ((a.slot==="LB"||a.slot==="RB"||a.slot==="LWB"||a.slot==="RWB") || wmDuty(a)>=WM_DUTY_MIN) && a.home && Math.abs(a.home.y-0.5)>0.06){
               /* 🧱 B-2 — 풀백(과 🔁 측면 미드필더)은 자기 측면의 캐리어만 압박한다. 중앙·반대쪽은 중앙 미드필더의 일.
                  실측(1230): LM/RM 의 수비 역할이 PRESS 37~51% — 반대쪽 캐리어까지 쫓아가 4-4 블록의 먼 쪽이 비었다. */
               const _fs=(a.home.y<0.5?-1:1);
@@ -61788,7 +62083,7 @@ class MatchSim{
         } else {
           /* 🧱 수비 B — 흐르는 공·날아가는 공에는 CB 가 달려가지 않는다 (공간을 지킨다) */
           const _isFBx=a=>(a.slot==="LB"||a.slot==="RB"||a.slot==="LWB"||a.slot==="RWB");
-          const _cand2 = CB_ZONE_ONLY ? cand.filter(a=>!(a.slot==="CB"||a.slot==="LCB"||a.slot==="RCB")
+          const _cand2 = _zoneMk ? cand.filter(a=>!(a.slot==="CB"||a.slot==="LCB"||a.slot==="RCB")
               /* 🧱 B-2 — 풀백은 자기 측면으로 오는 공만 */
               && !(_isFBx(a) && a.home && ((b.y-0.5)*(a.home.y<0.5?-1:1) < -FB_SIDE_MIN))) : cand;
           pressers=(_cand2.length?_cand2:cand).sort((p,q)=>pressCost(p)-pressCost(q)).slice(0, 1+extra);
@@ -63373,6 +63668,7 @@ class MatchSim{
                 counter:this.counterOn(key)?1:0, counterK:this.counterK(key),   // ⚡ 역습 창 — 패스 선택이 앞을 본다
                 bu:this._bu};                                                   // 🔄 팀 단위 빌드업 상황
     const opts=evaluatePassOptions(carrier, mates, opps, pctx);
+    pctx.opts=opts;                      // ⚡ 아래 findBestPass 들이 다시 재지 않게 실어 준다
     // 골키퍼 배급 — 짧은 횡패스로 돌리지 않고 전방으로 길게 연결한다
     if(carrier.slot==="GK"){
       /* 🧤 실책 수리 2 — 판단 추적(경기당): GK decide 472회 중 <b>403회가 「몸 돌리는 중」</b>(lookThenPass 회전 예약)으로
@@ -63380,6 +63676,23 @@ class MatchSim{
          대상을 골라 계속 몸만 돌렸다 — 6초 규정에 걸려 강제 걷어내기가 경기당 63회(그 걷어내기의 상실률 66%).
          유저가 보는 「키퍼가 우물쭈물하다 상대에게 준다」의 뿌리. ─ 회전을 예약할 때 <b>플랜을 저장</b>하고,
          다음 판단에서 받을 사람이 여전히 자유로우면 다시 고르지 않고 그 플랜을 그대로 찬다. */
+      /* 🧤 ⚠ 제보 — 「키퍼가 가끔 공 잡고 패스할 때 가만히 서 있다」.
+         회전 예약(lookThenPass)이 걸리면 그 틱은 그냥 return 하는데, 다음 판단에서 대상이
+         바뀌면 회전을 <b>다시</b> 예약한다. 몸은 계속 돌기만 하고 공은 안 나간다.
+         (위 주석의 「decide 472회 중 403회가 몸 돌리는 중」이 같은 병이다 — 플랜 저장으로
+          많이 줄였지만, 플랜이 무효가 되는 경로에서는 여전히 남아 있었다.)
+         ─ 안전장치: 잡고 있은 시간이 GK_HOLD_MAX 를 넘으면 <b>회전을 기다리지 않고</b> 찬다.
+           실제로도 키퍼는 몸이 덜 돌았으면 덜 돈 채로 처리하지, 계속 서 있지 않는다. */
+      if(carrier._gkHoldFrom==null || this.ball._rollOwner!==carrier.id) carrier._gkHoldFrom=this.t;
+      const _gkStuck=(this.t-carrier._gkHoldFrom) > GK_HOLD_MAX;
+      if(_gkStuck){
+        carrier._kickFace=null;                       // 돌기를 포기하고 지금 자세로 찬다
+        const _fp=carrier._gkPlan
+               || findBestPass(carrier, mates, opps, Object.assign({}, pctx, {pick:()=>opts[0]}));
+        carrier._gkPlan=null; carrier._gkHoldFrom=null;
+        if(_fp){ this.startPass(carrier, _fp); return; }
+        this.launchGoalKick(carrier, mates); return;   // 줄 사람이 없으면 걷어낸다
+      }
       if(carrier._gkPlan && this.t<(carrier._gkPlanUntil||0)){
         const _pp2=carrier._gkPlan, _po=_pp2.opt||_pp2;
         let _ok=false;
@@ -63510,8 +63823,27 @@ class MatchSim{
     /* 🎯 「찬스에서 패스보다 크로스 선호」 — 이 선수가 잡으면 저울이 크로스 쪽으로 기운다 */
     if(cross) cross.score += clamp(FX(carrier,"crossFirst"),0,1)*0.26;
     const best=opts[0];
+    /* ═══ ⑤ 슛·크로스도 같은 자를 쓴다 ═══════════════════════════════════════════
+       ⚠ 「슛은 패스·크로스와 같은 점수 척도로 겨룬다」고 적혀 있었지만, 사실 그 척도는
+          <b>설계된 것이 아니라 우연히 맞춰 놓은 것</b>이었다. 이제 패스는 골 확률 단위
+          (ZONE_V × EV_K)로 재므로, 슛·크로스도 「실패하면 그 자리에서 상대에게 넘어간다」는
+          같은 대가를 물어야 공정하다.
+       ─ 슛이 빗나가면 상대 골킥·역습이 되고, 크로스가 걷히면 상대 진영에서 소유가 넘어간다.
+          그 자리의 상대 기준 골 기대값이 곧 대가다. */
     // 슛 — 패스·크로스와 같은 점수 척도로 겨룬다. 각이 열려 있고 앞이 비었으면 때린다.
     let shot=evaluateShot(carrier, opps, {selfPress, mentality:T.mentality, longShot:T.longShot});
+    /* ⑤ 슛·크로스도 <b>실패하면 넘어간다</b>는 대가를 문다 — 패스와 같은 자(골 확률 단위).
+       빗나간 슛은 골킥, 걷힌 크로스는 상대 소유다. 그 자리의 상대 기준 골 기대값이 대가다.
+       골문 앞에서는 이 값이 거의 0 이라 그대로 때리고, 먼 거리에서는 값이 커져 억제된다 —
+       중거리 남발이 억제되는 이유가 계수가 아니라 <b>대가</b>가 된다. */
+    {
+      const _lossHere=zoneValue(carrier.x, carrier.y, -carrier.dir)*EV_K;
+      if(shot){
+        const _keep=clamp(0.30+(shot.q||0)*0.45, 0.15, 0.75);   // 코너·리바운드로 되찾을 여지
+        shot.score -= (1-_keep)*_lossHere*0.35;
+      }
+      if(cross) cross.score -= 0.58*_lossHere*0.35;
+    }
     /* 🎚️ 크로스 빈도가 높으면 측면에서는 슈팅보다 크로스를 먼저 고른다 */
     if(shot && cross && Math.abs(carrier.y-0.5)>0.22 && T.crossFq>1)
       shot.score -= (T.crossFq-1)*0.45;
@@ -63837,6 +64169,7 @@ class MatchSim{
     resolveKick(b, carrier, (b.passType===PASS_TYPE.THROUGH||b.passType===PASS_TYPE.LEAD)?KICK.SPACE:KICK.PASS, {lofted:!!b.aerial, curve:pl.curve||0});
     b._opt=opt;
     b._passer=carrier;
+    b._pCut=(opt && opt.pCut!=null) ? opt.pCut : null;   // 🎯 고를 때 예측한 차단 확률 (캘리브레이션)
     b._plan={type:pl.type, grade:pl.grade, diff:pl.diff, exec:pl.exec,
              latM:pl.latM, lonR:pl.lonR, aim:pl.aim, toId:(pl.to&&pl.to.id),
              space:pl.space, leadM:(pl.lead||0)*67,
@@ -63851,6 +64184,8 @@ class MatchSim{
        흘린 공은 17m/s 로 평균 17m 를 굴러 라인을 넘었다(스로인 26회 + 골킥 9회 / 경기).
        비교: chase 가 있는 THROUGH 는 11회 중 5회 수신. LEAD 도 같은 경로를 탄다. */
     if(pl.type===PASS_TYPE.THROUGH || pl.type===PASS_TYPE.LEAD) this.startChase(opt.to, b.tx, b.ty);
+    /* 🧠 길목 읽기 — 종류를 가리지 않는다. 이미 쫓는 사람은 startLaneCut 안에서 걸러진다 */
+    try{ this.startLaneCut(carrier, b.tx, b.ty); }catch(e){}
     /* ═══ 📮 PASS & MOVE — 패스는 다음 움직임의 트리거다 ═══
        패서의 의도 캐시를 지워 다음 틱에 즉시 재결정하게 하고, 패스 방향·압박 맥락을
        한 번의 재결정에만 쓰이는 힌트로 남긴다. 「항상 뛰기」는 금지 — 가점만 주고
@@ -63928,6 +64263,59 @@ class MatchSim{
       // 지연이 끝난 뒤에 스퍼트가 붙도록 예약해 둔다
       best._burstAt = this.t + delay;
     }
+  }
+  /* ═══ 🧠 길목 읽기 — 패스가 나가는 순간 한 명이 「경로 위 한 점」으로 나간다 ═══════════
+     ⚠ 제보 — 「수비수가 읽고 나가는 동작이 없다. 지금 차단은 순전히 우연히 몸에 맞았나다.
+        그리고 이건 수비수뿐만 아니라 미드필더·공격수도 있어야 하는 움직임이다」.
+     startChase 는 <b>도착 지점</b>으로 달리는 경주(공간 패스 전용)다. 이건 다르다 —
+     공이 <b>지나가는 길</b> 위의 한 점으로 나가서 가로챈다. 압박 나간 스트라이커가 백패스를
+     읽고 튀어나가는 그 장면이다. 그래서 포지션을 가리지 않는다(키퍼만 제외).
+     ─ 규칙: ① 닿을 수 있을 때만(공보다 먼저 도착) ② 한 패스에 한 명만
+             ③ 읽는 눈(예측·판단·위치선정)이 확률을 정하고, 좋은 패서는 길목을 숨긴다
+             ④ 나간 선수는 자기 자리를 비운다 — 잘못 읽으면 그 공간이 열린다(대가). */
+  startLaneCut(passer, tx, ty){
+    const b=this.ball;
+    if(b.aerial) return;                       // 뜬 공은 낙하점 경주(startAerialRace)가 맡는다
+    const sx=b.x, sy=b.y;
+    const L=HYP((tx-sx)*PITCH_AR, ty-sy);
+    if(L<0.06) return;                         // 4m 남짓 짧은 패스는 읽을 것도 없다
+    const T=b.flightT || Math.max(0.1, L/(PASS_SPEED*(b.power||1)));
+    const tMin=Math.min(0.85, (ITC_BLIND_M/ISO_TO_M)/L);   // 발끝은 제외
+    let best=null;
+    for(const o of this.side(this.opp(passer.side))){
+      if(o.slot==="GK") continue;                          // 키퍼는 스위핑 로직이 따로 있다
+      if(o._down && o._down>this.t) continue;
+      if(o._chase && o._chase.until>this.t) continue;      // 이미 다른 공을 쫓는 중
+      /* 🛡️ 최후방은 나가지 않는다 — 내 뒤(우리 골문 쪽)를 받쳐 줄 동료가 있어야 한다.
+         이게 없으면 마지막 수비수가 길목을 읽고 튀어나가 뒤가 통째로 열린다(실측). */
+      { let cover=false;
+        for(const m2 of this.side(o.side)){
+          if(m2===o || m2.slot==="GK") continue;
+          if((o.x-m2.x)*o.dir > 0.012){ cover=true; break; }
+        }
+        if(!cover) continue; }
+      /* 🎯 차단 지점 탐색 — 궤적을 훑어 「가장 여유 있게 닿는 한 점」을 찾는다.
+         ballTime(그 지점에 공이 오는 시각) vs defenderTime(그가 거기 닿는 시각). */
+      let bp=null;
+      for(let k=0;k<=8;k++){
+        const t=tMin+(0.90-tMin)*(k/8);
+        const px=sx+(tx-sx)*t, py=sy+(ty-sy)*t;
+        const slack=T*t - defenderTime(o, px, py, passer);
+        if(!bp || slack>bp.slack) bp={t, px, py, slack};
+      }
+      if(bp && (!best || bp.slack>best.slack)) best={o, ...bp};
+    }
+    /* INTERCEPT / DEFLECT / PASS — 여유가 얼마나 있느냐가 셋을 가른다 */
+    if(!best || best.slack < ITC_TOUCH) return;            // PASS — 아무도 못 간다
+    const kind = best.slack>=ITC_CLEAN ? "INTERCEPT" : "DEFLECT";
+    const o=best.o;
+    o._chase={x:best.px, y:best.py, until:this.t+Math.min(CHASE_MAXT, T+0.7),
+              startAt:this.t+itcReact(o)};
+    o._burstAt=this.t+itcReact(o);
+    o._itcKind=kind;                                       // 굴절이면 발끝만 닿는다
+    this._laneRead=(this._laneRead||0)+1;
+    if(kind==="DEFLECT") this._laneTouch=(this._laneTouch||0)+1;
+    this.evl("LANE_READ", o, {k:kind, s:+best.slack.toFixed(2)});
   }
   /* ⚽ 뜬 공 낙하점 경주 — <b>목표 없이 찬 공</b>(걷어내기·골킥)에 양 팀에서 한 명씩 붙인다.
      ⚠ 왜 필요한가 — 크로스·스루패스에는 startChase 로 「받을 사람 + 가장 먼저 반응하는 상대」가
@@ -64370,6 +64758,8 @@ class MatchSim{
     }
     b.flight+=SIM_DT;
     const p=clamp01(b.flight/total);
+    /* 🧹 스윕 차단용 — 이 틱을 시작한 자리. 아래 「경로 차단」이 점이 아니라 선분을 본다. */
+    const _sx=b.x, _sy=b.y, _sz=b.z;
     /* ⚽ 비행 = 볼 물리 그 자체. 패스든 크로스든 흘린 공이든 같은 규칙으로 움직인다.
        ⚠ 예전에는 여기서 lerp 로 목표까지 미끄러뜨렸다. 그래서 도착 순간의 속도가
           "위치 차분"이라는 가짜 값이었고, 퍼스트터치 난이도가 그 가짜 속도를 읽었다. */
@@ -64384,18 +64774,81 @@ class MatchSim{
         b.x=clamp01(b.x); b.y=clamp01(b.y);
       }
     } else if(b._thrownOut) b._thrownOut=0;      // 필드 안으로 들어왔다 — 이제부터 정상 판정
-    // 경로 차단 — 지나가는 공에 상대 몸이 겹치면 커트한다. 머리 위로 뜬 공은 건드릴 수 없다.
+    /* ═══ 🧹 경로 차단 — 「점」이 아니라 「이 틱에 지나간 선분」으로 본다 ══════════════════
+       ⚠ 제보 원문 — 「공격적인 패스들이 너무 쉽게 1대1 찬스로 이어진다. 지나가는 패스를 끊는
+          인터셉트 로직을 구현하고 개선해야 한다」.
+       원인 — 예전에는 이 자리에서 <b>그 순간 공의 위치</b>가 수비수 반경 안이냐만 봤다.
+          그런데 차단 반경은 약 1.4m 인데 공은 한 틱(0.2초)에 평균 <b>3.3m</b>, 최대 8.1m 를
+          건너뛴다(실측 41,731 비행 틱). 궤적이 수비수 몸을 관통해도 샘플 지점이 그 1.4m
+          창에 우연히 떨어지지 않으면 <b>그냥 지나갔다</b> — 길목을 막고 서 있어도 끊느냐
+          마느냐가 운이었다.
+          실측: 같은 반경으로 선분 판정을 하면 차단률이 11.7% → 23.8% 로 <b>두 배</b>가 된다.
+          즉 길목에 선 수비수의 절반 이상을 공이 통과하고 있었다.
+       ─ 이제 이 틱의 시작점(_sx,_sy)과 끝점(b.x,b.y)을 잇는 선분과 수비수의 최단거리를 본다.
+          「길목에 서 있으면 끊는다 / 벗어나 있으면 못 끊는다」가 운이 아니라 결정론이 된다.
+       ⚠ 총량이 두 배가 되면 패스 성공률이 실축(80~85%)보다 낮아지므로 반경(ITC_MUL)을
+          함께 내려 총량은 지금 수준 근처에 맞춘다 — 바뀌는 건 <b>어디서 끊기느냐</b>다. */
     const oKey=this.opp(b._passer.side);
-    if(b.z < CTRL_Z) for(const o of this.side(oKey)){
-      if(o._down && o._down>this.t) continue;
-      // 예측(anticipation) — 판단력·위치선정이 좋은 수비수는 몸을 던지지 않고도 길목을 끊는다.
-      // 패서의 시야가 좋을수록 길목을 피해 찔러 넣는다 — 차단 판정에 패서 실력을 반영
-      const ant = (0.72 + ((o.posSkill||0.6)*0.5 + (o.decSkill||0.6)*0.5)*0.56)
-                * (1.30 - (b._passer.passSkill||0.6)*0.42);
-      const sweeping = o.slot==="GK" && o._sweeping && o._sweeping>this.t;
-      // 스위핑으로 뛰쳐나온 키퍼는 그 순간 필드 플레이어다 — 평소의 코앞 제한을 풀어준다
-      const ir = (o.slot==="GK" && !sweeping) ? CTRL_RADIUS*0.26 : CTRL_RADIUS*ITC_MUL*ant;
-      if(HYP((o.x-b.x)*PITCH_AR, o.y-b.y) < ir){
+    /* ⚠ 스윕은 두 가지를 예전 그대로 지켜야 한다 — 안 그러면 차단이 폭주한다(실측 62%/패스).
+       ① <b>높이</b> — 예전 게이트(b.z<CTRL_Z)를 그대로 둔다. 이걸 「선분 위 높이」로 풀면
+          띄운 공이 <b>발을 떠나는 순간</b>(z=0)에 걸려 롱볼·크로스가 전부 끊긴다.
+       ② <b>발끝</b> — 선분이 패서의 발에서 시작하므로, 밀착 마크한 수비수가 모든 패스를
+          몸으로 끊어 버린다. 실제로도 「차단당한 패스」는 있지만 그게 기본값일 수는 없다.
+          비행 첫 틱은 발끝 ITC_BLIND_M 만큼을 건너뛴 자리에서 선분을 시작한다. */
+    if(b.z < CTRL_Z){
+      /* ⚠ 롱볼 — 떠 있다가 이 틱에 내려온 공은 선분 전체가 머리 위였다. 예전에는 「도착 지점
+         점 판정」으로 이런 공도 끊었다(경기당 11.5회). 시작이 높으면 끝점만 본다(예전 그대로). */
+      let _bx=(_sz<CTRL_Z)?_sx:b.x, _by=(_sz<CTRL_Z)?_sy:b.y;
+      if(_sz<CTRL_Z && b.flight <= SIM_DT*1.5){
+        const _len=HYP((b.x-_sx)*PITCH_AR, b.y-_sy);
+        if(_len>1e-6){
+          const _k=Math.min(0.92, (ITC_BLIND_M/ISO_TO_M)/_len);
+          _bx=_sx+(b.x-_sx)*_k; _by=_sy+(b.y-_sy)*_k;
+        }
+      }
+      const _dx=(b.x-_bx)*PITCH_AR, _dy=b.y-_by;
+      const _L2=_dx*_dx+_dy*_dy;
+      for(const o of this.side(oKey)){
+        if(o._down && o._down>this.t) continue;
+        // 예측(anticipation) — 판단력·위치선정이 좋은 수비수는 몸을 던지지 않고도 길목을 끊는다.
+        // 패서의 시야가 좋을수록 길목을 피해 찔러 넣는다 — 차단 판정에 패서 실력을 반영
+        const ant = (0.72 + ((o.posSkill||0.6)*0.5 + (o.decSkill||0.6)*0.5)*0.56)
+                  * (1.30 - (b._passer.passSkill||0.6)*0.42);
+        const sweeping = o.slot==="GK" && o._sweeping && o._sweeping>this.t;
+        // 스위핑으로 뛰쳐나온 키퍼는 그 순간 필드 플레이어다 — 평소의 코앞 제한을 풀어준다
+        const ir = (o.slot==="GK" && !sweeping) ? CTRL_RADIUS*0.26 : CTRL_RADIUS*ITC_MUL*ant;
+        // 선분 위에서 수비수에게 가장 가까운 지점 (t=0 이 선분 시작, 1 이 틱 끝)
+        const _ax=(o.x-_bx)*PITCH_AR, _ay=o.y-_by;
+        let _t = _L2>1e-12 ? (_ax*_dx+_ay*_dy)/_L2 : 0;
+        _t = _t<0 ? 0 : (_t>1 ? 1 : _t);
+        const _perp=HYP(_ax-_dx*_t, _ay-_dy*_t);
+        if(_perp >= ir) continue;
+        /* ⏱️ ballTime vs defenderTime — 확률이 아니라 시간으로 가른다 (요청).
+           공이 발을 떠난 뒤 흐른 시간(b.flight)에서 반응 지연을 빼면 「움직일 수 있었던 시간」이고,
+           옆으로 _perp 만큼 발을 뻗는 데 걸리는 시간과 견준다.
+             여유 ≥ ITC_CLEAN  → 깔끔하게 끊는다
+             여유 ≥ ITC_TOUCH  → 발끝만 닿는다 = 굴절(DEFLECT) — 아무도 못 가진 공이 된다
+             그 아래            → 반 박자 늦었다. 지나간다 */
+        const _avail=b.flight - itcReact(o);
+        const _need=_perp / Math.max(1e-6, itcLunge(o));
+        const _slack=_avail-_need;
+        if(_slack < ITC_TOUCH) continue;
+        /* 공은 이미 수비수를 지나쳐 있을 수 있다 — 몸에 닿은 자리로 되돌려 놓는다 */
+        b.x=clamp01(_bx + (b.x-_bx)*_t); b.y=clamp01(_by + (b.y-_by)*_t);
+        if(_slack < ITC_CLEAN || o._itcKind==="DEFLECT"){
+          /* 🦶 굴절 — 발끝에 걸렸다. 방향이 꺾이고 힘이 죽은 채 아무에게도 가지 않는다. */
+          o._itcKind=null;
+          const _ang=Math.atan2(b.vy||0, (b.vx||0))+ (Math.random()-0.5)*1.5;
+          const _sp=HYP((b.vx||0)*PITCH_AR, b.vy||0)*(0.28+Math.random()*0.28);
+          b.vx=Math.cos(_ang)*_sp/PITCH_AR; b.vy=Math.sin(_ang)*_sp;
+          b.state="LOOSE"; b.looseT=LOOSE_GRACE; b.looseBy=oKey;
+          b.ownerId=null; b.toId=null; b._pt=null; b.aerial=false;
+          this.stats[oKey].deflect=(this.stats[oKey].deflect||0)+1;
+          this.stats[b._passer.side].lost++;
+          this.cap(o.side, ["🦶 {p}, 발끝에 걸었습니다 — 공이 흐릅니다"], {p:this.nm(o)});
+          return;
+        }
+        o._itcKind=null;
         this.stats[oKey].intercept++; this.stats[b._passer.side].lost++;
         this.cap(o.side, COMM.lvItc, {p:this.nm(o)});
         this.giveTo(o); return;
@@ -66463,7 +66916,9 @@ class MatchSim{
       /* ⚠ 여기에 키퍼 능력치를 곱하지 않는다(능력치 → 선방 확률 이라는 지름길 금지).
          이 값은 「상황이 얼마나 막기 좋은가」만 담는다 — 각도·거리·슛 종류·굴절·시야.
          키퍼의 실력은 아래에서 반응 시간·도달 범위·서 있는 위치라는 물리량으로 들어간다. */
-      save = clamp(SAVE_BASE * meTune("save"), 0.05, 0.97);
+      /* ⚠ 상한이 0.97 이라 SAVE_BASE 를 그 위로 올려도 소용이 없었다 — 실측 계단을 만들려고
+         상한을 함께 연다. (SAVE_BASE 주석의 계측표 참고) */
+      save = clamp(SAVE_BASE * meTune("save"), 0.05, 1.25);
       save -= clamp(g.angle/0.60,0,1)*0.22;
       /* 거리가 멀면 반응할 시간이 생기는 건 맞지만, 그 폭이 너무 컸다(0.26).
          실제로는 잘 맞은 중거리 슛이 코너로 꽂히면 키퍼가 손도 못 댄다. */
@@ -66576,7 +67031,13 @@ class MatchSim{
       }
       /* 근거리(10m 안) — 반응은 이미 reactT가 깎지만, 몸을 완전히 펼치는 것 자체가 안 된다.
          1대1 선방률 61%(실측)의 주범 — 기본 도달까지 줄인다. */
-      if(!isPen && g.distM<14) reach *= 0.52 + (g.distM/14)*0.30;   /* 7m→0.67 · 11m→0.76 · 14m→0.82 — 근거리 전환율 0% 제보 보정 */
+      /* 🧤 근거리 도달 감쇠 — 선방률의 <b>두 번째 손잡이</b>(SAVE_BASE 주석의 계측표).
+         슛의 절반이 11~16.5m 에서 나오는데 이 구간이 가장 세게 눌려 있었다.
+         「1대1 전환율 0%」 제보를 고치며 0.52+(d/14)*0.30 까지 내린 것이 반대쪽으로 지나쳤다.
+         ⚠ 한 번은 이 완화가 실패한 것처럼 보였는데(선방률 56.4% → 53.1%), 그건 SAVE_BASE 가
+            0.76 이던 빌드와 0.88 이던 빌드를 맞대 놓고 잰 <b>대조 실수</b>였다.
+            다른 값을 전부 고정하고 다시 재니 59.8% → 65.4% 로 분명히 움직인다. */
+      if(!isPen && g.distM<14) reach *= 0.70 + (g.distM/14)*0.24;   /* 7m→0.82 · 11m→0.89 · 14m→0.94 */
       /* 착탄점까지의 실제 거리 — 좌우와 높이를 함께 본다 (§28·§31·§32) */
       /* 서 있는 위치 — Positioning 이 낮으면 각을 조금 잘못 잡고 서 있다 */
       const gy=(gk?gk.y:0.5) + gkPosError(gk, this.ball);
@@ -67069,10 +67530,46 @@ class MatchSim{
   }
   /* 굴러가는 공 — 마찰로 느려지고, 가까이 온 선수가 잡거나, 멈추면 가장 가까운 선수에게 간다.
      굴러가다 라인을 넘으면 그 자리에서 아웃 판정(코너킥·스로인·골킥)이 난다. */
+  /* 🏃 흐른 공 경주 — 공이 <b>구르는 동안</b> 양 팀에서 한 명씩 붙인다.
+     ⚠ 제보 원문 — 「수비진이 뒤로 빠지는 공을 가만히 서서 쳐다보고, 상대 공격수가 그 공을
+        소유할 때 그제야 뒤늦게 쫓아간다」.
+        원인: 흐른 공에 사람을 부르는 코드가 <b>공이 멈춘 뒤에만</b> 돌았다
+        (advanceLoose 아래쪽 `sp<LOOSE_STOP` 분기). 구르는 동안에는 아무도 안 불려서
+        전원이 평소 대형 목표만 보고 서 있었고, 상대가 주워야 비로소 소유가 바뀌며 반응했다.
+        굴절(DEFLECT)이 생기면서 흐른 공 자체가 늘어 더 눈에 띄게 됐다.
+     ─ 낙하점 경주(startAerialRace)의 지상판이다. 도착 예상 지점을 0.4초마다 갱신하고,
+        이미 쫓는 중이면 <b>목표만</b> 고쳐 준다(반응 지연을 다시 물리면 영영 출발 못 한다). */
+  looseRace(){
+    const b=this.ball;
+    if(b.z>CTRL_Z*1.5) return;                      // 아직 높이 떠 있다 — 낙하점 경주의 몫
+    if(this._lrAt!=null && this.t-this._lrAt<0.4) return;
+    this._lrAt=this.t;
+    const px=clamp01(b.x+(b.vx||0)*LOOSE_LEAD), py=clamp01(b.y+(b.vy||0)*LOOSE_LEAD);
+    for(const key of ["h","a"]){
+      let best=null, bd=1e9;
+      for(const a of this.side(key)){
+        if(a._down && a._down>this.t) continue;
+        if(a.slot==="GK" && !inBox(a, -a.dir)) continue;      // 키퍼는 자기 박스 안에서만
+        let d=HYP((a.x-px)*PITCH_AR, a.y-py);
+        d *= (1.30 - lbAnt(a)*0.28) * (1 - clamp(FX(a,"sweepBack"),0,1)*SWEEP_EDGE);
+        if(d<bd){ bd=d; best=a; }
+      }
+      if(!best || bd>0.34) continue;                          // 24m 밖은 불러도 못 간다
+      if(best._chase && best._chase.until>this.t){
+        best._chase.x=px; best._chase.y=py;                   // 이미 달리는 중 — 목표만 갱신
+        best._chase.until=this.t+Math.min(CHASE_MAXT, 2.2);
+      } else {
+        const delay=(REACT_MIN+(REACT_MAX-REACT_MIN)*(1.15-(best.decSkill||0.6)))*(0.75+Math.random()*0.50);
+        best._chase={x:px, y:py, until:this.t+Math.min(CHASE_MAXT,2.2), startAt:this.t+delay};
+        best._burstAt=this.t+delay;
+      }
+    }
+  }
   advanceLoose(){
     const b=this.ball;
     b.looseT+=SIM_DT;
     stepBallPhysics(b);
+    try{ if(!b.setPiece) this.looseRace(); }catch(e){}
     if(b.x<0 || b.x>1 || b.y<0 || b.y>1){
       if(this.outOfPlay(b.x, b.y, b.looseBy)) return;
       b.x=clamp01(b.x); b.y=clamp01(b.y);
@@ -67173,9 +67670,16 @@ class MatchSim{
     if(!carrier || carrier.side===key) return;
     if(b.setPiece || b.foulScene || b.celebrate) return;
     if(b.state!=="SETTLED" && b.state!=="LOOSE") return;             // 이미 날아간 공은 늦었다
-    /* 라인을 높게 쓰는 팀의 무기다 — 내려앉은 팀은 걸 이유가 없다 */
+    /* 🪤 트랩 빈도 (세부 전술) — 예전에는 <b>라인 지시에 종속</b>돼 있어(높은 라인이 아니면
+       아예 안 걸었다) 감독이 빈도를 못 골랐다. 이제 직접 정한다.
+         0 안 씀 · 1 가끔 · 2 보통 · 3 자주 · 4 매우 자주 (TAC 스케일 0~2)
+       라인이 낮으면 여전히 값이 줄어든다 — 내려앉은 팀의 트랩은 축구적으로 의미가 없다. */
+    const trapTac=(T && T.trap!=null) ? T.trap : 1;
+    if(trapTac<=0.05) return;                                        // 안 씀
     const lineTac=(T && typeof T.line==="number") ? T.line : 1;
-    if(lineTac < 1.05) return;
+    if(lineTac < 0.55 && trapTac < 1.5) return;                      // 낮은 라인 + 소극적이면 안 건다
+    /* 빈도가 낮으면 쿨다운이 길어지고, 높으면 짧아진다 */
+    if(tr && tr.side===key && this.t < tr.t0 + TRAP_COOL*(1.75-trapTac*0.55)) return;
     const own = v => dir>0 ? v : 1-v;
     /* 볼이 우리 진영 깊숙이 오면 트랩이 아니라 그냥 막아야 한다 */
     const bOwn=own(b.x);
@@ -79127,7 +79631,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-9100";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-9800";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
