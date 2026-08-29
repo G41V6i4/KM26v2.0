@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-8800-->
+<!--B:20260912-9000-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1415,6 +1415,21 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .prgFeed{height:44vh;overflow:auto;background:#0d1117;border:1px solid #21262d;
   border-radius:6px;padding:8px;font-size:12px;line-height:1.7}
 .prgLine{padding:2px 0}
+/* 🎩 수석코치 위임 경기 진행 게이지 (요청 — 「멈춰 있는 느낌이 안 나게」) */
+.dlgWrap{background:#101a12;border:1px solid #1e3a24;border-radius:8px;padding:8px 10px;margin:5px 0}
+.dlgTop{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12.5px;color:#dbe3ea}
+.dlgPct{font-weight:800;color:#7ee787;font-variant-numeric:tabular-nums}
+.dlgBar{position:relative;height:9px;margin:7px 0 4px;border-radius:6px;overflow:hidden;
+  background:#0a1410;border:1px solid #1b2b20}
+.dlgFill{height:100%;width:0;border-radius:6px;transition:width .22s linear;
+  background:linear-gradient(90deg,#2f8f4e,#7ee787)}
+/* 갱신 사이에도 살아 있게 — 빛이 게이지 위를 계속 훑고 지나간다 */
+.dlgBar::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.16) 45%,transparent 70%);
+  transform:translateX(-100%);animation:dlgSheen 1.25s linear infinite}
+@keyframes dlgSheen{to{transform:translateX(100%)}}
+.dlgMin{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+.dlgMin b{color:#a9b4c0}
 .prgDay{color:var(--sub)}
 .prgDay .prgD{display:inline-block;min-width:64px;color:#a9b4c0}
 .prgDay .prgT{color:#dbe3ea}
@@ -2325,6 +2340,10 @@ const GIV=["민준","서준","도윤","예준","시우","하준","지호","준�
 const R = (n)=>Math.floor(Math.random()*n);
 const pick = (a)=>a[R(a.length)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+/* ⚡ 두 값짜리 빗변 — Math.hypot 은 오버플로 방어 때문에 sqrt 보다 <b>10배</b> 느리다(실측 148ms vs 14.5ms/500만회).
+   경기장 좌표는 -2~2 범위라 오버플로가 날 수 없고, 500만 표본에서 값이 <b>완전히 같았다</b>.
+   매치엔진 전역에서 두 값 호출(309군데)을 이걸로 바꿨다. */
+function HYP(x,y){ return Math.sqrt(x*x+y*y); }
 const fmt=(n)=>n.toLocaleString('ko-KR');
 /* 📐 포메이션 목록 정렬 (요청) — 2백 → 3백 → 4백 → 5백 → 7백, 같은 백 수 안에서는 이름순 */
 function formListSorted(){
@@ -2463,9 +2482,9 @@ function clampPy(v){ return v<-PLAY_OUT_Y ? -PLAY_OUT_Y : (v>1+PLAY_OUT_Y ? 1+PL
 function stepToward(a, tx, ty, maxM){
   if(!a) return;
   const dx=(tx-a.x)*PITCH_AR, dy=ty-a.y;
-  const d=Math.hypot(dx,dy)*ISO_TO_M;
+  const d=HYP(dx,dy)*ISO_TO_M;
   if(d<=maxM || d<1e-6){ a.x=clampPx(tx); a.y=clampPy(ty); return; }
-  const k=(maxM/ISO_TO_M)/Math.hypot(dx,dy);
+  const k=(maxM/ISO_TO_M)/HYP(dx,dy);
   a.x=clampPx(a.x+dx*k/PITCH_AR); a.y=clampPy(a.y+dy*k);
 }
 function uidHash(str){                       // FNV-1a 32bit — 짧고 충돌이 드물다
@@ -3577,7 +3596,12 @@ function genTraits(pos, a, p){
 }
 /* 특성 → 매치엔진 효과 플래그 묶음 */
 /* 특성 + 역할을 합친 효과값을 읽는다. 엔진 곳곳의 (a.tr||{}).x 를 대체한다. */
-function FX(a, k){ return (((a&&a.tr)||{})[k]||0) + (((a&&a.role)||{})[k]||0); }
+/* ⚡ 예전엔 tr·role 이 비면 빈 객체 {} 를 두 개씩 새로 만들었다 — 틱당 수백 개. 값은 완전히 같다. */
+function FX(a, k){
+  if(!a) return 0;
+  const t=a.tr, r=a.role;
+  return ((t && t[k]) || 0) + ((r && r[k]) || 0);
+}
 /* ══════════════════════════════════════════════════════════════════
    🎛️ BEHAVIOR MODIFIER — fwd / wide / press / tightMark 를 읽는 단 하나의 창구.
    이 네 값은 「선수가 어디로 갈 것인가」가 아니라 「무엇을 더 하고 싶어하는가」다.
@@ -3588,13 +3612,20 @@ function FX(a, k){ return (((a&&a.tr)||{})[k]||0) + (((a&&a.role)||{})[k]||0); }
    ⚠ 발견 — 이동 로직은 fwd/wide/press 를 「역할만」 읽고, tightMark 만 FX 로 읽는다.
       그래서 fwd/wide 축으로 정규화되는 특성(forward·cutIn·hugLine·deep·boxPlayer·lateRun)이
       선수의 움직임에는 전혀 닿지 않는다. 이 불일치는 다음 단계에서 정리한다. */
+/* ⚡ 역할(a.role)·특성(a.tr) 객체는 경기 내내 그대로다 — 그런데 선수마다 매 틱 새 객체를
+   만들고 FX 를 네 번 불렀다. 두 객체의 <b>정체</b>가 같으면 결과도 같으므로 그대로 돌려준다.
+   ⚠ 돌려받은 객체를 고치지 말 것(읽기 전용 — 모든 소비처가 읽기만 하는 것을 확인했다). */
 function roleBias(a){
-  const R=(a&&a.role)||{};
-  return {
-    rFwd:   R.fwd||0,        rWide:  R.wide||0,       rPress: R.press||0,
+  const R=(a&&a.role)||null, TR=(a&&a.tr)||null;
+  const c=a&&a._rbC;
+  if(c && c.r===R && c.t===TR) return c.v;
+  const v={
+    rFwd:   (R&&R.fwd)||0,   rWide:  (R&&R.wide)||0,  rPress: (R&&R.press)||0,
     fFwd:   FX(a,"fwd"),     fWide:  FX(a,"wide"),    fPress: FX(a,"press"),
     fMark:  FX(a,"tightMark")
   };
+  if(a) a._rbC={r:R, t:TR, v};
+  return v;
 }
 /* 특성이 경기에서 갖는 무게.
    훈련으로 직접 골라 붙이는 것이 된 이상, 하나 붙였을 때 "달라졌다"는 느낌이 있어야 한다.
@@ -5528,13 +5559,38 @@ function ctrLv(T){
 function ctrK(T){ return ctrLv(T)/4; }
 function tacVal(v){ return clamp((v==null?2:+v),0,TAC_STEPS-1)/2; }   // 0~4 → 0.0~2.0
 /* 팀(또는 tactic 객체)의 전술을 엔진용 실수 스케일로 변환 */
+/* ⚡ ⚠ 제보 — 「수석코치에게 위임하면 렉이 심하다」. 위임 경기는 90분치 시뮬을 <b>한 번에</b>
+   돌린다(관전은 실시간에 흩어져 티가 안 난다). 실측: 한 경기 43초 · 틱당 2.12ms —
+   그동안 화면이 통째로 멈춘다. CPU 프로파일 상위: moveAgents 19% · tacticalAnchorXY 13% ·
+   assignOffRoles 10% · spaceQuality 8.9%.
+   ─ TAC() 는 호출 때마다 Object.assign 으로 새 객체를 만들고 키를 전부 변환한다. 전술은
+     경기 중에 거의 바뀌지 않는데 틱마다 수십 번 불린다. 값이 같으면 같은 객체를 돌려준다
+     (GC 압력도 함께 줄어든다). */
+/* ⚠ 1차 시도는 캐시 키를 문자열로 만들었다가 <b>더 느려졌다</b>(틱당 2.12 → 2.31ms) —
+   12칸짜리 문자열을 조립하는 비용이 계산 비용보다 컸다. 값만 직접 비교한다. */
 function TAC(src){
+  const _tc=(src && src.tactic) ? src.tactic : null;
+  if(_tc){
+    const c=_tc._tacC;
+    if(c!==undefined && c.f===_tc.formation && c.a===_tc.mentality && c.b===_tc.pass
+       && c.c===_tc.tempo && c.d===_tc.press && c.e===_tc.line && c.g===_tc.width
+       && c.h===_tc.tackle && c.i===_tc.longShot && c.j===_tc.counter && c.k===_tc.crossFq
+       && c.l===_tc.defGap && c.m===_tc.transSpd) return c.o;
+  }
   const raw=Object.assign({}, TAC_DEF, (src && src.tactic) ? src.tactic : (src||{}));
   const o={formation:raw.formation, raw};
   for(const k of TAC_KEYS) o[k]=tacVal(raw[k]);
   /* ⚠ counter 는 0~4 정수 단계를 그대로 쓴다(ctrLv/ctrK 가 /4 로 나눔).
      루프 뒤에 두지 않으면 tacVal(0~2 스케일)이 덮어써서 5단계가 3단계로 뭉개진다(실측). */
   o.counter=ctrLv(raw);
+  if(_tc){
+    /* ⚠ 세이브에 딸려 나가면 안 된다 — 열거되지 않는 속성으로 붙인다 */
+    const c={f:_tc.formation, a:_tc.mentality, b:_tc.pass, c:_tc.tempo, d:_tc.press,
+             e:_tc.line, g:_tc.width, h:_tc.tackle, i:_tc.longShot, j:_tc.counter,
+             k:_tc.crossFq, l:_tc.defGap, m:_tc.transSpd, o};
+    try{ Object.defineProperty(_tc, "_tacC", {value:c, enumerable:false, writable:true, configurable:true}); }
+    catch(e){}
+  }
   return o;
 }
 const HI =(v)=>v>=1.5;      // 슬라이더 4·3 칸 (높음 쪽)
@@ -8437,9 +8493,9 @@ function passMapCard(res, h, a){
     let moved=false;
     for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
       const A=nodes[i], B=nodes[j];
-      let dx=A.x-B.x, dy=(A.y-B.y)*0.72, d=Math.hypot(dx,dy);
+      let dx=A.x-B.x, dy=(A.y-B.y)*0.72, d=HYP(dx,dy);
       if(d>=0.075) continue;
-      if(d<1e-5){ dx=(i%2?1:-1)*0.01; dy=0.01; d=Math.hypot(dx,dy); }
+      if(d<1e-5){ dx=(i%2?1:-1)*0.01; dy=0.01; d=HYP(dx,dy); }
       const push=(0.075-d)/2/d;
       A.x=clamp(A.x+dx*push, 0.03, 0.97); A.y=clamp(A.y+dy*push, 0.05, 0.95);
       B.x=clamp(B.x-dx*push, 0.03, 0.97); B.y=clamp(B.y-dy*push, 0.05, 0.95);
@@ -22327,7 +22383,7 @@ function pickPlayerOnPitch(ev, cv, sim){
   let best=null, bd=1e9;
   for(const a of sim.agents){
     const pt=pitchToCanvasXY(cv, a.x, a.y);
-    const d=Math.hypot(pt.x-cx, pt.y-cy);
+    const d=HYP(pt.x-cx, pt.y-cy);
     if(d<bd){ bd=d; best=a; }
   }
   simPick = (best && bd<26) ? best.id : null;   // 26px 안이면 그 선수를 고른 것으로 본다
@@ -22621,7 +22677,7 @@ function drawSimWatch(cv, simOverride){
   // 실제 비행은 최대 11m/틱(0.164)까지 나온다. 임계값이 그보다 낮으면
   // 빠른 패스마다 보간이 꺼져 화면이 뚝뚝 끊긴다. 순간이동(킥오프 30~50m)만 걸러낸다.
   const JUMP=0.26;
-  const far=(o)=> o._rx!==undefined && Math.hypot((o.x-o._rx)*PITCH_AR, o.y-o._ry) > JUMP;
+  const far=(o)=> o._rx!==undefined && HYP((o.x-o._rx)*PITCH_AR, o.y-o._ry) > JUMP;
   const IX=(o)=> (o._rx===undefined||far(o)) ? o.x : lerp(o._rx, o.x, AL);
   const IY=(o)=> (o._ry===undefined||far(o)) ? o.y : lerp(o._ry, o.y, AL);
   const K2=cvK(cv);
@@ -22718,7 +22774,7 @@ function drawSimWatch(cv, simOverride){
   let _bx, _by;
   if(liveFF && !simOverride){
     const b0=s.ball, FFA=0.30;
-    if(b0._ffx===undefined || Math.hypot((b0.x-b0._ffx)*PITCH_AR, b0.y-b0._ffy) > 0.90){ b0._ffx=b0.x; b0._ffy=b0.y; }
+    if(b0._ffx===undefined || HYP((b0.x-b0._ffx)*PITCH_AR, b0.y-b0._ffy) > 0.90){ b0._ffx=b0.x; b0._ffy=b0.y; }
     b0._ffx += (b0.x-b0._ffx)*FFA; b0._ffy += (b0.y-b0._ffy)*FFA;
     _bx=b0._ffx; _by=b0._ffy;
   } else {
@@ -22736,7 +22792,7 @@ function drawSimWatch(cv, simOverride){
       const MAXT = isShot ? 14 : 5;
       const lastP=tr.length?tr[tr.length-1]:null;
       /* 장면 전환·세트피스 배치처럼 통째로 튀면 잔상을 끊는다 (선을 그으면 안 되는 순간) */
-      if(lastP && Math.hypot((_bx-lastP.x)*PITCH_AR, _by-lastP.y) > 0.10) tr.length=0;
+      if(lastP && HYP((_bx-lastP.x)*PITCH_AR, _by-lastP.y) > 0.10) tr.length=0;
       /* 슛이 시작되는 순간에는 이전 잔상을 버린다 — 드리블 흔적이 슛 꼬리에 이어 붙으면 안 된다 */
       if(isShot && !b._trShot) tr.length=0;
       b._trShot=isShot;
@@ -22744,7 +22800,7 @@ function drawSimWatch(cv, simOverride){
       while(tr.length>MAXT) tr.shift();
       if(tr.length<3) return;
       const p0=pitchToCanvasXY(cv, tr[0].x, tr[0].y), p1=pitchToCanvasXY(cv, _bx, _by);
-      if(Math.hypot(p1.x-p0.x, p1.y-p0.y) < (isShot?4:6)) return;      // 느린 공 — 잔상 없음
+      if(HYP(p1.x-p0.x, p1.y-p0.y) < (isShot?4:6)) return;      // 느린 공 — 잔상 없음
       const K3=cvK(cv);
       const _lf=(q)=>Math.min(24, ((q.z||0)*ISO_TO_M)*3.0)*K3;
       if(isShot){
@@ -22754,7 +22810,7 @@ function drawSimWatch(cv, simOverride){
         const n=pts.length;
         const rEnd=(3.0+3.45)*K3*0.92;                 // 공 반지름과 맞춘 두께
         const nrm=(i)=>{ const a2=pts[Math.max(0,i-1)], b2=pts[Math.min(n-1,i+1)];
-                         const dx=b2.x-a2.x, dy=b2.y-a2.y, L=Math.hypot(dx,dy)||1;
+                         const dx=b2.x-a2.x, dy=b2.y-a2.y, L=HYP(dx,dy)||1;
                          return {x:-dy/L, y:dx/L}; };
         const up=[], dn=[];
         for(let i=0;i<n;i++){
@@ -52118,7 +52174,7 @@ function fromIso(p){ return {x:p.x/PITCH_AR, y:p.y}; }
 function ricochetXY(from, hit, ang, dist, p){
   const A=toIso(from), B=toIso(hit);
   let vx=B.x-A.x, vy=B.y-A.y;
-  const L=Math.hypot(vx,vy)||1; vx/=L; vy/=L;
+  const L=HYP(vx,vy)||1; vx/=L; vy/=L;
   const a=Math.atan2(-vy,-vx)+ang;          // 입사 반대 방향 + 편향
   const e=easeOutQ(clamp01(p));
   const P={x:B.x+Math.cos(a)*dist*e, y:B.y+Math.sin(a)*dist*e};
@@ -52377,7 +52433,7 @@ function prepScene(e){
     // 접촉 이후(쳐냄) 궤적을 물리로 미리 굴려 둔다 — 렌더러는 이 궤적을 샘플링만 한다
     if(forced===SHOT_RESULT.SAVED && e._shot.savePoint){
       const inc={x:(e._shot.savePoint.x-stage.x), y:(e._shot.savePoint.y-stage.y)};
-      const L=Math.hypot(inc.x*PITCH_AR, inc.y)||1;
+      const L=HYP(inc.x*PITCH_AR, inc.y)||1;
       const sp=BALL_BASE_SPEED*(0.42+0.58*(playerAttr20(stageOwnerId,"fin")/20));
       e._reb=simulateDeflection(e._shot.savePoint, {vx:inc.x/L*sp, vy:inc.y/L*sp}, "PARRY",
               {goalX:GOAL_X[sc.atkSide], cornerY:(e._shot.deflect?e._shot.deflect.y:0.03)});
@@ -52397,7 +52453,7 @@ function prepScene(e){
     const target=goalMouthXY(sc.atkSide, e._goalY!==undefined?e._goalY:0.5);
     const bp=lerpXY(stage, target, SHOT_HANDOFF+0.17);
     const inc={x:bp.x-stage.x, y:bp.y-stage.y};
-    const L=Math.hypot(inc.x*PITCH_AR, inc.y)||1;
+    const L=HYP(inc.x*PITCH_AR, inc.y)||1;
     const sp=BALL_BASE_SPEED*(0.42+0.58*(playerAttr20(sc.shooterId,"fin")/20));
     const blockerXY=findFormationXY(form, sc.blockerId);
     e._reb=simulateDeflection(bp, {vx:inc.x/L*sp, vy:inc.y/L*sp}, "BLOCK",
@@ -52666,7 +52722,7 @@ const GK_RADIUS=0.020, DEF_RADIUS=0.017, BALL_RADIUS=0.008;
 /* 슛 경로(슈터 → 골문) 위에 있는 수비수인지 — 경로에서 수직으로 얼마나 벗어나 있는지로 판단 */
 function inShotLane(d, striker, goal, laneWidth){
   const gx=(goal.x-striker.x)*PITCH_AR, gy=((goal.yTop+goal.yBottom)/2)-striker.y;
-  const gl=Math.hypot(gx,gy)||1;
+  const gl=HYP(gx,gy)||1;
   const px=(d.x-striker.x)*PITCH_AR, py=d.y-striker.y;
   const along=(px*gx+py*gy)/gl;                 // 경로 방향 성분
   if(along<=0 || along>gl) return false;        // 슈터 뒤 또는 골문 너머
@@ -52722,7 +52778,7 @@ function launchShot(ball, plan, striker){
   const power=0.42+0.58*(plan.shotPower/20);             // 파워 1~20 → 0.45~1.0
   const speed=BALL_BASE_SPEED*power;
   const dx=(plan.targetX-ball.x)*PITCH_AR, dy=plan.targetY-ball.y;
-  const L=Math.hypot(dx,dy)||1;
+  const L=HYP(dx,dy)||1;
   ball.vx=(dx/L)*speed/PITCH_AR;
   ball.vy=(dy/L)*speed;
   ball.speed=speed;
@@ -52731,7 +52787,7 @@ function launchShot(ball, plan, striker){
   ball.travelled=0;
   return ball;
 }
-function isoLen(dx,dy){ return Math.hypot(dx*PITCH_AR, dy); }
+function isoLen(dx,dy){ return HYP(dx*PITCH_AR, dy); }
 /* 한 스텝(dt초)만큼 공을 적분한다. 충돌하면 공이 사라지는 게 아니라 굴절되어 계속 굴러간다.
    world = {gk, defenders, goal, dir}. 반환값은 갱신된 ball(phase 포함). */
 function executeShootingPhysics(ball, plan, world, dt){
@@ -52757,8 +52813,8 @@ function executeShootingPhysics(ball, plan, world, dt){
       if(isoLen(ball.x-g.x, ball.y-g.y) <= (g.radius||GK_RADIUS)+(ball.radius||BALL_RADIUS)){
         const tx=goal.x, ty=plan.cornerY;
         const dx=(tx-ball.x)*PITCH_AR, dy=ty-ball.y;
-        const L=Math.hypot(dx,dy)||1;
-        const sp=Math.hypot(ball.vx*PITCH_AR, ball.vy)*0.62;   // 쳐내면서 힘이 죽지만 골문 밖까지는 밀어낸다
+        const L=HYP(dx,dy)||1;
+        const sp=HYP(ball.vx*PITCH_AR, ball.vy)*0.62;   // 쳐내면서 힘이 죽지만 골문 밖까지는 밀어낸다
         ball.vx=(dx/L)*sp/PITCH_AR; ball.vy=(dy/L)*sp;
         ball.phase=SHOT_PHASE.PARRIED;
         return ball;
@@ -52797,14 +52853,14 @@ function executeShootingPhysics(ball, plan, world, dt){
    spread 만큼 각도를 틀어 준 뒤 감속한다. 등방 좌표에서 계산해 화면상 각도가 자연스럽다. */
 function deflectOff(ball, obj, spread, keep, noPush){
   let nx=(ball.x-obj.x)*PITCH_AR, ny=ball.y-obj.y;
-  let nl=Math.hypot(nx,ny);
-  if(nl<1e-6){ nx=-ball.vx*PITCH_AR; ny=-ball.vy; nl=Math.hypot(nx,ny)||1; }
+  let nl=HYP(nx,ny);
+  if(nl<1e-6){ nx=-ball.vx*PITCH_AR; ny=-ball.vy; nl=HYP(nx,ny)||1; }
   const ux=nx/nl, uy=ny/nl;
   const vix=ball.vx*PITCH_AR, viy=ball.vy;
   const dot=vix*ux+viy*uy;
   const rx=vix-2*dot*ux, ry=viy-2*dot*uy;        // 반사 벡터
   const ang=Math.atan2(ry,rx)+(spread||0);
-  const sp=Math.hypot(rx,ry)*(keep||0.45);
+  const sp=HYP(rx,ry)*(keep||0.45);
   ball.vx=Math.cos(ang)*sp/PITCH_AR;
   ball.vy=Math.sin(ang)*sp;
   // 물체 표면 밖으로 살짝 밀어내 같은 프레임에 다시 충돌 판정되지 않게 한다.
@@ -52869,8 +52925,8 @@ function simulateDeflection(contact, incoming, mode, opts){
   if(mode==="PARRY"){
     const tx=opts.goalX!==undefined?opts.goalX:contact.x, ty=opts.cornerY!==undefined?opts.cornerY:0.03;
     const dx=(tx-ball.x)*PITCH_AR, dy=ty-ball.y;
-    const L=Math.hypot(dx,dy)||1;
-    const sp=Math.hypot(ball.vx*PITCH_AR, ball.vy)*0.62;
+    const L=HYP(dx,dy)||1;
+    const sp=HYP(ball.vx*PITCH_AR, ball.vy)*0.62;
     ball.vx=(dx/L)*sp/PITCH_AR; ball.vy=(dy/L)*sp;
     ball.phase=SHOT_PHASE.PARRIED;
   } else {
@@ -53138,7 +53194,7 @@ function trailK(a){
     let v=a.spd;
     if(v===undefined || v===null){
       if(a._tpx===undefined) return 0;
-      v=Math.hypot((a.x-a._tpx)*PITCH_AR, a.y-a._tpy)/SIM_DT;
+      v=HYP((a.x-a._tpx)*PITCH_AR, a.y-a._tpy)/SIM_DT;
     }
     const Z=trailThr();
     return clamp((v-Z.min)/Math.max(1e-6,(Z.full-Z.min)), 0, 1);
@@ -53303,7 +53359,7 @@ function drawReceiveDebug(ctx, cv, s, IX, IY){
       const mates=s.side(cr.side);
       for(const m of mates){
         if(m===cr || m.slot==="GK") continue;
-        const d=Math.hypot((m.x-cr.x)*PITCH_AR, m.y-cr.y);
+        const d=HYP((m.x-cr.x)*PITCH_AR, m.y-cr.y);
         if(d<0.045 || d>0.32) continue;
         const lane=laneBlocked(cr, m, s.side(s.opp(cr.side)));
         const pr=pressureOn(m, s.side(s.opp(cr.side)), 1);
@@ -53603,7 +53659,7 @@ function drawReceiveDebug(ctx, cv, s, IX, IY){
   /* 🎱 공 속도 벡터 */
   {
     const bp=pitchToCanvasXY(cv, IX(b), IY(b));
-    const sp=Math.hypot((b.vx||0)*PITCH_AR, b.vy||0);
+    const sp=HYP((b.vx||0)*PITCH_AR, b.vy||0);
     if(sp>1e-4){
       const ang=Math.atan2(b.vy||0,(b.vx||0)*PITCH_AR);
       const len=clamp(sp*90, 6, 46);
@@ -53631,7 +53687,7 @@ function drawReceiveDebug(ctx, cv, s, IX, IY){
     +"  터치="+b._contact.q+"  상대속도="+((b._contact.rel||0)*67).toFixed(1)+"m/s");
   lines.push("PHYS "+(b.phys||"-")+"  바운스="+(b.bounced||0)+"회"
     +"  vz="+((b.vz||0)*67).toFixed(1)+"m/s");
-  lines.push("BALL "+(b.ctrl||"-")+"  z="+((b.z||0)*67).toFixed(1)+"m  v="+(Math.hypot((b.vx||0)*PITCH_AR,b.vy||0)*67/SIM_DT).toFixed(1)+"m/s");
+  lines.push("BALL "+(b.ctrl||"-")+"  z="+((b.z||0)*67).toFixed(1)+"m  v="+(HYP((b.vx||0)*PITCH_AR,b.vy||0)*67/SIM_DT).toFixed(1)+"m/s");
   if(b.state==="SETTLED" && b.ownerId!=null && b._loc){
     const c=s.byId(b.ownerId);
     lines.push("OWNER "+(c&&c.p?c.p.name:"?")+"  local fwd="+(b._loc.fwd*67).toFixed(2)+"m lat="+(b._loc.lat*67).toFixed(2)+"m");
@@ -53827,7 +53883,7 @@ class PlayerAgent{
      dt 기반이라 프레임률이 달라도 같은 속도로 움직인다. */
   steer(tx, ty, dt, maxSpeed, arrive){
     const dx=(tx-this.x)*PITCH_AR, dy=ty-this.y;      // 화면 비율 보정(등방 좌표)
-    const d=Math.hypot(dx,dy);
+    const d=HYP(dx,dy);
     let wantX=0, wantY=0;
     if(d>1e-6){
       // 고정 지점으로 갈 때는 가까워지면 감속해 오버슈트를 막지만(arrive=true),
@@ -53847,10 +53903,10 @@ class PlayerAgent{
   /* 스크립트가 좌표를 직접 지정한 프레임 — AI 위치를 거기에 동기화하고 속도를 죽여,
      지정이 풀린 뒤에 엉뚱한 방향으로 튀어나가지 않게 한다. */
   forceTo(x,y){ this.x=x; this.y=y; this.vx=0; this.vy=0; }
-  distTo(o){ return Math.hypot((o.x-this.x)*PITCH_AR, o.y-this.y); }
+  distTo(o){ return HYP((o.x-this.x)*PITCH_AR, o.y-this.y); }
 }
 /* 등방 좌표 기준 거리 (화면에서 보이는 실제 거리) */
-function isoDist(a,b){ return Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y); }
+function isoDist(a,b){ return HYP((a.x-b.x)*PITCH_AR, a.y-b.y); }
 /* 매 프레임 호출 — 모든 선수의 상태를 판단하고 목표 지점으로 이동시킨다.
    agents: PlayerAgent 배열, ctx: {ball, atkSide, carrierId, overrides, onTackle} */
 function updatePlayerPositions(agents, ctx, dt){
@@ -53948,7 +54004,7 @@ function updatePlayerPositions(agents, ctx, dt){
       case PLAYER_STATE.DEFEND_BLOCK: {
         // 드리블러 → 골문 직선 위에서 앞을 가로막는 지점을 선점
         const gx=(goal.x-target.x)*PITCH_AR, gy=goal.y-target.y;
-        const gl=Math.hypot(gx,gy)||1;
+        const gl=HYP(gx,gy)||1;
         const lead=0.13;
         tx=clamp01(target.x + (gx/gl)*lead/PITCH_AR);
         ty=clamp01(target.y + (gy/gl)*lead);
@@ -53992,7 +54048,7 @@ function updatePlayerPositions(agents, ctx, dt){
       const a=agents[i], b=agents[j];
       if(isDuel(a,b)) continue;
       const dx=(b.x-a.x)*PITCH_AR, dy=b.y-a.y;
-      const d=Math.hypot(dx,dy);
+      const d=HYP(dx,dy);
       if(d>1e-6 && d<SEPARATION){
         const f=(SEPARATION-d)/SEPARATION*0.045;
         const ux=dx/d, uy=dy/d;
@@ -54217,7 +54273,7 @@ function resolveBallPlayerContact(a, b, opps){
   const bvx=(b.vx||0)*PITCH_AR, bvy=(b.vy||0);
   const pvx=(a.vx||0)*PITCH_AR/SIM_DT, pvy=(a.vy||0)/SIM_DT;   // 선수 속도(iso/s 환산)
   const rvx=bvx-pvx, rvy=bvy-pvy;
-  const rel=Math.hypot(rvx, rvy);
+  const rel=HYP(rvx, rvy);
   /* ── 입사각 — 정면/측면/등 뒤 ── */
   let incRel=0;
   if(rel>1e-6 && a.face!==undefined){
@@ -54259,13 +54315,13 @@ function resolveBallPlayerContact(a, b, opps){
     refl += (Math.random()-0.5)*P.spread*(1+(qi-2)*0.25);
     ang=refl; spd=rel*(0.34+P.damp);
   }
-  spd += Math.hypot(pvx,pvy)*0.28;               // 선수가 달리던 기세가 얹힌다
+  spd += HYP(pvx,pvy)*0.28;               // 선수가 달리던 기세가 얹힌다
   if(P.lift>0) vz = rel*P.lift*(controlled?0.35:1);
   return {part, kind, q, controlled, ang, spd, vz, rel, incRel, ft, diff:ft.diff, skill:ft.skill};
 }
 /* 터치 난이도(0=아주 쉬움 ~ 1.4=아주 어려움) */
 function ftDifficulty(a, b, opps){
-  const sp=Math.hypot((b.vx||0)*PITCH_AR, b.vy||0);
+  const sp=HYP((b.vx||0)*PITCH_AR, b.vy||0);
   let d = clamp(sp/FT.SPEED_HARD, 0, 1)*0.42;               // 공 속도
   d += clamp((b.z||0)/FT.HEIGHT_HARD, 0, 1)*0.21;           // 공 높이
   /* 몸 방향 — 정면으로 오는 공은 쉽고, 뒤에서 오는 공은 어렵다 */
@@ -54275,12 +54331,12 @@ function ftDifficulty(a, b, opps){
     d += (1-clamp((bx*fx+by*fy)*0.5+0.5, 0, 1))*0.18;
   }
   /* 선수 자신의 움직임 — 전력질주 중이거나 뒤로 뛰며 받으면 어렵다 */
-  const ps=Math.hypot((a.vx||0)*PITCH_AR, a.vy||0);
+  const ps=HYP((a.vx||0)*PITCH_AR, a.vy||0);
   d += clamp(ps/0.28, 0, 1)*0.13;
   /* 압박 — 가까울수록 필요한 정밀도가 올라간다 */
   let nd=9, mk=0.6;
   for(const o of (opps||[])){ if(o.slot==="GK") continue;
-    const dd=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y);
+    const dd=HYP((o.x-a.x)*PITCH_AR, o.y-a.y);
     if(dd<nd){ nd=dd; mk=(o.markSkill||0.6)*0.5+(o.tackleSkill||0.6)*0.5; } }
   if(nd<FT.PRESS_R) d += (1-nd/FT.PRESS_R)*(0.20+mk*0.16);
   /* 🌀 회전 — 감겨 들어오는 공은 발에 얹기 어렵다.
@@ -54327,14 +54383,14 @@ function resolveFirstTouch(a, b, opps){
     ang = a.face||0;
     let nd=9, no=null;
     for(const o of (opps||[])){ if(o.slot==="GK") continue;
-      const dd=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y);
+      const dd=HYP((o.x-a.x)*PITCH_AR, o.y-a.y);
       if(dd<nd){ nd=dd; no=o; } }
     if(no && nd<FT.PRESS_R) ang = Math.atan2(a.y-no.y, (a.x-no.x)*PITCH_AR);   // 상대 반대쪽으로
     ang += (Math.random()-0.5)*(q==="PERFECT"?0.35:q==="GOOD"?0.6:1.0);
   } else {
     ang = Math.random()*Math.PI*2;                                             // 튀는 방향은 운
   }
-  const sp=Math.hypot((b.vx||0)*PITCH_AR, b.vy||0);
+  const sp=HYP((b.vx||0)*PITCH_AR, b.vy||0);
   return {q, dist, ang, keep:P.keep, ct:P.ct, diff, skill, resid:sp*P.keep};
 }
 
@@ -54389,7 +54445,7 @@ let FOUL_LOG=null;         // 파울 출처 계측 (defprobe 에서만 켠다)  
 function mvMark(a, stage, tx, ty){
   if(!MV_LOG) return;
   const px=(a._mvLx!==undefined)?a._mvLx:tx, py=(a._mvLy!==undefined)?a._mvLy:ty;
-  const d=Math.hypot((tx-px)*PITCH_AR, ty-py)*ISO_TO_M;
+  const d=HYP((tx-px)*PITCH_AR, ty-py)*ISO_TO_M;
   const e=MV_LOG[stage]||(MV_LOG[stage]=[0,0]);
   e[0]+=d; e[1]++;
   a._mvLx=tx; a._mvLy=ty;
@@ -54487,7 +54543,7 @@ function pinScore(carrier, mates, blockers){
   let out=0;
   for(const m of mates){
     if(m===carrier || m.slot==="GK") continue;
-    const d=Math.hypot((m.x-carrier.x)*PITCH_AR, m.y-carrier.y);
+    const d=HYP((m.x-carrier.x)*PITCH_AR, m.y-carrier.y);
     if(d<0.03 || d>0.34) continue;                            // 너무 붙었거나 너무 멀다
     if(laneBlocked(carrier, m, blockers) > 0.55) continue;    // 통로가 막혔다
     if(++out>=3) break;                                       // 세 개면 안 몰린 거다
@@ -54524,7 +54580,7 @@ function shotContext(shooter, b, g, opps, now){
   const bodyOff=Math.abs(da);                                  // 0=정면, π=완전히 등짐
   const body=clamp(1-bodyOff/(Math.PI*0.72), 0, 1);
   /* ② 공이 발에 붙어 있는가 — 퍼스트터치가 만든 실제 거리 (§5) */
-  const ballD=Math.hypot(((b.x||0)-shooter.x)*PITCH_AR, (b.y||0)-shooter.y);
+  const ballD=HYP(((b.x||0)-shooter.x)*PITCH_AR, (b.y||0)-shooter.y);
   const foot=clamp(1-(ballD-DRIB_LEAD*0.6)/(DRIB_LEAD*2.2), 0, 1);
   /* ③ 방금 한 터치의 품질 — 시간이 지나면 영향이 옅어진다 */
   let ft=0.62, fresh=0;
@@ -54538,10 +54594,10 @@ function shotContext(shooter, b, g, opps, now){
   }
   const touch=ft*fresh + 0.62*(1-fresh);
   /* ④ 공의 상태 — 높이와 속도. 뜬 공·빠른 공은 제대로 맞히기 어렵다 (§14) */
-  const bz=b.z||0, bsp=Math.hypot((b.vx||0)*PITCH_AR, b.vy||0);
+  const bz=b.z||0, bsp=HYP((b.vx||0)*PITCH_AR, b.vy||0);
   const ballOK=clamp(1-bz/(CROSSBAR_Z*0.85), 0.25, 1) * clamp(1-bsp/0.34, 0.30, 1);
   /* ⑤ 균형 — 골대 쪽으로 달리는 중인가, 반대로 틀고 있는가 (§30·§31) */
-  const vsp=Math.hypot((shooter.vx||0)*PITCH_AR, shooter.vy||0);
+  const vsp=HYP((shooter.vx||0)*PITCH_AR, shooter.vy||0);
   let bal=1;
   if(vsp>1e-5){
     const mv=Math.atan2(shooter.vy||0, (shooter.vx||0)*PITCH_AR);
@@ -54551,7 +54607,7 @@ function shotContext(shooter, b, g, opps, now){
   /* ⑥ 압박 — 가장 가까운 수비수가 얼마나 붙었는가 (§7) */
   let nd=9, appr=0;
   for(const o of (opps||[])){ if(o.slot==="GK") continue;
-    const d=Math.hypot((o.x-shooter.x)*PITCH_AR, o.y-shooter.y);
+    const d=HYP((o.x-shooter.x)*PITCH_AR, o.y-shooter.y);
     if(d<nd){ nd=d; appr=(o.tackleSkill||0.6); } }
   const press=clamp(1-nd/0.075, 0, 1)*(0.6+appr*0.7);
   /* 종합 — 0=최악의 자세, 1=완벽한 준비 */
@@ -54575,7 +54631,7 @@ function oneTouchEval(a, b, opps, gk){
   const fin=at("fin",60), cmp=at("cmp",60), dec=at("dec",60), tec=at("tec",60), lon=at("lon",60), fir=at("fir",60);
 
   /* ① 공이 오는 방향 — 골문 쪽으로 흘러 들어오는 공일수록 발만 대면 된다 */
-  const bs=Math.hypot((b.vx||0)*PITCH_AR, b.vy||0);            // 공 속도(iso/틱)
+  const bs=HYP((b.vx||0)*PITCH_AR, b.vy||0);            // 공 속도(iso/틱)
   const bAng=(bs>1e-6)?Math.atan2(b.vy||0,(b.vx||0)*PITCH_AR):null;
   const toGoal=Math.atan2(0.5-a.y,(g.gx-a.x)*PITCH_AR);
   let inLine=0.5;
@@ -54599,7 +54655,7 @@ function oneTouchEval(a, b, opps, gk){
   /* ④ 압박 — 붙어 있으면 잡을 시간이 없다 = 오히려 원터치가 답이다 */
   let near=9;
   for(const o of opps){ if(o.slot==="GK") continue;
-    const d=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y); if(d<near) near=d; }
+    const d=HYP((o.x-a.x)*PITCH_AR, o.y-a.y); if(d<near) near=d; }
   const nearM=near*ISO_TO_M;
   const pressed = nearM<4.5 ? 1.0 : nearM<8 ? 0.6 : 0.25;
   /* ⑤ 거리·각도 — 기존 슈팅 척도 그대로 */
@@ -54665,7 +54721,7 @@ function chooseShotType(shooter, g, ball, gk, opt){
        읽는 능력은 시야·판단력·침착성이다. 눈이 나쁜 공격수는 키퍼가 나와 있어도 그냥 때린다. */
     if(gk){
       const gkOut=Math.abs(gk.x-g.gx)*PITCH_AR*ISO_TO_M;
-      const gap=Math.hypot((gk.x-shooter.x)*PITCH_AR, gk.y-shooter.y)*ISO_TO_M;
+      const gap=HYP((gk.x-shooter.x)*PITCH_AR, gk.y-shooter.y)*ISO_TO_M;
       const A=(k)=>(shooter.p&&shooter.p.attr&&attr20(shooter.p.attr[k])/20)||0.6;
       const read=clamp(A("vis")*0.42 + A("dec")*0.32 + A("cmp")*0.26, 0.15, 1.0);   // 상황을 읽는 눈
       /* 🥄 로빙 — 키퍼가 많이 나왔고 넘길 공간이 남았을 때. 「너무 일찍 나온 키퍼」의 대가다 */
@@ -55069,7 +55125,7 @@ function kickSpin(from, type, o){
       여기서 초기 속도만 정확히 주면 그 뒤는 전부 stepBallPhysics 가 굴린다. */
 function solveLaunch(b, T, aerial, z0){
   const dx=(b.tx-b.x)*PITCH_AR, dy=b.ty-b.y;
-  const D=Math.hypot(dx,dy);
+  const D=HYP(dx,dy);
   const N=Math.max(1, Math.round(T/SIM_DT));
   /* 매 틱 감쇠가 곱해지므로 이동 거리는 등비수열의 합이다 — 역으로 풀면 초기 속도가 나온다 */
   const m = aerial ? AIR_DRAG : GRASS_FRICTION;
@@ -55144,7 +55200,7 @@ function ballLand(b, now){
     z += vz*SIM_DT; vz -= GRAVITY*SIM_DT;
     vx *= AIR_DRAG; vy *= AIR_DRAG;
     if(sside){
-      const vh=Math.hypot(vx,vy);
+      const vh=HYP(vx,vy);
       if(vh>1e-6){ const acc=sside*MAGNUS_A*sk*vh, ox=vx, oy=vy;
         vx += (-oy/vh)*acc*SIM_DT; vy += (ox/vh)*acc*SIM_DT; }
     }
@@ -55181,7 +55237,7 @@ function stepBallPhysics(b){
     b.vx *= AIR_DRAG; b.vy *= AIR_DRAG;
     /* 🌀 마그누스 — 회전이 만든 실제 횡력. 위치를 밀어 주는 눈속임이 아니라 가속도다. */
     if(b.spin && b.spin.side){
-      const vh=Math.hypot(b.vx, b.vy);
+      const vh=HYP(b.vx, b.vy);
       if(vh>1e-6){
         const acc=b.spin.side*MAGNUS_A*(b.spin.k||1)*vh;
         const _ox=b.vx, _oy=b.vy;                 // ⚠ 갱신된 vx 를 vy 계산에 다시 쓰면 각이 틀어진다
@@ -55206,7 +55262,7 @@ function stepBallPhysics(b){
         let grip=BOUNCE_GRIP;
         /* 🎾 낙하 각도 — 가파르게 떨어진 공은 수평 속도를 크게 잃는다 (BOUNCE_STEEP 주석) */
         {
-          const _vh=Math.hypot(b.vx, b.vy);
+          const _vh=HYP(b.vx, b.vy);
           const _steep=clamp(Math.abs(vHit)/(Math.abs(vHit)+_vh+1e-9), 0, 1);
           grip *= (1 - _steep*BOUNCE_STEEP);
         }
@@ -55222,7 +55278,7 @@ function stepBallPhysics(b){
           else if(b.kickType===KICK.CLEAR){ b.vx*=0.58; b.vy*=0.58; }
           else if(b.kickType!==KICK.SHOT && b.kickType!==KICK.CROSS){
             /* 38m+ 롱볼도 첫 바운드에 힘을 잃는다 — 바운드+구름이 골문까지 살아가는 「하프라인 골」 차단 */
-            const _fm=Math.hypot((b.x-(b.sx!=null?b.sx:b.x))*PITCH_AR, b.y-(b.sy!=null?b.sy:b.y))*ISO_TO_M;
+            const _fm=HYP((b.x-(b.sx!=null?b.sx:b.x))*PITCH_AR, b.y-(b.sy!=null?b.sy:b.y))*ISO_TO_M;
             if(_fm>38){ b.vx*=0.62; b.vy*=0.62; }
           }
         }
@@ -55236,7 +55292,7 @@ function stepBallPhysics(b){
     /* 🌀 사이드스핀 — 굴러가는 공이 서서히 휜다 */
     if(b.spin && b.spin.side && (b.vx||b.vy)){
       const a=Math.atan2(b.vy, b.vx*PITCH_AR) + b.spin.side*ROLL_CURVE*SIM_DT;
-      const v=Math.hypot(b.vx*PITCH_AR, b.vy);
+      const v=HYP(b.vx*PITCH_AR, b.vy);
       b.vx=Math.cos(a)*v/PITCH_AR; b.vy=Math.sin(a)*v;
     }
   }
@@ -55269,7 +55325,7 @@ function stepBallPhysics(b){
     if((b.x>1||b.x<0) && Math.abs(b.y-0.5)>half){ b.y=0.5+Math.sign(b.y-0.5)*half; b.vy*=-0.20; }
     if(b.z>CROSSBAR_Z*0.96 && (b.x>1||b.x<0)){ b.z=CROSSBAR_Z*0.96; b.vz=-Math.abs(b.vz)*0.2; }
   }
-  if(Math.hypot(b.vx, b.vy) < BALL_STOPV && b.z<=0){ b.vx=0; b.vy=0; }
+  if(HYP(b.vx, b.vy) < BALL_STOPV && b.z<=0){ b.vx=0; b.vy=0; }
 }
 /* 마찰로 감속하는 이동 곡선. 진행률 p(0~1)를 "이미 간 거리 비율"로 바꾼다.
    처음에 훅 나갔다가 점점 느려지는 실제 공의 모양이다. (등속 lerp 는 공이 밀려가는 느낌이 안 난다) */
@@ -55282,7 +55338,7 @@ function loftPeak(T){ return GRAVITY*T*T/8; }
      loft=0 이면 지면을 구르는 공 — speed 를 그대로 초기 속도로 쓴다. */
 function launchBallTo(b, tx, ty, speed, loft){
   const dx=(tx-b.x)*PITCH_AR, dy=ty-b.y;
-  const D=Math.hypot(dx,dy)||1e-6;
+  const D=HYP(dx,dy)||1e-6;
   b.inNet=false; b.bounced=0;
   if(loft>0){
     const T=Math.max(0.35, loft);
@@ -55583,20 +55639,20 @@ function calcReceiveTarget(a, b, opps, mates){
   if(b.state!=="PASS") return null;
   const left=Math.max(0, (b.flightT||0.6)-(b.flight||0));
   const land=predictBall(b, left);                        // 공이 최종적으로 닿을 지점
-  const dLand=Math.hypot((land.x-a.x)*PITCH_AR, land.y-a.y);
+  const dLand=HYP((land.x-a.x)*PITCH_AR, land.y-a.y);
   const A=(a.p&&a.p.attr)||{};
   const g=(k)=>clamp(attr20(A[k]!=null?A[k]:60)/20, 0.15, 1);
   const dec=g("dec"), vis=g("vis"), fir=g("fir");
   /* 압박 — 뒤에서 붙는 상대가 있으면 공을 먼저 잡으러 간다 */
   let nd=9, no=null;
   for(const o of (opps||[])){ if(o.slot==="GK") continue;
-    const d=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y);
+    const d=HYP((o.x-a.x)*PITCH_AR, o.y-a.y);
     if(d<nd){ nd=d; no=o; } }
   const press=clamp(1-nd/0.10, 0, 1);
   /* 상대가 먼저 닿는가 — 낙하 지점까지의 도착 시간 비교 */
   let oppT=9;
   for(const o of (opps||[])){ if(o.slot==="GK") continue;
-    const od=Math.hypot((o.x-land.x)*PITCH_AR, o.y-land.y);
+    const od=HYP((o.x-land.x)*PITCH_AR, o.y-land.y);
     const tt=travelTime(o, od); if(tt<oppT) oppT=tt; }
   const myT=travelTime(a, dLand);
   const race=clamp((oppT-myT)/0.8, -1, 1);                // +면 내가 여유, -면 상대가 먼저
@@ -55624,7 +55680,7 @@ function calcReceiveTarget(a, b, opps, mates){
      스루패스는 공보다 조금 앞(진행 방향)에서 만난다. */
   let tx=land.x, ty=land.y;
   if(st===RCV.RUN_ONTO){
-    const bd=Math.hypot((b.tx-b.sx)*PITCH_AR, b.ty-b.sy)||1e-6;
+    const bd=HYP((b.tx-b.sx)*PITCH_AR, b.ty-b.sy)||1e-6;
     tx=land.x+((b.tx-b.sx)/bd)*0.018; ty=land.y+((b.ty-b.sy)/bd)*0.018;
   } else if(st===RCV.CONTEST || press>0.5){
     /* 상대보다 먼저 — 공의 현재 위치 쪽으로 당겨서 만난다 */
@@ -55655,13 +55711,13 @@ function decideDribble(a, b, opps, t){
   const g=(k)=>clamp(attr20(A[k]!=null?A[k]:60)/20, 0.15, 1);
   const drib=(a.dribSkill||0.6), tec=g("tec"), dec=g("dec"), bal=g("bal"), agi=(a.agility||0.6);
   const pace=(a.paceSkill||0.6), acc=(a.accelSkill||0.6);
-  const spN=clamp(Math.hypot((a.vx||0)*PITCH_AR,(a.vy||0))/(SPD.SPRINT*SIM_DT), 0, 1.2);
+  const spN=clamp(HYP((a.vx||0)*PITCH_AR,(a.vy||0))/(SPD.SPRINT*SIM_DT), 0, 1.2);
   const f=(a.face===undefined)?0:a.face;
   /* 가까운 상대 · 진행 방향 앞의 공간 */
   let nd=9, no=null, front=9;
   for(const o of (opps||[])){
     if(o.slot==="GK") continue;
-    const dx=(o.x-a.x)*PITCH_AR, dy=o.y-a.y, d=Math.hypot(dx,dy);
+    const dx=(o.x-a.x)*PITCH_AR, dy=o.y-a.y, d=HYP(dx,dy);
     if(d<nd){ nd=d; no=o; }
     /* 진행 방향 ±35° 안에 있는 상대까지의 거리 = 앞 공간 */
     if(d>1e-6){
@@ -55750,7 +55806,7 @@ function receivingOrientation(a, b, opps, dir){
   let want = dir>0 ? 0 : Math.PI;
   let nd=9, no=null;
   for(const o of (opps||[])){ if(o.slot==="GK") continue;
-    const d=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y);
+    const d=HYP((o.x-a.x)*PITCH_AR, o.y-a.y);
     if(d<nd){ nd=d; no=o; } }
   let shield=0;
   if(no && nd<0.085){
@@ -55867,7 +55923,7 @@ const CROSS_BLOCK_P=0.72;   // 코앞에 붙었을 때의 차단 확률
 function shotGeom(a){
   const gx = a.dir>0 ? 1 : 0;
   const dx = (gx-a.x)*PITCH_AR, dy = 0.5-a.y;
-  const dist = Math.hypot(dx, dy);
+  const dist = HYP(dx, dy);
   // 각도는 "골문까지의 거리"로만 결정된다. dx 의 부호(공격 방향)를 그대로 넣으면
   // 왼쪽으로 공격하는 팀에서 atan2 가 ±π 를 넘나들며 각이 5.7rad 같은 값으로 망가진다.
   const fwd = Math.max(1e-6, Math.abs(dx));
@@ -55892,7 +55948,7 @@ function shotLaneBlockers(a, opps, g, widenK){
      전부 들어가므로 측면 슛은 판단에서 과대평가되고 실행에서 덜 막혔다(빌드 1630 윙 자리 슛 폭발의
      두 번째 원인). 통로 벡터에 투영해 등방 좌표의 진짜 수직 거리를 쓴다 — 정면 슛은 결과가 같다.
      off 의 단위는 그대로(등방 y 단위 = BLOCK_W 의 단위)라 bl.off/BLOCK_W 소비자들은 손대지 않는다. */
-  const _lx=(g.gx-a.x)*PITCH_AR, _ly=0.5-a.y, _L=Math.hypot(_lx,_ly)||1e-6;
+  const _lx=(g.gx-a.x)*PITCH_AR, _ly=0.5-a.y, _L=HYP(_lx,_ly)||1e-6;
   const _ux=_lx/_L, _uy=_ly/_L;
   for(const o of opps){
     if(o.slot==="GK") continue;
@@ -55902,7 +55958,7 @@ function shotLaneBlockers(a, opps, g, widenK){
     const off=Math.abs(_px*_uy-_py*_ux);               // 통로에서의 수직 거리 (등방)
     const _lim=BLOCK_W*(widenK||1);
     if(off>_lim) continue;
-    const d=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y);
+    const d=HYP((o.x-a.x)*PITCH_AR, o.y-a.y);
     const _fr=(off>BLOCK_W)?1:0;
     list.push({o, d, off, fr:_fr});
     if(!_fr){ if(d<0.09) near++; else far++; }
@@ -55932,7 +55988,7 @@ function shotLaneBlockers(a, opps, g, widenK){
 function firstTouchShoot(a, g, ball, opps, base){
   let nd=9;
   for(const o of opps){ if(o.slot==="GK") continue;
-    const d=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y); if(d<nd) nd=d; }
+    const d=HYP((o.x-a.x)*PITCH_AR, o.y-a.y); if(d<nd) nd=d; }
   const press = clamp(1 - nd/0.075, 0, 1);                       // 5m 안이면 1 에 수렴
   const awk   = clamp((ball.z||0)/0.016, 0, 1);                  // 높이 뜬 공은 못 잡는다
   const chance= clamp(g.angle/0.50, 0, 1) * clamp(1-(g.distM-6)/14, 0, 1);
@@ -55953,7 +56009,7 @@ function evaluateShot(a, opps, ctx){
   let nearOpp=9;
   for(const o of opps){
     if(o.slot==="GK") continue;
-    const d=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y);
+    const d=HYP((o.x-a.x)*PITCH_AR, o.y-a.y);
     if(d<nearOpp) nearOpp=d;
   }
   const skill = g.distM>20 ? (a.lngSkill||0.6) : (a.finSkill||0.6);   // 판단(때릴까 말까)용
@@ -56300,7 +56356,7 @@ function crossTypeName(pos, zone, traj){
 /* 🎯 공간 점수 — 공이 도착할 그 순간의 그림을 그려서 매긴다.
    지금 누가 서 있는지가 아니라, 공이 닿을 때 누가 거기 있을지를 본다. */
 function scoreCrossZone(carrier, pt, mates, opps, gk, dir, traj, taken){
-  const dist=Math.hypot((pt.x-carrier.x)*PITCH_AR, pt.y-carrier.y);
+  const dist=HYP((pt.x-carrier.x)*PITCH_AR, pt.y-carrier.y);
   const T=crossFlightT(dist, traj);
   const aerial=(traj!==CROSS_TRAJ.LOW);
   /* ⚠ ×0.60 은 순간 속도를 못 믿어서 눌러 두었던 임시값이다. 평활값으로 바꾸면서 0.85 로 푼다. */
@@ -56312,7 +56368,7 @@ function scoreCrossZone(carrier, pt, mates, opps, gk, dir, traj, taken){
     if(m===carrier || m.slot==="GK") continue;
     if(taken && taken.has(m.id)) continue;              // 이미 다른 공간을 맡은 선수
     const f=fut(m);
-    const d=Math.hypot((pt.x-f.x)*PITCH_AR, pt.y-f.y);
+    const d=HYP((pt.x-f.x)*PITCH_AR, pt.y-f.y);
     if(d>0.32) continue;                                // 이 공간은 저 선수의 사정권이 아니다
     const at=travelTime(m, d);
     const reach=clamp(1-(at-T)/0.70, 0, 1);
@@ -56326,7 +56382,7 @@ function scoreCrossZone(carrier, pt, mates, opps, gk, dir, traj, taken){
   for(const o of opps){
     if(o===gk || o.slot==="GK") continue;
     const f=fut(o);
-    const d=Math.hypot((pt.x-f.x)*PITCH_AR, pt.y-f.y);
+    const d=HYP((pt.x-f.x)*PITCH_AR, pt.y-f.y);
     if(d<0.085) dens++;
     if(d>0.34) continue;
     const at=travelTime(o, d);
@@ -56335,7 +56391,7 @@ function scoreCrossZone(carrier, pt, mates, opps, gk, dir, traj, taken){
     if(!D || q>D.q) D={o, q, at};
   }
   /* ③ 골키퍼 구역 — 키퍼가 지배하는 공간에 올리면 그대로 잡힌다 */
-  const gkD = gk ? Math.hypot((gk.x-pt.x)*PITCH_AR, gk.y-pt.y) : 9;
+  const gkD = gk ? HYP((gk.x-pt.x)*PITCH_AR, gk.y-pt.y) : 9;
   const gkRisk = gk ? clamp(1-gkD/0.165, 0, 1)*(0.30+(gk.cmdSkill||0.5)*0.80)*(aerial?1:0.40) : 0;
   /* ④ 길목 차단 — 공간 패스와 같은 계산을 재사용한다. 뜬 공은 덜 걸린다. */
   const corr = corridorRisk(carrier, pt, opps)*(aerial?0.50:1.0);
@@ -56452,7 +56508,7 @@ function spaceQuality(pt, opps, dir, receiver){
   let crowd=0, nearest=9;
   for(const o of (opps||[])){
     if(o.slot==="GK") continue;
-    const d=Math.hypot((o.x-pt.x)*PITCH_AR, o.y-pt.y);
+    const d=HYP((o.x-pt.x)*PITCH_AR, o.y-pt.y);
     if(d<nearest) nearest=d;
     if(d<0.14) crowd += (1-d/0.14);            // 반경 9m 안의 밀집도
   }
@@ -56462,17 +56518,38 @@ function spaceQuality(pt, opps, dir, receiver){
   const adv = dir>0 ? pt.x : 1-pt.x;
   s += clamp((adv-0.45)/0.45, 0, 1)*0.20;
   /* 수비 라인 뒤인가 — 뒤에서 두 번째 수비수보다 앞이면 가산 */
-  try{
-    const line=offsideLineX((opps||[]).filter(o=>o.slot!=="GK"), dir);
-    const behind = dir>0 ? (pt.x>line) : (pt.x<line);
-    if(behind) s=clamp(s+0.18, 0, 1);
-  }catch(e){}
+  /* ⚡ 오프사이드 라인은 「이 상대 배열·이 좌표 세대」에 하나뿐인데, 예전에는 호출마다
+     filter + map + sort 를 새로 돌렸다. 역할 후보 평가에서 틱당 30번 가까이 불려
+     이 한 줄이 전체의 1% 를 먹었다(실측). 배열에 세대 도장을 찍어 한 번만 구한다. */
+  const _op=opps;
+  if(_op && _op.length){
+    let line;
+    if(_op._olG===SQ_GEN && _op._olD===dir) line=_op._olV;
+    else{
+      if(_op._olG===undefined){
+        try{
+          Object.defineProperty(_op,"_olG",{value:-1,writable:true,configurable:true,enumerable:false});
+          Object.defineProperty(_op,"_olD",{value:0,writable:true,configurable:true,enumerable:false});
+          Object.defineProperty(_op,"_olV",{value:0,writable:true,configurable:true,enumerable:false});
+        }catch(e){}
+      }
+      try{
+        const _df=[]; for(const o of _op) if(o.slot!=="GK") _df.push(o);
+        line=offsideLineX(_df, dir);
+      }catch(e){ line=undefined; }
+      try{ _op._olG=SQ_GEN; _op._olD=dir; _op._olV=line; }catch(e){}
+    }
+    if(line!==undefined){
+      const behind = dir>0 ? (pt.x>line) : (pt.x<line);
+      if(behind) s=clamp(s+0.18, 0, 1);
+    }
+  }
   return clamp(s, 0, 1);
 }
 /* 패스 경로(코리도)에 걸친 수비수 — 0=완전히 열림, 1=완전히 막힘 */
 function corridorRisk(from, to, opps){
   const dx=(to.x-from.x)*PITCH_AR, dy=to.y-from.y;
-  const L=Math.hypot(dx,dy); if(L<1e-6) return 0;
+  const L=HYP(dx,dy); if(L<1e-6) return 0;
   const ux=dx/L, uy=dy/L;
   let risk=0;
   for(const o of (opps||[])){
@@ -56491,10 +56568,10 @@ function corridorRisk(from, to, opps){
 /* 수신자 진행 방향과 패스 방향의 궁합 — 1이면 결을 살린 패스 */
 function passAngleFit(to, target){
   const vx=vSx(to)*PITCH_AR, vy=vSy(to);      // 방향 — 평활값
-  const sp=Math.hypot(vx,vy);
+  const sp=HYP(vx,vy);
   if(sp<1e-6) return 0.6;                       // 멈춰 있으면 방향 개념이 약하다
   const tx=(target.x-to.x)*PITCH_AR, ty=target.y-to.y;
-  const tl=Math.hypot(tx,ty); if(tl<1e-6) return 0.6;
+  const tl=HYP(tx,ty); if(tl<1e-6) return 0.6;
   return clamp(((vx/sp)*(tx/tl)+(vy/sp)*(ty/tl))*0.5+0.5, 0, 1);
 }
 /* 패스 난이도 (0=아주 쉬움 ~ 1.5=매우 어려움) */
@@ -56510,15 +56587,15 @@ function passDifficulty(a, opt, ctx){
   /* 압박 */
   let nd=9;
   for(const o of (ctx.opps||[])){ if(o.slot==="GK") continue;
-    const dd=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y); if(dd<nd) nd=dd; }
+    const dd=HYP((o.x-a.x)*PITCH_AR, o.y-a.y); if(dd<nd) nd=dd; }
   if(nd<PE.PRESS_R) d += (1-nd/PE.PRESS_R)*0.34;
   /* 원터치 — 받자마자 차면 어렵다 */
   if(ctx.oneTouch) d += PE.ONE_TOUCH;
   /* 달리는 수신자에게 맞추는 건 더 어렵다 */
-  const rs=Math.hypot(vSx(opt.to)*PITCH_AR, vSy(opt.to))/(SPD.SPRINT*SIM_DT);   // 「달리는 중인가」 — 평활값
+  const rs=HYP(vSx(opt.to)*PITCH_AR, vSy(opt.to))/(SPD.SPRINT*SIM_DT);   // 「달리는 중인가」 — 평활값
   d += clamp(rs, 0, 1)*0.18;
   /* 자신이 달리면서 차는 것도 */
-  const ps=Math.hypot((a.vx||0)*PITCH_AR,(a.vy||0))/(SPD.SPRINT*SIM_DT);
+  const ps=HYP((a.vx||0)*PITCH_AR,(a.vy||0))/(SPD.SPRINT*SIM_DT);
   d += clamp(ps, 0, 1)*0.14;
   return clamp(d, 0, 1.5);
 }
@@ -56555,7 +56632,7 @@ function interceptPoint(from, to, ballSpeed){
   let t=0.5;
   for(let i=0;i<6;i++){
     const px=to.x+vx*t, py=to.y+vy*t;
-    const d=Math.hypot((px-from.x)*PITCH_AR, py-from.y);
+    const d=HYP((px-from.x)*PITCH_AR, py-from.y);
     const nt=d/Math.max(0.06, ballSpeed);
     if(Math.abs(nt-t)<0.02){ t=nt; break; }
     t=0.5*t+0.5*nt;                                    // 진동하지 않게 절반씩 수렴
@@ -56590,7 +56667,7 @@ function throughSpaceCheck(carrier, recv, opps, dir){
   let crowd=0;
   for(const o of opps){
     if(o.slot==="GK") continue;
-    if(Math.hypot((o.x-sx)*PITCH_AR, o.y-sy) < THRU_LOOK) crowd++;
+    if(HYP((o.x-sx)*PITCH_AR, o.y-sy) < THRU_LOOK) crowd++;
   }
   if(crowd > THRU_CROWD_MAX) return null;
   return {line, space, crowd, sx, sy};
@@ -56610,7 +56687,7 @@ function interceptPointAccel(from, to, ballSpeed, vmax, acc){
   /* ⚠ 「안 움직이면 골 방향」이라는 대체값은 순간 속도를 못 믿어서 붙인 것이다.
      평활값을 쓰면 진짜 정지한 선수만 그 분기로 간다. */
   let ux=vSx(to)*PITCH_AR, uy=vSy(to);
-  const ul=Math.hypot(ux,uy);
+  const ul=HYP(ux,uy);
   if(ul>1e-5){ ux/=ul; uy/=ul; }
   else { ux=(to.dir>0?1:-1); uy=0; }
   const v0=ul/SIM_DT;                       // 현재 속도 (iso/초)
@@ -56618,7 +56695,7 @@ function interceptPointAccel(from, to, ballSpeed, vmax, acc){
   for(let i=0;i<7;i++){
     const d=runDistance(v0, vmax, acc, t);  // t초 동안 달려간 거리
     const px=to.x + ux*d/PITCH_AR, py=to.y + uy*d;
-    const bd=Math.hypot((px-from.x)*PITCH_AR, py-from.y);
+    const bd=HYP((px-from.x)*PITCH_AR, py-from.y);
     const nt=bd/Math.max(0.06, ballSpeed);  // 공이 그 지점까지 가는 데 걸리는 시간
     if(Math.abs(nt-t)<0.02){ t=nt; break; }
     t=0.5*t+0.5*nt;                         // 진동하지 않게 절반씩 수렴
@@ -56637,7 +56714,7 @@ function interceptPointAccel(from, to, ballSpeed, vmax, acc){
    반환 −1(왼쪽으로 감음) ~ +1(오른쪽) — 0이면 막는 사람이 없어 감을 이유가 없다. */
 function passCurveSide(carrier, tx, ty, opps){
   const dx=(tx-carrier.x)*PITCH_AR, dy=ty-carrier.y;
-  const D=Math.hypot(dx,dy);
+  const D=HYP(dx,dy);
   if(D<0.035 || !opps || !opps.length) return 0;      // 2m 미만 짧은 패스는 감지 않는다
   const ux=dx/D, uy=dy/D;
   let bLat=0, bW=0;
@@ -56680,7 +56757,7 @@ function escapeOption(carrier, opts, opps, skill){
     let vuln=0;
     for(const q of (opps||[])){
       if(q.slot==="GK") continue;
-      const d=Math.hypot((q.x-o.to.x)*PITCH_AR, q.y-o.to.y);
+      const d=HYP((q.x-o.to.x)*PITCH_AR, q.y-o.to.y);
       if(d<0.13) vuln=Math.max(vuln, 1-d/0.13);
     }
     const s = free*1.60 + open*1.30 + near*0.90 - vuln*1.75;
@@ -56703,7 +56780,7 @@ function nextOptions(m, carrier, mates, opps, dir){
   let cnt=0, bestFwd=0;
   for(const q of mates){
     if(q===m || q===carrier || q.slot==="GK") continue;
-    const d=Math.hypot((q.x-m.x)*PITCH_AR, q.y-m.y);
+    const d=HYP((q.x-m.x)*PITCH_AR, q.y-m.y);
     if(d<0.05 || d>0.30) continue;
     if(laneBlocked(m, q, opps) > 0.50) continue;
     if(pressureOn(q, opps, 1) > 0.80) continue;
@@ -56756,7 +56833,7 @@ function findBestPass(carrier, mates, opps, ctx){
   const skill=ctx.passSkill||carrier.passSkill||0.6;
   const distM=opt.dist*ISO_TO_M;
   const runner = opt.to.offRole===OFF_ROLE.RUN || opt.to.offRole===OFF_ROLE.OVERLAP || opt.to.offRole===OFF_ROLE.INSIDE;
-  const moving = Math.hypot(vSx(opt.to)*PITCH_AR, vSy(opt.to))/SIM_DT > 0.030;   // 잔발질을 달리기로 읽지 않는다
+  const moving = HYP(vSx(opt.to)*PITCH_AR, vSy(opt.to))/SIM_DT > 0.030;   // 잔발질을 달리기로 읽지 않는다
 
   // ── 종류를 정한다
   let type;
@@ -56800,7 +56877,7 @@ function findBestPass(carrier, mates, opps, ctx){
      반대편으로 크게 벌리는 스위치를 구분한다. 시야(vis)가 좋을수록 이런 패스를 본다.
      (_vis·_dec·_ant 는 위에서 이미 잡았다) */
   let _spaceInfo=null;
-  const rsp=Math.hypot(vSx(opt.to)*PITCH_AR, vSy(opt.to))/(SPD.SPRINT*SIM_DT);   // 리드 패스 판정 — 평활값
+  const rsp=HYP(vSx(opt.to)*PITCH_AR, vSy(opt.to))/(SPD.SPRINT*SIM_DT);   // 리드 패스 판정 — 평활값
   const wideSwitch = Math.abs(opt.to.y-carrier.y)>0.34 && distM>24;
   if(thru && Math.random() < thruP)                            type=PASS_TYPE.THROUGH;
   else if(wideSwitch && Math.random() < 0.10+_vis*0.34)        type=PASS_TYPE.SWITCH;
@@ -56818,14 +56895,14 @@ function findBestPass(carrier, mates, opps, ctx){
     const acc =ACCEL_BASE*accMul(opt.to);
     const ip=interceptPointAccel(carrier, opt.to, guess, vmax, acc);
     tx=ip.x; ty=ip.y;
-    lead=Math.hypot((tx-opt.to.x)*PITCH_AR, ty-opt.to.y);
+    lead=HYP((tx-opt.to.x)*PITCH_AR, ty-opt.to.y);
     if(lead < 0.012){ type=PASS_TYPE.SHORT; tx=opt.to.x; ty=opt.to.y; lead=0; }  // 사실상 발밑이면 스루가 아니다
   } else if(type===PASS_TYPE.LEAD){
     /* 🌌 리드 패스 = 공간 패스 — 목표는 선수가 아니라 "선수가 도착할 공간"이다.
        ① 공 도달 시간을 먼저 구하고 ② 그 시간 동안 수신자가 갈 지점을 예측하며
        ③ 그 공간의 질과 ④ 수신자가 실제로 닿을 수 있는지를 함께 본다. */
     const rvx=vSx(opt.to)/SIM_DT, rvy=vSy(opt.to)/SIM_DT;   // 수신자 속도(iso/s) — 방향이라 평활값
-    const rv=Math.hypot(rvx*PITCH_AR, rvy);
+    const rv=HYP(rvx*PITCH_AR, rvy);
     if(rv>1e-6){
       const guess=passLaunchSpeed(opt.dist, PASS_OVER);
       const tT=clamp(opt.dist/Math.max(0.05,guess), 0.2, 1.6);    // ① 공 도달 시간
@@ -56834,7 +56911,7 @@ function findBestPass(carrier, mates, opps, ctx){
       /* 상대 수비가 빠르면 공간이 빨리 닫힌다 — 리드를 줄인다 */
       let dSpd=0;
       for(const o of opps){ if(o.slot==="GK") continue;
-        const d=Math.hypot((o.x-opt.to.x)*PITCH_AR, o.y-opt.to.y);
+        const d=HYP((o.x-opt.to.x)*PITCH_AR, o.y-opt.to.y);
         if(d<0.16) dSpd=Math.max(dSpd, (o.paceSkill||0.6)); }
       if(dSpd>0.62) leadT*= (1 - (dSpd-0.62)*0.55);
       /* ③ 후보 공간을 몇 개 만들어 가장 좋은 곳을 고른다 (판단력이 좋을수록 잘 고른다) */
@@ -56859,9 +56936,9 @@ function findBestPass(carrier, mates, opps, ctx){
         /* ④ 수신자와 공, 누가 먼저 그 공간에 닿는가 — 둘 다 "그 지점까지" 다시 잰다.
            ⚠ 공 시간을 수신자 위치 기준(tT)으로 고정하면 먼 배후 공간은 전부
               "못 닿음"이 되어 배후 침투 패스가 영영 안 나온다. */
-        const dm2=Math.hypot((cx-opt.to.x)*PITCH_AR, cy-opt.to.y);
+        const dm2=HYP((cx-opt.to.x)*PITCH_AR, cy-opt.to.y);
         if(dm2<0.004) continue;                      // 사실상 발밑
-        const cd=Math.hypot((cx-carrier.x)*PITCH_AR, cy-carrier.y);
+        const cd=HYP((cx-carrier.x)*PITCH_AR, cy-carrier.y);
         const ballT=clamp(cd/Math.max(0.05, passLaunchSpeed(cd, PASS_OVER)), 0.2, 2.2);
         const need=travelTime(opt.to, dm2) + (1-passAngleFit(opt.to,{x:cx,y:cy}))*0.45;
         /* 공이 공간으로 굴러 들어가는 동안 따라붙어도 된다 — 0.55초까지는 봐준다.
@@ -56876,7 +56953,7 @@ function findBestPass(carrier, mates, opps, ctx){
         if(!best || sc>best.sc) best={x:cx, y:cy, sc, sq, cr, af, reach};
       }
       tx=best.x; ty=best.y;
-      lead=Math.hypot((tx-opt.to.x)*PITCH_AR, ty-opt.to.y);
+      lead=HYP((tx-opt.to.x)*PITCH_AR, ty-opt.to.y);
       _spaceInfo={sq:best.sq, corridor:best.cr, angle:best.af, reach:best.reach, leadM:lead*67};
     } else { tx=opt.to.x; ty=opt.to.y; }
   } else { tx=opt.to.x; ty=opt.to.y; }
@@ -56900,7 +56977,7 @@ function findBestPass(carrier, mates, opps, ctx){
   const misWeight = clamp(1 + lonR, 0.55, 1.65);
   const _grade=passGrade(latIso*67, lonR);
 
-  const dIso=Math.hypot((tx-carrier.x)*PITCH_AR, ty-carrier.y);
+  const dIso=HYP((tx-carrier.x)*PITCH_AR, ty-carrier.y);
   const over = PASS_OVER + (type===PASS_TYPE.THROUGH?0.30:0) + (opt.recvPress||0)*0.18;
   const speed = passLaunchSpeed(dIso, over)*misWeight;
   const lofted = type===PASS_TYPE.LONG;
@@ -56987,7 +57064,10 @@ function decideCrossDelivery(carrier, cr, ctx){
 }
 const EARLY_RUN_P=0.014;      // 라인을 미리 깨고 나가는 빈도
 const EARLY_RUN_LEAD=0.055;  // 그때 라인을 넘는 깊이(약 3.7m)
-const OFFSIDE_SEEN=0.011;  // 패서가 "명백한 오프사이드"로 인지하는 최소 차이 (이보다 아슬아슬하면 못 본다)
+const OFFSIDE_SEEN=0.011;
+/* ⚡ 좌표 세대 — 선수 좌표가 바뀔 때마다 올린다. 「이 배열·이 틱에서 이미 구한 값」을
+   재사용하는 캐시(오프사이드 라인 등)가 스스로 낡음을 알아채는 기준이다. */
+let SQ_GEN=0;  // 패서가 "명백한 오프사이드"로 인지하는 최소 차이 (이보다 아슬아슬하면 못 본다)
 /* 오프사이드 라인 — 뒤에서 두 번째 수비수의 x (보통 최후방은 키퍼이므로 최종 필드 수비수) */
 function offsideLineX(defs, dir){
   const xs=defs.map(d=>d.x).sort((a,b)=> dir>0 ? b-a : a-b);   // 상대 골문에 가까운 순
@@ -57033,8 +57113,21 @@ function slotUsed(team, slot){
    공격시/수비시 형태(PHASE_SHAPES · shapeMapFor · _shapeRoleAdj · 앵커 모핑)를 통째로 걷어냈다.
    포메이션은 다시 하나다 — 국면에 따라 달라지는 건 라인·간격·성향(기존 슬라이더)뿐이다.
    ─ 남겨 둔 것: team._slotOcc(경기 시점 실제 슬롯 배치)는 능숙도 적립이 쓰므로 그대로 둔다. */
+/* ⚡ 앵커 좌표 캐시 — (전술값 · 슬롯 · 국면 · 홈여부)만으로 정해지는 순수 함수인데
+   에이전트마다 매 틱 다시 계산했다(프로파일 13.2%). 전술이 바뀌면 키가 달라져 저절로 갱신된다. */
+/* 앵커 캐시 통 — (국면 × 홈여부) 네 개. 문자열 키를 만들지 않기 위해 미리 갈라 둔다. */
+function _ancBin(T, phase, isHome){
+  if(phase==="ATT") return isHome ? (T._ancA1||(T._ancA1={})) : (T._ancA0||(T._ancA0={}));
+  return isHome ? (T._ancD1||(T._ancD1={})) : (T._ancD0||(T._ancD0={}));
+}
 function tacticalAnchorXY(team, slot, phase, isHome){
   const T=TAC(team);
+  /* 캐시는 TAC 결과 객체에 붙인다 — 전술이 바뀌면 그 객체가 새로 만들어지므로 저절로 무효화된다.
+     ⚡ 국면·홈여부로 통을 네 개 나눠 둔다 — 예전엔 호출마다 "RCB"+"D"+1 같은 문자열을 새로 이어
+     붙여 키를 만들었고, 그 한 줄이 전체의 1% 였다(실측). 이제 키는 슬롯 이름 그대로다. */
+  const _ac = _ancBin(T, phase, isHome);
+  const hit=_ac[slot];
+  if(hit!==undefined) return {x:hit.x, y:hit.y};   // 호출부가 결과를 손대므로 복사해서 준다
   const base=SLOT_XY[slot]||SLOT_XY.CM;
   // SLOT_XY는 전술판 표시용이라 최후방~최전방이 피치 전체(약 80m)에 걸쳐 있다. 실제 팀 블록은
   // 40m 안쪽으로 훨씬 촘촘하므로, 시뮬에서는 필드 플레이어의 x를 중심 쪽으로 압축한다.
@@ -57073,13 +57166,21 @@ function tacticalAnchorXY(team, slot, phase, isHome){
     ? clamp((blockComp(T)-0.58)/0.30, 0, 1)*({FW:0.155, AM:0.105, MF:0.045, DM:0.02}[SLOT_BAND[slot]]||0) : 0;
   let x=clamp01(bx + lineShift + (slot==="GK"?0:phaseShift-_busT));
   const p={x, y:clamp01(y)};
-  return isHome ? p : mirrorXY(p);
+  const _out = isHome ? p : mirrorXY(p);
+  _ac[slot]={x:_out.x, y:_out.y};
+  return {x:_out.x, y:_out.y};
+}
+/* ⚡ 같은 값을 「고쳐 쓰지 않고 읽기만」 할 때 쓰는 참조판 — 캐시 객체를 그대로 준다.
+   ⚠ 돌려받은 객체를 절대 고치지 말 것(캐시가 오염된다). 고쳐야 하면 tacticalAnchorXY 를 쓴다. */
+function tacticalAnchorRef(team, slot, phase, isHome){
+  const hit=_ancBin(TAC(team), phase, isHome)[slot];
+  return hit || tacticalAnchorXY(team, slot, phase, isHome);
 }
 /* 어떤 지점이 상대 선수들에게 받는 압박 강도. 가까울수록 급격히 커지고, 압박 전술이 높으면 가중된다. */
 function pressureOn(pt, opponents, pressTac){
   let s=0;
   for(const o of opponents){
-    const d=Math.hypot((o.x-pt.x)*PITCH_AR, o.y-pt.y);
+    const d=HYP((o.x-pt.x)*PITCH_AR, o.y-pt.y);
     if(d<PRESS_RADIUS) s+=(1-d/PRESS_RADIUS);
   }
   return s*(0.8+((pressTac===undefined?1:pressTac))*0.25);
@@ -57087,7 +57188,7 @@ function pressureOn(pt, opponents, pressTac){
 /* 패스 경로 위에 상대가 걸쳐 있는 정도(0=완전히 열림, 1=완전히 막힘) */
 function laneBlocked(from, to, opponents){
   const dx=(to.x-from.x)*PITCH_AR, dy=to.y-from.y;
-  const L=Math.hypot(dx,dy); if(L<1e-6) return 0;
+  const L=HYP(dx,dy); if(L<1e-6) return 0;
   const ux=dx/L, uy=dy/L;
   let worst=0;
   for(const o of opponents){
@@ -57134,7 +57235,7 @@ function evaluatePassOptions(carrier, mates, opps, ctx){
   for(const m of mates){
     if(m.id===carrier.id) continue;
     const dx=(m.x-carrier.x)*PITCH_AR, dy=m.y-carrier.y;
-    const dist=Math.hypot(dx,dy);
+    const dist=HYP(dx,dy);
     if(dist<0.03 || dist>0.70) continue;
     const forward=(m.x-carrier.x)*dir;
     // 전진 이득은 포화시킨다 — 이게 없으면 "가장 멀리 전진하는 패스"가 항상 이겨서 롱볼만 나온다
@@ -57208,7 +57309,7 @@ function evaluatePassOptions(carrier, mates, opps, ctx){
         const _rr=r3.offRole;
         if(_rr!==OFF_ROLE.RUN && _rr!==OFF_ROLE.CHANNEL && _rr!==OFF_ROLE.THIRD) continue;
         if((r3.x-m.x)*dir<0.02) continue;
-        if(Math.hypot((r3.x-m.x)*PITCH_AR, r3.y-m.y)>0.37) continue;
+        if(HYP((r3.x-m.x)*PITCH_AR, r3.y-m.y)>0.37) continue;
         if(laneBlocked(m, r3, opps)>0.35) continue;
         score += 0.26; break;
       }
@@ -57333,7 +57434,7 @@ function buildUpContext(mine, opps, ball, dir, carrier){
   if(carrier){
     for(const o of opps){
       if(o.slot==="GK") continue;
-      const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
+      const d=HYP((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
       if(d<nearest) nearest=d;
       if(d<0.13){ pressers++; if((o.x-carrier.x)*dir < 0) ahead++; }   // 앞을 막고 선 사람
     }
@@ -57625,7 +57726,7 @@ function intentCands(a, ctx, board){
   }
   /* 🙋 동료가 갇혔다 — 가까이 있는 선수가 받아 주러 나간다 (§16) */
   if(ctx.stuck && ctx.carrier){
-    const d=Math.hypot((ctx.carrier.x-a.x)*PITCH_AR, ctx.carrier.y-a.y);
+    const d=HYP((ctx.carrier.x-a.x)*PITCH_AR, ctx.carrier.y-a.y);
     if(d>0.05 && d<0.32)
       add(OFF_ROLE.SHOW, 0.85 + clamp(1-d/0.32, 0, 1)*0.75 + P.support*0.40);
   }
@@ -57784,13 +57885,15 @@ function attLeash(role, tPress){
    ─ 조율에 쓸 좌표를 이동 루프와 <b>같은 자</b>로 한 번 접어서 본다.
      그러면 「갈 수 있는 곳」에서 겹침을 보게 되고, 선점·레인 제한이 비로소 뜻을 갖는다. */
 function reachSpot(a, want, ball, dir, role, tPress){
-  const an=tacticalAnchorXY(a.team, a.slot, "ATT", a.isHome);
-  an.x=clamp01(an.x + (ball.x-0.5)*0.38 + dir*0.11);       // blockShift + 소유 시 dirBias
+  /* ⚡ 참조판으로 읽고 좌표는 지역 변수로 옮긴다 — 캐시 객체는 절대 고치지 않는다 */
+  const an=tacticalAnchorRef(a.team, a.slot, "ATT", a.isHome);
+  const anx=clamp01(an.x + (ball.x-0.5)*0.38 + dir*0.11);   // blockShift + 소유 시 dirBias
+  const any=an.y;
   const lz=attLeash(role, tPress);
-  const dx=(want.x-an.x)*PITCH_AR, dy=want.y-an.y;
-  const d=Math.hypot(dx,dy);
+  const dx=(want.x-anx)*PITCH_AR, dy=want.y-any;
+  const d=HYP(dx,dy);
   if(d<=lz || d<1e-6) return want;
-  return {x:clamp01(an.x + dx/d*lz/PITCH_AR), y:clamp01(an.y + dy/d*lz)};
+  return {x:clamp01(anx + dx/d*lz/PITCH_AR), y:clamp01(any + dy/d*lz)};
 }
 /* 세로 레인만 — 「같은 길로 둘이 뛰는가」를 보는 데 쓴다 (zoneKey 의 레인 경계와 같다) */
 function laneOf(p){ return p.y<0.26?0 : p.y<0.42?1 : p.y<0.58?2 : p.y<0.74?3 : 4; }
@@ -57838,7 +57941,7 @@ function assignOffRoles(mine, t, ball, dir, ment, opps, carrier, tPress){
       for(const a2 of out){
         if(!a2.home) continue;
         const dx2=((a2.x-cx)-(a2.home.x-hx))*PITCH_AR, dy2=(a2.y-cy)-(a2.home.y-hy);
-        s2+=Math.min(1, Math.hypot(dx2,dy2)/0.20);
+        s2+=Math.min(1, HYP(dx2,dy2)/0.20);
       }
       integ=1-(s2/n2)*0.9;
     }
@@ -57855,7 +57958,7 @@ function assignOffRoles(mine, t, ball, dir, ment, opps, carrier, tPress){
   if(carrier){
     for(const m of out){
       if(m===carrier) continue;
-      const d=Math.hypot((m.x-carrier.x)*PITCH_AR, m.y-carrier.y);
+      const d=HYP((m.x-carrier.x)*PITCH_AR, m.y-carrier.y);
       if(d<0.045 || d>0.30) continue;
       if(laneBlocked(carrier, m, opps) > 0.45) continue;
       if(pressureOn(m, opps, 1) > 0.75) continue;
@@ -57891,7 +57994,7 @@ function assignOffRoles(mine, t, ball, dir, ment, opps, carrier, tPress){
   let fwdOpt=0, backOpt=0;
   for(const m of out){
     if(carrier && m.id===carrier.id) continue;
-    const d=Math.hypot((m.x-ball.x)*PITCH_AR, m.y-ball.y);
+    const d=HYP((m.x-ball.x)*PITCH_AR, m.y-ball.y);
     if(d>0.26) continue;
     if((m.x-ball.x)*dir>0.01) fwdOpt++; else backOpt++;
   }
@@ -57913,7 +58016,7 @@ function assignOffRoles(mine, t, ball, dir, ment, opps, carrier, tPress){
     let p=null, pd=0.16;
     for(const o of opps){
       if(o.slot==="GK") continue;
-      const d=Math.hypot((o.x-sp.x)*PITCH_AR, o.y-sp.y);
+      const d=HYP((o.x-sp.x)*PITCH_AR, o.y-sp.y);
       if(d<pd){ pd=d; p=o; }
     }
     return p;
@@ -58004,7 +58107,7 @@ function assignOffRoles(mine, t, ball, dir, ment, opps, carrier, tPress){
            * clamp(0.30 + a._mp.roam*0.45 + a._mp.depth*0.55, 0.25, 1.25);
       /* 🔗 동료가 비워 준 공간 — 먼저 정한 선수가 수비수를 끌고 나갔다면 그 자리가 값지다 */
       for(const f of board.freed){
-        const d=Math.hypot((reach.x-f.x)*PITCH_AR, reach.y-f.y);
+        const d=HYP((reach.x-f.x)*PITCH_AR, reach.y-f.y);
         if(d<0.12) s += (1-d/0.12)*0.55*(0.5+otb*0.9);   // 눈이 좋은 선수가 먼저 알아본다
       }
 
@@ -58038,7 +58141,7 @@ function assignOffRoles(mine, t, ball, dir, ment, opps, carrier, tPress){
         if(_pin && board.pinned.has(_pin.id) && board.pinned.get(_pin.id)!==a.id) s -= 0.70*tw;
         /* ② 볼에서 본 각·거리가 이미 잡힌 사람과 겹치는가 (약 12° · 10m 안) */
         const _ang=Math.atan2(reach.y-ball.y, (reach.x-ball.x)*PITCH_AR);
-        const _dst=Math.hypot((reach.x-ball.x)*PITCH_AR, reach.y-ball.y);
+        const _dst=HYP((reach.x-ball.x)*PITCH_AR, reach.y-ball.y);
         for(const q of board.aim){
           let da=_ang-q.a; while(da>Math.PI) da-=Math.PI*2; while(da<-Math.PI) da+=Math.PI*2;
           if(Math.abs(da)<0.21 && Math.abs(_dst-q.d)<0.14){ s -= 0.50*tw; break; }
@@ -58087,7 +58190,7 @@ function assignOffRoles(mine, t, ball, dir, ment, opps, carrier, tPress){
       const _pin=pinOf(best.reach);
       if(_pin && !board.pinned.has(_pin.id)) board.pinned.set(_pin.id, a.id);
       board.aim.push({a:Math.atan2(best.reach.y-ball.y, (best.reach.x-ball.x)*PITCH_AR),
-                      d:Math.hypot((best.reach.x-ball.x)*PITCH_AR, best.reach.y-ball.y)});
+                      d:HYP((best.reach.x-ball.x)*PITCH_AR, best.reach.y-ball.y)});
     }
     if(best.r===OFF_ROLE.VACATE) board.freed.push({x:a.x, y:a.y});   // 내가 있던 자리가 열린다
     /* 🎯 ST 내려받기도 같은 신호다 — 최전방을 비우면 그 자리가 동료의 침투 공간이 된다.
@@ -58332,7 +58435,7 @@ function findOpenSpot(a, anchor, carrier, opps, mates, dir, ball, lineX){
     let crowd=0;
     for(const m of mates){
       if(m===a) continue;
-      const d=Math.hypot((m.x-c.x)*PITCH_AR, m.y-c.y);
+      const d=HYP((m.x-c.x)*PITCH_AR, m.y-c.y);
       if(d<0.10) crowd+=(1-d/0.10);
     }
     const adv=adv0;
@@ -58417,7 +58520,7 @@ function pressPurposeFor(a, carrier, opps, T, trapZone, dir){
   const inSide=(0.5-carrier.y)>=0 ? 1 : -1;               // 캐리어 기준 「안쪽」(중앙) 방향
   for(const o of opps){
     if(o===carrier || o.slot==="GK") continue;
-    const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y); if(d<0.03 || d>0.32) continue;
+    const d=HYP((o.x-carrier.x)*PITCH_AR, o.y-carrier.y); if(d<0.03 || d>0.32) continue;
     const f=fwdOf(o);
     let ok=false, sc=d;
     if(p===PP.BLOCK_MID){ ok = Math.abs(o.y-0.5)<0.20 && f>-0.02; }
@@ -58449,7 +58552,7 @@ const TRAP_FALL=1.60;          // 다시 내려오는 데 걸리는 시간 (초)
 function pressScore(d, carrier, ctx){
   const A=(d.p&&d.p.attr)||{};
   const at=(k,fb)=>clamp(attr20(A[k]!=null?A[k]:(fb||60))/20, 0.15, 1);
-  const dist=Math.hypot((carrier.x-d.x)*PITCH_AR, carrier.y-d.y);
+  const dist=HYP((carrier.x-d.x)*PITCH_AR, carrier.y-d.y);
   /* ① 닿을 수 있는가 — 멀면 나가 봐야 소용없다 */
   let s = clamp(1-dist/0.20, 0, 1)*1.10;
   /* ② 상대가 지금 취약한가 — 등을 보이거나 공이 발에서 멀면 나갈 때다 (§10·§53) */
@@ -58570,7 +58673,7 @@ function recoverSpot(a, mine, opps, ball, dir, anch){
 
   /* ① 상대가 폭을 잡고 있다 — 따라간다. 그와 우리 골문을 잇는 선 위, 골 쪽 3.5m */
   if(wide && Math.abs(wide.y-0.5) > 0.235){
-    const dx=(ownGoalX-wide.x)*PITCH_AR, dy=0.5-wide.y, dl=Math.hypot(dx,dy)||1e-6;
+    const dx=(ownGoalX-wide.x)*PITCH_AR, dy=0.5-wide.y, dl=HYP(dx,dy)||1e-6;
     const step=0.052;
     return {x:clamp01(wide.x + (dx/dl)*step/PITCH_AR),
             y:clamp01(wide.y + (dy/dl)*step)};
@@ -58598,7 +58701,7 @@ function topThreat(carrier, opps, dir){
   for(const o of opps){
     if(o.slot==="GK" || o===carrier) continue;
     const fwd=(o.x-carrier.x)*dir;              // 상대 공격 방향 기준 전진도
-    const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
+    const d=HYP((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
     if(d<0.04 || d>0.6) continue;
     const sc=fwd*2.2 - d*0.8;
     if(sc>bs){ bs=sc; best=o; }
@@ -58648,10 +58751,10 @@ function markBest(a, threats, taken, ownGoalX, carrier, t, rMark, pressOn){
     const oy=run ? clamp01(o.y+(o.vy||0)*5) : o.y;
     const pair=markPair(a, o);
     const rr=MARK_REACH*(run?MARK_RUN_K:1)*(pair?MARK_PAIR_K:1);
-    const d=Math.hypot((ox-a.x)*PITCH_AR, oy-a.y);
+    const d=HYP((ox-a.x)*PITCH_AR, oy-a.y);
     if(d>rr) continue;
     const goalN=clamp(1-Math.abs(ox-ownGoalX)/0.55, 0, 1);            // 우리 골문에 가까울수록 위험
-    const dc=carrier ? Math.hypot((ox-carrier.x)*PITCH_AR, oy-carrier.y) : 0.30;
+    const dc=carrier ? HYP((ox-carrier.x)*PITCH_AR, oy-carrier.y) : 0.30;
     const recvN=clamp(1-Math.abs(dc-0.18)/0.30, 0, 1);                // 지금 받을 만한 거리인가
     const thr = goalN*0.56 + recvN*0.22 + (o.paceSkill||0.6)*0.22;
     const reach = clamp(1-d/rr, 0, 1);
@@ -58701,7 +58804,7 @@ function laneBest(a, carrier, threats, dir, wMul){
     if(L2<1e-6 || Math.sqrt(L2)>LANE_MAX) continue;
     const px=(a.x-carrier.x)*PITCH_AR, py=a.y-carrier.y;
     const u=clamp((px*ax+py*ay)/L2, 0, 1);
-    const perp=Math.hypot(px-ax*u, py-ay*u);
+    const perp=HYP(px-ax*u, py-ay*u);
     if(perp>_lw) continue;
     const cut =clamp(1-perp/_lw, 0, 1);                        // 선에 얼마나 붙어 있나
     const spot=clamp(0.25+u*0.95, 0, 1);                       // 받는 쪽에 가까울수록 값지다
@@ -58754,7 +58857,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
     /* ⚠ 앵커는 정지된 포메이션 좌표인데 수비 블록은 볼을 따라 통째로 이동한다.
        그래서 문턱이 낮으면 「블록이 움직인 것」까지 빈 자리로 잡혀 DROP이 폭주한다(실측 18%).
        확실히 자기 자리를 버리고 나간 경우(약 8m 이상)만 센다. */
-    if(Math.hypot((an.x-a.x)*PITCH_AR, an.y-a.y)>0.120) board.vacated.push({by:a.id, x:an.x, y:an.y});
+    if(HYP((an.x-a.x)*PITCH_AR, an.y-a.y)>0.120) board.vacated.push({by:a.id, x:an.x, y:an.y});
   };
   for(const a of mine){
     if(a.slot==="GK"){ a.defRole=null; continue; }
@@ -58810,7 +58913,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
          존마크 규칙과 충돌하지 않는다. 4백에서는 CB 슬롯이 없어 예전 그대로(메우지 않음). */
       const _has3=mine.some(m=>m.slot==="CB");
       if(!(_has3 && h.kind==="flank" && (a.slot==="LCB"||a.slot==="RCB") && (SLOT_SIDE[a.slot]||0)===h.side)) return -1;
-      const d3=Math.hypot((h.x-a.x)*PITCH_AR, h.y-a.y);
+      const d3=HYP((h.x-a.x)*PITCH_AR, h.y-a.y);
       if(d3>HOLE_MAX_D) return -1;
       const _stick3=(a._prevDef===DEF_ROLE.COVER_WIDE) ? HOLE_STICK : 0;
       return 1.25 - d3*1.65 + _stick3;
@@ -58821,7 +58924,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
       if(wmDuty(a)>=WM_DUTY_MIN){
         const _ws=(a.home && Math.abs(a.home.y-0.5)>0.06) ? (a.home.y<0.5?-1:1) : 0;
         if(_ws===h.side && _ws!==0){
-          const d=Math.hypot((h.x-a.x)*PITCH_AR, h.y-a.y);
+          const d=HYP((h.x-a.x)*PITCH_AR, h.y-a.y);
           if(d>HOLE_MAX_D) return -1;
           return 1.35 - d*1.65;
         }
@@ -58838,7 +58941,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
       else return -1;
       if((h.pr.x-a.x)*dir <= -0.01) return -1;  // 압박자가 나보다 앞에 있어야 받쳐 준다
     }
-    const d=Math.hypot((h.x-a.x)*PITCH_AR, h.y-a.y);
+    const d=HYP((h.x-a.x)*PITCH_AR, h.y-a.y);
     if(d>HOLE_MAX_D) return -1;
     /* 🧱 안정화 A-1 — 지금 그 구멍을 맡고 있는 사람이 계속 맡는다 (COVER 36% 가 매 틱 흔들렸다) */
     const _stick=((h.kind==="flank") ? a._prevDef===DEF_ROLE.COVER_WIDE : a._prevDef===DEF_ROLE.COVER) ? HOLE_STICK : 0;
@@ -58901,17 +59004,17 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
       const _dPrev=(a._prevDef===DEF_ROLE.DROP && a._fillPrev) ? a._fillPrev : null;   // ⚠ 1차: a._fillAt 을 봤는데 루프 첫머리에서 이미 null — 효과 0
       for(const v of board.vacated){
         if(board.filled.has(v.by) || v.by===a.id) continue;
-        if(_dPrev && Math.hypot((v.x-_dPrev.x)*PITCH_AR, v.y-_dPrev.y)<0.06){ pick=v; break; }
+        if(_dPrev && HYP((v.x-_dPrev.x)*PITCH_AR, v.y-_dPrev.y)<0.06){ pick=v; break; }
         /* 🧱 B-2 — 풀백은 중앙(마크 나간 CB 의 앵커 등)을 메우러 가지 않는다 (실측 FB DROP 17%) */
         if(_fbSide && (v.y-0.5)*_fbSide < FB_SIDE_MIN) continue;
         /* 🧱 B-2 — 앞쪽(측면 미드필더의 앵커)을 메우러 올라가지도 않는다 — 그건 「내려앉기」가 아니다 */
         if(_fbSide && (v.x-a.x)*dir > 0.02) continue;
-        const d=Math.hypot((v.x-a.x)*PITCH_AR, v.y-a.y);
+        const d=HYP((v.x-a.x)*PITCH_AR, v.y-a.y);
         /* 나보다 그 자리에 가까운 동료가 아직 남아 있으면 양보한다 */
         let better=false;
         for(const o of mine){
           if(o===a || o.slot==="GK" || o.defRole) continue;   // 아직 역할이 없는 동료만
-          if(Math.hypot((v.x-o.x)*PITCH_AR, v.y-o.y) < d-0.005){ better=true; break; }
+          if(HYP((v.x-o.x)*PITCH_AR, v.y-o.y) < d-0.005){ better=true; break; }
         }
         if(better) continue;
         if(d<0.32 && d<bd){ bd=d; pick=v; }   // 약 21m 안이면 메우러 간다
@@ -59043,7 +59146,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
            반경 3.9m 안에 수비수 없음 57%(박스 도착 49%), 경합 성립 13%. 낙하점이 우리 진영 깊숙이면 가점. */
         if(bb && bb.aerial && (bb.state==="PASS"||bb.state==="LOOSE")){
           const LP=ballLand(bb, t);                 // 🎯 의도한 목표가 아니라 실제 낙하점
-          const d2=Math.hypot((LP.x-a.x)*PITCH_AR, LP.y-a.y);
+          const d2=HYP((LP.x-a.x)*PITCH_AR, LP.y-a.y);
           if(d2<SEC_R){
             let secTaken=0;
             for(const m of mine) if(m!==a && m.defRole===DEF_ROLE.SECOND) secTaken++;
@@ -59079,14 +59182,14 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
         const g2=shotGeom(carrier);
         if(g2 && g2.distM<26){
           const gx2=dir>0?0.02:0.98;
-          const ax=(gx2-carrier.x)*PITCH_AR, ay=0.5-carrier.y, al=Math.hypot(ax,ay)||1e-6;
+          const ax=(gx2-carrier.x)*PITCH_AR, ay=0.5-carrier.y, al=HYP(ax,ay)||1e-6;
           const px=(a.x-carrier.x)*PITCH_AR, py=a.y-carrier.y;
           const u=clamp((px*ax+py*ay)/(al*al), 0, 1);
-          const perp=Math.hypot(px-ax*u, py-ay*u);
+          const perp=HYP(px-ax*u, py-ay*u);
           /* ⚠ 「이미 선 위에 있는가」로 매기면 선 위로 「가야 하는」 선수가 후보가 못 된다.
              닿을 수 있는 거리면 후보가 되고, 가까울수록·사거리가 짧을수록 급해진다. */
           const reachL=clamp(1-perp/0.16, 0, 1);
-          const nearL=clamp(1-Math.hypot(px,py)/0.26, 0, 1);      // 약 17m — 달려가 막을 수 있는 거리
+          const nearL=clamp(1-HYP(px,py)/0.26, 0, 1);      // 약 17m — 달려가 막을 수 있는 거리
           const urgent=clamp(1-g2.distM/26, 0, 1);
           let blkTaken=0;
           for(const m of mine) if(m!==a && m.defRole===DEF_ROLE.BLOCK_SHOT) blkTaken++;
@@ -59185,7 +59288,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
       if(_fwd>-0.04 || _fwd<-0.22) continue;              // 캐리어의 4~24m 전진 패스 대상만
       let _nd=9;
       for(const p of mine){ if(p.slot==="GK") continue;
-        const dd=Math.hypot((p.x-o.x)*PITCH_AR, p.y-o.y); if(dd<_nd) _nd=dd; }
+        const dd=HYP((p.x-o.x)*PITCH_AR, p.y-o.y); if(dd<_nd) _nd=dd; }
       if(_nd<0.058) continue;                             // 이미 4m 안에 사람이 있다
       const _sc=Math.min(_nd,0.15) + clamp(1-Math.abs(-_fwd-0.13)/0.13, 0, 1)*0.04;
       if(_sc>_exS){ _exS=_sc; _ex=o; }
@@ -59198,7 +59301,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
         if(pressers.includes(p) || p===jockey) continue;
         if(p.defRole===DEF_ROLE.RECOVER || p.defRole===DEF_ROLE.COVER_WIDE) continue;
         if(p.defRole===DEF_ROLE.MARK && p._mark && p._mark.id!==_ex.id) continue;   // 이미 다른 사람을 잡는 중
-        const dd=Math.hypot((p.x-_ex.x)*PITCH_AR, p.y-_ex.y);
+        const dd=HYP((p.x-_ex.x)*PITCH_AR, p.y-_ex.y);
         if(dd<_md){ _md=dd; _m=p; }
       }
       if(_m && _md<0.16){
@@ -59271,7 +59374,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
     for(const c of cbs){
       const p=c._zmPrev; if(!p || !inZone.includes(p)) continue;
       if(Math.abs(c.y-p.y)>=CB_ZONE_Y*CB_ZONE_KEEP_Y) continue;
-      if(Math.hypot((p.x-c.x)*PITCH_AR, p.y-c.y)*ISO_TO_M>CB_ZONE_NEAR*CB_ZONE_KEEP_D) continue;
+      if(HYP((p.x-c.x)*PITCH_AR, p.y-c.y)*ISO_TO_M>CB_ZONE_NEAR*CB_ZONE_KEEP_D) continue;
       c._zoneMark=p; used.add(c.id); usedO.add(p.id);
     }
     for(const o of inZone){
@@ -59284,7 +59387,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
       }
       if(!best || bd>=CB_ZONE_Y) continue;
       // 너무 멀면 붙으러 가지 않는다 — 라인을 버리고 뛰쳐나가면 뒷공간이 열린다
-      const near=Math.hypot((o.x-best.x)*PITCH_AR, o.y-best.y)*ISO_TO_M;
+      const near=HYP((o.x-best.x)*PITCH_AR, o.y-best.y)*ISO_TO_M;
       if(near>CB_ZONE_NEAR) continue;
       best._zoneMark=o; used.add(best.id);
     }
@@ -59314,14 +59417,14 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
     case DEF_ROLE.JOCKEY: {
       const own = (dir>0) ? 0.02 : 0.98;                 // 우리 골문 쪽
       const gx=(own-ball.x)*PITCH_AR, gy=0.5-ball.y;
-      const gl=Math.hypot(gx,gy)||1e-6;
+      const gl=HYP(gx,gy)||1e-6;
       const jk=(role===DEF_ROLE.JOCKEY) || (a._pressPurpose===PRESS_PURPOSE.DELAY);
       const stand=jk ? JOCKEY_D : JOCKEY_D*0.30;         // 저지·DELAY 는 간격을 유지한다
       /* 🎯 커버 섀도 — 그림자 대상이 있으면 캐리어→그림자 선 위에 선다 (pressPurposeFor 주석) */
       /* 🚫 클로즈다운 — 골사이드가 아니면 먼저 슛 선을 잡고, 잡았으면 볼로 붙는다 (CLOSE 주석) */
       if(role===DEF_ROLE.PRESS && a._pressPurpose===PRESS_PURPOSE.CLOSE){
         const ux=gx/gl, uy=gy/gl;
-        const px=(a.x-ball.x)*PITCH_AR, py=a.y-ball.y, pl=Math.hypot(px,py)||1e-6;
+        const px=(a.x-ball.x)*PITCH_AR, py=a.y-ball.y, pl=HYP(px,py)||1e-6;
         const cs=(px*ux+py*uy)/pl;
         if(cs<CLOSE_COS){
           /* 2차 — 몸을 돌아가는 호(弧): 선 위 앞 지점(최소 2.1m) + 내가 있는 쪽으로 옆 성분. 등 뒤(cos=-1)면 최대 */
@@ -59335,13 +59438,13 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
       }
       /* 🛤️ 회랑 가장자리 — PRESS 인데 캐리어가 회랑의 1.25배 밖이면 홈→캐리어 선 위 회랑 끝에서 저지 간격으로 선다 */
       if(role===DEF_ROLE.PRESS && a._pressHome && a._pressCorr && a._pressHomeD>a._pressCorr*1.15){
-        const hx=(ball.x-a._pressHome.x)*PITCH_AR, hy=ball.y-a._pressHome.y, hl=Math.hypot(hx,hy)||1e-6;
+        const hx=(ball.x-a._pressHome.x)*PITCH_AR, hy=ball.y-a._pressHome.y, hl=HYP(hx,hy)||1e-6;
         const e=a._pressCorr*1.15;
         return {x:clamp01(a._pressHome.x + (hx/hl)*e/PITCH_AR), y:clamp01(a._pressHome.y + (hy/hl)*e)};
       }
       /* 🔄 제쳐졌다 — 사거리 밖에서도 볼 뒤 꼬리 추격 대신 볼→우리 골문 선의 앞 지점으로 돌아 들어간다 (CLOSE 호와 같은 기하) */
       if(role===DEF_ROLE.PRESS){
-        const px2=(a.x-ball.x)*PITCH_AR, py2=a.y-ball.y, pl2=Math.hypot(px2,py2)||1e-6;
+        const px2=(a.x-ball.x)*PITCH_AR, py2=a.y-ball.y, pl2=HYP(px2,py2)||1e-6;
         const ux2=gx/gl, uy2=gy/gl;
         const cs2=(px2*ux2+py2*uy2)/pl2;
         if(cs2<-0.20){
@@ -59353,7 +59456,7 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
       }
       const sh=(role===DEF_ROLE.PRESS) ? a._pressShadow : null;
       if(sh && a._pressPurpose!==PRESS_PURPOSE.WIN){
-        const sx=(sh.x-ball.x)*PITCH_AR, sy=sh.y-ball.y, sl=Math.hypot(sx,sy)||1e-6;
+        const sx=(sh.x-ball.x)*PITCH_AR, sy=sh.y-ball.y, sl=HYP(sx,sy)||1e-6;
         return {x:clamp01(ball.x + (sx/sl)*stand/PITCH_AR), y:clamp01(ball.y + (sy/sl)*stand)};
       }
       const outw=(ball.y<0.5?-1:1)*stand*0.55;           // 중앙보다 측면으로 밀어낸다
@@ -59414,7 +59517,7 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
       if(!carrier) break;
       const gx = dir>0 ? 0.02 : 0.98;
       const dx=(gx-carrier.x)*PITCH_AR, dy=0.5-carrier.y;
-      const dl=Math.hypot(dx,dy)||1e-6;
+      const dl=HYP(dx,dy)||1e-6;
       const step=0.055;                                  // 볼에서 약 3.7m 앞
       return {x:clamp01(carrier.x + (dx/dl)*step/PITCH_AR),
               y:clamp01(carrier.y + (dy/dl)*step)};
@@ -59733,7 +59836,7 @@ function buildDefShape(mine, dir, ball, blockShift, T){
   for(const a of mine){
     a._shX=null; a._shY=null; a._shBond=0;
     if(a.slot==="GK") continue;
-    const an=tacticalAnchorXY(a.team, a.slot, "DEF", a.isHome);
+    const an=tacticalAnchorRef(a.team, a.slot, "DEF", a.isHome);   // ⚡ 읽기만 한다
     rows.push({a, ax:own(clamp01(an.x+blockShift)), ay:an.y});
   }
   if(rows.length<4) return;                  // 퇴장이 겹쳐 라인을 만들 수 없다
@@ -60075,8 +60178,12 @@ class MatchSim{
     this.halfDone=false;
     /* ⚠ 후반에 골문을 바꿔 선 상태인지. 이 값이 없어서 교체만 하면 전반 진영으로 되돌아갔다. */
     this.ends=0;
-    // 하이라이트 녹화 — 실제 경기에서만 켠다
-    this.recording=!!this.opts.live;
+    /* 하이라이트 녹화 — 실제 경기에서만 켠다.
+       ⚡ 「보여 주지 않는 경기」는 녹화도 하지 않는다(제보 — 위임 경기 렉).
+          링버퍼는 틱마다 선수 22명분 객체를 새로 만들고 260칸을 밀어낸다(실측 전체의 7%).
+          수석코치 위임 결과 화면에는 하이라이트도 자막도 나오지 않으므로 통째로 끈다.
+          rec 를 따로 주지 않으면 예전처럼 live 를 따른다. */
+    this.recording = (this.opts.rec!==undefined) ? !!this.opts.rec : !!this.opts.live;
     this.buf=[]; this.hl=null; this.caps=[];
     this.evlog=[];   // 📓 내러티브용 구조화 이벤트 로그 — 문장이 아니라 데이터를 녹음한다
     this.pendingOff=null;   // 늦게 올라갈 수 있는 오프사이드 깃발
@@ -60088,7 +60195,7 @@ class MatchSim{
        대형이 뭉개지고, 실제 패스맵과도 달라진다(제보). 킥오프 명단을 여기서 못 박아 둔다. */
     try{ for(const k of ["h","a"]) this.pmap[k].xi=(M[k].list||[]).map(x=>x.p&&x.p.id).filter(v=>v!=null); }catch(e){}
     this._pmTick=0;
-    this.agents=[];
+    this.agents=[]; this._sideC=null;
     this.buildSquads();
     /* 🧠 AI 벤치 — 경기 시작 시점의 전술을 스냅샷해 두고, 상황에 따라 실시간 조정한다.
        경기가 끝나면 원래 값으로 복원한다 (시즌 전술 성향은 그대로). */
@@ -60276,6 +60383,7 @@ class MatchSim{
       if(this.gone.length>16) this.gone.splice(0, this.gone.length-16);
     }
     this.agents=this.agents.filter(a=>!pred(a));
+    this._sideBust();
     return gone;
   }
   /* ═══ 🅿️ 「투명 선수가 페널티킥을 찬다」 ═══════════════════════════════
@@ -60551,6 +60659,7 @@ class MatchSim{
      포메이션이나 역할을 바꿔도, 교체 카드를 써도, 그대로 두면 그라운드에서는 아무 일도 일어나지 않는다.
      ─ 위치는 건드리지 않는다. 지시가 바뀌면 선수가 순간이동하는 게 아니라 새 자리로 움직여 가는 것이 맞다. */
   resyncSquads(){
+    this._sideBust();
     const alive=new Set();
     for(const [key, sd] of [["h",this.M.h],["a",this.M.a]]){
       const xi=onPitch(sd).map(x=>x.p);
@@ -60575,7 +60684,7 @@ class MatchSim{
           // 교체 투입 — 자기 포지션 자리에서 들어온다
           a={id:x.p.id, p:x.p, team:sd.team, side:key, slot, isHome, dir:isHome?1:-1,
              x:anchor.x, y:anchor.y, seed:(x.p.id*37)%100, spd:0, face:isHome?0:Math.PI};
-          this.agents.push(a);
+          this.agents.push(a); this._sideBust();
         }
         a.p=x.p; a.team=sd.team; a.side=key; a.slot=slot; a.isHome=isHome; a.dir=isHome?1:-1;
         a.role=roleFx(sd.team, x.p, slot);
@@ -60834,7 +60943,7 @@ class MatchSim{
     if(Math.random()<risk){
       let cause="overuse";
       try{
-        const near=this.ball && Math.hypot((this.ball.x-a.x)*PITCH_AR, this.ball.y-a.y)<0.10;
+        const near=this.ball && HYP((this.ball.x-a.x)*PITCH_AR, this.ball.y-a.y)<0.10;
         const air=this.ball && (this.ball.z||0)>1.2;
         if(near && air) cause="clash";
         else if(near && (this.ball.ownerId===a.id)) cause="sprint";
@@ -60845,6 +60954,7 @@ class MatchSim{
     }
   }
   buildSquads(){
+    this._sideBust();
     for(const [key, sd] of [["h",this.M.h],["a",this.M.a]]){
       /* 킥오프 시점의 자리를 먼저 굳힌다 — 경기 중 누가 빠져도 남은 선수가 옆으로 밀리지 않는다 */
       try{ freezeLiveSlots(sd); }catch(e){}
@@ -60944,11 +61054,11 @@ class MatchSim{
         faceK=faceK+(1-faceK)*passQ*0.45;                  // 기술 좋으면 몸과 다른 방향도 준다 (§6)
       }
       if(faceK<0.25) continue;
-      const passD=Math.hypot((fx2-carrier.x)*PITCH_AR, fy2-carrier.y);
+      const passD=HYP((fx2-carrier.x)*PITCH_AR, fy2-carrier.y);
       const tBall=clamp(passD/0.28, 0.3, 2.6);             // 패스 속도 근사
-      const stD=Math.hypot((fx2-st.x)*PITCH_AR, fy2-st.y);
+      const stD=HYP((fx2-st.x)*PITCH_AR, fy2-st.y);
       const tAtk=travelTime(st, stD);
-      const gkD=Math.hypot((fx2-gk.x)*PITCH_AR, fy2-gk.y);
+      const gkD=HYP((fx2-gk.x)*PITCH_AR, fy2-gk.y);
       const tGk=travelTime(gk, gkD)*1.08;
       /* §10 InterceptionMargin — 공격수는 받은 뒤 「터치로 정리하는 시간」이 더 든다 (§11) */
       const stA=(st.p&&st.p.attr)||{};
@@ -60972,7 +61082,7 @@ class MatchSim{
   gkTarget(a, b, key, anchor){
     const ownGx = a.dir>0 ? 0.015 : 0.985;
     const own = x => a.dir>0 ? x : 1-x;                 // 우리 골문 기준 전진도
-    const dx0=(b.x-ownGx)*PITCH_AR, dy0=b.y-0.5, d0=Math.hypot(dx0,dy0)||1e-6;
+    const dx0=(b.x-ownGx)*PITCH_AR, dy0=b.y-0.5, d0=HYP(dx0,dy0)||1e-6;
 
     // 1) 슛이 날아온다 — 무조건 골문
     if(b.state==="SHOT" && b.shot && b.shot.oKey===key)
@@ -61020,9 +61130,9 @@ class MatchSim{
     if(b.state==="SETTLED" && b.ownerId && b._knock){
       const ow=this.byId(b.ownerId);
       if(ow && ow.side!==key){
-        const od=Math.hypot((b.x-ow.x)*PITCH_AR, b.y-ow.y);
+        const od=HYP((b.x-ow.x)*PITCH_AR, b.y-ow.y);
         if(od>0.030 && own(b.x)<GK_SWEEP_X*1.15){
-          const myD=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y);
+          const myD=HYP((b.x-a.x)*PITCH_AR, b.y-a.y);
           if(myD/(SPD.SPRINT*1.2) < od/(SPD.SPRINT*0.95)){
             a._sweeping=this.t+0.9;
             return {role:"SWEEP", x:clamp01(b.x+(b.vx||0)*4), y:clamp01(b.y+(b.vy||0)*4), spd:SPD.SPRINT*1.25};
@@ -61036,17 +61146,17 @@ class MatchSim{
       const landOwn = own(tx0);
       // 낙하 지점이 우리 진영 깊숙한 곳이고, 상대가 그리로 달려들 때만
       if(landOwn < GK_SWEEP_X && Math.abs(ty0-0.5) < 0.30){
-        const myD = Math.hypot((tx0-a.x)*PITCH_AR, ty0-a.y);
+        const myD = HYP((tx0-a.x)*PITCH_AR, ty0-a.y);
         let oppD=9, mateD=9;
         for(const o of this.side(this.opp(key))){
           if(o.slot==="GK") continue;
-          const dd=Math.hypot((o.x-tx0)*PITCH_AR, o.y-ty0);
+          const dd=HYP((o.x-tx0)*PITCH_AR, o.y-ty0);
           if(dd<oppD) oppD=dd;
         }
         // 우리 수비수가 더 가까우면 키퍼가 나갈 이유가 없다 — 진짜 뒷공간일 때만 나간다
         for(const m2 of this.side(key)){
           if(m2.slot==="GK") continue;
-          const dd=Math.hypot((m2.x-tx0)*PITCH_AR, m2.y-ty0);
+          const dd=HYP((m2.x-tx0)*PITCH_AR, m2.y-ty0);
           if(dd<mateD) mateD=dd;
         }
         const dare = GK_SWEEP_EDGE*(0.55+rush*0.90);
@@ -61078,7 +61188,7 @@ class MatchSim{
           let pick=null;
           for(let tt=0.2; tt<=tHit; tt+=Math.max(0.15, tHit/6)){
             const px2=b.x+vx*tt, py2=b.y+vy*tt;
-            const need2=Math.hypot((px2-a.x)*PITCH_AR, py2-a.y)/mySpd;
+            const need2=HYP((px2-a.x)*PITCH_AR, py2-a.y)/mySpd;
             if(need2 <= tt){ pick={x:px2, y:py2}; break; }
           }
           if(!pick) pick={x:clamp01(gx + (a.dir>0?0.004:-0.004)), y:clamp01(yHit)};
@@ -61112,7 +61222,7 @@ class MatchSim{
       const opp2=this.side(this.opp(key));
       let np=0;
       for(const o of opp2){ if(o.slot==="GK") continue;
-        if(Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y)<0.20) np++; }
+        if(HYP((o.x-a.x)*PITCH_AR, o.y-a.y)<0.20) np++; }
       const safe=clamp(1-np*0.45, 0, 1);                   // 근처에 상대가 오면 0에 수렴
       const cmd2=clamp((a.gkSkill||0.6)+rSweep*0.20, 0.1, 1.2);
       const step=(0.030+cmd2*0.055)*safe;                  // 최대 약 6m 전진
@@ -61150,11 +61260,11 @@ class MatchSim{
         const dM=d0*ISO_TO_M;
         if(!cover && dM<20){
           const one=clamp((a.gkSkill||0.6)+FX(a,"sweep")*0.2, 0.2, 1.2);
-          const ballTight=Math.hypot((b.x-carrier.x)*PITCH_AR, b.y-carrier.y)<DRIB_LEAD*1.3;
+          const ballTight=HYP((b.x-carrier.x)*PITCH_AR, b.y-carrier.y)<DRIB_LEAD*1.3;
           let chase=false;
           for(const m of this.side(key)){
             if(m.slot==="GK") continue;
-            if(Math.hypot((m.x-carrier.x)*PITCH_AR, m.y-carrier.y)<0.12){ chase=true; break; }
+            if(HYP((m.x-carrier.x)*PITCH_AR, m.y-carrier.y)<0.12){ chase=true; break; }
           }
           let k1=1;
           if(dM>12)      k1=1.35;                         // 각 좁히기 강화
@@ -61200,7 +61310,7 @@ class MatchSim{
   _pEpTick(key, carrier, pressers){
     this._pEp=this._pEp||{h:null,a:null};
     let near=null, nd=1e9;
-    for(const p of pressers){ const d=Math.hypot((p.x-carrier.x)*PITCH_AR, p.y-carrier.y); if(d<nd){ nd=d; near=p; } }
+    for(const p of pressers){ const d=HYP((p.x-carrier.x)*PITCH_AR, p.y-carrier.y); if(d<nd){ nd=d; near=p; } }
     const ep=this._pEp[key];
     if(ep){
       if(ep.carId!==carrier.id){ this._pEp[key]=null; }   // 캐리어 교체 — 릴리스 훅·giveTo 훅이 이미 처리한 뒤다
@@ -61246,7 +61356,7 @@ class MatchSim{
       const own=v=>carrier.dir>0?v:1-v;
       const fwd=own(to.x)-own(carrier.x);
       const widen=Math.abs(to.y-0.5)-Math.abs(carrier.y-0.5);
-      const dist=Math.hypot((to.x-carrier.x)*PITCH_AR, to.y-carrier.y);
+      const dist=HYP((to.x-carrier.x)*PITCH_AR, to.y-carrier.y);
       ext={to:to.slot};
       /* 진단 — 이 패스의 통로가 얼마나 막혀 있었나, 커버 섀도가 지우던 바로 그 사람인가 */
       try{ ext.lane=+laneBlocked(carrier, to, this.side(key)).toFixed(2);
@@ -61265,7 +61375,7 @@ class MatchSim{
     for(const o of opps){
       if(o.slot==="GK") continue;
       if(o._beaten && o._beaten>this.t) continue;        // 이미 제친 수비수
-      const dx=(o.x-a.x)*PITCH_AR, dy=o.y-a.y, d=Math.hypot(dx,dy);
+      const dx=(o.x-a.x)*PITCH_AR, dy=o.y-a.y, d=HYP(dx,dy);
       if(d>bd || d<1e-6) continue;
       // 진행 방향 ±40도 안(내적)에 서 있어야 "막고 있는" 것이다
       if((dx*fx+dy*fy)/d < 0.76) continue;
@@ -61327,7 +61437,25 @@ class MatchSim{
     a.burstReady = this.t + BURST_COOL*clamp(1.42-acc*0.72, 0.70, 1.42);
     return true;
   }
-  side(key){ return this.agents.filter(a=>a.side===key); }
+  /* ⚡ side(key) — 「한 팀의 선수 11명」. 한 틱에 평균 19번 불린다(실측).
+     매번 filter 로 11칸짜리 배열을 새로 만들면 한 경기(3만 틱)에 58만 개가 쌓여
+     GC 가 전체 시간의 5% 를 먹었다. 결과는 아무도 제자리에서 뒤집지 않으므로
+     (정렬·splice 하는 곳은 전부 [...arr] 로 복사한 뒤에 한다 — 확인함)
+     명단이 바뀔 때까지 같은 배열을 돌려준다.
+     명단 변화(교체·퇴장·재동기화)는 _sideBust() 로 명시적으로 깬다.
+     길이까지 같이 보는 이유 — 하이라이트 되감기가 유령을 잠깐 밀어 넣는 경로처럼
+     _sideBust() 를 거치지 않는 곳이 있어도 스스로 눈치채게 하려고. */
+  _sideBust(){ this._sideC=null; }
+  side(key){
+    const c=this._sideC;
+    if(c && c.n===this.agents.length){
+      const hit=c[key];
+      return hit || (c[key]=this.agents.filter(a=>a.side===key));
+    }
+    const nc={n:this.agents.length, h:null, a:null};
+    this._sideC=nc;
+    return (nc[key]=this.agents.filter(a=>a.side===key));
+  }
   opp(key){ return key==="h"?"a":"h"; }
   byId(id){ return this.agents.find(a=>a.id===id); }
   /* 킥오프 — 양 팀이 자기 진영 안에 대형을 갖추고, 공은 하프라인 센터스팟에 놓인다.
@@ -61452,7 +61580,7 @@ class MatchSim{
     /* 낙하 지점 근처에 우리 선수가 없으면 열지 않는다 — 열어 봐야 쓸 사람이 없다 */
     let near=0;
     for(const m of foe){ if(m.slot==="GK") continue;
-      if(Math.hypot((m.x-tx)*PITCH_AR, m.y-ty)<AB_REACH){ near=1; break; } }
+      if(HYP((m.x-tx)*PITCH_AR, m.y-ty)<AB_REACH){ near=1; break; } }
     if(!near) return;
     const I=cpInt(TAC(foe[0].team));
     if(I<=0.05) return;
@@ -61473,6 +61601,7 @@ class MatchSim{
        붙어 서서 기다리다 놓는 순간 낚아채는 그림이 나오지 않게, 최소 거리를 둔다. */
     this._gkGuard = (carrier && carrier.slot==="GK" && inBox(carrier, -carrier.dir)) ? carrier : null;
     for(const key of ["h","a"]){
+      SQ_GEN++;                       // ⚡ 앞선 팀이 이미 움직였다 — 좌표가 바뀌었다
       const mine=this.side(key);
       const phase = key===this.possSide ? "ATT" : "DEF";
       /* 🚶 국면 전환 완충 — 이동 예산의 남은 큰 몫. ATT 앵커와 DEF 앵커는 깊이가 0.10~0.15(11~16m) 다르고
@@ -61493,7 +61622,7 @@ class MatchSim{
            정원 증가와 문턱 인하가 이 한 줄에서 나오므로, 셋이 겹쳐도 결과가 예측 가능하다. */
         const _tg=pressTrig(this, key, this.t);
         // 활동량 — 있어야 할 곳에 가는 능력. 낮으면 가까이 있어도 압박을 나가지 않는다.
-        const pressCost=a2=>Math.hypot((a2.x-b.x)*PITCH_AR,a2.y-b.y)
+        const pressCost=a2=>HYP((a2.x-b.x)*PITCH_AR,a2.y-b.y)
               *(1.35-(a2.workRate||0.6)*0.50)*(1-roleBias(a2).fPress*0.35);
         /* 압박 인원 — 압박 강도뿐 아니라 "수비 라인"에도 반응한다.
            라인을 올린다는 건 상대를 자기 진영에 가둬 높은 위치에서 뺏겠다는 뜻이다.
@@ -61507,9 +61636,9 @@ class MatchSim{
         if(carrier){
           /* 🛡️ 상황을 먼저 읽는다 — 수적 상황, 뒤 공간, 상대의 지금 상태 */
           const myDir=mine[0].dir;
-          const dz=(p)=>Math.hypot((p.x-b.x)*PITCH_AR, p.y-b.y)<0.24;
+          const dz=(p)=>HYP((p.x-b.x)*PITCH_AR, p.y-b.y)<0.24;
           const nD=cand.filter(dz).length, nA=this.side(this.opp(key)).filter(o=>o.slot!=="GK"&&dz(o)).length;
-          const ballD=Math.hypot((b.x-carrier.x)*PITCH_AR, b.y-carrier.y);
+          const ballD=HYP((b.x-carrier.x)*PITCH_AR, b.y-carrier.y);
           let cb=0;
           if(carrier.face!==undefined){
             const toOwn=Math.atan2(0.5-carrier.y, ((myDir>0?0:1)-carrier.x)*PITCH_AR);
@@ -61528,20 +61657,28 @@ class MatchSim{
          터치라인에 서 있어도 열린 패스 길이 셋이면 그건 몰린 게 아니다.
          이제 pinScore 가 남은 탈출구를 직접 세고, 그 값이 정원과 가담 가점을 정한다.
          높은 압박 팀은 상대 진영에서도 트랩을 건다(하이 트랩) — 예전에는 우리 진영뿐이었다. */
-      const _pin = carrier ? pinScore(carrier, this.side(this.opp(key)), cand) : 0;
+      /* ⚡ pinScore 는 동료 10명 × 차단자 10명을 훑는다(틱당 최대 100회 거리 계산, 실측 전체의 2.8%).
+         그런데 결과는 트랩 구역 조건이 맞을 때만 쓰인다 — 조건을 먼저 보고 필요할 때만 센다.
+         (동작은 완전히 같다 — pinScore 는 아무것도 바꾸지 않는 순수 계산이다) */
       const _highTrap = (T.press>=1.40 && T.line>=1.30 && bOwn2>0.55);
-      const trapZone = (bOwn2<0.45 || _highTrap) && _pin>0.30;
+      const _trapArea = (bOwn2<0.45 || _highTrap);
+      const _pin = (carrier && _trapArea) ? pinScore(carrier, this.side(this.opp(key)), cand) : 0;
+      const trapZone = _trapArea && _pin>0.30;
       const trapSide = b.y<0.5 ? -1 : 1;
       const scored=cand.map(a=>{
             /* 내 뒤를 받쳐 줄 동료가 있는가 — 나보다 골문 쪽에 있는 사람 */
             const cover=cand.some(o=>o!==a && (o.x-a.x)*myDir<-0.012 &&
                                      Math.abs(o.y-a.y)<0.20);
-            let s0=pressScore(a, carrier, Object.assign({}, ctx0, {hasCover:cover}));
+            /* ⚡ 예전엔 후보마다 컨텍스트 객체를 두 개씩 새로 만들어 넘겼다 —
+               pressScore 는 ctx 를 읽기만 하므로(확인함) 한 칸만 고쳐 쓴다. */
+            ctx0.hasCover=cover;
+            let s0=pressScore(a, carrier, ctx0);
             /* 🛤️ 압박 회랑 — 홈 앵커(블록 이동 반영)에서 캐리어까지가 회랑보다 멀면 감점 (PRESS_CORR 주석) */
             {
               const _bs=((this._bRef&&this._bRef[key])?this._bRef[key].x:b.x)-0.5;   // blockShift 는 아래에서 정의된다 — 직전 틱 기준점으로
-              const _ha=tacticalAnchorXY(a.team, a.slot, "DEF", a.isHome); _ha.x=clamp01(_ha.x+_bs*BLOCK_SHIFT_K);
-              const _hd=Math.hypot((carrier.x-_ha.x)*PITCH_AR, carrier.y-_ha.y);
+              const _hr=tacticalAnchorRef(a.team, a.slot, "DEF", a.isHome);
+              const _ha={x:clamp01(_hr.x+_bs*BLOCK_SHIFT_K), y:_hr.y};   // 고쳐 쓸 값이므로 사본
+              const _hd=HYP((carrier.x-_ha.x)*PITCH_AR, carrier.y-_ha.y);
               const _cr=pressCorridor(a, T);
               a._pressHomeD=_hd; a._pressCorr=_cr; a._pressHome=_ha;
               /* 🚌 텐백 — 앵커가 깊어지면 박스 앞 20m 캐리어도 회랑 밖이 되어 아무도 슈터에게
@@ -61566,7 +61703,7 @@ class MatchSim{
                DROP 으로 메우러 가 스트라이커가 free 로 남던 구조(추적 603초: LCB PRESS·RCB DROP). */
             if(a.slot==="CB"||a.slot==="LCB"||a.slot==="RCB"){
               const _gX0=myDir>0?0.015:0.985;
-              const _dc=Math.hypot((carrier.x-a.x)*PITCH_AR, carrier.y-a.y);
+              const _dc=HYP((carrier.x-a.x)*PITCH_AR, carrier.y-a.y);
               /* 🎭 스토퍼(CD/St press +0.35)는 한 발이 길고, 커버(Cv press 0)는 그대로 (CB 역할 점검) */
               if(_dc>CB_PRESS_NEAR*(1+clamp(FX(a,"press"),0,0.6))){
                 if(CB_ZONE_ONLY) s0-=1.5;                 // 🧱 수비 B — 코앞이 아니면 나가지 않는다
@@ -61580,7 +61717,7 @@ class MatchSim{
               /* 🧱 B-2 — 풀백(과 🔁 측면 미드필더)은 자기 측면의 캐리어만 압박한다. 중앙·반대쪽은 중앙 미드필더의 일.
                  실측(1230): LM/RM 의 수비 역할이 PRESS 37~51% — 반대쪽 캐리어까지 쫓아가 4-4 블록의 먼 쪽이 비었다. */
               const _fs=(a.home.y<0.5?-1:1);
-              const _dc2=Math.hypot((carrier.x-a.x)*PITCH_AR, carrier.y-a.y);
+              const _dc2=HYP((carrier.x-a.x)*PITCH_AR, carrier.y-a.y);
               if((carrier.y-0.5)*_fs < FB_SIDE_MIN && _dc2>FB_PRESS_NEAR) s0-=1.5;
             }
             if(trapZone){
@@ -61639,8 +61776,20 @@ class MatchSim{
       // 이게 없으면 선수들이 각자 포메이션 자리에 묶여 있어서, 자기 진영 깊은 곳의 볼 소유자에게는
       // 40m짜리 롱볼 말고는 전진 옵션이 아예 존재하지 않게 된다.
       if(phase==="ATT"){
-        assignOffRoles(mine, this.t, b, mine[0].dir, T.mentality,
+        /* ⚡ 역할 재배정은 0.4초에 한 번 (제보 — 위임 경기 렉).
+           역할은 에이전트에 남아 있으므로 건너뛴 틱은 「직전 역할을 유지」한다 —
+           원래 있던 역할 흔들림 방지(히스테리시스)와 같은 방향이다.
+           다만 소유자가 바뀌거나 국면이 뒤집힌 순간에는 즉시 다시 정한다. */
+        const _rk="o"+key;
+        this._roleAt=this._roleAt||{};
+        const _cid=carrier?carrier.id:0;
+        const _prev=this._roleAt[_rk];
+        const _force=!_prev || _prev.c!==_cid || (this.t-_prev.t)>=0.4;
+        if(_force){
+          this._roleAt[_rk]={t:this.t, c:_cid};
+          assignOffRoles(mine, this.t, b, mine[0].dir, T.mentality,
                        this.side(this.opp(key)), carrier, T.press);   // 소유 팀은 역할을 나눠 움직인다
+        }
         /* 🏗️ 빌드업 상황 — 틱당 1회. Phase 1 에서는 계측·디버그 용도로만 쓴다. */
         this._bu = buildUpContext(mine, this.side(this.opp(key)), b, mine[0].dir, carrier);
         /* ⏱️ 압박 반응형 소유 시간 (제보: 수비수·키퍼가 볼 잡다 뺏기는 게 너무 잦음)
@@ -61656,7 +61805,7 @@ class MatchSim{
             for(const o of this.side(this.opp(key))){
               if(o.slot==="GK") continue;
               const dx0=(carrier.x-o.x)*PITCH_AR, dy0=carrier.y-o.y;
-              const d0=Math.hypot(dx0, dy0);
+              const d0=HYP(dx0, dy0);
               if(d0>0.088) continue;                                   // 6m 밖은 압박이 아니다
               const vc=((o.vx||0)*PITCH_AR*dx0+(o.vy||0)*dy0)/Math.max(1e-6,d0);
               if(vc < SPD.RUN*SIM_DT*0.45) continue;                   // 조깅 견제가 아니라 돌진이어야
@@ -61677,7 +61826,7 @@ class MatchSim{
            && !b.setPiece && !b.foulScene && !b.celebrate){
           const g0=shotGeom(carrier);
           if(g0.distM<12.5 && g0.distM>4 && g0.angle>0.34){
-            const bd0=Math.hypot((b.x-carrier.x)*PITCH_AR, b.y-carrier.y);
+            const bd0=HYP((b.x-carrier.x)*PITCH_AR, b.y-carrier.y);
             if(bd0<=DRIB_LEAD*1.45){
               const sp2=(g0.gx-carrier.x)*carrier.dir; let ah=0;
               for(const o of this.side(this.opp(key))){
@@ -61717,7 +61866,7 @@ class MatchSim{
                      && ((mine[0].dir>0 ? b.x : 1-b.x) < (_trsK>=1.9?0.58:0.52));
       let bR=this._bRef[key];
       {
-        const _bsp=Math.hypot((b.vx||0)*PITCH_AR, b.vy||0)*ISO_TO_M;
+        const _bsp=HYP((b.vx||0)*PITCH_AR, b.vy||0)*ISO_TO_M;
         const _settled = b.state==="SETTLED" || (b.state==="LOOSE" && _bsp<4);
         /* ⚠ 1라운드(τ1.6초, 수비도 비행 중 정지): 3시드 골 19 → 27. 블록이 패스를 읽지 않고 도착을 기다리니
            도착 순간 공간이 열렸다. 실제 수비는 패스가 <b>나가는 순간</b> 움직인다 — 수비 국면은 비행 중에도
@@ -61731,7 +61880,7 @@ class MatchSim{
         if(!bR || b.setPiece){ bR=this._bRef[key]={x:b.x, y:b.y}; }
         else if(_follow){
           const dx=b.x-bR.x, dy=b.y-bR.y;
-          if(Math.hypot(dx*PITCH_AR, dy)>BREF_DEAD){ bR.x+=dx*_k; bR.y+=dy*_k; }
+          if(HYP(dx*PITCH_AR, dy)>BREF_DEAD){ bR.x+=dx*_k; bR.y+=dy*_k; }
         }
       }
       /* 🚶 이동 거리 4라운드 (요청 「12km 아래로 만든 다음 밸런스」) — 블록 이동 폭 0.38 → 0.26 */
@@ -61740,7 +61889,17 @@ class MatchSim{
       let defThreat=null;
       if(phase==="DEF"){
         const _atk=this.side(this.opp(key));                 // 공을 가진 쪽
-        assignDefRoles(mine, _atk, carrier, pressers, this.t, mine[0].dir, b, this._jockey);
+        /* ⚡ 수비 역할도 0.4초 주기 — 압박 대상(carrier)이 바뀌면 즉시 다시 정한다 (제보: 렉) */
+        {
+          const _rk2="d"+key;
+          this._roleAt=this._roleAt||{};
+          const _cid2=carrier?carrier.id:0;
+          const _pv2=this._roleAt[_rk2];
+          if(!_pv2 || _pv2.c!==_cid2 || (this.t-_pv2.t)>=0.4){
+            this._roleAt[_rk2]={t:this.t, c:_cid2};
+            assignDefRoles(mine, _atk, carrier, pressers, this.t, mine[0].dir, b, this._jockey);
+          }
+        }
         /* 🛡️ ⚠ 수비 AI 해부에서 확인한 결함 — 「길목 차단(LANE)이 아군을 표적으로 삼고 있었다」.
            topThreat(carrier, opps, dir) 는 넘겨받은 배열에서 「볼 소유자가 노릴 만한 가장
            위협적인 전진 패스 대상」을 고른다. 그런데 여기서는 상대(_atk)가 아니라
@@ -61772,22 +61931,22 @@ class MatchSim{
           //      "공 반대편 9.15m 지점"으로 덮어써져 자기 자리로 영영 못 간다(벽 한 명이 17m 밖에서 멈춤).
           if(b.setPiece && key!==this.possSide && a.slot!=="GK"){
             const ko2=(SETPIECE_KEEPOUT[b.setPiece.kind]||9.15)/ISO_TO_M;
-            const spotOk=Math.hypot((sx2-b.x)*PITCH_AR, sy2-b.y) >= ko2*0.985;
+            const spotOk=HYP((sx2-b.x)*PITCH_AR, sy2-b.y) >= ko2*0.985;
             if(!spotOk){
               // ⚠ 예전엔 "선수의 현재 위치"를 기준으로 밀어냈다. 그러면 목표가 매 틱 따라 움직이고,
               //    규정 거리 밖으로 나가는 순간 목표가 다시 원래(원 안쪽) 자리로 튀어 되돌아온다 —
               //    선수가 제자리에서 앞뒤로 왔다 갔다 하며 춤추는 것처럼 보이던 원인이다.
               //    배정된 자리 자체를 공 반대 방향으로 한 번만 밀어내 고정 목표로 삼는다.
               if(!a._spFix || a._spFixFor!==b.setPiece.kind){
-                let fx=(sx2-b.x)*PITCH_AR, fy=sy2-b.y, fd=Math.hypot(fx,fy);
-                if(fd<1e-6){ fx=-a.dir; fy=(Math.random()-0.5)*0.4; fd=Math.hypot(fx,fy)||1; }
+                let fx=(sx2-b.x)*PITCH_AR, fy=sy2-b.y, fd=HYP(fx,fy);
+                if(fd<1e-6){ fx=-a.dir; fy=(Math.random()-0.5)*0.4; fd=HYP(fx,fy)||1; }
                 a._spFix={x:clamp01(b.x+(fx/fd)*ko2*1.03/PITCH_AR), y:clamp01(b.y+(fy/fd)*ko2*1.03)};
                 a._spFixFor=b.setPiece.kind;
               }
               sx2=a._spFix.x; sy2=a._spFix.y;
             } else { a._spFix=null; a._spFixFor=null; }
           }
-          const mx2=(sx2-a.x)*PITCH_AR, my2=sy2-a.y, ml2=Math.hypot(mx2,my2);
+          const mx2=(sx2-a.x)*PITCH_AR, my2=sy2-a.y, ml2=HYP(mx2,my2);
           if(ml2>SP_ARRIVE){
             /* 🏃 사다리 개편 — 배치 이동은 RUN. 예전엔 SPRINT 라 죽은 공 동안 선수당 2.4km 를 뛰었다(전체의 14%) */
             /* 🚶 이동 거리 3라운드 — 죽은 공이 경기의 18.5%, 그동안 평균 2.5m/s 로 걸어 선수당 2.5km.
@@ -61817,7 +61976,7 @@ class MatchSim{
           /* 🏃‍♀️ 만료 연장 — 4초가 지나도 공이 아직 자유롭고 12m 안이면 추격을 이어 간다.
              다 와서 손을 떼는 「포기」 장면의 한 갈래 (추격 유지 주석) */
           if(this.t>a._chase.until && (b.state==="PASS"||b.state==="LOOSE") && !b.setPiece &&
-             Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y)<0.17) a._chase.until=this.t+1.2;
+             HYP((b.x-a.x)*PITCH_AR, b.y-a.y)<0.17) a._chase.until=this.t+1.2;
           if(b.setPiece || b.foulScene || (b.state!=="PASS" && b.state!=="LOOSE") || this.t>a._chase.until){ a._chase=null; }
           // 반응 지연 중 — 아직 공이 간 걸 못 봤다. 이 프레임은 평소 수비 움직임을 그대로 한다.
           else if(a._chase.startAt && this.t < a._chase.startAt){ /* 아래 일반 로직으로 흘려보낸다 */ }
@@ -61825,7 +61984,7 @@ class MatchSim{
             if(a._burstAt && this.t>=a._burstAt){ this.tryBurst(a); a._burstAt=0; }
             const ch=a._chase;
             const ox0=a.x, oy0=a.y;
-            const mx0=(ch.x-a.x)*PITCH_AR, my0=ch.y-a.y, ml0=Math.hypot(mx0,my0);
+            const mx0=(ch.x-a.x)*PITCH_AR, my0=ch.y-a.y, ml0=HYP(mx0,my0);
             if(ml0>1e-6){
               const want=Math.atan2(my0,mx0);
               if(a.face===undefined) a.face=want;
@@ -61850,8 +62009,11 @@ class MatchSim{
             continue;
           }
         }
-        const anchor=(()=>{ const pA=tacticalAnchorXY(a.team, a.slot, "ATT", a.isHome), pD=tacticalAnchorXY(a.team, a.slot, "DEF", a.isHome);
-                            return {x:pD.x+(pA.x-pD.x)*phK, y:pD.y+(pA.y-pD.y)*phK}; })();   // 🚶 국면 전환 완충
+        /* ⚡ 예전엔 즉시실행 함수 안에서 앵커 두 개를 「복사본」으로 받아 세 번째 객체를 만들었다 —
+           선수마다 매 틱 객체 3개(경기당 200만 개). 참조판으로 읽고 결과만 한 개 만든다. */
+        const _pA=tacticalAnchorRef(a.team, a.slot, "ATT", a.isHome);
+        const _pD=tacticalAnchorRef(a.team, a.slot, "DEF", a.isHome);
+        const anchor={x:_pD.x+(_pA.x-_pD.x)*phK, y:_pD.y+(_pA.y-_pD.y)*phK};   // 🚶 국면 전환 완충
         anchor.x=clamp01(anchor.x + blockShift*(a.slot==="GK"?0.25:1) + (a.slot==="GK"?0:dirBias));
         /* 🎼 「소유 국면 셰이프」 — 만들었다가 <b>되돌렸다</b>(기록).
            수비에는 라인이 실체로 있는데(buildDefShape) 공격에는 없다는 게 출발점이었다.
@@ -61940,7 +62102,7 @@ class MatchSim{
               let near=0;
               for(const m of mine){
                 if(m===a || m.slot==="GK") continue;
-                if(Math.hypot((m.x-wx)*PITCH_AR, m.y-anchor.y)<0.075) near++;
+                if(HYP((m.x-wx)*PITCH_AR, m.y-anchor.y)<0.075) near++;
               }
               const g2=gate*clamp(1-near*0.20, 0.45, 1);
               anchor.x=clamp01(anchor.x + a.dir*rf*ROLE_FWD_X*(phase==="ATT"?1:0.45)*g2);
@@ -61975,7 +62137,7 @@ class MatchSim{
           tx=g.x; ty=g.y; spd=g.spd; a._gkRole=g.role;
           a._gkTx=g.x; a._gkTy=g.y;    // 아래의 포메이션 규율에 눌리지 않도록 따로 보관해 둔다
         } else if(carrier && a.id===carrier.id){
-          const bd=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y);
+          const bd=HYP((b.x-a.x)*PITCH_AR, b.y-a.y);
           if(bd>DRIB_LEAD*2.2){ tx=b.x; ty=b.y; spd=SPD.RUN; }      // 아직 공을 못 잡았다 — 공을 향해 간다
           else {
             // 볼 가진 선수는 전진. 안으로 파고드는 역할·특성이면 여기에 안쪽 성분을 섞는다.
@@ -62011,9 +62173,9 @@ class MatchSim{
                ─ 공이 앞에 설 때까지 걸음을 줄이고, rollBall 이 그동안 공을 발 앞으로 모은다. */
             {
               const _mx=(tx-a.x)*PITCH_AR, _my=ty-a.y;          // 가려는 방향
-              const _ml=Math.hypot(_mx,_my);
+              const _ml=HYP(_mx,_my);
               const _bx=(b.x-a.x)*PITCH_AR, _by=b.y-a.y;        // 공까지의 벡터
-              const _bl=Math.hypot(_bx,_by);
+              const _bl=HYP(_bx,_by);
               if(_ml>1e-6 && _bl>1e-6){
                 const _ahead=(_bx*_mx+_by*_my)/_ml;             // 진행 방향으로 공이 앞선 거리(음수=뒤)
                 if(_ahead < 0){ a._setBall=this.t; }
@@ -62046,7 +62208,7 @@ class MatchSim{
           tx=dt0.x; ty=dt0.y;
           mvMark(a,"2역할",tx,ty);
           const jk=(a.defRole===DEF_ROLE.JOCKEY);
-          const gap=Math.hypot((tx-a.x)*PITCH_AR, ty-a.y);
+          const gap=HYP((tx-a.x)*PITCH_AR, ty-a.y);
           /* 🚶 이동 거리 3라운드 — 압박은 이동 예산 1위(2.8km, 평균 5.2m/s). 실제 압박은 5~6m/s 로 접근하고
              마지막 몇 m 만 전력이다. 8m 밖이면 SPRINT, 안이면 RUN×1.12(5.1m/s). */
           spd = jk ? (gap>0.045 ? SPD.RUN : SPD.JOG)
@@ -62060,7 +62222,7 @@ class MatchSim{
                3~4m/s 램프가 된다(실측 BALANCE 목표 이동 3.9m/s). 새 자리가 이전 자리에서 POS_SPOT_DEAD 안이면
                이전 자리를 그대로 쓴다. 역할이 바뀌면 즉시 새 자리. */
             if(a._spot && a._spotRole===a.offRole && OFF_POS_ROLES[a.offRole] &&
-               Math.hypot((_ns.x-a._spot.x)*PITCH_AR, _ns.y-a._spot.y) < POS_SPOT_DEAD){ /* 유지 */ }
+               HYP((_ns.x-a._spot.x)*PITCH_AR, _ns.y-a._spot.y) < POS_SPOT_DEAD){ /* 유지 */ }
             else a._spot=_ns;
             a._spotAt=this.t; a._spotRole=a.offRole;
           }
@@ -62087,7 +62249,7 @@ class MatchSim{
              조깅으로 가면 영영 도착하지 못하고, 그동안 목표는 볼을 따라 또 움직인다.
              (수비 셰이프 복원 속도와 같은 잣대다) */
           {
-            const _gap=Math.hypot((tx-a.x)*PITCH_AR, ty-a.y)*ISO_TO_M;
+            const _gap=HYP((tx-a.x)*PITCH_AR, ty-a.y)*ISO_TO_M;
             /* 🏃 1라운드(22/10m): 이동 16.9 → 17.5km 로 오히려 늘었다 — 목표가 볼을 따라 계속 움직여 BALANCE 도
                10m 문턱을 늘 넘었다(평균 2.8m/s 그대로). 2라운드: 26/14m. */
             /* 🚶 4라운드 — 자리 역할(BALANCE·WIDE·HALF·DEEP·HOLD·OUTLET)은 아무리 멀어도 뛰지 않는다(RUN 까지).
@@ -62179,9 +62341,9 @@ class MatchSim{
                  마커는 4라운드 규칙(5m 안 조깅 2.6m/s · 밖 RUN 4.6m/s)으로 따라가 등 뒤를 내줬다.
                  ─ 담당이 뛰면(RUN×0.85 이상) 같이 뛰고, 위험 구역에서 공이 날아오는 동안도 뛴다. 그 외엔 4라운드 규칙 그대로. */
               : (a._mkTrack=(a.defRole===DEF_ROLE.MARK && !!a._mark && (a.dir>0?a._mark.x:1-a._mark.x)<0.42   // 우리 진영 깊숙한 담당만 (이동 거리: 전 구역이면 +1km · 0.5 → 0.42 로 -0.2km)
-                             && (Math.hypot((a._mark.vx||0)*PITCH_AR, a._mark.vy||0)/SIM_DT > SPD.RUN*0.85 || (_dz && b.state==="PASS")))) ? SPD.SPRINT*0.95
+                             && (HYP((a._mark.vx||0)*PITCH_AR, a._mark.vy||0)/SIM_DT > SPD.RUN*0.85 || (_dz && b.state==="PASS")))) ? SPD.SPRINT*0.95
               /* 🚶 4라운드 — 마크는 담당과 가까우면(5m 안) 조깅으로 따라간다. 멀면 RUN. */
-              : (a.defRole===DEF_ROLE.MARK && a._mark && Math.hypot((a._mark.x-a.x)*PITCH_AR, a._mark.y-a.y)<0.072) ? SPD.JOG*1.3
+              : (a.defRole===DEF_ROLE.MARK && a._mark && HYP((a._mark.x-a.x)*PITCH_AR, a._mark.y-a.y)<0.072) ? SPD.JOG*1.3
               : (a.defRole===DEF_ROLE.MARK || a.defRole===DEF_ROLE.LANE || a.defRole===DEF_ROLE.COVER_WIDE) ? SPD.RUN
               : (a.defRole===DEF_ROLE.BLOCK_SHOT) ? SPD.SPRINT*0.92       // 🚫 슛 선은 걸어가지 않는다 (CLOSE 주석 ②)
               : (a.defRole===DEF_ROLE.SECOND) ? (((a.dir>0?b.x:1-b.x)<0.35) ? SPD.SPRINT*0.95 : SPD.RUN)   // ⚽ 우리 진영 낙하점은 전력 (0.4 → 0.35 거리 절약)
@@ -62227,7 +62389,7 @@ class MatchSim{
         const deepPull = phase==="DEF" ? blockDepth(b, a.dir) : 0;
         const lim = retreat ? leash*(2.0+deepPull*0.9) : leash;
         const ddx=(tx-anchor.x)*PITCH_AR, ddy=ty-anchor.y;
-        const dl=Math.hypot(ddx,ddy);
+        const dl=HYP(ddx,ddy);
         /* 🅛 라볼피아나 예외 2 — 단계 추적: 진범은 9규율이 아니라 여기(앵커 반경 클램프)였다. 피벗의 역할 목표
            [10m,중앙]이 앵커(61~73m)에서 반경 밖이라 44~56m 로 잘려 CB 사이로 내려가지 못했다. */
         if(dl>lim && !(phase==="ATT" && (a._lavo||a._lavoWide))){ tx=anchor.x+(ddx/dl)*lim/PITCH_AR; ty=anchor.y+(ddy/dl)*lim; }
@@ -62238,13 +62400,13 @@ class MatchSim{
         if(b.setPiece && key!==this.possSide && a.slot!=="GK"){
           const ko=(SETPIECE_KEEPOUT[b.setPiece.kind]||9.15)/ISO_TO_M;
           // 목표가 원 안이면 원 밖으로 밀어낸다
-          let dx=(tx-b.x)*PITCH_AR, dy=ty-b.y, d=Math.hypot(dx,dy);
+          let dx=(tx-b.x)*PITCH_AR, dy=ty-b.y, d=HYP(dx,dy);
           if(d<ko){
             if(d<1e-6){ dx=-a.dir; dy=0; d=1; }
             tx=clamp01(b.x+(dx/d)*ko/PITCH_AR); ty=clamp01(b.y+(dy/d)*ko);
           }
           // 이미 원 안에 서 있으면 밖으로 물러난다 — 어슬렁대지 말고 뛰어서 (규정 위반 상태다)
-          let cx2=(a.x-b.x)*PITCH_AR, cy2=a.y-b.y, cd=Math.hypot(cx2,cy2);
+          let cx2=(a.x-b.x)*PITCH_AR, cy2=a.y-b.y, cd=HYP(cx2,cy2);
           if(cd<ko){
             if(cd<1e-6){ cx2=-a.dir; cy2=0; cd=1; }
             tx=clamp01(b.x+(cx2/cd)*ko*1.05/PITCH_AR); ty=clamp01(b.y+(cy2/cd)*ko*1.05);
@@ -62302,7 +62464,7 @@ class MatchSim{
               if(p2.slot==="GK" || (p2._down||0)>this.t) continue;
               /* 공이 굴러가는 앞쪽을 보고 판단한다 — 지금 위치가 아니라 「닿을 수 있는 지점」 기준 */
               const px=clamp01(b.x+(b.vx||0)*0.6/PITCH_AR), py=clamp01(b.y+(b.vy||0)*0.6);
-              const d2=Math.hypot((p2.x-px)*PITCH_AR, p2.y-py);
+              const d2=HYP((p2.x-px)*PITCH_AR, p2.y-py);
               const _an=lbAnt(p2);
               /* 읽는 눈이 나쁘면 그만큼 「멀리 있는 셈」으로 친다 — 늦게 알아채니까.
                  0.15 → ×1.24 · 평균 → ×1.05 · 1.0 → ×0.90 */
@@ -62359,7 +62521,7 @@ class MatchSim{
           || (a.defRole===DEF_ROLE.SECOND && _own9(ballLand(b, this.t).x)<0.4));
         if(!a._chase && !(carrier && a.id===carrier.id) && !pressers.includes(a) && !_lapFree && !_mkFree){
           const ax=(tx-anchor.x)*PITCH_AR, ay=ty-anchor.y;
-          const ad=Math.hypot(ax,ay);
+          const ad=HYP(ax,ay);
           // 담당을 잡으러 가는 센터백은 규율을 느슨하게 — 안 그러면 "배정은 됐는데 안 붙는다".
           // (자리를 지키라고 앵커로 되당기면, 정작 잡아야 할 공격수는 그대로 free 가 된다)
           /* 침투·오버래핑·컷인은 "자리를 지키지 않는 것"이 목적인 움직임이다.
@@ -62399,13 +62561,13 @@ class MatchSim{
           for(const q of mine){
             if(q===a || q.slot==="GK") continue;
             const dx2=(a.x-q.x)*PITCH_AR, dy2=a.y-q.y;
-            const d2=Math.hypot(dx2,dy2);
+            const d2=HYP(dx2,dy2);
             if(d2>1e-6 && d2<SPACING_R){
               const w=(1-d2/SPACING_R);
               sx+=dx2/d2*w; sy+=dy2/d2*w;
             }
           }
-          const sl=Math.hypot(sx,sy);
+          const sl=HYP(sx,sy);
           if(sl>1e-6){
             tx=clamp01(tx + sx/sl*SPACING_PUSH*Math.min(2,sl)/PITCH_AR);
             ty=clamp01(ty + sy/sl*SPACING_PUSH*Math.min(2,sl));
@@ -62427,7 +62589,7 @@ class MatchSim{
           /* 🧱 B-2 — 담당이 라인 위에 서 있을 때(오프사이드 라인에 맞춰 선 윙어) 바닥이 라인 1.1m 앞이라
              풀백이 담당의 골사이드에 설 수 없었다(실측 FB 골사이드 34%). 담당이 4.9m 안이면 담당보다
              1.3m 골 쪽까지는 허용한다 — 라인보다 최대 2.4m 뒤. 제보(「풀백이 처진다」)의 5~7m 와는 다른 크기다. */
-          if(a._mark && Math.hypot((a._mark.x-a.x)*PITCH_AR, a._mark.y-a.y)<0.070)
+          if(a._mark && HYP((a._mark.x-a.x)*PITCH_AR, a._mark.y-a.y)<0.070)
             _floor=Math.min(_floor, _o(a._mark.x)-0.012);
           if(_o(tx)<_floor){ const _f=clamp01(_floor); tx=clamp01(a.dir>0?_f:1-_f); }
           /* 🏃 라인 뒤에 있으면 걸어서 올라가지 않는다 — 목표만 올려 두고 조깅으로 두면
@@ -62547,7 +62709,7 @@ class MatchSim{
         // 목표가 완전히 다른 곳으로 바뀌었으면(역할 전환 등) 질질 끌지 말고 바로 붙는다.
         // 그 외에는 저역통과로 따라가 앵커의 미세한 흔들림이 몸의 떨림으로 번지지 않게 한다.
         const jumped = a._smx!==undefined &&
-          Math.hypot((tx-a._smx)*PITCH_AR, ty-a._smy) > TARGET_JUMP;
+          HYP((tx-a._smx)*PITCH_AR, ty-a._smy) > TARGET_JUMP;
         const _posRole = (phase==="DEF") ? !!DEF_POS_ROLES[a.defRole] : !!OFF_POS_ROLES[a.offRole];
         const _sm = _posRole ? (_dz ? TARGET_SMOOTH : POS_SMOOTH) : TARGET_SMOOTH;   // 🧭 자리 역할은 더 무겁게 · 🚨 위험 구역은 기본
         if(a._smx===undefined || instant || jumped){ a._smx=tx; a._smy=ty; }
@@ -62558,7 +62720,7 @@ class MatchSim{
         // 이동 — 선수는 자기가 "바라보는 방향"으로만 나아간다. 목표가 옆이나 뒤면 먼저 몸을 돌려야 하고,
         // 돌아가는 동안에는 속도가 떨어진다. 그래서 방향 전환이 즉각적이지 않고 곡선을 그린다.
         const ox=a.x, oy=a.y;
-        const mx=(tx-a.x)*PITCH_AR, my=ty-a.y, ml=Math.hypot(mx,my);
+        const mx=(tx-a.x)*PITCH_AR, my=ty-a.y, ml=HYP(mx,my);
         /* ⚽ 패스를 받는 선수는 공이 오는 쪽으로 몸을 연다 — 이동 방향과 별개로 시선을 고정한다.
            (제보 — 이게 없어서 절반 이상이 등지고 받는 판정이었다)
            예외: 등 뒤 공간으로 찔러 주는 스루패스는 흐름대로 뛰면서 받는다. */
@@ -62622,7 +62784,7 @@ class MatchSim{
           a.spd=Math.max(0, (a.spd||0)-ACCEL_BASE*DECEL_MUL*SIM_DT);
           /* 🧍 ③ 버티는 동안에도 몸은 공 쪽으로 연다 — 예전엔 face 가 마지막 이동 방향(가끔 뒤돌아선 채)으로 굳었다 */
           if(!b.setPiece){
-            const _bd3=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y);
+            const _bd3=HYP((b.x-a.x)*PITCH_AR, b.y-a.y);
             if(_bd3<=BACKPEDAL_SEE) turnToward(a, Math.atan2(b.y-a.y, (b.x-a.x)*PITCH_AR), 0.7);
           }
           a.vx=a.x-ox; a.vy=a.y-oy;
@@ -62642,7 +62804,7 @@ class MatchSim{
             if(a.face>Math.PI) a.face-=Math.PI*2; else if(a.face<-Math.PI) a.face+=Math.PI*2;
           }
           else if(!b.setPiece && !(carrier && a.id===carrier.id)){   // 🧍 ③ 서 있는 선수 — 천천히 공을 마주 본다
-            const _bd2=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y);
+            const _bd2=HYP((b.x-a.x)*PITCH_AR, b.y-a.y);
             if(_bd2<=BACKPEDAL_SEE) turnToward(a, Math.atan2(b.y-a.y, (b.x-a.x)*PITCH_AR), 0.7);
           }
         }
@@ -62654,7 +62816,7 @@ class MatchSim{
              ④ 가려는 방향이 공에서 충분히 벗어나 있으면, 몸은 공을 향하고 발만 목표로 간다. */
           let _bpAng=0;
           if(_recvFace===null && !b.setPiece && !a._chase && !(carrier && a.id===carrier.id)){   // 🧍 ② 공격 국면에도 — 반걸음 물러설 때 몸을 통째로 돌리지 않는다
-            const _bd=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y);
+            const _bd=HYP((b.x-a.x)*PITCH_AR, b.y-a.y);
             if(_bd<=BACKPEDAL_SEE && ml<=BACKPEDAL_MAX){
               const _fb=Math.atan2(b.y-a.y, (b.x-a.x)*PITCH_AR);
               let _d2=want-_fb;
@@ -62753,9 +62915,9 @@ class MatchSim{
         for(const o of this.side(this.opp(gk.side))){
           if(o.slot==="GK") continue;
           let dx=(o.x-gk.x)*PITCH_AR, dy=o.y-gk.y;
-          let d=Math.hypot(dx,dy);
+          let d=HYP(dx,dy);
           if(d>=R) continue;
-          if(d<1e-5){ dx=(o.dir||1)*1; dy=0.2; d=Math.hypot(dx,dy); }
+          if(d<1e-5){ dx=(o.dir||1)*1; dy=0.2; d=HYP(dx,dy); }
           const push=(R-d)/d;
           o.x=clampPx(o.x+dx*push/PITCH_AR); o.y=clampPy(o.y+dy*push);
           o.vx=0; o.vy=0; o.spd=Math.min(o.spd||0, SPD.JOG*0.5);
@@ -62794,7 +62956,7 @@ class MatchSim{
         ty=carrier.y+Math.sin(carrier.face)*ah;
       }
       const _gx=(tx-b.x)*PITCH_AR, _gy=ty-b.y;
-      const _gd=Math.hypot(_gx,_gy);
+      const _gd=HYP(_gx,_gy);
       if(_gd>1e-6){
         const step=Math.min(_gd, SPD.RUN*SIM_DT);
         b.x=clamp01(b.x+(_gx/_gd)*step/PITCH_AR); b.y=clamp01(b.y+(_gy/_gd)*step);
@@ -62807,7 +62969,7 @@ class MatchSim{
        여기 걸리면 아래의 로컬 오프셋 추종·드리블 터치·따라가기를 전부 건너뛴다. */
     if(carrier.face!==undefined && b.ownerId===carrier.id){
       const _lc=ballToLocal(b, carrier);
-      const _rd=Math.hypot(_lc.fwd, _lc.lat);
+      const _rd=HYP(_lc.fwd, _lc.lat);
       /* 중간에 공이 발을 떠났다가(패스·경합·슛) 돌아온 경우 — 그때 걸어 둔 정리는 이미 옛일이다.
          이 함수는 공이 발밑에 있을 때만 불리므로, 한동안 안 불렸으면 세션을 닫는다.
          (실측 — 31초 묵은 정리 상태가 그대로 되살아나 선수를 붙들고 있었다) */
@@ -62831,7 +62993,7 @@ class MatchSim{
         const _ah=0.80/ISO_TO_M;
         const _tx=carrier.x+Math.cos(carrier.face)*_ah/PITCH_AR;
         const _ty=carrier.y+Math.sin(carrier.face)*_ah;
-        const _gx=(_tx-b.x)*PITCH_AR, _gy=_ty-b.y, _gd=Math.hypot(_gx,_gy);
+        const _gx=(_tx-b.x)*PITCH_AR, _gy=_ty-b.y, _gd=HYP(_gx,_gy);
         if(_gd>1e-6){
           const _st=Math.min(_gd, (SETTLE_PULL*SIM_DT)/ISO_TO_M);
           b.x=clamp01(b.x+(_gx/_gd)*_st/PITCH_AR); b.y=clamp01(b.y+(_gy/_gd)*_st);
@@ -62867,7 +63029,7 @@ class MatchSim{
        공의 월드 위치를 직접 옮기지 않고, "선수 기준 어디에 있는가"를 들고 다닌다. */
     if(carrier.face!==undefined){
       const nowLoc=ballToLocal(b, carrier);
-      const rd=Math.hypot(nowLoc.fwd, nowLoc.lat);
+      const rd=HYP(nowLoc.fwd, nowLoc.lat);
       /* ⚠ 뒤에 있는 공은 이 프레임을 타지 않는다 — 여기가 염력의 본체였다 */
       if(b._loc && rd<CARRY_REACH){
         /* 발에 붙어 있는 공만 몸을 따라 돈다. 멀리 굴러간 공은 관성으로 남는다 —
@@ -62886,7 +63048,7 @@ class MatchSim{
         const gather = carrier._kickFace ? 0.69 : 0.79;
         keep.lat*=gather;
         {
-          const _spD=clamp(Math.hypot((carrier.vx||0)*PITCH_AR, carrier.vy||0)/(SPD.SPRINT*SIM_DT), 0, 1.15);
+          const _spD=clamp(HYP((carrier.vx||0)*PITCH_AR, carrier.vy||0)/(SPD.SPRINT*SIM_DT), 0, 1.15);
           const _wantFwd=clamp((0.40+_spD*0.95)*(1.28-(carrier.dribSkill||0.6)*0.42)/67,
                                DRIB_LEAD*0.30, DRIB_LEAD*0.90);
           /* 공이 몸 뒤로 넘어가 있으면(음수) 가장 급하다 — 발끝으로 끌어 앞으로 돌려놓는다 */
@@ -62903,10 +63065,10 @@ class MatchSim{
            그 반경만큼 호를 그리며 날아갔다(실측 한 틱 5.1m 이동 후 역방향).
            ─ 공이 한 틱에 옮겨질 수 있는 거리를 발이 닿는 범위로 제한한다. */
         const _mx=(w.x-b.x)*PITCH_AR, _my=w.y-b.y;
-        const _mm=Math.hypot(_mx,_my)*ISO_TO_M;
+        const _mm=HYP(_mx,_my)*ISO_TO_M;
         const _cap=0.55;                       // 한 틱(0.2초)에 공을 옮길 수 있는 최대치 ≈ 2.7m/s
         if(_mm>_cap){
-          const _k=(_cap/ISO_TO_M)/Math.max(1e-6, Math.hypot(_mx,_my));
+          const _k=(_cap/ISO_TO_M)/Math.max(1e-6, HYP(_mx,_my));
           b.x=clamp01(b.x+_mx*_k/PITCH_AR); b.y=clamp01(b.y+_my*_k);
           b._loc=ballToLocal(b, carrier);      // 실제로 간 만큼만 로컬에 반영
         } else {
@@ -62918,7 +63080,7 @@ class MatchSim{
       }
     }
     const vx=carrier.vx||0, vy=carrier.vy||0;
-    const sp=Math.hypot(vx*PITCH_AR, vy);
+    const sp=HYP(vx*PITCH_AR, vy);
     /* 🎯 지금 속도에서 공을 두어야 할 거리 (스펙 §15) */
     /* ⚠ vx,vy 는 "틱당 변위"이고 SPD.SPRINT 는 "초당 속도"다 — SIM_DT 를 곱해 단위를 맞춘다.
        이걸 빠뜨려서 속도 판정이 늘 0에 가깝게 나왔다. */
@@ -62956,12 +63118,12 @@ class MatchSim{
     let _follow=1;
     {
       const _fdx=(b.x-carrier.x)*PITCH_AR, _fdy=b.y-carrier.y;
-      const _mv=Math.hypot(vx*PITCH_AR, vy);
+      const _mv=HYP(vx*PITCH_AR, vy);
       if(_mv>1e-6){
         const _dot=(_fdx*(vx*PITCH_AR)+_fdy*vy)/_mv;      // 진행 방향으로 앞선 거리(음수=뒤)
         /* 뒤에 있는 공은 「발이 닿는 거리」까지만 몸과 함께 간다 */
         if(_dot<0){
-          const _bd=Math.hypot(_fdx,_fdy);
+          const _bd=HYP(_fdx,_fdy);
           _follow = _bd<=FOLLOW_REACH ? 1
                   : _bd>=FOLLOW_GONE  ? 0
                   : clamp((FOLLOW_GONE-_bd)/(FOLLOW_GONE-FOLLOW_REACH), 0, 1);
@@ -62986,15 +63148,15 @@ class MatchSim{
         _ty=carrier.y+Math.sin(carrier.face)*_ahead;
       }
       const _gx=(_tx-b.x)*PITCH_AR, _gy=_ty-b.y;
-      const _gap=Math.hypot(_gx,_gy)*ISO_TO_M;              // 목표 지점까지 떨어진 거리(m)
+      const _gap=HYP(_gx,_gy)*ISO_TO_M;              // 목표 지점까지 떨어진 거리(m)
       if(_gap>0.30){
         const step=Math.min(_gap-0.30, 0.45);               // 한 틱에 최대 45cm — 발로 옮기는 속도
-        const k2=(step/ISO_TO_M)/Math.max(1e-6, Math.hypot(_gx,_gy));
+        const k2=(step/ISO_TO_M)/Math.max(1e-6, HYP(_gx,_gy));
         b.x=clamp01(b.x+_gx*k2/PITCH_AR); b.y=clamp01(b.y+_gy*k2);
       }
     }
     // 통제 범위 — 이보다 멀리 굴러가면 선수가 잡아 놓는다
-    const dx=(b.x-carrier.x)*PITCH_AR, dy=b.y-carrier.y, d=Math.hypot(dx,dy);
+    const dx=(b.x-carrier.x)*PITCH_AR, dy=b.y-carrier.y, d=HYP(dx,dy);
     const D0=b._drb;
     /* 🏃 치달 중 — 공은 저만치 앞에 있는 게 정상이다. 억지로 당기지 않는다.
        대신 상대가 먼저 닿을 것 같으면 공을 놓친다(흘린 공). */
@@ -63006,7 +63168,7 @@ class MatchSim{
               필드 수비수에게는 뺏기는 공이 키퍼 앞에서만 소유로 남아 있었다. */
         let oppT=9;
         for(const o of this.side(this.opp(carrier.side))){
-          const od=Math.hypot((o.x-b.x)*PITCH_AR, o.y-b.y);
+          const od=HYP((o.x-b.x)*PITCH_AR, o.y-b.y);
           const tt=travelTime(o, od); if(tt<oppT) oppT=tt;
         }
         const myT=travelTime(carrier, d);
@@ -63033,7 +63195,7 @@ class MatchSim{
       let _pullCap=SPD.CARRY*SIM_DT*0.85;         // 🏃 사다리 개편 — 볼 다루는 한도는 예전 값(CARRY)
       {
         const _mvx=(carrier.vx||0)*PITCH_AR, _mvy=(carrier.vy||0);
-        const _mvN=Math.hypot(_mvx,_mvy);
+        const _mvN=HYP(_mvx,_mvy);
         if(_mvN>1e-6 && (dx*_mvx+dy*_mvy)/_mvN < 0) _pullCap*=0.16;   // 진행 방향 뒤 — 끌어올 수 없다
       }
       const pull=Math.min(d-maxLead, _pullCap);
@@ -63045,10 +63207,10 @@ class MatchSim{
     /* 🧱 최종 상한 — 위 보정들을 다 합쳐도 한 틱 이동은 사람이 공을 다루는 속도를 넘지 않는다 */
     {
       const _tx=(b.x-_bx0)*PITCH_AR, _ty=b.y-_by0;
-      const _tm=Math.hypot(_tx,_ty)*ISO_TO_M;
+      const _tm=HYP(_tx,_ty)*ISO_TO_M;
       const _lim=Math.max(0.55, SPD.CARRY*SIM_DT*ISO_TO_M*0.75);    // 사람이 발로 공을 옮기는 속도 한도 (🏃 CARRY)
       if(_tm>_lim){
-        const _k=(_lim/ISO_TO_M)/Math.max(1e-6, Math.hypot(_tx,_ty));
+        const _k=(_lim/ISO_TO_M)/Math.max(1e-6, HYP(_tx,_ty));
         b.x=clamp01(_bx0+_tx*_k/PITCH_AR); b.y=clamp01(_by0+_ty*_k);
         if(carrier.face!==undefined) b._loc=ballToLocal(b, carrier);
       }
@@ -63064,17 +63226,23 @@ class MatchSim{
     // 한 틱에 몸싸움으로 밀려나는 총량을 제한한다.
     // 여러 명 사이에 끼면 밀림이 누적돼 사람이 튕겨 날아가 버린다.
     for(const p of A) p._pushed=0;
+    const _N=A.length;
     for(let it=0; it<JOSTLE_ITER; it++){
-      for(let i=0;i<A.length;i++){
+      for(let i=0;i<_N;i++){
         const p=A[i];
         if(p._down && p._down>this.t) continue;              // 넘어져 있는 선수는 넘어간다
-        for(let j=i+1;j<A.length;j++){
+        const _px=p.x, _py=p.y, _pw=p._inWall;
+        for(let j=i+1;j<_N;j++){
           const q=A[j];
+          let dx=(q.x-_px)*PITCH_AR, dy=q.y-_py;
+          /* ⚡ 빗변은 어느 축보다도 크거나 같다 — 한 축만으로 이미 멀면 계산할 것도 없다.
+             22명이면 짝이 231개인데 실제로 겹치는 건 한둘이다. 가장 싼 판정을 맨 앞에 둔다
+             (전부 continue 라 순서를 바꿔도 결과는 완전히 같다). */
+          if(dx>=minD||dx<=-minD||dy>=minD||dy<=-minD) continue;
           if(q._down && q._down>this.t) continue;
           // 수비벽은 어깨를 붙이고 선다 — 평소의 몸 간격(1.7m)을 강제하면 벽이 벌어져 벽 구실을 못 한다
-          if(p._inWall && q._inWall) continue;
-          let dx=(q.x-p.x)*PITCH_AR, dy=q.y-p.y;
-          let d=Math.hypot(dx,dy);
+          if(_pw && q._inWall) continue;
+          let d=HYP(dx,dy);
           if(d>=minD) continue;
           // 미는 방향(단위벡터). 완전히 포개졌으면 임의 방향으로 떼어낸다.
           let ux, uy;
@@ -63110,13 +63278,13 @@ class MatchSim{
     {
       const b0=this.ball;
       if(!b0.setPiece && !b0.isPenalty && !b0.spPlan){
-        const kd=Math.hypot((b0.x-carrier.x)*PITCH_AR, b0.y-carrier.y)*ISO_TO_M;
+        const kd=HYP((b0.x-carrier.x)*PITCH_AR, b0.y-carrier.y)*ISO_TO_M;
         /* ⚠ 제보 — 「뒤나 옆에서 끌듯이 슛·패스를 쏘는, 투수가 투구하는 듯한 움직임」.
            거리만 봤지 「어느 쪽에 있는가」를 보지 않아, 등 뒤 2m의 공도 그대로 찼다.
            사람은 몸 뒤의 공을 찰 수 없다 — 한 발 앞에 놓일 때까지 기다린다(rollBall 이 정리한다). */
         if(kd>0.35 && carrier.face!==undefined && carrier.slot!=="GK"){
           const bx=(b0.x-carrier.x)*PITCH_AR, by=b0.y-carrier.y;
-          const bn=Math.hypot(bx,by);
+          const bn=HYP(bx,by);
           if(bn>1e-6){
             const cosA=(bx*Math.cos(carrier.face)+by*Math.sin(carrier.face))/bn;
             if(cosA < -0.55){ carrier._needBall=this.t; return; }   // 명백히 등 뒤(123° 밖) — 발 앞으로 정리한 뒤 찬다
@@ -63196,7 +63364,7 @@ class MatchSim{
         if(_po.to && _po.to.slot && this.agents.indexOf(_po.to)>=0 && _po.to.side===carrier.side){
           let _od=99;
           for(const q of opps){ if(q.slot==="GK") continue;
-            const _d=Math.hypot((q.x-_po.to.x)*PITCH_AR, q.y-_po.to.y)*ISO_TO_M; if(_d<_od) _od=_d; }
+            const _d=HYP((q.x-_po.to.x)*PITCH_AR, q.y-_po.to.y)*ISO_TO_M; if(_d<_od) _od=_d; }
           _ok=_od>3.5;
         }
         if(_ok){
@@ -63216,7 +63384,7 @@ class MatchSim{
            안 올라와 있으면 짧은 전개가 기본(75%) — 긴 골킥은 낙하점 경합 상실률 52~74% 였다. */
         let _oppHi=99;
         for(const q of opps){ if(q.slot==="GK") continue;
-          const _d=Math.hypot((q.x-carrier.x)*PITCH_AR, q.y-carrier.y)*ISO_TO_M; if(_d<_oppHi) _oppHi=_d; }
+          const _d=HYP((q.x-carrier.x)*PITCH_AR, q.y-carrier.y)*ISO_TO_M; if(_d<_oppHi) _oppHi=_d; }
         const _pShort=(_oppHi>28) ? 0.75 : 0.30+(carrier.passSkill||0.6)*0.20;
         if(safe.length && Math.random()<_pShort){
           /* ⚠ 버그 — startPass 에 「옵션」(safe[0])을 그대로 넘겼다. startPass 는 플랜(T·power·tx)을 기대하므로
@@ -63261,7 +63429,7 @@ class MatchSim{
         let vuln=0;
         for(const q of opps){
           if(q.slot==="GK") continue;
-          const d=Math.hypot((q.x-o.to.x)*PITCH_AR, q.y-o.to.y);
+          const d=HYP((q.x-o.to.x)*PITCH_AR, q.y-o.to.y);
           if(d<0.16) vuln=Math.max(vuln, 1-d/0.16);
         }
         /* 받는 선수가 잘 잡는가 — 퍼스트터치가 나쁜 선수에게 위험한 공을 주지 않는다 */
@@ -63301,7 +63469,7 @@ class MatchSim{
       const _thrScore=(o)=>{
         let vuln=0;
         for(const q of opps){ if(q.slot==="GK") continue;
-          const dd=Math.hypot((q.x-o.to.x)*PITCH_AR, q.y-o.to.y);
+          const dd=HYP((q.x-o.to.x)*PITCH_AR, q.y-o.to.y);
           if(dd<0.14) vuln=Math.max(vuln, 1-dd/0.14); }
         const ownK=(carrier.dir>0?carrier.x:1-carrier.x)<0.40 ? 1.7 : 1.0;   // 자기 진영일수록 안전 우선
         return (o.score||0) - vuln*(1.35*ownK);
@@ -63382,7 +63550,7 @@ class MatchSim{
         if(Math.random() < _hold) _forceOK=false;
       }
       if(_forceOK && g0 && (g0.distM<12.5 && g0.angle>0.34 && _ahead===0)){
-        const _bd0=Math.hypot((this.ball.x-carrier.x)*PITCH_AR, this.ball.y-carrier.y);
+        const _bd0=HYP((this.ball.x-carrier.x)*PITCH_AR, this.ball.y-carrier.y);
         if(_bd0<=DRIB_LEAD*1.45){
           const gk0=opps.find(o=>o.slot==="GK");
           this.resolveShot(carrier, g0, chooseShotType(carrier, g0, this.ball, gk0, shot||{clear:true}));
@@ -63396,7 +63564,7 @@ class MatchSim{
       /* ⚽ 공이 발에 붙어 있어야 때린다 — 치달(KNOCK) 중엔 공이 3~7m 앞에 있는데,
          여기서 그대로 쏘면 resolveShot 이 공을 슈터에게 「당겨와서」 순간이동으로 보인다(제보).
          멀면 이번 판단은 접고 계속 따라붙는다 — 붙은 다음 판단에서 자연히 때린다. */
-      const _bd=Math.hypot((this.ball.x-carrier.x)*PITCH_AR, this.ball.y-carrier.y);
+      const _bd=HYP((this.ball.x-carrier.x)*PITCH_AR, this.ball.y-carrier.y);
       if(_bd > DRIB_LEAD*1.45){
         carrier._wantShot=this.t;            // 🎯 슛 의사 — 치달을 멈추고 공을 발밑에 붙인다
         this.ball.hold=0.22;                 // 잠깐 뒤 다시 판단 — 그동안 공에 다가간다
@@ -63409,7 +63577,7 @@ class MatchSim{
     if(cross && (!best || cross.score>best.score)){
       /* ⚽ 크로스도 공이 발에 붙어 있어야 올린다 — 측면 치달 중엔 공이 5~8m 앞에 있는데
          그대로 올리면 몸이 닿지도 않은 공이 날아간다(제보 · 실측 중앙값 5.0m·최대 7.7m). */
-      const _bd=Math.hypot((this.ball.x-carrier.x)*PITCH_AR, this.ball.y-carrier.y);
+      const _bd=HYP((this.ball.x-carrier.x)*PITCH_AR, this.ball.y-carrier.y);
       if(_bd > DRIB_LEAD*1.45){ this.ball.hold=0.22; return; }
       /* 👀 크로스각 점검(요청) — 패스에는 lookThenPass(시선과 60° 이상 어긋나면 돌아서서 찬다)가
          있는데 크로스에는 없었다. 터치라인을 향해 전력질주하던 윙어가 90° 방향으로 즉시 올렸다.
@@ -63425,7 +63593,7 @@ class MatchSim{
       for(const o of opps){
         if(o.slot==="GK") continue;
         if(o._beaten && o._beaten>this.t) continue;
-        const dx=(o.x-carrier.x)*PITCH_AR, dy=o.y-carrier.y, d=Math.hypot(dx,dy);
+        const dx=(o.x-carrier.x)*PITCH_AR, dy=o.y-carrier.y, d=HYP(dx,dy);
         if(d>md || d<1e-6) continue;
         if((dx*fx+dy*fy)/d < 0.70) continue;
         md=d; mark=o;
@@ -63466,7 +63634,7 @@ class MatchSim{
       for(const o of opps){
         if(o.slot==="GK") continue;
         if((o.x-carrier.x)*carrier.dir < 0.01) continue;
-        const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
+        const d=HYP((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
         if(d<ah4) ah4=d;
       }
       const sp4=clamp((ah4-0.10)/0.18, 0, 1);                     // 7m 밖부터
@@ -63507,7 +63675,7 @@ class MatchSim{
         for(const o of opps){
           if(o.slot==="GK") continue;
           if((o.x-carrier.x)*carrier.dir < 0.01) continue;          // 내 앞에 선 사람만
-          const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
+          const d=HYP((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
           if(d<ahead) ahead=d;
         }
         const space=clamp((ahead-0.09)/0.16, 0, 1);                 // 6m 밖부터 값이 오른다
@@ -63616,7 +63784,7 @@ class MatchSim{
     this.lastAssist={id:carrier.id, side:carrier.side, t:this.t};
     // 해설 — 스루패스/롱패스/짧은 패스를 구분해 말한다
     if(this.recording){
-      const dM=Math.hypot((opt.to.x-carrier.x)*PITCH_AR, opt.to.y-carrier.y)*ISO_TO_M;
+      const dM=HYP((opt.to.x-carrier.x)*PITCH_AR, opt.to.y-carrier.y)*ISO_TO_M;
       const pool = pl.type===PASS_TYPE.THROUGH ? COMM.lvThrough : (dM>32 ? COMM.lvPassLong : COMM.lvPass);
       this.cap(carrier.side, pool, {p:this.nm(carrier), q:this.nm(opt.to)}, true);
       let lg=0;   // 수비 라인 붕괴 — 센터백 하나가 끌려 나와 라인에 6m+ 구멍이 난 상태
@@ -63643,7 +63811,7 @@ class MatchSim{
     // 목표는 findBestPass 가 이미 정했다 — 발밑이거나, 달려가 만날 미래의 공간이거나.
     b.tx=clamp01(pl.tx); b.ty=clamp01(pl.ty);
     b.flight=0; b.flightT=pl.T;
-    b.flightLen=Math.hypot((b.tx-b.x)*PITCH_AR, b.ty-b.y);
+    b.flightLen=HYP((b.tx-b.x)*PITCH_AR, b.ty-b.y);
     resolveKick(b, carrier, (b.passType===PASS_TYPE.THROUGH||b.passType===PASS_TYPE.LEAD)?KICK.SPACE:KICK.PASS, {lofted:!!b.aerial, curve:pl.curve||0});
     b._opt=opt;
     b._passer=carrier;
@@ -63723,7 +63891,7 @@ class MatchSim{
     let best=null, bd=1e9;
     for(const o of this.side(this.opp(recv.side))){
       if(o.slot==="GK") continue;
-      let d=Math.hypot((o.x-tx)*PITCH_AR, o.y-ty);
+      let d=HYP((o.x-tx)*PITCH_AR, o.y-ty);
       // 스위퍼는 라인 뒤로 넘어온 공을 정리하는 게 본업이라 남들보다 먼저 반응한다
       d *= 1 - clamp(FX(o,"sweepBack"), 0, 1)*SWEEP_EDGE;
       if(d<bd){ bd=d; best=o; }
@@ -63763,7 +63931,7 @@ class MatchSim{
         if(p.slot==="GK") continue;
         if(p._down && p._down>this.t) continue;
         if(p._chase && p._chase.until>this.t) continue;     // 이미 다른 공을 쫓는 중
-        let d=Math.hypot((p.x-LP.x)*PITCH_AR, p.y-LP.y);
+        let d=HYP((p.x-LP.x)*PITCH_AR, p.y-LP.y);
         d *= 1 - clamp(FX(p,"sweepBack"), 0, 1)*SWEEP_EDGE; // 스위퍼는 먼저 반응한다
         /* 👤 「누가 좋은 자리를 선점하는가」 — 예측력만 보던 걸 자리 잡는 능력까지 본다.
            공격 측은 오프 더 볼(수비 견제를 피해 낙하지점을 찾는 능력),
@@ -63826,7 +63994,7 @@ class MatchSim{
         if(o.slot==="GK") continue;
         if(o._down && o._down>this.t) continue;
         if(o._chase && o._chase.until>this.t) continue;
-        let d=Math.hypot((o.x-b.tx)*PITCH_AR, o.y-b.ty);
+        let d=HYP((o.x-b.tx)*PITCH_AR, o.y-b.ty);
         d *= (1.30 - lbAnt(o)*0.40);          // 읽는 눈이 나쁘면 늦게 알아챈 셈 (다른 추격과 같은 잣대)
         if(d<bd){ bd=d; best=o; }
       }
@@ -63853,7 +64021,7 @@ class MatchSim{
       for(const o of opps){
         if(o.slot==="GK") continue;
         if((o.x-carrier.x)*carrier.dir < -0.010) continue;      // 크로스를 올리는 쪽 앞에 있어야 막는다
-        const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
+        const d=HYP((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
         if(d<nd){ nd=d; near=o; }
       }
       if(near && nd<CROSS_BLOCK_R){
@@ -63917,13 +64085,13 @@ class MatchSim{
     const base = cr.traj===CROSS_TRAJ.LOW ? 0.030 : 0.056;
     const eLen=(Math.random()-0.5)*2*base*(1.25-q)*1.30;
     const eLat=(Math.random()-0.5)*2*base*(1.25-q)*1.55;
-    const dx=(cr.tx-carrier.x)*PITCH_AR, dy=cr.ty-carrier.y, dl=Math.hypot(dx,dy)||1e-6;
+    const dx=(cr.tx-carrier.x)*PITCH_AR, dy=cr.ty-carrier.y, dl=HYP(dx,dy)||1e-6;
     const ux=dx/dl, uy=dy/dl;
     b.tx=clamp01(cr.tx + (ux*eLen - uy*eLat)/PITCH_AR);
     b.ty=clamp01(cr.ty + (uy*eLen + ux*eLat));
     /* 어떻게 빗나갔는지 이름을 붙인다 (§19) */
     {
-      const em=Math.hypot(eLen,eLat)*ISO_TO_M;
+      const em=HYP(eLen,eLat)*ISO_TO_M;
       const goalSide=(carrier.y<0.5?-1:1);
       b.crossErr = em<2.3 ? CROSS_ERR.GOOD
         : Math.abs(eLen)>Math.abs(eLat)
@@ -63940,7 +64108,7 @@ class MatchSim{
       const taken=new Set();
       /* 실제 낙하 지점은 첫 번째 공격수가 맡는다 */
       let first=null, fd=9;
-      for(const m of mates){ const d=Math.hypot((b.tx-m.x)*PITCH_AR, b.ty-m.y);
+      for(const m of mates){ const d=HYP((b.tx-m.x)*PITCH_AR, b.ty-m.y);
         if(d<fd){ fd=d; first=m; } }
       /* 낙하 지점으로는 실제로 달려간다 — 기존 추격 로직을 그대로 쓴다.
          상대 수비수 한 명도 여기서 함께 반응하기 시작한다. */
@@ -63992,11 +64160,11 @@ class MatchSim{
     const adv = gk.dir>0 ? b.x : 1-b.x;               // 0 = 자기 골문
     if(adv>GK_CATCH_X) return false;                  // 박스 언저리로 떨어지는 공만
     const aer=clamp(gk.gkAerial||0.5, 0, 1.2);
-    const d=Math.hypot((b.x-gk.x)*PITCH_AR, b.y-gk.y);
+    const d=HYP((b.x-gk.x)*PITCH_AR, b.y-gk.y);
     if(d > GK_CATCH_R*(0.70+aer*0.60)) return false;  // 손이 닿는 범위
     // 사람이 많을수록 주저한다 — 나갔다가 못 잡으면 빈 골문이 된다
     const crowd=this.agents.filter(o=>o.slot!=="GK" &&
-      Math.hypot((o.x-b.x)*PITCH_AR, o.y-b.y)<0.055).length;
+      HYP((o.x-b.x)*PITCH_AR, o.y-b.y)<0.055).length;
     if(Math.random() > clamp(GK_CATCH_P*(0.45+aer*1.10)*(1-crowd*0.10), 0.02, 0.90)) return false;
     stepToward(gk, b.x, b.y, 3.2); gk.spd=0;          // 공을 향해 나왔다 (한 틱 이동 한계 안에서)
     const st=this.stats[gk.side];
@@ -64033,7 +64201,7 @@ class MatchSim{
         let tx2 = clamp(b.x + sgn2*Math.cos(sp2)*D2/PITCH_AR, 0.03, 0.97);
         let ty2 = clamp(b.y + Math.sin(sp2)*D2, 0.055, 0.945);   // 터치라인에서 4m 안쪽
         const ang2  = Math.atan2(ty2-b.y, (tx2-b.x)*PITCH_AR);
-        const runM2 = Math.hypot((tx2-b.x)*PITCH_AR, ty2-b.y)*ISO_TO_M;
+        const runM2 = HYP((tx2-b.x)*PITCH_AR, ty2-b.y)*ISO_TO_M;
         this.evl("CLEAR", gk, {gk:1, punch:1});
         this.cap(gk.side, COMM.lvClear, {p:this.nm(gk)}, true);
         this.launchLoose(b.x, b.y, ang2, Math.max(9, runM2), this.opp(gk.side), true);
@@ -64066,7 +64234,7 @@ class MatchSim{
     let tgt=null, best=-1;
     for(const m of cands){
       /* 곁에 상대가 있는가 — 경합이 성립하는 공이어야 「축구」다 */
-      let od=9; for(const o of opps) od=Math.min(od, Math.hypot((o.x-m.x)*PITCH_AR, o.y-m.y));
+      let od=9; for(const o of opps) od=Math.min(od, HYP((o.x-m.x)*PITCH_AR, o.y-m.y));
       const contested=clamp(1-od/0.13, 0, 1);
       const v=(m.headSkill||0.5)*0.55 + (m.bravery||0.5)*0.25 + adv(m)*0.45
               + contested*0.50 + Math.random()*0.22;
@@ -64088,7 +64256,7 @@ class MatchSim{
     b.state="PASS"; b.fromId=carrier.id; b.toId=null; b.ownerId=null;
     b.aerial=true; b.offsideAt=null; b.power=1.65;
     b.tx=tx; b.ty=ty;
-    b.flight=0; b.flightLen=Math.hypot((b.tx-carrier.x)*PITCH_AR, b.ty-carrier.y);
+    b.flight=0; b.flightLen=HYP((b.tx-carrier.x)*PITCH_AR, b.ty-carrier.y);
     b.flightT=clamp(1.6 + b.flightLen*ISO_TO_M*0.034, 2.0, 3.4);      // 골킥은 하늘 높이 뜬다 — 더 높게(착지 잔여 속도↓)
     resolveKick(b, carrier, KICK.GOALKICK);
     b._opt=null; b._passer=carrier;
@@ -64160,7 +64328,7 @@ class MatchSim{
       b.ty = (Math.random()<0.5) ? (_lo+Math.random()*(_hi-_lo))
                                  : (1-_hi+Math.random()*(_hi-_lo));
     }
-    b.flight=0; b.flightLen=Math.hypot((b.tx-carrier.x)*PITCH_AR, b.ty-carrier.y);
+    b.flight=0; b.flightLen=HYP((b.tx-carrier.x)*PITCH_AR, b.ty-carrier.y);
     b.flightT=clamp(0.75 + b.flightLen*ISO_TO_M*0.032, 1.15, 2.6);  // 다급하게 걷어낸 공은 높이 솟는다
     resolveKick(b, carrier, KICK.CLEAR);
     b._opt=null; b._passer=carrier;
@@ -64205,7 +64373,7 @@ class MatchSim{
       const sweeping = o.slot==="GK" && o._sweeping && o._sweeping>this.t;
       // 스위핑으로 뛰쳐나온 키퍼는 그 순간 필드 플레이어다 — 평소의 코앞 제한을 풀어준다
       const ir = (o.slot==="GK" && !sweeping) ? CTRL_RADIUS*0.26 : CTRL_RADIUS*ITC_MUL*ant;
-      if(Math.hypot((o.x-b.x)*PITCH_AR, o.y-b.y) < ir){
+      if(HYP((o.x-b.x)*PITCH_AR, o.y-b.y) < ir){
         this.stats[oKey].intercept++; this.stats[b._passer.side].lost++;
         this.cap(o.side, COMM.lvItc, {p:this.nm(o)});
         this.giveTo(o); return;
@@ -64279,7 +64447,7 @@ class MatchSim{
             let _np=0;
             for(const o of this.side(this.opp(w.side))){
               if(o.slot==="GK") continue;
-              if(Math.hypot((o.x-w.x)*PITCH_AR, o.y-w.y)<0.055) _np++;
+              if(HYP((o.x-w.x)*PITCH_AR, o.y-w.y)<0.055) _np++;
             }
             const _hq=clamp(0.16 + (w.headAim!=null?w.headAim:0.6)*0.50
                                  + (w.decSkill!=null?w.decSkill:0.6)*0.26
@@ -64311,15 +64479,15 @@ class MatchSim{
          못 받으면 공은 물리대로 계속 흐른다 — 그게 컷백이 위험하고도 어려운 이유다. */
       const hardCross = b.isCross && !b.aerial;
       const reachR = isSpace ? CTRL_RADIUS*2.0 : hardCross ? CTRL_RADIUS*1.15 : CTRL_RADIUS*2.7;
-      if(rc && isSpace && Math.hypot((rc.x-b.x)*PITCH_AR, rc.y-b.y) >= reachR){
+      if(rc && isSpace && HYP((rc.x-b.x)*PITCH_AR, rc.y-b.y) >= reachR){
         /* 수신자가 아직 공간에 닿지 못했다 — 공은 계속 굴러가고, 선수는 쫓아간다.
            이때 상대가 더 가까우면 그쪽이 먼저 닿는다(아래 일반 처리로 흘려보낸다). */
         let oppNear=null, od=1e9;
         for(const o of this.side(this.opp(b._passer.side))){
-          const d=Math.hypot((o.x-b.x)*PITCH_AR, o.y-b.y);
+          const d=HYP((o.x-b.x)*PITCH_AR, o.y-b.y);
           if(d<od){ od=d; oppNear=o; }
         }
-        const myD=Math.hypot((rc.x-b.x)*PITCH_AR, rc.y-b.y);
+        const myD=HYP((rc.x-b.x)*PITCH_AR, rc.y-b.y);
         if(!(oppNear && od<myD*0.85 && od<CTRL_RADIUS*2.2)){
           /* 아무도 아직 못 닿았다 — 흘린 공으로 두고 경합시킨다.
              내 선수가 곧 따라잡을 거리면 실패로 세지 않는다(쫓아가서 잡는 공). */
@@ -64342,7 +64510,7 @@ class MatchSim{
           return;
         }
       }
-      if(rc && Math.hypot((rc.x-b.x)*PITCH_AR, rc.y-b.y) < reachR){
+      if(rc && HYP((rc.x-b.x)*PITCH_AR, rc.y-b.y) < reachR){
         this.stats[b._passer.side].passOk++;
         // 경합 상대가 붙지 않은 크로스라도, 박스 안이라면 잡지 않고 그대로 머리로 마무리한다
         if(b.aerial && rc.side===b._passer.side && rc.slot!=="GK"){
@@ -64361,7 +64529,7 @@ class MatchSim{
           let near=null, nd=1e9;
           for(const a of this.agents){
             if(a.slot==="GK") continue;
-            const d=Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y);
+            const d=HYP((a.x-b.x)*PITCH_AR, a.y-b.y);
             if(d<nd){ nd=d; near=a; }
           }
           if(near && nd<AERIAL_RANGE && near.side===b._passer.side){
@@ -64386,7 +64554,7 @@ class MatchSim{
         // eslint-disable-next-line no-unreachable
         let best=null, bd=1e9;
         for(const a of this.agents){
-          let d=Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y);
+          let d=HYP((a.x-b.x)*PITCH_AR, a.y-b.y);
           if(a.slot==="GK" && !(a._sweeping&&a._sweeping>this.t)) d+=0.22;   // 평소엔 코앞만, 스위핑 중이면 정상 경합
           if(d<bd){ bd=d; best=a; }
         }
@@ -64444,14 +64612,14 @@ class MatchSim{
     const b=this.ball;
     /* 🎱 공 자체의 물리 상태 — 소유와 무관하게 "지금 공이 어떤 상태인가" */
     b.phys = (b.z>0.004) ? ((b.vz||0)>0 ? "IN_FLIGHT" : "FALLING")
-           : (Math.hypot(b.vx||0,b.vy||0)>BALL_STOPV*1.5 ? "ROLLING" : "STILL");
-    if((b.bounced||0)>0 && b.z<=0.004 && Math.hypot(b.vx||0,b.vy||0)>BALL_STOPV*2) b.phys="ROLLING";
+           : (HYP(b.vx||0,b.vy||0)>BALL_STOPV*1.5 ? "ROLLING" : "STILL");
+    if((b.bounced||0)>0 && b.z<=0.004 && HYP(b.vx||0,b.vy||0)>BALL_STOPV*2) b.phys="ROLLING";
     if(b.setPiece){ b.ctrl=BC.FREE; return; }
     if(b.state==="PASS"){
       const r=b.toId!=null?this.byId(b.toId):null;
       if(!r){ b.ctrl=BC.FREE; return; }
       const left=Math.max(0, (b.flightT||0.6)-(b.flight||0));
-      const d=Math.hypot((b.x-r.x)*PITCH_AR, b.y-r.y);
+      const d=HYP((b.x-r.x)*PITCH_AR, b.y-r.y);
       b.ctrl = (d<CTRL_RADIUS*1.6 || left<0.10) ? BC.CONTACT
              : (left<0.55) ? BC.ORIENT : BC.APPROACH;
       return;
@@ -64459,7 +64627,7 @@ class MatchSim{
     if(b.state==="LOOSE"){ b.ctrl=BC.FREE; return; }
     if(b.state==="SETTLED" && b.ownerId!=null){
       const c=this.byId(b.ownerId);
-      const sp=c?Math.hypot((c.vx||0)*PITCH_AR,(c.vy||0))/(SPD.SPRINT*SIM_DT):0;
+      const sp=c?HYP((c.vx||0)*PITCH_AR,(c.vy||0))/(SPD.SPRINT*SIM_DT):0;
       /* 터치 직후 "정리 시간"(ft.ct) 안에는 FIRST_TOUCH, 그 뒤 움직이면 드리블 */
       if(b._ftAt!==undefined && (this.t-b._ftAt) < (b._ftCt||0.3)) b.ctrl=BC.TOUCH;
       else b.ctrl = sp>0.18 ? BC.DRIBBLE : BC.CONTROLLED;
@@ -64642,7 +64810,7 @@ class MatchSim{
        && a.slot!=="GK" && (b.state==="PASS"||b.state==="LOOSE")
        && !(b._otAt!=null && this.t-b._otAt<1.0)){
       /* 🦶 원터치도 발이 닿는 거리에서만 — 멀리 있는 공을 그대로 때리는 마법은 없다 */
-      const _otD=Math.hypot((b.x-a.x)*PITCH_AR, b.y-a.y)*ISO_TO_M;
+      const _otD=HYP((b.x-a.x)*PITCH_AR, b.y-a.y)*ISO_TO_M;
       let ot=null;
       if(_otD<=KICK_REACH_M*1.15){
         try{ ot=oneTouchEval(a, b, this.side(this.opp(a.side)), null); }catch(e){ ot=null; }
@@ -64658,7 +64826,7 @@ class MatchSim{
               접점 이동은 반 걸음(최대 0.5m)까지만. */
         {
           const _sx=(b.vx||0)*0.35, _sy=(b.vy||0)*0.35;
-          const _sm=Math.hypot(_sx*PITCH_AR,_sy)*ISO_TO_M;
+          const _sm=HYP(_sx*PITCH_AR,_sy)*ISO_TO_M;
           const _lim2=0.5;
           const _k3=_sm>_lim2 ? (_lim2/_sm) : 1;
           b.x=clamp01(b.x+_sx*_k3); b.y=clamp01(b.y+_sy*_k3);
@@ -64805,10 +64973,10 @@ class MatchSim{
         let oppN=9;
         for(const o of this.side(this.opp(a.side))){
           if(o.slot==="GK") continue;
-          const dd=Math.hypot((o.x-a.x)*PITCH_AR, o.y-a.y);
+          const dd=HYP((o.x-a.x)*PITCH_AR, o.y-a.y);
           if(dd<oppN) oppN=dd;
         }
-        const spd0=Math.hypot(b.vx||0, b.vy||0);
+        const spd0=HYP(b.vx||0, b.vy||0);
         if(advG>(1-BOX_X) || oppN<0.045 || spd0>0.13){
           this.clearBall(a); return;
         }
@@ -64821,7 +64989,7 @@ class MatchSim{
       b._loc={fwd:hold, lat:0};
       const w0=localToWorld(b._loc, {x:a.x, y:a.y, face:f});
       /* 한 틱에 옮길 수 있는 만큼만 — 남은 거리는 다음 틱에 이어서 붙인다 */
-      const gx=w0.x-b.x, gy=w0.y-b.y, gd=Math.hypot(gx*PITCH_AR, gy);
+      const gx=w0.x-b.x, gy=w0.y-b.y, gd=HYP(gx*PITCH_AR, gy);
       const step=Math.min(gd, SPD.CARRY*SIM_DT*1.6);   // 🏃 CARRY
       if(gd>1e-6){ b.x=clamp01(b.x+(gx/gd)*step/PITCH_AR*PITCH_AR); b.y=clamp01(b.y+(gy/gd)*step); }
       b.hold=(1.8+Math.random()*1.6)*TEMPO*this.tempoK(a.side)*(this.counterOn(a.side)?(0.80-this.counterK(a.side)*0.35):1);
@@ -64876,7 +65044,7 @@ class MatchSim{
       if(b.x<X_MIN) ty=lerp(ty, 0.5+(b.y-0.5)*0.45, 0.5);
       ty=clamp(ty, 0.10, 0.90);                        // 터치라인 밖·구석까지 밀리지 않는다
     }
-    const mx=(clamp01(tx)-r.x)*PITCH_AR, my=clamp01(ty)-r.y, ml=Math.hypot(mx,my);
+    const mx=(clamp01(tx)-r.x)*PITCH_AR, my=clamp01(ty)-r.y, ml=HYP(mx,my);
     if(ml>1e-6){
       const step=Math.min(ml, spd*SIM_DT);
       r.x=clamp01(r.x+(mx/ml)*step/PITCH_AR);
@@ -64895,7 +65063,7 @@ class MatchSim{
      ══════════════════════════════════════════════════════════════ */
   foulEvidence(o, carrier, slide){
     const b=this.ball;
-    const ballD=Math.hypot((b.x-o.x)*PITCH_AR, b.y-o.y);            // 태클러 → 공
+    const ballD=HYP((b.x-o.x)*PITCH_AR, b.y-o.y);            // 태클러 → 공
     const ballPlay=clamp(1-ballD/(TACKLE_RANGE*(slide?1.7:1.15)), 0, 1);   // §6 공을 노린 태클
     /* §7 늦은 태클 — 공이 태클러에게서 멀어지는 중인데 접촉 */
     const bvx=(b.vx||0), bvy=(b.vy||0);
@@ -64904,7 +65072,7 @@ class MatchSim{
     /* §8 뒤에서 */
     const behind=((carrier.x-o.x)*carrier.dir > 0.004) ? 1 : 0;
     /* 상대 속도 (§5·§10) */
-    const speedM=Math.hypot(((o.vx||0)-(carrier.vx||0))*PITCH_AR, (o.vy||0)-(carrier.vy||0))/SIM_DT*ISO_TO_M;
+    const speedM=HYP(((o.vx||0)-(carrier.vx||0))*PITCH_AR, (o.vy||0)-(carrier.vy||0))/SIM_DT*ISO_TO_M;
     const fast=clamp((speedM-4.5)/6, 0, 1);
     /* §12 어깨 경합 — 나란히 달리며 공이 플레이 거리 안 */
     let shoulder=0;
@@ -64981,10 +65149,10 @@ class MatchSim{
     let dogso=false;
     {
       const gx=victim.dir>0?1:0;
-      const dG=Math.hypot((gx-victim.x)*PITCH_AR, 0.5-victim.y)*ISO_TO_M;
+      const dG=HYP((gx-victim.x)*PITCH_AR, 0.5-victim.y)*ISO_TO_M;
       /* 판정 폭 — 0.13(±9m)으로는 레드가 경기당 0.38로 실제(0.08)의 5배였다.
          「명백한」 기회만: 골문 22m + 복귀 가능 수비(±14m 레인, 살짝 뒤도 포함) 0명. */
-      if(dG<22 && (b.ownerId===victim.id || Math.hypot((b.x-victim.x)*PITCH_AR,b.y-victim.y)<0.03)){
+      if(dG<22 && (b.ownerId===victim.id || HYP((b.x-victim.x)*PITCH_AR,b.y-victim.y)<0.03)){
         let betw=0;
         for(const q of this.side(fouler.side)){
           if(q.slot==="GK" || q===fouler) continue;
@@ -65135,7 +65303,7 @@ class MatchSim{
         if(!pool.length) break;
         let bi=0, bd=1e9;
         for(let i=0;i<pool.length;i++){
-          const d=Math.hypot((pool[i].x-sp2.x)*PITCH_AR, pool[i].y-sp2.y);
+          const d=HYP((pool[i].x-sp2.x)*PITCH_AR, pool[i].y-sp2.y);
           if(d<bd){ bd=d; bi=i; }
         }
         pool[bi]._spSpot={x:clamp01(sp2.x), y:clamp01(sp2.y)};
@@ -65267,7 +65435,7 @@ class MatchSim{
     const gx=X(1.0);                                        // 상대 골문 x
     // 공 → 골문 중앙 벡터 (미터)
     const vx=(gx-spot.x)*PITCH_LEN_M, vy=(0.5-spot.y)*ISO_TO_M;
-    const distM=Math.hypot(vx, vy);
+    const distM=HYP(vx, vy);
     const M2X=m=>m/PITCH_LEN_M, M2Y=m=>m/ISO_TO_M;          // 미터 → 정규화 좌표
     const gk=opp.find(o=>o.slot==="GK");
     const atk=mine.filter(a=>a.slot!=="GK" && a.id!==kid);
@@ -65345,7 +65513,7 @@ class MatchSim{
       if(o.slot==="GK") continue;
       if(o._down && o._down>this.t) continue;                 // 아직 못 일어남
       if(o._beaten && o._beaten>this.t) continue;             // 방금 제쳐져 역동작에 걸렸다
-      const d=Math.hypot((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
+      const d=HYP((o.x-carrier.x)*PITCH_AR, o.y-carrier.y);
       /* 🌧️ 젖은 잔디에서는 슬라이딩이 더 멀리 미끄러져 닿는다 (요청) */
       if(d>SLIDE_RANGE*(1+(WX_NOW.wet||0)*0.28)) continue;
       // 제쳐지는 순간의 파울 — 태클도 못 들어가고 속도로도 밀리면 잡아채거나 몸으로 막는다.
@@ -65451,7 +65619,7 @@ class MatchSim{
             for(const q of this.side(o.side)){
               if(q.slot==="GK") continue;
               if((q.x-carrier.x)*carrier.dir<0.005) continue;
-              const dd=Math.hypot((q.x-carrier.x)*PITCH_AR, q.y-carrier.y);
+              const dd=HYP((q.x-carrier.x)*PITCH_AR, q.y-carrier.y);
               if(dd<ahead) ahead=dd;
             }
             const advAdv=(carrier.dir>0?carrier.x:1-carrier.x);
@@ -65497,7 +65665,7 @@ class MatchSim{
         if(!nk){
           /* PK 는 페널티 능력, 나머지는 공에 가까운 선수 */
           if(sp.kind==="penalty"){ let bs=-1; for(const a of mine){ const v=(a.penSkill||0.5); if(v>bs){ bs=v; nk=a; } } }
-          else { let bd=1e9; for(const a of mine){ const d=Math.hypot((a.x-sp.spot.x)*PITCH_AR, a.y-sp.spot.y); if(d<bd){ bd=d; nk=a; } } }
+          else { let bd=1e9; for(const a of mine){ const d=HYP((a.x-sp.spot.x)*PITCH_AR, a.y-sp.spot.y); if(d<bd){ bd=d; nk=a; } } }
         }
         if(nk){
           kicker=nk; sp.kickerId=nk.id; b.ownerId=nk.id;
@@ -65529,7 +65697,7 @@ class MatchSim{
       const k=clamp01(sp.t/Math.max(0.05,dur));
       let nx=lerp(sp.from.x, tx, k), ny=lerp(sp.from.y, ty, k);
       // 거리와 무관한 보간이라 멀리 있으면 순간이동해 버린다 — 사람이 낼 수 있는 속도로 제한한다
-      const dx=(nx-kicker.x)*PITCH_AR, dy=ny-kicker.y, d=Math.hypot(dx,dy);
+      const dx=(nx-kicker.x)*PITCH_AR, dy=ny-kicker.y, d=HYP(dx,dy);
       const cap=SPD.RUN*SIM_DT;                        // 🏃 세트피스 키커는 뛰어가지 않는다
       if(d>cap){ nx=kicker.x+(dx/d)*cap/PITCH_AR; ny=kicker.y+(dy/d)*cap; }
       if(d>1e-6) kicker.face=Math.atan2(dy,dx);       // 가는 방향을 바라본다
@@ -65546,7 +65714,7 @@ class MatchSim{
       {
         const _tx=Math.max(-GOAL_OUT_X, Math.min(1+GOAL_OUT_X, sp.out.x));
         const _ty=Math.max(-0.020, Math.min(1.020, sp.out.y));
-        const _dx=(_tx-b.x)*PITCH_AR, _dy=_ty-b.y, _d=Math.hypot(_dx,_dy);
+        const _dx=(_tx-b.x)*PITCH_AR, _dy=_ty-b.y, _d=HYP(_dx,_dy);
         const _cap=SPD.CARRY*DEAD_ROLL_MUL*SIM_DT;      // 🏃 CARRY — 죽은 공 굴림 속도는 그대로
         if(_d>_cap){ b.x+=(_dx/_d)*_cap/PITCH_AR; b.y+=(_dy/_d)*_cap; }
         else { b.x=_tx; b.y=_ty; }
@@ -65562,7 +65730,7 @@ class MatchSim{
          라인 밖까지 걸어 나온 선수가 「라인 위 기준점」에서는 오히려 멀어져 DEAD 가
          시간초과까지 늘어졌다(실측 422프레임). 선수가 실제로 갈 수 있는 지점으로 잰다. */
       const _rx=clampPx(sp.out.x), _ry=clampPy(sp.out.y);
-      const got=Math.hypot((kicker.x-_rx)*PITCH_AR, kicker.y-_ry) < 0.030;
+      const got=HYP((kicker.x-_rx)*PITCH_AR, kicker.y-_ry) < 0.030;
       if((sp.t>=ph.dead && got) || sp.t>ph.dead+8){      // 공에 닿아야 다음 단계로
         sp.phase="PLACE"; sp.t=0; sp.from={x:kicker.x,y:kicker.y};
       }
@@ -65572,7 +65740,7 @@ class MatchSim{
       // 공을 들고(굴리며) 킥 지점까지 옮긴다 — 이제 공은 키커를 따라간다.
       moveTo(sp.spot.x, sp.spot.y, ph.place);
       b.x=clamp01(kicker.x); b.y=clampPy(kicker.y); b.z=0;   // 🤾 라인 밖에 선 스로어를 따라간다
-      const arrived=Math.hypot((kicker.x-sp.spot.x)*PITCH_AR, kicker.y-sp.spot.y)<0.010;
+      const arrived=HYP((kicker.x-sp.spot.x)*PITCH_AR, kicker.y-sp.spot.y)<0.010;
       if((sp.t>=ph.place && arrived) || sp.t>ph.place+8){
         b.x=clamp01(sp.spot.x); b.y=clampPy(sp.spot.y);   // 정확히 스팟에 놓는다 (스로인은 라인 밖)
         sp.phase="BACKOFF"; sp.t=0; sp.from={x:kicker.x,y:kicker.y};
@@ -65587,13 +65755,13 @@ class MatchSim{
       if(sp.kind==="freeKick"){
         for(const q of this.agents){
           if(!q._inWall || !q._spSpot) continue;
-          if(Math.hypot((q.x-q._spSpot.x)*PITCH_AR, q.y-q._spSpot.y) > 0.010){ wallSet=false; break; }
+          if(HYP((q.x-q._spSpot.x)*PITCH_AR, q.y-q._spSpot.y) > 0.010){ wallSet=false; break; }
         }
       }
       if(sp.t>=ph.backoff && (wallSet || sp.t>ph.backoff+4)){ sp.phase="APPROACH"; sp.t=0; sp.from={x:kicker.x,y:kicker.y}; }
     } else {
       moveTo(sp.spot.x, sp.spot.y, ph.approach);
-      const atBall=Math.hypot((kicker.x-sp.spot.x)*PITCH_AR, kicker.y-sp.spot.y)<0.014;
+      const atBall=HYP((kicker.x-sp.spot.x)*PITCH_AR, kicker.y-sp.spot.y)<0.014;
       if((sp.t>=ph.approach && atBall) || sp.t>ph.approach+6){
         b.setPiece=null; b.hold=0;                         // 공 앞에 도착했다 — 여기서 실제 킥이 나간다
         // 배치 해제 → 다시 PLAYING. 단 벽은 공이 발을 떠나는 순간까지 서 있어야 한다 —
@@ -65663,12 +65831,12 @@ class MatchSim{
            멀리 나가 있을 때만 골로 인정 — 의도된 로빙 슛(kickType SHOT)은 이 게이트를 안 탄다. */
         const b2=this.ball;
         const nonShot = !b2.shot && b2.kickType!==KICK.SHOT;
-        const farM = Math.hypot(((b2.sx!=null?b2.sx:x)-x)*PITCH_AR, (b2.sy!=null?b2.sy:y)-y)*ISO_TO_M;
+        const farM = HYP(((b2.sx!=null?b2.sx:x)-x)*PITCH_AR, (b2.sy!=null?b2.sy:y)-y)*ISO_TO_M;
         if(nonShot && farM>20 && (this.ball.z||0)<CROSSBAR_Z*0.6){
           /* 낮게 굴러/깔려 오는 공만 — 키퍼 키를 넘기는 로빙은 정당한 골이다 */
           const gk=this.side(this.opp(lastSide)).find(a=>a.slot==="GK");
           if(gk && !(gk._down>this.t)){
-            const gd=Math.hypot((gk.x-x)*PITCH_AR, gk.y-y)*ISO_TO_M;
+            const gd=HYP((gk.x-x)*PITCH_AR, gk.y-y)*ISO_TO_M;
             if(gd<9.0){
               /* 키퍼를 공 자리로 끌어오면 순간이동으로 보인다 — 공을 키퍼 발 앞에 놓는다 */
               b2.x=clamp01(gk.x + (outAt===0?0.010:-0.010)); b2.y=clamp01(gk.y);
@@ -65703,7 +65871,7 @@ class MatchSim{
     let best=null,bd=1e9;
     for(const a of this.side(side)){
       if(a.slot==="GK") continue;
-      const d=Math.hypot((a.x-spot.x)*PITCH_AR, a.y-spot.y);
+      const d=HYP((a.x-spot.x)*PITCH_AR, a.y-spot.y);
       if(d<bd){ bd=d; best=a; }
     }
     if(!best) best=this.side(side)[0];
@@ -65744,7 +65912,7 @@ class MatchSim{
       let bd=1e9;
       for(const a of this.side(side)){
         if(a.slot==="GK") continue;
-        const d=Math.hypot((a.x-spot.x)*PITCH_AR, a.y-spot.y);
+        const d=HYP((a.x-spot.x)*PITCH_AR, a.y-spot.y);
         if(d<bd){ bd=d; best=a; }
       }
     }
@@ -65772,7 +65940,7 @@ class MatchSim{
     let best=null, bd=1e9;
     for(const a of this.side(side)){
       if(a.slot==="GK") continue;
-      const d=Math.hypot((a.x-spot.x)*PITCH_AR, a.y-spot.y);
+      const d=HYP((a.x-spot.x)*PITCH_AR, a.y-spot.y);
       if(d<bd){ bd=d; best=a; }
     }
     if(!best) best=this.side(side)[0];
@@ -65788,7 +65956,7 @@ class MatchSim{
     }
     // 슈팅 사거리 안이면 전담 키커(프리킥 능력치)가 나선다 — 근처 아무나 차게 두면 수비수가 감아 넣는다
     const gx=dir>0?1:0;
-    const distM=Math.hypot((gx-spot.x)*PITCH_LEN_M, (0.5-spot.y)*ISO_TO_M);
+    const distM=HYP((gx-spot.x)*PITCH_LEN_M, (0.5-spot.y)*ISO_TO_M);
     if(!inOwnBox && distM<FK_DIRECT_M){
       let bk=this.designatedKicker(side, "fk"), bs=-1;
       if(!bk) for(const a of this.side(side)){
@@ -65843,7 +66011,7 @@ class MatchSim{
       if(!best || c.score>best.score) best=c;
     }
     if(!best) return null;
-    const dist=Math.hypot((best.x-carrier.x)*PITCH_AR, best.y-carrier.y);
+    const dist=HYP((best.x-carrier.x)*PITCH_AR, best.y-carrier.y);
     return {type:crossTypeName(pos, best.z, traj), pos, zone:best.z, traj,
             aerial:(traj!==CROSS_TRAJ.LOW), tx:best.x, ty:best.y, dist,
             flightT:crossFlightT(dist, traj), score:1,
@@ -65960,7 +66128,7 @@ class MatchSim{
     /* 몸에 붙은 상대까지의 거리 — 근거리 슛에서 침착성이 얼마나 필요한지를 가른다 */
     let ctxNearOpp=9;
     for(const o of opps){ if(o.slot==="GK") continue;
-      const d=Math.hypot((o.x-shooter.x)*PITCH_AR, o.y-shooter.y);
+      const d=HYP((o.x-shooter.x)*PITCH_AR, o.y-shooter.y);
       if(d<ctxNearOpp) ctxNearOpp=d; }
     /* 🎯 어떤 능력치로 때리는가 — FM 기준을 그대로 따른다.
          · 헤더  → 헤딩 정확도(headAim). 골 결정력은 관여하지 않는다.
@@ -66058,7 +66226,7 @@ class MatchSim{
         /* §23~29 핸드볼 — 블록이 「팔 높이 + 반응할 시간이 있었는가」로 갈린다.
            지근거리 강슛은 사람이 피할 수 없으므로 핸드볼이 아니다(§26). */
         {
-          const blD=Math.hypot((bl.o.x-shooter.x)*PITCH_AR, bl.o.y-shooter.y);
+          const blD=HYP((bl.o.x-shooter.x)*PITCH_AR, bl.o.y-shooter.y);
           const tFly=blD/(SHOT_SPEED*Math.max(0.3,power));            // 슛 → 블로커 도달 시간
           const zHere=aimZ*clamp(blD/Math.max(1e-6,g.dist),0,1);      // 그 지점의 공 높이(근사)
           const armBand = zHere>0.009 && zHere<0.026;                 // 팔 높이 0.6~1.8m
@@ -66124,13 +66292,13 @@ class MatchSim{
         /* 🧱 밀집 압박 — 통로가 비어도 3.5m 안에 몸이 여럿이면 때릴 시간과 각이 줄어든다
            (텐백 계측: 박스 수비 6명+에서도 통로 빈 슛이 그대로 들어갔다) */
         { let _cr=0; for(const o of opps){ if(o.slot==="GK") continue;
-            if(Math.hypot((o.x-shooter.x)*PITCH_AR, o.y-shooter.y)<0.050) _cr++; }
+            if(HYP((o.x-shooter.x)*PITCH_AR, o.y-shooter.y)<0.050) _cr++; }
           acc -= Math.max(0, _cr-1)*0.035; }
         /* 진짜 단독 1대1 — 블로커 0 + 16m 이내 + 몸 근처 3m에 필드 수비수가 아무도 없다.
            (컷백·혼전 리바운드까지 후하게 쳐주면 득점이 폭주한다 — 실측 5.2골/경기) */
         /* 슛각 점검(요청) — 1대1 하한선과 같은 패턴: 골문이 보여야 단독 찬스다 (SHOT_1V1_ANGLE) */
         const solo = blk.list.filter(b2=>!b2.fr).length===0 && g.distM<16 && g.angle>=SHOT_1V1_ANGLE && type!==SHOT_TYPE.HEADER && type!==SHOT_TYPE.VOLLEY
-          && !opps.some(o=>o.slot!=="GK" && Math.hypot((o.x-shooter.x)*PITCH_AR,(o.y-shooter.y))<0.043);
+          && !opps.some(o=>o.slot!=="GK" && HYP((o.x-shooter.x)*PITCH_AR,(o.y-shooter.y))<0.043);
         if(solo) acc += 0.20;
         this._soloShot=solo;
         /* 🌀 키퍼 제치기 (요청) — 슛이 아니라 「지나가기」다. 기술·민첩·침착 vs 키퍼의 일대일 방어.
@@ -66325,7 +66493,7 @@ class MatchSim{
          각을 크게 만들고 마지막까지 버티는 능력. 코앞에서 붙을수록 비중이 커진다. */
       if(gk && !isPen && !isFK && this._soloShot){
         const _one=clamp(gk.oneSkill||gkSkill||0.6, 0.1, 1.2);
-        const _gap=Math.hypot((gk.x-shooter.x)*PITCH_AR, gk.y-shooter.y)*ISO_TO_M;
+        const _gap=HYP((gk.x-shooter.x)*PITCH_AR, gk.y-shooter.y)*ISO_TO_M;
         const _w=clamp(1-(_gap-3)/9, 0.25, 1);              // 3m 코앞 1.0 → 12m 0.25
         save += (_one-0.62)*0.34*_w;
       }
@@ -66334,7 +66502,7 @@ class MatchSim{
       if(gk && !isPen){
         /* 굴절된 슛은 키퍼가 이미 원래 코스로 몸을 던진 뒤다 — 공간 이점이 사라진다 */
         const reach=(GOAL_HALF*0.78 + gkSkill*GOAL_HALF*0.55)*(deflected?0.42:1);
-        const need=Math.hypot(aimY-gk.y, (aimZ-CROSSBAR_Z*0.32)*0.55);
+        const need=HYP(aimY-gk.y, (aimZ-CROSSBAR_Z*0.32)*0.55);
         /* 평균적으로 선방률을 올리지 않도록 중심을 뺀다 — 이 항은 「어디로 왔는가」의
            차이만 만들어야 한다. 빼지 않으면 전체 선방률이 통째로 올라간다(실측 8.9% 결정률). */
         save += clamp((reach-need)/Math.max(1e-6,reach), -0.40, 0.22) - 0.055;
@@ -66391,7 +66559,7 @@ class MatchSim{
       /* 서 있는 위치 — Positioning 이 낮으면 각을 조금 잘못 잡고 서 있다 */
       const gy=(gk?gk.y:0.5) + gkPosError(gk, this.ball);
       const dY=Math.abs(aimY-gy), dZ=Math.max(0, aimZ-GK_HAND_Z);
-      const need=Math.hypot(dY, dZ*0.62);
+      const need=HYP(dY, dZ*0.62);
       const margin=(reach-need)/Math.max(1e-6, reach);     // 1=여유롭게, 0=손끝, 음수=못 닿음
       this._gkDbg={reactT, tAvail, flightT:_flightT, reach, need, margin, screen,
                    gkY:gy, hitY:aimY, hitZ:aimZ, dive:(aimY<gy?"LEFT":"RIGHT"),
@@ -66490,7 +66658,7 @@ class MatchSim{
        실제로는 발 앞에 있는 그 공을 그대로 때린다. 지금 공 위치에서 출발시킨다.
        (다만 몸에서 너무 벗어나 있으면 발이 닿는 거리까지만 당긴다) */
     {
-      const gx=(shooter.x-b.x)*PITCH_AR, gy=shooter.y-b.y, gd=Math.hypot(gx,gy);
+      const gx=(shooter.x-b.x)*PITCH_AR, gy=shooter.y-b.y, gd=HYP(gx,gy);
       const reach=DRIB_LEAD*1.2;
       /* ⚠ 오픈플레이 슛은 결정 단계의 거리 게이트(DRIB_LEAD*1.45)가 막으므로
          여기 당김은 헤더·발리 등 공중 경로의 소폭 보정만 남는다. 크게 당기면 버그다. */
@@ -66511,7 +66679,7 @@ class MatchSim{
     const _wideK = clamp((Math.abs(shooter.y-0.5)-0.15)/0.27, 0, 1);
     resolveKick(b, shooter, KICK.SHOT, {placed:(power<1.02), power:power,
       wideK:_wideK, distM:(g&&g.distM)||18});
-    b.flightLen=Math.hypot((b.tx-b.sx)*PITCH_AR, b.ty-b.sy);
+    b.flightLen=HYP((b.tx-b.sx)*PITCH_AR, b.ty-b.sy);
     const spd  = SHOT_SPEED*power;
     const T    = Math.max(SIM_DT*SHOT_MIN_TICKS, b.flightLen/spd);
     b.vx=(b.tx-b.sx)*PITCH_AR/T; b.vy=(b.ty-b.sy)/T;
@@ -66554,7 +66722,7 @@ class MatchSim{
     b.z=Math.max(0, lerp(z0, z1, p) + loftPeak(total)*1.2*p*(1-p));
     // 감아차기 — 경로에 수직인 방향으로 부풀린다. 중간에서 가장 크게 휘고 코스에서 만난다.
     if(b.curve){
-      const dx=(b.tx-b.sx)*PITCH_AR, dy=b.ty-b.sy, dl=Math.hypot(dx,dy)||1e-6;
+      const dx=(b.tx-b.sx)*PITCH_AR, dy=b.ty-b.sy, dl=HYP(dx,dy)||1e-6;
       const bulge=b.curve*Math.sin(Math.PI*p);
       b.x=clampGoalOut(b.x + (-dy/dl)*bulge/PITCH_AR);
       b.y=clamp01(b.y + ( dx/dl)*bulge);
@@ -66618,7 +66786,7 @@ class MatchSim{
     if(outcome===SAVE_TYPE.CATCH||outcome===SAVE_TYPE.TIP||outcome===SAVE_TYPE.PUNCH||outcome===SAVE_TYPE.PARRY){
       const gkD=this.byId(actorId);
       if(gkD){
-        const dx=(b.x-gkD.x)*PITCH_AR, dy=b.y-gkD.y, d=Math.hypot(dx,dy);
+        const dx=(b.x-gkD.x)*PITCH_AR, dy=b.y-gkD.y, d=HYP(dx,dy);
         if(d>0.006){
           const k=(d-0.005)/d;                       // 바둑알 반지름만큼만 남기고 접점으로
           /* ⚠ 몸을 던지는 것도 물리적 한계가 있다 — 한 틱에 3.5m(전력 다이빙)까지만.
@@ -66810,11 +66978,11 @@ class MatchSim{
         if(a.slot==="GK") continue;
         const ang=(a.seed%360)*Math.PI/180;
         const tx=0.5+Math.cos(ang)*0.07, ty=0.30+Math.sin(ang)*0.06;
-        const mx=(tx-a.x)*PITCH_AR, my=ty-a.y, ml=Math.hypot(mx,my);
+        const mx=(tx-a.x)*PITCH_AR, my=ty-a.y, ml=HYP(mx,my);
         if(ml>1e-6){ const st2=Math.min(ml, SPD.JOG*SIM_DT);
           a.x=clamp01(a.x+(mx/ml)*st2/PITCH_AR); a.y=clamp01(a.y+(my/ml)*st2); }
       }
-      if(b.inNet){ stepBallPhysics(b); if(Math.hypot(b.vx,b.vy)<BALL_STOPV && b.z<=0) b.inNet=false; }
+      if(b.inNet){ stepBallPhysics(b); if(HYP(b.vx,b.vy)<BALL_STOPV && b.z<=0) b.inNet=false; }
       return;
     }
     // 득점자는 자기가 넣은 쪽 코너 깃발로 달려나간다
@@ -66840,7 +67008,7 @@ class MatchSim{
       } else if(a.side===cel.side && rush<1){
         spd=SPD.SPRINT;
       }
-      const mx=(tx-a.x)*PITCH_AR, my=ty-a.y, ml=Math.hypot(mx,my);
+      const mx=(tx-a.x)*PITCH_AR, my=ty-a.y, ml=HYP(mx,my);
       if(ml>1e-6){
         const step=Math.min(ml, spd*SIM_DT);
         a.x=clamp01(a.x+(mx/ml)*step/PITCH_AR);
@@ -66850,7 +67018,7 @@ class MatchSim{
     // 골망에 걸린 공은 잠시 흔들리다 멈춘다 — 그물 안(골라인 뒤)에 그대로 머문다.
     // ⚠ 예전 clamp01이 득점된 공을 골라인 위로 되돌려 「골인지 아닌지 모호한」 그림을 만들었다(제보)
     if(b.inNet){ stepBallPhysics(b);
-      if(Math.hypot(b.vx,b.vy)<BALL_STOPV && b.z<=0) b.inNet=false; }
+      if(HYP(b.vx,b.vy)<BALL_STOPV && b.z<=0) b.inNet=false; }
   }
   /* 공에 속도를 줘서 굴러가게 한다. 방향(rad, iso 기준)과 세기(iso/초)를 받는다.
      aerial 이면 떠서 날아가므로 굴러가는 도중에는 아무도 잡지 못한다(펀칭 등). */
@@ -66888,7 +67056,7 @@ class MatchSim{
       b.x=clamp01(b.x); b.y=clamp01(b.y);
     }
     b.aerial = b.z > 0.004;                                 // 아직 떠 있는가
-    const sp=Math.hypot(b.vx, b.vy)*SIM_DT;
+    const sp=HYP(b.vx, b.vy)*SIM_DT;
     // 머리 위로 뜬 공은 발로 잡을 수 없다
     if(b.z < CTRL_Z && b.looseT>=LOOSE_GRACE && sp<LOOSE_BLOCK_V){
       /* 🦵 이번 틱에 공이 지나간 <b>선분</b>까지의 거리로 잰다 — 빠른 공이 옆을 스치고
@@ -66898,7 +67066,7 @@ class MatchSim{
       const _segD=(a)=>{
         const px=(a.x-_ax)*PITCH_AR, py=a.y-_ay;
         const u=_sl>1e-12 ? clamp((px*_sx+py*_sy)/_sl, 0, 1) : 0;
-        return Math.hypot(px-_sx*u, py-_sy*u);
+        return HYP(px-_sx*u, py-_sy*u);
       };
       let best=null, bd=1e9;
       for(const a of this.agents){
@@ -66914,7 +67082,7 @@ class MatchSim{
           const _cands=this.agents.filter(a=>{
             if(a.slot==="GK") return false;
             if(a._down && a._down>this.t) return false;
-            return Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y) < GDUEL_R;
+            return HYP((a.x-b.x)*PITCH_AR, a.y-b.y) < GDUEL_R;
           });
           const _gd=this.groundDuel(_cands);
           if(_gd) return;
@@ -66930,7 +67098,7 @@ class MatchSim{
         b.x=clamp01(best.x + (b.x-best.x)*0.35);
         b.y=clamp01(best.y + (b.y-best.y)*0.35);
         const _ang=Math.atan2(b.vy, b.vx*PITCH_AR) + (Math.random()-0.5)*1.5;
-        const _v=Math.hypot(b.vx*PITCH_AR, b.vy)*(0.18+Math.random()*0.20);
+        const _v=HYP(b.vx*PITCH_AR, b.vy)*(0.18+Math.random()*0.20);
         b.vx=Math.cos(_ang)*_v/PITCH_AR; b.vy=Math.sin(_ang)*_v;
         b.vz=Math.abs(b.vz||0)*0.30;
         b.looseBy=best.side; this.lastTouch=best.side;   // 마지막 터치는 이 사람이다
@@ -66943,7 +67111,7 @@ class MatchSim{
       let best=null, bd=1e9;
       for(const a of this.agents){
         if(a._down && a._down>this.t) continue;
-        const d=Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y);
+        const d=HYP((a.x-b.x)*PITCH_AR, a.y-b.y);
         if(d<bd){ bd=d; best=a; }
       }
       if(!best){ this.goalKick(this.opp(b.looseBy)); return; }
@@ -66970,7 +67138,7 @@ class MatchSim{
     }
     // 순간이동시키지 않는다 — 그 방향으로 실제로 굴려 보낸다
     const ang=Math.atan2(ny-b.y, (nx-b.x)*PITCH_AR);
-    const runM=Math.hypot((nx-b.x)*PITCH_AR, ny-b.y)*ISO_TO_M;
+    const runM=HYP((nx-b.x)*PITCH_AR, ny-b.y)*ISO_TO_M;
     this.launchLoose(b.x, b.y, ang, Math.max(3, runM), near.side, false);
   }
   /* 공중볼 경합 — 롱패스가 떨어지는 지점에서 양 팀이 헤딩으로 다툰다 */
@@ -67049,9 +67217,9 @@ class MatchSim{
     if(!near || near.length<2) return null;
     const sides={}; for(const a of near) sides[a.side]=1;
     if(Object.keys(sides).length<2) return null;              // 같은 팀끼리면 경합이 아니다
-    let bd=1e9; for(const a of near) bd=Math.min(bd, Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y));
+    let bd=1e9; for(const a of near) bd=Math.min(bd, HYP((a.x-b.x)*PITCH_AR, a.y-b.y));
     const sc=(a)=>{
-      const d=Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y);
+      const d=HYP((a.x-b.x)*PITCH_AR, a.y-b.y);
       const closer=clamp(1-(d-bd)/GDUEL_R, 0.15, 1);          // 먼저 닿는 쪽이 유리하다
       const A=(k)=>(a.p&&a.p.attr&&attr20(a.p.attr[k])/20)||0.6;
       const mass=clamp(((a.body&&a.body.tall)||0)*0.5+0.5, 0.3, 1.1);   // 큰 선수가 몸으로 이긴다
@@ -67124,7 +67292,7 @@ class MatchSim{
     const _R = AERIAL_RANGE*(gkBall ? 1.9 : 1);
     const near=this.agents.filter(a=>a.slot!=="GK" && a._down!==undefined ? (!a._down || a._down<=this.t) : true)
       // 큰 선수는 조금 더 멀리서도 머리를 갖다 댄다 — 도달 반경에 신장을 반영한다
-      .filter(a=>Math.hypot((a.x-b.x)*PITCH_AR, a.y-b.y) < _R*(1+((a.body&&a.body.tall)||0)*0.10));
+      .filter(a=>HYP((a.x-b.x)*PITCH_AR, a.y-b.y) < _R*(1+((a.body&&a.body.tall)||0)*0.10));
     if(near.length<2) return null;
     let best=null, bs=-1;
     for(const a of near){
@@ -67194,6 +67362,7 @@ class MatchSim{
     /* 🌦️ 전역 물리 함수(stepBallPhysics·firstTouch 등)는 시뮬 인스턴스를 모른다 —
        이 시뮬의 날씨를 매 틱 실어 준다. AI 경기와 내 경기가 섞여 돌아도 안 어긋난다. */
     WX_NOW = (this.M && this.M.wx) ? this.M.wx : {k:"clear", wet:0, slip:0, heat:0, wind:0, wdir:0};
+    SQ_GEN++;
     this.halfTimeCheck();
     this.reapGhosts();                 // ⚠ 제보(투명 키커) — 나간 선수가 경기에 남지 않게 매 틱 확인
     this.injuryCheck(); this.processHurt(); this.tickCore(); this.recordFrame();
@@ -67242,7 +67411,7 @@ class MatchSim{
   drainStamina(){
     // 매 틱 이동 거리를 쌓아 둔다 (스프린트한 선수가 더 많이 지치게)
     for(const a of this.agents){
-      const d=Math.hypot((a.x-(a._fx!=null?a._fx:a.x))*PITCH_AR, a.y-(a._fy!=null?a._fy:a.y));
+      const d=HYP((a.x-(a._fx!=null?a._fx:a.x))*PITCH_AR, a.y-(a._fy!=null?a._fy:a.y));
       a._work=(a._work||0)+d;
       a._fx=a.x; a._fy=a.y;
     }
@@ -73277,15 +73446,150 @@ function runAdvanceNow(){
   show("home"); window.scrollTo(0,0);
 }
 /* 🚑 감독 부상 — 수석코치가 대신 치른 정규 경기. 감독은 결과만 보고받는다. */
+/* ⚡ ⚠ 제보 원문 — 「어느 순간부터 수코 위임하면 렉 개걸려요」.
+   원인은 이 함수가 90분치 시뮬을 <b>한 번에 동기로</b> 돌린다는 것이다. 직접 관전할 때는 같은
+   계산이 실시간에 흩어져 티가 안 나지만, 위임은 그 전부가 한 호출에 몰려 그동안 브라우저가
+   통째로 멈춘다(실측: 한 경기 43초 · 틱당 2.12ms).
+   ─ 두 갈래로 고쳤다.
+     ① 계산 자체를 줄였다 — TAC()·앵커 좌표 캐시 + 역할 재배정 주기화(틱당 2.12 → 1.46ms).
+     ② 그래도 한 번에 돌리면 멈춘다. <b>조각내어 돌린다</b> — 한 조각(≈1200틱)마다 화면에
+        제어권을 돌려주고 진행률을 보여 준다. 화면이 살아 있으니 「렉」으로 느껴지지 않는다. */
+/* ⚠ 1차 시도는 「틱 수」로 잘랐다(1200틱) — 한 조각이 1.7초라 화면이 그만큼씩 얼어붙었다(실측).
+   조각의 기준은 틱이 아니라 <b>시간</b>이어야 한다. 한 프레임 예산(12ms)만 돌고 넘긴다. */
+const DELEG_MS=20;             // 한 조각의 시간 예산 (ms) — 12ms 는 화면은 매끄러웠지만 총 대기가 길었다
+/* 조각내어 90분을 돌린다 — 한 조각(DELEG_MS)마다 화면에 제어권을 돌려주고 게이지를 올린다.
+   다 끝나면 done(M) 을 부른다. 위임 경기와 위임 연습경기가 같은 길을 쓴다. */
+function delegChunkRun(M, tag, why, done){
+  /* ⚡ rec:false — 결과만 보고받는 경기라 하이라이트·자막을 녹화하지 않는다 (제보: 위임 렉) */
+  const sim=new MatchSim(M, {live:true, rec:false});
+  try{ delegBoxOpen(M, tag, why); }catch(e){}
+  try{ delegProgress(0, tag, why, 0); }catch(e){}
+  const _fin=()=>{ try{ delegProgress(1, tag, why, sim.clock); }catch(e){} done(M); };
+  const step=()=>{
+    try{
+      const _now=()=>((typeof performance!=="undefined"&&performance.now)?performance.now():Date.now());
+      const _t0=_now();
+      let n=0;
+      while((sim.clock<sim.endSec || sim.varPending || sim.pkHold())){
+        sim.tick();
+        if(sim.emitEvents) sim.stoppageCheck();
+        if(sim.clock>=SIM_SECONDS && sim.tryExtraTime()) continue;
+        if((++n & 31)===0 && _now()-_t0 >= DELEG_MS) break;   // 32틱마다 시계를 본다
+      }
+      if(sim.clock<sim.endSec || sim.varPending || sim.pkHold()){
+        try{ delegProgress(clamp(sim.clock/Math.max(1,sim.endSec),0,0.99), tag, why, sim.clock); }catch(e){}
+        setTimeout(step, 0);            // 화면에 제어권을 돌려준다
+        return;
+      }
+      try{ if(sim.clock>=sim.endSec-1) sim.runShootoutIfNeeded(); sim.finishMatch(); }catch(e){}
+      while(!M.done) stepMinute(M);
+      _fin();
+    }catch(e){
+      try{ console.warn("위임 경기 진행 실패:", e); }catch(_){}
+      try{ while(!M.done) stepMinute(M); }catch(_){}
+      _fin();
+    }
+  };
+  setTimeout(step, 0);
+}
 function runDelegatedMatch(M, tag, why){
-  const t=userTeam();
   const _inj=(why!=="del");                     // 🚑 부상 대행인가, 🎮 감독이 맡긴 경기인가 (요청)
   /* 🎩 이 경기는 수석코치가 벤치를 굴린다 — 교체·전술 조정이 코치 능력치대로 나온다 (요청) */
   M.acRun=true;
   try{ snapshotTactic(); }catch(e){}            // 코치가 성향을 손대면 경기 뒤 되돌린다
   const _acLv=acBenchLv();
-  simMatchFull(M);
-  while(!M.done) stepMinute(M);
+  delegChunkRun(M, tag, why, (M2)=>delegFinish(M2, tag, why, _inj, _acLv));
+}
+/* 진행률 — 로딩 상자가 열려 있으면 그 안에, 아니면 배너로 */
+/* 🎩 위임 경기 전용 로딩창.
+   ⚠ 제보 — 「로딩창에 진행 게이지가 안 보인다」. 원인: 진행 상자의 「진행 ▶」 버튼이
+      resolveStop() 을 부르기 <b>전에</b> closeProgress() 를 부른다. 그래서 경기가 시작될 때는
+      #prgFeed 가 이미 사라진 뒤였고, 게이지는 갈 곳이 없어 배너로 떨어졌다.
+      → 진행 상자가 살아 있으면 거기에, 없으면 이 창을 직접 띄운다. */
+function delegBoxOpen(M, tag, why){
+  if(document.getElementById("prgFeed")) return;            // 진행 상자 안에 그린다
+  const box=document.getElementById("gcModal"); if(!box) return;
+  const nm=(typeof acName==="function")?acName():"수석코치";
+  let _j="이";
+  try{ if(typeof fixJosa==="function") _j=fixJosa(nm+"이/가").slice(nm.length); }catch(e){}
+  let fx="";
+  try{ fx=`${M.home.short} <span class="small">vs</span> ${M.away.short}`; }catch(e){}
+  box.className="";
+  box.innerHTML=`<div class="gcOverlay"><div class="gcBox" id="delegBox" style="width:min(400px,92vw)">
+    <div style="font-weight:800;font-size:15px;margin-bottom:2px">${why==="inj"?"🩺 수석코치 대행":"🤝 "+((typeof acTitle==="function")?acTitle():"수석코치")+" 위임"}</div>
+    <div class="small" style="color:var(--sub);margin-bottom:10px">${fx}${tag?` · ${tag}`:""}</div>
+    <div class="dlgWrap">
+      <div class="dlgTop"><span id="dlgHead">🎩 <b>${nm}</b>${_j} 경기를 치르는 중입니다…</span><span class="dlgPct" id="dlgPct">0%</span></div>
+      <div class="dlgBar"><div class="dlgFill" id="dlgFill"></div></div>
+      <div class="dlgMin"><span id="dlgClk"></span><span>결과만 보고받습니다</span></div>
+    </div>
+  </div></div>`;
+}
+function delegBoxClose(){
+  const b=document.getElementById("delegBox");
+  if(!b) return;                                            // 진행 상자 안에 그렸다면 건드리지 않는다
+  const box=document.getElementById("gcModal");
+  if(box){ box.className="hidden"; box.innerHTML=""; }
+}
+/* 🎩 위임 경기 진행 표시 — 숫자만이 아니라 <b>게이지</b>로 보여 준다 (요청).
+   조각내어 돌리는 동안 화면이 멈춰 보이지 않게, 막대가 차오르고 경기 시계도 같이 흐른다.
+   clk = 지금 경기 시계(초). 없으면 진행률만 쓴다. */
+function delegProgress(p, tag, why, clk){
+  const pct=Math.round(clamp(p,0,1)*100);
+  const nm=(typeof acName==="function")?acName():"수석코치";
+  /* ⚠ 「이광현가」 — 조사가 안 붙었다. fixJosa 는 마커 <b>바로 앞 글자</b>를 보는데
+     `<b>이름</b>이/가` 는 앞 글자가 「>」였다(실측). 이름에 먼저 붙여 조사를 정한 뒤 태그를 씌운다. */
+  let _j="이";
+  try{ if(typeof fixJosa==="function") _j=fixJosa(nm+"이/가").slice(nm.length); }catch(e){}
+  const head=`🎩 <b>${nm}</b>${_j} ${tag||"경기"}를 치르는 중입니다…`;
+  /* 경기 시계 — 전·후반 표기까지 붙여 「지금 몇 분인지」가 보이게 */
+  let clock="";
+  if(clk!=null && isFinite(clk)){
+    const _half=(typeof SIM_SECONDS!=="undefined"?SIM_SECONDS:5400)/2;
+    const mm=Math.floor(clk/60)+1;
+    /* 추가시간은 축구 표기대로 45+N · 90+N */
+    clock = clk<_half
+      ? (mm>45 ? `전반 45+${mm-45}분` : `전반 ${mm}분`)
+      : (mm>90 ? `후반 90+${mm-90}분` : `후반 ${mm}분`);
+  }
+  /* 게이지가 그려질 자리 — ① 진행 상자가 열려 있으면 그 피드 안, ② 아니면 전용 로딩창.
+     ⚠ #prgFeed 는 prgPush 와 같은 컨테이너다(처음에 id 를 틀려 아무 데도 안 찍혔다). */
+  let bar=document.getElementById("dlgFill");
+  if(!bar){
+    const el=document.getElementById("prgFeed");
+    if(el){
+      const row=document.createElement("div");
+      row.id="delegRow"; row.className="prgLine";
+      row.innerHTML=`<div class="dlgWrap">
+        <div class="dlgTop"><span id="dlgHead"></span><span class="dlgPct" id="dlgPct">0%</span></div>
+        <div class="dlgBar"><div class="dlgFill" id="dlgFill"></div></div>
+        <div class="dlgMin"><span id="dlgClk"></span><span>결과만 보고받습니다</span></div>
+      </div>`;
+      el.appendChild(row);
+      try{ el.scrollTop=99999; }catch(e){}
+      bar=document.getElementById("dlgFill");
+    }
+  }
+  if(bar){
+    const h=document.getElementById("dlgHead"); if(h && !h.innerHTML) h.innerHTML=head;
+    /* 20ms 마다 불리므로 눈에 보이는 값이 바뀔 때만 DOM 을 건드린다 */
+    if(bar._pct!==pct){
+      bar._pct=pct; bar.style.width=pct+"%";
+      const q=document.getElementById("dlgPct"); if(q) q.textContent=pct+"%";
+    }
+    const c=document.getElementById("dlgClk");
+    if(c && c.textContent!==clock) c.textContent=clock;
+    return;
+  }
+  /* 어느 창도 없을 때 — 경기 화면 자막이나 배너로 */
+  const txt=`${head} <b>${pct}%</b>${clock?` <span class="small">(${clock})</span>`:""}`;
+  const cap=document.getElementById("pitchCaption");
+  if(cap){ cap.innerHTML=txt; return; }
+  try{ flash(txt, "info"); }catch(e){}
+}
+function delegFinish(M, tag, why, _inj, _acLv){
+  try{ delegBoxClose(); }catch(e){}      // 🎩 전용 로딩창을 닫고 보고 화면으로 넘어간다
+  const t=userTeam();
   const isHome=M.home.isUser;
   const mine=isHome?M.hg:M.ag, his=isHome?M.ag:M.hg;
   const opp=isHome?M.away:M.home;
@@ -73399,8 +73703,11 @@ function runDelegatedFriendly(M){
   M.acRun=true;                                 // 🎩 연습경기도 수석코치가 벤치를 굴린다 (요청)
   try{ snapshotTactic(); }catch(e){}
   const _acLv=acBenchLv();
-  simMatchFull(M);
-  while(!M.done) stepMinute(M);            // 혹시 남은 분이 있으면 마저 굴린다
+  /* ⚡ 연습경기도 한 번에 돌리면 화면이 그동안 멈춘다 — 리그 경기와 같은 조각 실행기를 쓴다 */
+  delegChunkRun(M, "연습경기", "del", (M2)=>delegFriendlyFinish(M2, _acLv));
+}
+function delegFriendlyFinish(M, _acLv){
+  try{ delegBoxClose(); }catch(e){}
   const f=G.pendingFriendly; G.pendingFriendly=null;
   if(f){ f.done=true; f.hg=M.hg; f.ag=M.ag; preFriendlyPlayed(); }
   applyMatchResult(M);
@@ -75718,7 +76025,7 @@ function pvpDrawWatch(){
   for(const a of A1.ags){
     const q=find(A0,a);
     const key=a.side+String(a.no);
-    const jump=q && Math.hypot(a.x-q.x, a.y-q.y)>JUMP;
+    const jump=q && HYP(a.x-q.x, a.y-q.y)>JUMP;
     /* 방향 삼각형도 보간 — 표본 리듬 그대로 두면 화살표가 틱틱 돈다 (lerpAngle: 각도 순환 처리) */
     const fc=(q&&!jump&&typeof lerpAngle==="function")?lerpAngle(q.face, a.face, k):a.face;
     /* 🦘 점프 — drawSimWatch 는 _hlJ 가 있으면 그걸 먼저 본다(재생용 경로와 같다).
@@ -75728,14 +76035,14 @@ function pvpDrawWatch(){
       x:(q&&!jump?lerpA(q.x,a.x):a.x), y:(q&&!jump?lerpA(q.y,a.y):a.y),
       face:fc, _rf:fc, _hlJ:jz, p:{no:a.no} });
   }
-  const bJump=Math.hypot(A1.ball.x-A0.ball.x, A1.ball.y-A0.ball.y)>JUMP;
+  const bJump=HYP(A1.ball.x-A0.ball.x, A1.ball.y-A0.ball.y)>JUMP;
   fs.ball.x=bJump?A1.ball.x:lerpA(A0.ball.x,A1.ball.x);
   fs.ball.y=bJump?A1.ball.y:lerpA(A0.ball.y,A1.ball.y);
   fs.ball.z=bJump?(A1.ball.z||0):lerpA(A0.ball.z||0, A1.ball.z||0);   // 공중볼 궤적도 매끈하게
   /* 주심 — 호스트와 같은 검은 점 (제보: 화면 완전 동일화) */
   if(A1.ref){
     const r0=A0.ref||A1.ref;
-    const rJump=Math.hypot(A1.ref.x-r0.x, A1.ref.y-r0.y)>JUMP;
+    const rJump=HYP(A1.ref.x-r0.x, A1.ref.y-r0.y)>JUMP;
     fs.ref={x:rJump?A1.ref.x:lerpA(r0.x,A1.ref.x), y:rJump?A1.ref.y:lerpA(r0.y,A1.ref.y)};
   } else fs.ref=null;
   fs.ball.ownerId = A1.own ? (A1.own.side+String(A1.own.no)) : null;
@@ -78786,7 +79093,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-8800";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260912-9000";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
