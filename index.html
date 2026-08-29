@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260912-9900-->
+<!--B:20260913-1400-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -187,13 +187,15 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
     radial-gradient(130% 120% at 95% -40%, var(--tc2Glow,rgba(139,148,158,.20)), transparent 55%),
     linear-gradient(180deg,#161d27,#131922 80%,transparent);
   border-bottom:1px solid #232c37;}
+/* 🎨 세 번째 구단색 — 청·백·적처럼 삼색기를 쓰는 구단이 있다(수원 블루스타).
+   --tcBand / --tcCrest 를 주면 그 그림을, 안 주면 예전 두 색 그대로 쓴다. */
 .pkHero::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:2.5px;
-  background:linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e) 60%, transparent);}
+  background:var(--tcBand, linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e) 60%, transparent));}
 .pkCrest{width:52px; height:52px; border-radius:50%; float:right; margin:-2px 0 0 12px;
   display:flex; align-items:center; justify-content:center; font-weight:900; font-size:17px;
   background:
     radial-gradient(circle at 32% 28%, rgba(255,255,255,.30), rgba(255,255,255,0) 46%),
-    linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%);
+    var(--tcCrest, linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%));
   box-shadow:0 0 0 2.5px #0d1117, 0 0 0 4px var(--tcLine,#2a3441), 0 6px 16px rgba(0,0,0,.5);}
 .pkHead{padding-left:0; margin-bottom:0;}
 .pkName{font-size:24px; font-weight:900; line-height:1.22; letter-spacing:-.4px;
@@ -288,7 +290,7 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
   box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 2px 10px rgba(0,0,0,.28);}
 /* 구단색 상단 띠 + 배경으로 스미는 빛 — 인라인 CSS 변수(--tc, --tc2)로 칠한다 */
 .teamcard::before{content:""; position:absolute; left:0; right:0; top:0; height:3.5px;
-  background:linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e));}
+  background:var(--tcBand, linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e)));}
 .teamcard::after{content:""; position:absolute; left:0; right:0; top:0; height:74px; pointer-events:none;
   background:radial-gradient(120% 100% at 50% -35%, var(--tcGlow,rgba(47,129,247,.14)), transparent 72%);
   opacity:.8; transition:opacity .16s;}
@@ -301,7 +303,7 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
   display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13.5px;
   background:
     radial-gradient(circle at 32% 28%, rgba(255,255,255,.28), rgba(255,255,255,0) 46%),
-    linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%);
+    var(--tcCrest, linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%));
   box-shadow:0 0 0 2px #0d1117, 0 0 0 3.5px var(--tcLine,#2a3441), 0 3px 9px rgba(0,0,0,.45);}
 .teamcard .nm{font-weight:800; font-size:14px; letter-spacing:-.2px;}
 .teamcard .st{font-size:11.5px; color:var(--sub); margin-top:6px; line-height:1.55;}
@@ -310,7 +312,7 @@ select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px so
 .pkV .stars{font-size:15px; margin-left:0; vertical-align:-1px;}
 .teamcard .bar{height:4px; border-radius:3px; margin-top:10px; background:#1b222b; overflow:hidden;}
 .teamcard .bar i{display:block; height:100%; border-radius:3px;
-  background:linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e));
+  background:var(--tcBand, linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e)));
   box-shadow:0 0 7px var(--tcGlow,rgba(47,129,247,.35));}
 /* match sim */
 #matchLog{background:#0a0f14; border:1px solid var(--line); border-radius:8px; padding:12px; height:300px; overflow-y:auto; font-size:13px; line-height:1.8;}
@@ -2274,31 +2276,33 @@ const D1 = [
 ];
 /* K리그2 17팀 — 팀 기본정보 + 간판 선수(실명) + 자동 생성 스쿼드 */
 const D2 = [
-{id:"suwon", name:"수원 블루스타", short:"수원", col:"#004b9e", col2:"#e4002b", budget:70, fans:40, base:70,
+/* 🎨 제보 — 수원 블루스타의 팀 컬러는 청·백·적 세 가지다(청색 적색 두 가지로 표시되고 있었다) */
+{id:"suwon", name:"수원 블루스타", short:"수원", col:"#004b9e", col2:"#e4002b", col3:"#ffffff", budget:70, fans:40, base:70,
  stars:[["양형모","GK",1991,74],["이기제","DF",1991,72],["한호강","DF",1993,70],["이종성","MF",1992,70],["전진우","FW",1999,73],["김현","FW",1993,71]]},
 {id:"daegu", name:"대구 아프리카누스", short:"대구", col:"#87ceeb", col2:"#0b2a53", budget:60, fans:30, base:69,
  stars:[["오승훈","GK",1988,72],["홍정운","DF",1994,70],["세징야","FW",1989,74,1],["김진혁","FW",1993,72]]},
 {id:"suwonfc", name:"수원 레드윙스", short:"수원FC", col:"#1b4fa0", col2:"#e4002b", budget:55, fans:16, base:68,
  stars:[["안데르손 오사코","FW",1996,71,1],["김도윤","MF",2003,68]]},
-{id:"busan", name:"부산 빅쉴드", short:"부산", col:"#c8102e", col2:"#1c1c1c", budget:55, fans:22, base:68,
+{id:"busan", name:"부산 빅쉴드", short:"부산", col:"#c8102e", col2:"#ffffff", budget:55, fans:22, base:68,
  stars:[["라마스","MF",1994,73,1],["페신","FW",1997,72,1]]},
-{id:"jeonnam", name:"전남 드래곤스", short:"전남", col:"#ffd200", col2:"#0b6138", budget:50, fans:15, base:68,
+{id:"jeonnam", name:"전남 용가리 FC", short:"전남", col:"#ffd200", col2:"#1c1c1c", budget:50, fans:15, base:68,
  stars:[["발디비아","MF",1994,75,1],["플라나","FW",1996,72,1]]},
 {id:"seoule", name:"서울 이스트 FC", short:"서울E", col:"#12275c", col2:"#ffffff", budget:50, fans:14, base:67,
  stars:[["유정완","FW",1996,69]]},
 {id:"seongnam", name:"성남 블랙스타", short:"성남", col:"#101010", col2:"#e6e6e6", budget:50, fans:16, base:66,
  stars:[["이종호","FW",1992,68]]},
-{id:"cheongju", name:"청주 레이크 FC", short:"청주", col:"#1257a8", col2:"#f5d000", budget:45, fans:13, base:66,
+/* 🎨 엠블럼 실색 추출 — 남색 바탕 · 붉은 테두리 (제보 이미지) */
+{id:"cheongju", name:"청주 레이크 FC", short:"청주", col:"#1c235a", col2:"#e8343d", budget:45, fans:13, base:66,
  stars:[["피터","FW",1993,70,1]]},
 {id:"asan", name:"아산 블루피닉스", short:"아산", col:"#2a5caa", col2:"#ffd200", budget:45, fans:12, base:66,
  stars:[["두아르테","FW",1994,70,1]]},
 {id:"hwaseong", name:"화성 피닉스 FC", short:"화성", col:"#f26522", col2:"#1c1c1c", budget:45, fans:11, base:66, stars:[]},
-{id:"gimpo", name:"김포 킬러스", short:"김포", col:"#1a9e4b", col2:"#123c22", budget:40, fans:10, base:65, stars:[]},
+{id:"gimpo", name:"김포 골든라이스 FC", short:"김포", col:"#1a9e4b", col2:"#123c22", budget:40, fans:10, base:65, stars:[]},
 {id:"gyeongnam", name:"경남 레드스톰", short:"경남", col:"#e4002b", col2:"#f5d000", budget:45, fans:14, base:66, stars:[]},
 {id:"cheonan", name:"천안 시티즌", short:"천안", col:"#4fb0e8", col2:"#e2b93b", budget:38, fans:9, base:64, stars:[]},
-{id:"ansan", name:"안산 그린윙스", short:"안산", col:"#0b6b32", col2:"#1c1c1c", budget:35, fans:8, base:63, stars:[]},
-{id:"gimhae", name:"김해 가야 FC", short:"김해", col:"#c2273d", col2:"#f2c500", budget:32, fans:8, base:62, stars:[]},
-{id:"yongin", name:"용인 타이거스", short:"용인", col:"#ff3b30", col2:"#ffffff", budget:32, fans:8, base:62, stars:[]},
+{id:"ansan", name:"안산 울브스", short:"안산", col:"#0b6b32", col2:"#f5c518", budget:35, fans:8, base:63, stars:[]},
+{id:"gimhae", name:"김해 가야 FC", short:"김해", col:"#c2273d", col2:"#1c1c1c", budget:32, fans:8, base:62, stars:[]},
+{id:"yongin", name:"용인 드래곤즈 FC", short:"용인", col:"#e02020", col2:"#6ec6ff", budget:32, fans:8, base:62, stars:[]},
 {id:"paju", name:"파주 유나이티드", short:"파주", col:"#e75480", col2:"#4a1b2c", budget:30, fans:7, base:61, stars:[]}
 ];
 /* =====================================================
@@ -4989,7 +4993,7 @@ function fictName(name, frn){
   return (SURNAME_MAP[h]||shiftCho(h))+name.slice(1);
 }
 function mkTeam(d, div){
-  const t = {id:d.id, name:d.name, short:d.short, col:d.col, col2:d.col2,
+  const t = {id:d.id, name:d.name, short:d.short, col:d.col, col2:d.col2, col3:d.col3||null,
     div, budget:d.budget, fans:d.fans, players:[],
     form:[], morale:50,   // 시작 사기 — 시즌을 치르며 스스로 끌어올리는 맛 (사용자 요청 75→50)
     tactic:{formation: div===1?"4-3-3":"4-4-2", mentality:2,   // 0~4 다섯 칸, 2가 가운데
@@ -6271,7 +6275,9 @@ function tacticAtkBonus(me, opp, L, Lo){
   return a;
 }
 /* 압박/템포에 따른 체력 소모 계수 */
-function condFactor(t){ const T=TAC(t); return 1+(T.press-1)*0.35+(T.tempo-1)*0.25; }
+/* 🔋 전술이 체력에 물리는 배수. 폭이 넓으면 「압박하는 전술을 못 쓸 정도」가 된다 —
+   0.35/0.25 → 0.29/0.20 으로 좁혔다(최대 1.60 → 1.49 · 최소 0.40 → 0.51). */
+function condFactor(t){ const T=TAC(t); return 1+(T.press-1)*0.29+(T.tempo-1)*0.20; }
 function styleName(t){
   const T=TAC(t);
   /* ⚠ 제보 — 「선수비 후역습」으로 맞춰 놨는데 위쪽 표기는 「롱볼 역습」이었다.
@@ -6319,6 +6325,17 @@ function scoutAdvice(st, OT, gap){
       else if(LO(OT.line)) out.push("깊이 내려섭니다 — <b>짧은 패스 + 넓은 폭</b>으로 끈질기게 두드리세요.");
       if(HI(OT.press))      out.push("압박이 강합니다 — 중원이 밀리면 <b>다이렉트 패스</b>가 안전합니다.");
       else if(LO(OT.press)) out.push("압박이 헐겁습니다 — <b>템포를 올려</b> 상대가 정비되기 전에 들어가세요.");
+      /* 🛡️ 새 수비 지시도 정찰에 잡힌다 — 상대가 어떤 수비를 들고 나오는지가 곧 우리 공격의 답이다 */
+      if(OT.defCommit!=null && HI(OT.defCommit))
+        out.push("<b>전원이 내려앉습니다</b>(가담 인원 높음) — 박스 앞이 두껍습니다. 중앙을 두드리기보다 <b>폭을 넓혀 측면·컷백</b>으로 여세요. 대신 뺏으면 앞이 텅 빕니다.");
+      else if(OT.defCommit!=null && LO(OT.defCommit))
+        out.push("앞선이 <b>내려오지 않습니다</b> — 우리 후방은 압박을 덜 받지만, 뺏기는 순간 상대 앞선이 그대로 남아 있습니다. <b>역습 대비</b>를 두세요.");
+      if(OT.marking!=null && HI(OT.marking))
+        out.push("<b>대인 방어</b>로 붙습니다 — 끌고 다니면 자리가 벌어집니다. <b>스위칭·오버래핑</b>으로 마크를 흔들고 빈 레인을 쓰세요.");
+      else if(OT.marking!=null && LO(OT.marking))
+        out.push("<b>지역 방어</b>입니다 — 형태가 잘 안 깨집니다. 줄 <b>사이(하프 스페이스)</b>에서 받는 선수를 만들어야 열립니다.");
+      if(OT.trap!=null && HI(OT.trap))
+        out.push("<b>오프사이드 트랩</b>을 자주 겁니다 — 침투를 반 박자 늦추고, 라인을 <b>등지고 받는</b> 선수를 먼저 쓰세요. 한 번 깨면 곧바로 1대1입니다.");
     }
     if(typeof gap==="number"){
       if(gap>=2.5)       out.push("전력이 처집니다 — 실점 없이 버티다 <b>후반 승부</b>를 보는 편이 낫습니다.");
@@ -6364,6 +6381,25 @@ function assignAITactics(t){
     const k=Math.abs(lean)>=4?2:1;   // 이정효(+4)급 극단 성향은 두 칸씩 민다
     if(lean>=2){ T.mentality=clamp(T.mentality+k,0,4); T.press=clamp(T.press+k,0,4); T.line=clamp(T.line+1,0,4); T.tempo=clamp(T.tempo+(k-1),0,4); }
     else if(lean<=-2){ T.mentality=clamp(T.mentality-k,0,4); T.counter=clamp(T.counter+k,0,4); T.line=clamp(T.line-1,0,4); }
+    /* 🛡️ ⚠ 배선 구멍 — 새로 넣은 수비 지시 셋(가담 인원·마킹·트랩)이 위에서 팀 슬라이더로만
+       뽑히고, 정작 <b>감독 성향(att−def)은 안 타고</b> 있었다. 바로 윗줄에서 성향·압박·라인을
+       밀면서 수비 지시만 그대로 두면, 수비형 감독과 공격형 감독의 수비가 똑같아진다. */
+    if(lean<=-2){        // 수비형 감독 — 전원이 내려오고, 형태를 지키고, 모험은 안 한다
+      T.defCommit=clamp(T.defCommit+k,0,4);
+      T.marking  =clamp(T.marking-1,0,4);
+      T.trap     =clamp(T.trap-k,0,4);
+    } else if(lean>=2){  // 공격형 감독 — 앞선을 남기고, 붙어서 뺏고, 라인을 밀어 올린다
+      T.defCommit=clamp(T.defCommit-k,0,4);
+      T.marking  =clamp(T.marking+1,0,4);
+      T.trap     =clamp(T.trap+k,0,4);
+    }
+    /* 🧠 전술 능력 — 판을 잘 읽는 감독일수록 지시가 <b>서로 맞물린다</b>.
+       라인이 높은데 트랩을 안 걸거나, 라인이 낮은데 트랩을 거는 어긋남을 스스로 정리한다. */
+    if(c.tac>=17){
+      if(T.line>=3 && T.trap<2) T.trap=2+R(2);
+      if(T.line<=1 && T.trap>1) T.trap=R(2);
+      if(T.line<=1 && T.defCommit<2) T.defCommit=2+R(2);
+    }
     /* 감독 선호 포메이션 — 시즌 정체성. 공격 성향은 3톱·2톱, 수비 성향은 5백·원톱 계열 */
     const FPOOL = lean>=2 ? ["4-3-3","4-2-3-1","4-2-2-2","3-4-3"]
       : lean<=-2 ? ["4-1-4-1","5-3-2","4-4-1-1","5-2-1-2"]
@@ -6411,6 +6447,16 @@ function assignAIRoles(t, onlyMissing){
   if(!t || t.isUser || !t.players) return;
   const T=t.tactic; if(!T) return;
   if(!T.role) T.role={};
+  /* 🧠 ⚠ 배선 구멍 — 이 함수는 <b>감독을 한 번도 보지 않았다.</b> 누가 인사이드 포워드고
+     누가 레지스타인지를 정하는 자리인데, 전술 능력 12 짜리 감독과 18 짜리 감독이
+     똑같은 폭의 무작위로 배치했다.
+     ─ 전술(tac) 능력이 두 가지를 바꾼다:
+       ① 무작위 폭 — 잘 읽는 감독은 덜 헤맨다(AI_ROLE_RAND ×0.55 ~ ×1.45)
+       ② 전술 궁합 가중 — 잘 읽는 감독은 「우리 전술에 맞는 역할」을 더 크게 본다 */
+  const _cT=(typeof coachOf==="function")?coachOf(t):null;
+  const _tacQ=_cT&&_cT.tac!=null ? clamp((_cT.tac-15)/5, -1.2, 1.2) : 0;
+  const _rnd = AI_ROLE_RAND*clamp(1-_tacQ*0.38, 0.55, 1.45);
+  const _tacW= AI_ROLE_TAC_W*clamp(1+_tacQ*0.45, 0.62, 1.55);
   // 좋은 선수부터 원하는 역할을 가져간다 — 플레이메이커 자리를 4순위 선수가 차지하지 않게
   const order=[...t.players].sort((a,b)=>(b.ovr||0)-(a.ovr||0));
   let pmUsed=0, roamUsed=0, cbSeen=0;
@@ -6421,7 +6467,7 @@ function assignAIRoles(t, onlyMissing){
     let best=null, bestS=-99, bestFx=null;
     for(const R0 of cands){
       const fx=normalizeFx(Object.assign({}, R0.fx(R0.duty[0])||{}));
-      let s=roleFit(p, R0.k)*AI_ROLE_FIT_W + aiRoleTacFit(fx, T)*AI_ROLE_TAC_W + Math.random()*AI_ROLE_RAND;
+      let s=roleFit(p, R0.k)*AI_ROLE_FIT_W + aiRoleTacFit(fx, T)*_tacW + Math.random()*_rnd;
       if((fx.pm||0)>0   && pmUsed>=1)   s-=1.6;   // 한 팀에 플레이메이커가 셋이면 서로 공을 뺏는다
       if((fx.roam||0)>0 && roamUsed>=1) s-=1.2;
       if(s>bestS){ bestS=s; best=R0; bestFx=fx; }
@@ -7319,9 +7365,12 @@ function stepMinute(M){
            확인해 보니 실시간 2D 엔진에는 지구력이 들어 있는데 분 단위 엔진에는 빠져 있었다.
            같은 선수가 내가 직접 지휘하면 지구력이 반영되고, 위임하면 반영되지 않았다.
            두 엔진이 같은 식을 쓰도록 맞춘다. */
-      const nf = x.p.attr ? clamp(1.24 - (attr20(x.p.attr.nat)-10)*0.026 - (attr20(x.p.attr.sta)-10)*0.014, 0.72, 1.26) : 1;
+      /* ⚠ 두 엔진이 갈라져 있었다 — 2D 엔진만 완화하면 AI 끼리의 경기(분 단위)는 예전 속도로
+         깎여 리그 전체 체력이 어긋난다. 식·계수·하한을 2D 와 똑같이 맞춘다.
+         (0.34 → 0.285 · 흔들림 0.14 → 0.10 · 지구력이 주역) */
+      const nf = x.p.attr ? clamp(1.24 - (attr20(x.p.attr.sta)-10)*0.026 - (attr20(x.p.attr.nat)-10)*0.012, 0.66, 1.26) : 1;
       const gkf = (x.p.pos==="GK" || x.slot==="GK") ? GK_STAM_K : 1;   // 🧤 골키퍼는 훨씬 덜 지친다
-      x.fit=Math.max(20, x.fit-(0.34*cf+Math.random()*0.14)*nf*ageWearK(x.p)*gkf);   // 노장은 후반에 더 빨리 지친다
+      x.fit=Math.max(20, x.fit-(0.285*cf+Math.random()*0.10)*nf*ageWearK(x.p)*gkf);   // 노장은 후반에 더 빨리 지친다
     } }
   if(M.xiDirty || M.min%7===0){ liveRates(M); M.xiDirty=false; }
   // 팀별로 "지난 분에 예고했던 결과 공개 → 이번 분 새 시도"를 한 묶음으로 처리한다 —
@@ -8166,7 +8215,13 @@ function applyMatchResult(M){
     }
     if(!M.opts.noTable){
       t.GF+=gf; t.GA+=ga;
-      const mdv=resultMorale(t, opp, ef, ea, isHome);
+      let mdv=resultMorale(t, opp, ef, ea, isHome);
+      /* 👔 선수 관리 — 좋은 감독의 라커룸은 <b>패배에 덜 무너지고</b>, 이겨도 덜 들뜬다.
+         AI 팀에만 건다(유저 팀 사기는 감독=플레이어가 라커룸 토크로 직접 다룬다). */
+      if(!t.isUser){
+        const _mk=aiManK(t);
+        mdv = mdv<0 ? mdv/Math.max(0.5,_mk) : mdv*_mk;   // man 높으면 하락은 완만, 상승은 조금 크게
+      }
       const setMor=(v)=>{ t.morale=Math.round(clamp(v,40,99)*100)/100; };
       if(gf>ga){t.W++; t.Pts+=3; t.form.push("W"); setMor(t.morale+mdv);}
       else if(gf===ga){t.Dw++; t.Pts+=1; t.form.push("D"); setMor(t.morale+mdv);}
@@ -15466,13 +15521,27 @@ function trainLoanee(t, p){
    선발·교체·명단 외 구분 없이 같은 속도·같은 양으로 회복한다 (제보). */
 function matchDayRecover(t){
   if(!t || !t.players) return;
+  /* 👔 ⚠ 배선 구멍 — 선수 관리(man)가 <b>AI 팀 경기에 전혀 닿지 않았다.</b>
+     쓰이는 곳이 두 군데뿐인데 둘 다 유저 쪽이었다(수석코치 위임 지휘력·수석코치 연봉).
+     ─ 선수 관리가 좋은 감독은 <b>선수를 덜 축내고 더 빨리 회복시킨다</b>. 리그 평균 15 기준
+       ±0.14 배. 눈에 띄는 크기는 아니지만 시즌이 쌓이면 스쿼드 상태에서 차이가 난다. */
+  const _mK=aiManK(t);
   for(const p of t.players){
     if(p.loan) continue;                        // 임대 나간 선수는 임대처에서 회복한다
-    const rm=dayRecMul(p); mFatDecay(p);        // 지난 경기의 잔여 피로도 하루만큼 빠진다
+    const rm=dayRecMul(p)*_mK; mFatDecay(p);    // 지난 경기의 잔여 피로도 하루만큼 빠진다
     if(p.inj>0){ p.cond=Math.round(clamp(p.cond+2*recoverMul(p),55,100)*10)/10; continue; }
     if(p.sulk>0) continue;                      // 태업 중인 선수는 회복도 더디다
     p.cond=Math.round(clamp(p.cond+MD_REST*RECOV_K*rm, 55, 100)*10)/10;
   }
+}
+/* 👔 AI 감독의 선수 관리 배수 — 회복에 곱한다 (유저 팀은 1, 감독 없으면 1) */
+function aiManK(t){
+  try{
+    if(!t || t.isUser) return 1;
+    const c=(typeof coachOf==="function")?coachOf(t):null;
+    if(!c || c.man==null) return 1;
+    return clamp(1+(c.man-15)*0.028, 0.86, 1.14);
+  }catch(e){ return 1; }
 }
 /* 🌏 해외 클럽(EACL·CWC) 하루치 회복 — 국내 구단과 같은 상수(REST_COND·RECOV_K·잔여 피로)를 쓴다.
    ⚠ 제보 — 「컨디션 관련 패치를 유저 구단·국내 AI·해외 AI의 선발/교체/그 외 명단에 똑같이
@@ -15509,7 +15578,7 @@ function applyDayToTeam(t, pl){
     for(const p of t.players){
       if(p.loan){ trainLoanee(t, p); continue; }
       developPlayer(t, p, null);                              // 쉬는 날에도 몸은 아주 조금 변한다
-      const rmR=dayRecMul(p); mFatDecay(p);                   // 지난 경기에서 많이 뛴 다리는 오늘도 무겁다
+      const rmR=dayRecMul(p)*aiManK(t); mFatDecay(p);         // 👔 AI 감독의 선수 관리가 회복 속도를 가른다
       if(p.sulk>0) continue;                                  // 태업 중인 선수는 회복도 더디다
       p.cond=Math.round(Math.round(clamp(p.cond+REST_COND*RECOV_K*rmR+(p.inj>0?1:0), 55, 100)*10)/10*10)/10;
     }
@@ -17470,6 +17539,40 @@ function startNewSeason(){
     const go = 0.25 + clamp((68-p.ovr)*0.035, 0, 0.35) + clamp((_a-30)*0.04, 0, 0.20);
     return Math.random() >= go;                                // 은퇴 / 해외 진출 / 하부 리그행
   });
+  /* 🌏 ⚠ 제보 — 「해외 이적시장 선수들도 늙으면 은퇴하나?」 확인해 보니 <b>둘 다 아니었다.</b>
+       ① 은퇴·정리 코드가 없다 — FA 시장(G.freeAgents)에는 36세 정리가 있는데 여기엔 없었다.
+       ② 그런데 <b>애초에 늙으면 안 되는 목록이었다.</b> mkOverseas 를 보면 생년을 시즌만큼
+          밀어서 「그 시즌의 그 나이」를 유지한다 — 이 시장은 실존 스타를 늘 같은 나이로
+          보여 주는 진열대라는 뜻이다. 그런데 그 규칙이 <b>만들 때 한 번만</b> 적용돼서,
+          이미 목록에 앉아 있는 선수는 해마다 그냥 늙었다(2026년 41세 → 2036년 51세).
+     ─ 그래서 「은퇴」가 아니라 <b>나이 고정</b>이 맞는 수리다. 해마다 원본 정의 기준으로
+       생년을 다시 맞춘다. 대신 원본이 없는 항목(에디터로 만든 선수 등)은 기준이 없으므로
+       예전 FA 시장과 같은 잣대로 늙고 떠난다. */
+  {
+    const _osDef={}; try{ for(const d of OVERSEAS_DEF) _osDef[d.name]=d; }catch(e){}
+    const _gone=[];
+    G.overseas=(G.overseas||[]).filter(p=>{
+      const _d=_osDef[p.osKey||p.name];
+      if(_d && _d.bd){
+        /* 진열대 선수 — 원본의 「기준 시즌 나이」로 되돌린다 (mkOverseas 와 같은 식) */
+        try{ p.by=parseInt(_d.bd.slice(0,4),10)
+                 + Math.max(0, (G.season||OS_BASE_SEASON)-OS_BASE_SEASON); }catch(e){}
+        return true;
+      }
+      /* 원본이 없는 항목 — 여기는 진짜로 나이를 먹는다 */
+      const _a=G.season-(p.by||2000);
+      if(_a>=38){ _gone.push(p); return false; }
+      if(_a<31) return true;
+      const _go=(_a>=36?0.62:_a>=35?0.48:_a>=33?0.30:0.15)
+              - clamp(((p.ovr||65)-70)*0.020, 0, 0.18);
+      if(Math.random()<_go){ _gone.push(p); return false; }
+      return true;
+    });
+    if(_gone.length){
+      if(!Array.isArray(G.osGone)) G.osGone=[];
+      for(const p of _gone) G.osGone.push(p.osKey||p.name);
+    }
+  }
   try{ poolTopUp(); }catch(e){}   // 🧮 리그 총원 평형 — 마지막에 모자란 만큼만 채운다
   buildSeason(true); setupACL();
   try{ cwcSetup(); }catch(e){ G.cwc=null; }   // 🌍 달력이 깔린 뒤에 편성한다 — 1월 날짜가 필요하다
@@ -24026,7 +24129,7 @@ function pgInit(){
   PG={ name:"", pos:"FW", pref:"ST", by:G.season-24, h:180, w:74, frn:0, pers:0,
        ovr:70, pot:78, stars:3, wage:2.0, ct:3, dest:"team", tid:G.userTeamId,
        osClub:"", osNat:"", mv:0, traits:[], attr:null, gkA:null, fam:null,
-       knm:"", natl:"" };   /* 🌐 외국인 — K리그 등록명·국적 (요청) */
+       knm:"", natl:"", armyDone:0 };   /* 🌐 외국인 — K리그 등록명·국적 · 🎖️ 병역 (요청) */
   pgGenAttrs(); pgGenFam();
 }
 /* 별 개수 → 내부 능력 역산 — 리그 평균(starRefLevel)에 앵커를 건 실시간 환산이라
@@ -24109,6 +24212,7 @@ function pgSet(k, v){
   else if(k==="h"){ const n=edNum(v,160,205,0); if(n!=null) PG.h=n; }
   else if(k==="w"){ const n=edNum(v,52,105,0); if(n!=null) PG.w=n; }
   else if(k==="frn") PG.frn=v?1:0;
+  else if(k==="armyDone") PG.armyDone=+v?1:0;   // 🎖️ 병역 (요청)
   else if(k==="pers"){ const n=edNum(v,0,3,0); if(n!=null) PG.pers=n; }
   else if(k==="ovr"){ const n=edNum(v,45,92,0); if(n!=null){ PG.ovr=n; if(PG.pot<n) PG.pot=n; pgGenAttrs(); } }
   else if(k==="pot"){ const n=edNum(v,90,200,0); if(n!=null) PG.pot=potFromDisp(pgFake(), n); }
@@ -24150,6 +24254,7 @@ function pgCreate(toList){
       if(_k && _k!==PG.name){ tmp.realName=PG.name; tmp.name=_k; }
       if((PG.natl||"").trim()) tmp.natl=PG.natl.trim(); }   /* 🌐 K리그 등록명·국적 (요청) */
     if(PG.mv>0) tmp.mvFix=PG.mv;
+    if(!PG.frn && +PG.armyDone) tmp.armyDone=1;      // 🎖️ 병역 완료 (외국인은 해당 없음)
     if(PG.dest==="os"){ tmp.osClub=PG.osClub; tmp.osNat=PG.osNat||(PG.frn?"해외":"대한민국"); }
     if(!Array.isArray(G.pgMade)) G.pgMade=[];
   if(!Array.isArray(G.tfLog)) G.tfLog=[];
@@ -24186,6 +24291,7 @@ function pgCreate(toList){
     if(_k && _k!==PG.name){ p.realName=PG.name; p.name=_k; }   /* 🌐 표시는 K리그 등록명, 본명은 보존 (요청) */
     if((PG.natl||"").trim()) p.natl=PG.natl.trim(); }
   p.gen=1;                                    // 생성 선수 표시
+  if(!PG.frn && +PG.armyDone) p.armyDone=1;   // 🎖️ 병역 완료 — 상무 차출 대상에서 빠진다
   if(PG.mv>0) p.mvFix=PG.mv;
   let where="";
   if(PG.dest==="team"){
@@ -24232,6 +24338,7 @@ function pgSnap(p, pg){
     osClub:p.osClub||null, osNat:p.osNat||null,
     s:G.season, d:G.day||0};
   if(p.mvFix!=null) o.mvFix=p.mvFix;
+  if(p.armyDone) o.armyDone=1;                // 🎖️ 병역 — 목록 보관·파일 공유에도 실린다
   if(p.attr){ o.attr={}; for(const k in p.attr) if(typeof p.attr[k]==="number") o.attr[k]=Math.round(p.attr[k]*100)/100; }
   if(p.gkA){ o.gkA={}; for(const k in p.gkA) if(typeof p.gkA[k]==="number") o.gkA[k]=Math.round(p.gkA[k]*100)/100; }
   if(p.posFam){ o.posFam={}; for(const k of FAM_POS) o.posFam[k]=Math.round(p.posFam[k]||0); }
@@ -24253,6 +24360,7 @@ function pgMaterialize(o){
   if(o.posFam) for(const f of FAM_POS) if(typeof o.posFam[f]==="number") p.posFam[f]=clamp(o.posFam[f],0,100);
   p.traits=(Array.isArray(o.traits)?o.traits:[]).filter(k=>TRAIT_BY_KEY[k]).slice(0,TRAIT_MAX);
   if(o.mvFix>0) p.mvFix=o.mvFix;
+  if(o.armyDone && !p.frn) p.armyDone=1;      // 🎖️ 병역
   p.gen=1;
   let where="";
   const t=o.dest==="team" && o.tid ? G.teams[o.tid] : null;
@@ -24402,6 +24510,8 @@ function playerGenView(){
         <option value="">— 선택 —</option>
         ${PG_NATIONS.map(n2=>`<option value="${n2}" ${PG.natl===n2?"selected":""}>${n2}</option>`).join("")}
       </select>`):""}
+    ${PG.frn?"":ED_ROW(`🎖️ 병역 <span class="small">— 군필이면 상무 차출 대상에서 빠집니다</span>`,
+      SEL("armyDone",[["0","미필"],["1","군 복무 완료"]],String(PG.armyDone||0)))}
     ${ED_ROW("성격", SEL("pers",[["0","프로페셔널"],["1","야심가"],["2","온화"],["3","다혈질"]],String(PG.pers)))}
     <div class="edSec">능력 <span class="small">— 기준 능력으로 초안을 뽑고, 아래에서 하나하나 다듬습니다</span></div>
     ${ED_ROW(`기준 능력 <span class="small">— 별을 고르고 🎲 다시 뽑기 (K리그 전체 기준)</span>`,
@@ -25672,7 +25782,12 @@ function pickPanel(d, div){
   const row=(k,v)=>`<div class="pkRow"><span class="pkK">${k}</span><span class="pkV">${v}</span></div>`;
   /* 🎨 사용자 요청 — 「팀 선택하면 나오는 팝업창도 고급스럽게」. 구단색 투톤 머리 그림 + 엠블럼 */
   const c2=d.col2||"#8b949e";
-  return `<div class="pkPanel" style="--tc:${d.col};--tc2:${c2};--tcGlow:${d.col}40;--tc2Glow:${c2}2a;--tcLine:${d.col}55">
+  const c3=d.col3||null;
+  const tri=c3
+    ? `--tcBand:linear-gradient(90deg,${d.col} 0 34%,${c3} 34% 66%,${c2} 66% 100%);`
+     +`--tcCrest:linear-gradient(145deg,${d.col} 0 36%,${c3} 36% 64%,${c2} 64% 100%);`
+    : "";
+  return `<div class="pkPanel" style="--tc:${d.col};--tc2:${c2};--tcGlow:${d.col}40;--tc2Glow:${c2}2a;--tcLine:${d.col}55;${tri}">
     <div class="pkHero">
       <div class="pkCrest" style="color:${(typeof isLightColor==="function"&&isLightColor(d.col))?"#0d1117":"#fff"}">${(d.short||d.name).slice(0,2)}</div>
       <div class="pkHead">
@@ -25867,8 +25982,14 @@ function renderTeamPick(){
     const glow=`${d.col}2e`, lineC=`${d.col}55`;
     const initial=(d.short||d.name).slice(0,2);
     const crestInk=(typeof isLightColor==="function"&&isLightColor(d.col))?"#0d1117":"#fff";
+    /* 🎨 세 번째 구단색이 있으면 띠와 엠블럼을 삼색으로 (수원 블루스타 = 청·백·적) */
+    const c3=d.col3||null;
+    const tri=c3
+      ? `--tcBand:linear-gradient(90deg,${d.col} 0 34%,${c3} 34% 66%,${c2} 66% 100%);`
+       +`--tcCrest:linear-gradient(145deg,${d.col} 0 36%,${c3} 36% 64%,${c2} 64% 100%);`
+      : "";
     return `<div class="teamcard ${pickSel===d.id?'sel':''}" onclick="pickTeam('${d.id}')"
-      style="--tc:${d.col};--tc2:${c2};--tcGlow:${glow};--tcLine:${lineC}">
+      style="--tc:${d.col};--tc2:${c2};--tcGlow:${glow};--tcLine:${lineC};${tri}">
       <div class="crest" style="color:${crestInk}">${initial}</div>
       <div class="nm" style="color:${dark?'#e8eef6':d.col}">${d.name}</div>
       <div class="st">${teamStars(avg, d.short||d.name)}<br>예산 <b style="color:#dbe6f2">${d.budget}억</b> · <span style="color:${ct.c}">${ct.ic} ${ct.n}</span></div>
@@ -54456,7 +54577,15 @@ const SLIDE_COMMIT=1.3;    // 슬라이딩 후 다시 일어나기까지 걸리�
 const AERIAL_MIN=0.34;     // 이 거리 이상 패스는 공중으로 뜬다
 /* 1분당 기본 체력 소모. 시뮬에서 실제로 측정한 분당 이동량(중앙값 약 1.30 정규화 단위 ≒ 90m,
    90분 8.1km)을 기준으로 잡았다. 평범한 주전이 풀타임을 뛰면 100 → 65 안팎으로 떨어진다. */
-const STAM_PER_MIN=0.28;
+/* 🔋 ⚠ 제보 — 「체력이 아직도 쫙쫙 닳는다」.
+   90분 분당 소모를 뜯어 보면(중립 전술 기준): 기본 0.28 + 흔들림 평균 0.07 = 0.35/분
+   → 90분에 31.5 소모, 종료 시 약 68. 여기에 압박·템포(condFactor)와 이동량 배수가 곱해져
+   높은 압박 + 빠른 템포면 0.52/분까지 올라 종료 시 45~55 였다.
+   ⚠ 게다가 최근에 흐른 공 경주(looseRace)·길목 읽기(startLaneCut)·수비 가담 인원이
+      들어오면서 <b>실제로 더 뛰게</b> 됐다 — 같은 계수로는 예전보다 더 깎인다.
+   ─ 기본 소모와 흔들림을 함께 내리고(0.28→0.235 · 0.14→0.10), 전술 배수의 폭도 좁힌다.
+     중립 0.35 → 0.285/분(종료 약 74) · 최대 압박·템포 0.52 → 0.40/분(종료 약 57). */
+const STAM_PER_MIN=0.235;
 const GK_STAM_K=0.45;      // 🧤 골키퍼의 체력 소모 — 필드 플레이어의 45%
 const STAM_REF_RUN=1.30;   // "평균적인 1분 이동량" 기준값
 const SP_ARRIVE=0.006;     // 세트피스 배치 자리 도착 판정 반경(약 0.4m) — 이 안에 들면 발을 멈춘다
@@ -67987,7 +68116,14 @@ class MatchSim{
         const work = Math.pow(clamp(_wRaw, 0.68, 1.28), 0.72);
         if(a) a._work=0;
         // 타고난 체력(nat)·지구력(sta)이 좋으면 덜 지친다
-        let natK = x.p.attr ? clamp(1.24 - (attr20(x.p.attr.nat)-10)*0.026 - (attr20(x.p.attr.sta)-10)*0.014, 0.72, 1.26) : 1;
+        /* 🔋 ⚠ 배선 정정 — <b>두 능력치의 역할이 뒤집혀 있었다.</b>
+           이 엔진의 다른 주석조차 「90분을 버티는 힘은 지구력이고, 다음 날 아침의 몸 상태는
+           타고난 체력이 가른다」고 써 놓았는데, 정작 <b>경기 중 소모</b>에서 타고난 체력(0.026)이
+           지구력(0.014)보다 두 배 무거웠다. 그래서 지구력을 올려도 90분이 안 버텨졌다.
+           ─ 경기 중은 지구력이 주역(0.026), 타고난 체력은 보조(0.012)로 뒤집는다.
+             회복 쪽(recoverMul)은 이미 타고난 체력만 본다 — 그게 맞는 배선이다.
+           하한도 0.72 → 0.66 으로 열어 지구력 특급이 확실히 버티게 한다. */
+        let natK = x.p.attr ? clamp(1.24 - (attr20(x.p.attr.sta)-10)*0.026 - (attr20(x.p.attr.nat)-10)*0.012, 0.66, 1.26) : 1;
         /* 💪 지구력은 「많이 뛴 날」에 값어치를 해야 한다 — 압박 전술을 스쿼드로 감당하는 길.
            평균 이상으로 뛴 만큼만 적용되므로, 서 있는 선수에게는 아무 차이가 없다. */
         if(work>1 && x.p.attr){
@@ -67999,7 +68135,7 @@ class MatchSim{
         const gkK = (x.p.pos==="GK" || x.slot==="GK") ? GK_STAM_K : 1;
         /* 🔥 폭염 — 소모가 가속된다. 추우면 조금 덜 지치지만 몸이 굳는다(가속 저하로 따로 반영) */
         const wxK = 1 + clamp(WX_NOW.heat||0, -1, 1)*0.26;
-        const drop = (STAM_PER_MIN*cf + Math.random()*0.14) * work * natK * ageWearK(x.p) * gkK * wxK * mins;
+        const drop = (STAM_PER_MIN*cf + Math.random()*0.10) * work * natK * ageWearK(x.p) * gkK * wxK * mins;
         x.fit=Math.max(25, x.fit - drop);
       }
     }
@@ -72576,6 +72712,7 @@ function coachStats(M, isHome){
     shotOn: S? mine.shotOn : 0,
     poss:  S ? pct(mine.poss, opp.poss) : 50,
     passOk: S && mine.pass>20 ? Math.round(mine.passOk/mine.pass*100) : null,
+    oPassOk: S && opp.pass>20 ? Math.round(opp.passOk/opp.pass*100) : null,   // 🧷 마킹 조언이 본다
     cross: S? mine.cross : 0,
     crossOk: S && mine.cross>0 ? Math.round(mine.crossOk/mine.cross*100) : null,
     takeOn: S? mine.takeOn : 0,
@@ -72938,6 +73075,42 @@ function renderCoachAdvice(){
         add(4, `🕵️ 상대 압박이 강한데 후방에서 계속 빼앗기고 있습니다(로스트 ${c.lost}회).
           짧은 빌드업을 고집하기보다 한 번씩 길게 넘겨 압박을 벗겨야 합니다.`, "def");
     }
+  }
+
+  /* ── 🛡️ 새 수비 지시 세 가지 (수비 가담 인원 · 마킹 방식 · 오프사이드 트랩) ──────
+     ⚠ 세부 전술에 손잡이를 만들어 놓고 조언이 그걸 모르면, 감독은 그 지시가 있는 줄도 모른다.
+        기존 조언이 「라인·압박·폭」만 말하던 자리에 세 지시를 얹는다. */
+  _tg="def";
+  {
+    const _dcT=(T.defCommit!=null?T.defCommit:1);      // 0~2
+    const _mkT=(T.marking!=null?T.marking:1);
+    const _trT=(T.trap!=null?T.trap:1);
+    const _lead=(isHome?M.hg-M.ag:M.ag-M.hg);
+    /* 🛡️ 수비 가담 인원 */
+    if(min>=30 && c.oZ3>=42 && _dcT<1.5)
+      add(3, `🛡️ 상대가 우리 진영에서 <b>${c.oZ3}%</b>를 보내는데 앞선이 그대로 남아 있습니다.
+        <b>수비 가담 인원</b>을 올리면 윙백이 내려와 백5가 서고 앞선 한 명이 중원을 메웁니다 — 박스 앞이 두꺼워집니다.`);
+    else if(min>=60 && _lead>0 && _dcT<1.5 && c.oShot>=c.shot)
+      add(4, `🛡️ 리드를 지키는 국면입니다. <b>수비 가담 인원</b>을 올려 줄을 하나 더 세우면 슈팅 각부터 사라집니다.`);
+    else if(_lead<0 && min>=65 && _dcT>=1.5)
+      add(3, `🛡️ 지고 있는데 <b>전원이 내려와</b> 있습니다 — 뺏어도 앞에 나갈 사람이 없습니다.
+        가담 인원을 낮춰 앞선을 남겨 두시죠.`, "att");
+    else if(_dcT>=1.5 && pitch.filter(x=>x.fit<66).length>=3)
+      add(5, `🛡️ 가담 인원을 높게 쓰는 만큼 <b>왕복 거리가 큽니다</b>(체력 저하 ${pitch.filter(x=>x.fit<66).length}명). 한 칸 낮추거나 교체로 다리를 바꿔 주셔야 합니다.`, "man");   // ⚠ tired 는 전원 정렬 목록이라 길이로 세면 안 된다
+    /* 🧷 마킹 방식 */
+    if(min>=25 && _mkT<1.05 && c.oPassOk!=null && c.oPassOk>=84)
+      add(4, `🧷 상대가 <b>패스 성공률 ${c.oPassOk}%</b>로 편하게 돌리고 있습니다. 지역으로 서 있으면 좋은 선수를 자유롭게 두는 셈입니다 —
+        <b>마킹 방식</b>을 대인 쪽으로 옮겨 중심을 지우는 게 낫습니다.`);
+    else if(_mkT>=1.5 && c.oZ3>=40 && min>=35)
+      add(4, `🧷 <b>대인 방어</b>로 붙어 다니다 형태가 벌어지고 있습니다(상대 우리 진영 점유 ${c.oZ3}%).
+        지역 쪽으로 한 칸 돌려 줄 간격부터 잡으시죠.`);
+    /* 🪤 오프사이드 트랩 */
+    if(T.line>=1.5 && _trT<1.05 && min>=20)
+      add(5, `🪤 라인을 높게 쓰면서 <b>트랩을 안 걸고</b> 있습니다. 뒷공간을 내주기만 하는 상태입니다 — 트랩 빈도를 올리면 그 공간이 함정이 됩니다.`);
+    else if(_trT>=1.5 && T.line<=0.5)
+      add(6, `🪤 라인이 낮은데 <b>트랩</b>을 자주 겁니다. 내려앉은 블록의 트랩은 걸리지 않습니다 — 라인을 올리든 트랩을 줄이든 하나로 맞춰야 합니다.`);
+    else if(_trT>=1.5 && c.oShotClose!=null && c.oShotClose>=4 && min>=40)
+      add(3, `🪤 <b>트랩이 뚫리고 있습니다</b> — 박스 근처 슛을 ${c.oShotClose}개 내줬습니다. 한 번 넘어가면 곧바로 1대1입니다. 빈도를 낮추시죠.`);
   }
 
   /* ── 📈 지금의 흐름 (총합이 가리는 것) ─────────────── */
@@ -79656,7 +79829,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260912-9900";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260913-1400";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
