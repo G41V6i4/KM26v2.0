@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260913-3400-->
+<!--B:20260913-4200-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22913,6 +22913,30 @@ function drawSimWatch(cv, simOverride){
       ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(pt.x+6, pt.y-16, 7, 10);
     }
   }
+  /* 🟨🔵 판정 표시 — 반칙한 선수의 바둑알 위에 띄운다 (요청).
+     카드가 나오면 카드를, 카드 없는 반칙(주의·구두경고 포함)이면 휘슬을 그린다.
+     ⚠ 주심 옆에만 카드를 그리면 「누가 반칙했는지」가 화면에서 안 읽힌다. */
+  {
+    const fs=s.ball.foulScene;
+    if(fs && fs.foulerId){
+      let fa=null;
+      for(const q of s.agents) if(q.id===fs.foulerId){ fa=q; break; }
+      if(fa){
+        const pt=pitchToCanvasXY(cv, IX(fa), IY(fa));
+        const top=pt.y-(5.6+14)*K2;
+        const hasCard = fs.card && fs.card!=="VERBAL";
+        if(hasCard){
+          const w=8*K2, h=11.5*K2;
+          ctx.fillStyle = fs.card==="RED" ? "#f85149" : "#e3b341";
+          ctx.fillRect(pt.x-w/2, top, w, h);
+          ctx.strokeStyle="rgba(0,0,0,.75)"; ctx.lineWidth=1*K2;
+          ctx.strokeRect(pt.x-w/2, top, w, h);
+        } else {
+          drawWhistle2D(ctx, pt.x-2.6*K2, top+5.6*K2, 1.05*K2);   /* 카드와 같은 자리에 가운데 맞춤 */
+        }
+      }
+    }
+  }
   const bz = s.ball._rz===undefined ? (s.ball.z||0) : lerp(s.ball._rz, s.ball.z||0, AL);
   /* 🎾 빠른 공은 잔상을 남긴다 — ⚠ 제보 원문 — 「공이 패스나 슈팅으로 이동되어지다가 확
      빨라져서 스킵되는거같이 보이는 현상」.
@@ -36587,8 +36611,36 @@ function snapTactic(t){
   return {tac:o, fam:famOf(t), sig:tacticSig(t), useL:(t._famUseL||0),
           base:(t._sigBase||tacticSig(t)), dev:(t._devPen||0)};
 }
+/* 🎯 지금 화면에 보이는 역할을 전술에 <b>못 박는다</b>.
+   ⚠ 제보 — 「전술 두 개를 번갈아 쓰면 롤이랑 임무가 지 멋대로 막 바뀐다. 저장해도 그렇다」.
+      원인은 「바뀐다」가 아니라 <b>애초에 저장된 적이 없다</b>는 것이었다.
+      감독이 역할 메뉴를 한 번도 열지 않은 선수는 t.tactic.role 에 아무 값도 없다.
+      화면에 보이는 역할은 그때그때 getRole() 이 계산해 낸 값이다 —
+        · 그 선수가 가장 능숙한 역할(rolesSortedFor 1순위)을 시즌·자리그룹 단위로 캐시
+        · 자리 그룹이 바뀌면(포메이션 전환) 다시 계산
+        · 시즌이 바뀌거나 능력치가 자라면 1순위 자체가 달라진다
+      그래서 「내가 아무것도 안 건드렸는데 역할이 달라져 있다」가 되고,
+      저장을 눌러도 <b>저장할 값이 없어서</b> 아무 일도 일어나지 않았다.
+   ─ 프리셋에 담거나 프리셋을 불러올 때, 지금 보이는 역할을 그대로 role 맵에 적는다.
+     한 번 적히면 감독이 직접 바꾸기 전까지 다시는 저절로 변하지 않는다.
+     이미 유효한 지시가 있는 선수는 손대지 않는다. */
+function pinRoles(t){
+  if(!t || !t.tactic) return;
+  const rMap = t.tactic.role || (t.tactic.role={});
+  let xi=[]; try{ xi=bestXI(t)||[]; }catch(e){ return; }
+  for(const p of xi){
+    const sl=(t.tactic.slot||{})[p.id] || (p.pos==="GK" ? "GK" : null);
+    if(!sl) continue;
+    const g=ROLE_GRP[sl]||"CM";
+    const cur=rMap[p.id];
+    if(cur && ROLE_BY_KEY[cur.r] && ROLE_BY_KEY[cur.r].grp.includes(g)) continue;
+    let rd=null; try{ rd=getRole(t, p, sl); }catch(e){}
+    if(rd && rd.r && ROLE_BY_KEY[rd.r]) rMap[p.id]={r:rd.r, d:rd.d};
+  }
+}
 function storeCurPreset(t){
   const ps=tacPresets(t);
+  try{ pinRoles(t); }catch(e){}          // 🎯 보이는 대로 못 박고 담는다
   ps[clamp(t.tactic.presetCur,0,PRESET_N-1)]=snapTactic(t);
 }
 /* 옛 세이브 정리 — 이미 저장된 프리셋 안에 남아 있는 인선 데이터를 걷어낸다.
@@ -36655,6 +36707,27 @@ function remapXIToFormation(t){
     ns[p.id]=s;
     const b=bandOf[s]; if(b) nz[p.id]=b;
   }
+  /* 🎯 자리에 내려 둔 지시는 자리에 남는다 — 교체(subIn)와 같은 규칙.
+     ⚠ 역할은 <b>선수 id</b>로 저장되는데 여기서 선발을 새 자리에 다시 앉힌다. 그래서
+        로테이션을 돌리거나 포메이션이 다른 전술로 갈아타면, 그 자리에 지정해 둔 지시가
+        <b>새로 그 자리에 온 선수에게 이어지지 않고 증발</b>했다(라움도이터로 세워 둔
+        왼쪽 윙어 자리가 교체 한 번에 그냥 '윙'이 되는 것과 같은 증상).
+        교체 처리는 이미 자리를 따라 인계하는데 전술 전환·재배치만 빠져 있었다. */
+  {
+    const oldRole=t.tactic.role||{};
+    const slotRole={};                                   // 자리 → 그 자리에 내려져 있던 지시
+    for(const pid in oldSlot){ const r=oldRole[pid]; if(r) slotRole[oldSlot[pid]]=r; }
+    const nr=Object.assign({}, oldRole);
+    for(const p of field){
+      const s=ns[p.id]; if(!s) continue;
+      const g=ROLE_GRP[s]||"CM";
+      const mine=oldRole[p.id];
+      if(mine && ROLE_BY_KEY[mine.r] && ROLE_BY_KEY[mine.r].grp.includes(g)) continue;   // 내 지시가 그대로 유효
+      const inh=slotRole[s];
+      if(inh && ROLE_BY_KEY[inh.r] && ROLE_BY_KEY[inh.r].grp.includes(g)) nr[p.id]={r:inh.r, d:inh.d};
+    }
+    t.tactic.role=nr;
+  }
   t.tactic.slot=ns; t.tactic.zone=nz;
 }
 function usePreset(i){
@@ -36686,6 +36759,7 @@ function usePreset(i){
     t.tactic.benchExcl=keepBench.exc;
     t.tactic.benchManual=keepBench.man;
     try{ remapXIToFormation(t); }catch(e){}   // 지금 선발을 새 포메이션 자리에 앉힌다
+    try{ pinRoles(t); }catch(e){}             // 🎯 불러온 뒤에도 보이는 대로 못 박는다
     t.fam=nx.fam;                          // 그 전술로 쌓아 둔 조직력이 돌아온다
     t._famUseL=nx.useL||0;                 // 그 판으로 뛴 실전 감각도 함께 돌아온다
     t._sig=nx.sig;
@@ -52849,6 +52923,9 @@ function computeSceneFrame(e, t){
       ball={x:spot.x, y:spot.y}; // 공은 파울 지점에 멈춰 있다
       if(sc.kind==="foul"){
         ring={id:sc.playerId, color:"#d29922", alpha:0.35+0.65*Math.abs(Math.sin(t*Math.PI*4))};
+        /* 🔵 카드 없는 반칙 — 주심이 휘슬을 든다. 카드 장면과 같은 문법으로 보이게 한다(요청). */
+        const blown=seg(t,0.30,0.50);
+        if(blown>0) card={color:"#eaf2fb", at:refSpot, raise:easeOutBack(blown), whistle:true};
         if(t>0.30) badge="🔵 파울";
       } else {
         const shown=seg(t,0.55,0.72); // 심판이 카드를 꺼내 높이 든다
@@ -53974,8 +54051,26 @@ function drawRefXY(ctx, cv, nx, ny){
 function drawCard2D(ctx, cv, card){
   const {x,y}=pitchToCanvasXY(cv, card.at.x, card.at.y);
   const top=y-(13+(card.raise||0)*15), w=9, h=13;
+  if(card.whistle){ drawWhistle2D(ctx, x+9, top+6, 1); return; }
   ctx.fillStyle=card.color; ctx.fillRect(x+5, top, w, h);
   ctx.lineWidth=1; ctx.strokeStyle="rgba(0,0,0,.65)"; ctx.strokeRect(x+5, top, w, h);
+}
+/* 🔵 휘슬 — 「반칙」 표시. 카드가 나오지 않는 반칙은 화면에 아무 표시가 없어
+   왜 경기가 끊겼는지 읽히지 않았다(요청). 카드와 같은 자리·같은 크기로 그린다.
+   몸통(원) + 물부리(사다리꼴) + 구멍(점) — 작아도 휘슬로 읽힌다. */
+function drawWhistle2D(ctx, x, y, k){
+  k=k||1;
+  ctx.save();
+  ctx.lineJoin="round";
+  ctx.fillStyle="#eaf2fb"; ctx.strokeStyle="rgba(0,0,0,.7)"; ctx.lineWidth=1*k;
+  ctx.beginPath();                                  // 물부리
+  ctx.moveTo(x+2.2*k, y-3.4*k); ctx.lineTo(x+9.5*k, y-2.4*k);
+  ctx.lineTo(x+9.5*k, y+0.8*k); ctx.lineTo(x+2.2*k, y+1.8*k); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y-0.6*k, 4.3*k, 0, Math.PI*2); ctx.fill(); ctx.stroke();   // 몸통
+  ctx.fillStyle="#0d1117";
+  ctx.beginPath(); ctx.arc(x-0.4*k, y-0.9*k, 1.35*k, 0, Math.PI*2); ctx.fill();          // 구멍
+  ctx.restore();
 }
 function pitch2DCtx(){
   const cv=document.getElementById("pitch2d");
@@ -54361,7 +54456,10 @@ const MATCH_CLOCK_SCALE=1;
       TEMPO 4.50 → 팀당 패스 138회 · 슛 12회 · 골 1.5
    즉 「오래 쥐면서 패스도 많이」는 이 손잡이로는 불가능하다.
    패스를 늘리려면 소유를 잃지 않아야 한다 — 받을 자리를 만드는 쪽이 답이다. */
-const TEMPO=3.20;
+/* ⚠ 패스 770회/경기(실축 850) — 소유 시간이 조금 길다. 주석의 실측표에 따르면
+   TEMPO 2.20 → 팀당 273패스 · 3.20 → 212패스 로 매우 민감하고, 낮출수록 슛도 는다.
+   슛이 지금 실축(23)에 딱 맞아 있으므로 크게 건드리지 않고 3.05 만 시도한다. */
+const TEMPO=3.05;
 const PASS_SPEED=0.42;     // 패스 기본 속도(정규화 단위/초)
 const CTRL_RADIUS=0.030;   // 이 반경 안에 들어오면 볼을 잡는다
 /* ═══════════════════════════════════════════════════════════════
@@ -54916,7 +55014,7 @@ function oneTouchEval(a, b, opps, gk){
        11~17m 의 「받자마자 그냥 때리기」만 강하게 누른다. */
   /* ⚠ 돌파·태클 시도를 줄이면 캐리어가 공을 덜 잃어 공격이 길어지고 슛이 되레 는다
      (2400→2600 실측: 슛 24.9→27.9). 그 되돌아온 몫을 여기서 다시 깎는다. */
-  const need = inBox ? (1.32 + clamp((g.distM-6)/11, 0, 1)*0.75) : 1.98;
+  const need = inBox ? (1.36 + clamp((g.distM-6)/11, 0, 1)*0.85) : 1.98;   /* 슛 27.1(실축 23) — 중거리를 조금 더 */
   const ok = s>=need;
   return {ok, score:s, need, g, blk, inBox, aerial, speedK, inLine, faceK};
 }
@@ -55008,9 +55106,11 @@ const BLOCK_P=0.95;
       「걷어낸 공이 자기 골라인을 넘는다」는 물리 결과(advanceLoose → cornerKick)에서 나온다.
       즉 코너를 실축 수준(90분 9~10회)까지 낮추려면 이 손잡이가 아니라
       걷어내기 방향·세기를 손봐야 한다. 지금은 90분 환산 약 12.6 회 — 실축보다 30% 많다. */
-const BLOCK_CORNER_P=0.26;   // 골문 앞에서 막힌 슛이 골라인을 넘어갈 확률 (0.52 → 절반)
+const BLOCK_CORNER_P=0.52;   // 골문 앞에서 막힌 슛이 골라인을 넘어갈 확률 (0.26 → 0.42(코너 8.7) → 0.52. 실축 10)
 const CROSS_CORNER_P=0.26;   // 바이라인 근처에서 막힌 크로스가 골라인을 넘어갈 확률
-const ACC_BASE=0.07;        // 유효슈팅 기준선
+/* 📏 유효슛 7.07/경기 · 유효슛% 30.6 (실축 8 · 35%). 슛 총량(22.3)은 맞는데
+   골문 안으로 가는 비율이 낮다 — 기준선을 올린다. 0.07 → 0.115 */
+const ACC_BASE=0.150;       // 유효슈팅 기준선 (0.07 → 0.115(유효슛 7.58) → 0.150. 실축 8)
 /* 🧤 골키퍼 세이브 물리 — 확률이 아니라 시간과 거리로 막는다 */
 /* 🧤 가만히 서서 손이 닿는 범위 — 키와 점프 도달력이 정한다.
    Reflexes 를 선방 확률에 곱하는 대신, 이렇게 「몸이 실제로 닿는 거리」로 만든다. */
@@ -55076,7 +55176,8 @@ const GK_HOLD_MAX=3.2;             // 🧤 키퍼가 공을 안고 버틸 수 �
 /* 📏 세 번 재 보니 1.80→64.7% · 1.86→75.2% · 1.92→74.1% 로 <b>단조롭지 않다</b> —
    n=30 에서 선방률의 짝 차이 SE 가 5pp 안팎이라 이 구간은 노이즈에 묻힌다.
    같은 세 빌드의 골은 2.43 · 1.87 · 2.03 (평균 2.1, 실축 2.45) 이므로 조금 내린다. */
-const SAVE_BASE=1.74;
+/* n=60 확인: 1.74 → 선방률 72.2%(실축 70) · 골 2.18(실축 2.45). 조금 내린다. */
+const SAVE_BASE=1.62;
 const SHOT_DIV=46;          // 거리 감쇠 분모 — 작을수록 먼 거리 슛이 줄어든다
 /* 🎯 「키퍼와 1대1」 하한선이 성립하는 최소 골문 각(rad) — evaluateShot 주석 참고.
    0.30 ≈ 17°: 정면 24m 에서 보이는 골문 각. 측면 12m·전방 12m 지점(0.31)은 통과,
@@ -55694,7 +55795,7 @@ function meTuneSet(k, v){
       낙하점 경주로 경합 자체가 2배가 됐는데 확률을 덜 내린 탓이다. */
 /* ⚠ 공중볼 경합이 경기당 250회나 잡히므로 이 확률 하나가 파울 총량을 지배한다
    (0.075 × 250 ≈ 19회 = 파울 30회의 3분의 2). 실축 파울 24회에 맞춰 내린다. */
-const AERIAL_FOUL_P=0.042;   // 공중볼 경합에서 파울이 날 확률 (0.050 → 파울 28.3. 실축 24)
+const AERIAL_FOUL_P=0.048;   // 공중볼 경합에서 파울이 날 확률 (0.050 → 0.042 → 파울 21.9(실축 24) 라 조금 되돌린다)
 const SHIRT_FOUL_P=0.0055;   // 제쳐진 수비수가 잡아챌 틱당 확률 (0.0110 → 절반)
 const TACKLE_WON_FOUL=0.40;  // 「공은 따냈는데 파울」 배율 — evW.won 에 곱한다
 const TAKEON_RANGE=0.042;    // 이 거리(약 2.8m) 안에서 앞을 막고 있으면 돌파 대상
@@ -55916,7 +56017,7 @@ function lbAnt(p){
 /* ⚠ 이 값은 「시계가 2배로 흐르던 시절」 90분 기록을 채우려고 올려 둔 보정이었다.
    시계를 1:1 로 되돌린 뒤에도 남아 있어 이중 계산이 되고 있었다 → 0 으로 내린다. */
 const SHOT_BIAS_ADJ=0.00;    // 슛 남발 억제 (1대1 하한선은 그대로 유지된다)
-const CROSS_ADJ=0.30;         // 크로스 남발 억제 (0.05 → 박스에 사람이 생기자 47.4회/경기. 실축 38)   // 포지션 규율 (테스트에서 조정 가능)
+const CROSS_ADJ=0.42;         // 크로스 남발 억제 (0.05 → 0.30 → 42.2회/경기(실축 38) 라 조금 더)   // 포지션 규율 (테스트에서 조정 가능)
 const SPACING_R=0.055;       // 같은 팀끼리 유지하려는 간격 (약 3.7m) — 서로 겹쳐 뛰지 않게
 const SPACING_PUSH=0.006;    // 그 간격을 지키려 목표를 옆으로 미는 힘
 const PUSH_MAX=0.011;        // 한 틱에 밀려나는 최대 거리 (약 0.75m)
@@ -56559,6 +56660,19 @@ function evaluateShot(a, opps, ctx){
   // 이걸 작게 보면 "앞이 비었는데도 옆으로 빼주는" 장면이 계속 나온다.
   else if(blk.list.length===0)               score += 0.45;
   else if(blk.near===0)                      score += 0.30;   // 몸으로 막을 만큼 붙은 수비수가 없다
+  /* 🎯 컷백을 받아 놓은 공 — 실축에서 이 자리는 <b>때리는 자리</b>다.
+     ⚠ 위의 「키퍼와 1대1」 하한선은 몸에 붙은 상대가 없어야(nearOpp>3.7m) 성립한다.
+        그런데 컷백은 <b>정의상</b> 수비가 등을 보이며 따라 들어오는 상황이라 늘 누군가 가깝다.
+        그래서 그 하한선이 한 번도 걸리지 않았고, 받은 선수는 매번 옆으로 빼 줬다
+        (실측: 컷백을 받은 5.33회 중 3.67회가 슛 없이 끝났다).
+        컷백이 무서운 이유는 공간이 아니라 <b>수비가 반대쪽을 보고 있다</b>는 것이다 —
+        몸 거리 대신 <b>슛 통로</b>만 본다.
+     ⚠ 이 블록은 반드시 위 if/else 사슬 <b>뒤</b>에 있어야 한다. 사이에 끼우면 아래 두
+        `else if` 가 이 조건에 붙어 버려, 1대1 하한선 위에 통로 보너스가 겹쳐 얹힌다. */
+  if(ctx.cutback && g.distM<22 && g.angle>=0.18){
+    score = Math.max(score, 0.95 + clamp((22-g.distM)/22, 0, 1)*0.55
+                                 - clamp(1-nb/0.075, 0, 1)*0.45);
+  }
   return {g, q, score, clear:blk.list.length===0, near:blk.near, nearOpp};
 }
    // 페널티 박스 (공격 방향 기준)
@@ -56908,6 +57022,10 @@ function evaluateCross(carrier, mates, opps, ctx){
      좋은 공간을 찾았을 때만 값이 오르도록 눌러서 얹는다. */
   let score = -1.45 + clamp(best.score-0.55, 0, 2.2)*0.42 + skill*0.50
             - Math.max(0, best.dist-0.30)*1.4 - selfPress*0.62 + cf*0.34;
+  /* 🚩 오프사이드 위치의 동료에게 올리지 않는다 — 일반 패스에는 이 눈이 있었는데(§오프사이드
+     인지) 크로스에는 없었다. 크로서도 부심 깃발을 본다. 다만 완전히 막지는 않는다 —
+     실축에서도 크로스가 오프사이드로 걸리는 장면은 나온다. */
+  try{ if(best.A && best.A.m && isOffsidePos(best.A.m, carrier, opps, dir)) score -= 1.20; }catch(e){}
   if(best.z===CZONE.CUTBACK) score += 0.16;
   if(type===CROSS_TYPE.EARLY) score -= 0.42 - (FX(carrier,"earlyCross")>0.3?0.14:0);
   return { type, pos, zone:best.z, traj:best.traj, aerial:best.aerial,
@@ -57524,7 +57642,8 @@ function decideCrossDelivery(carrier, cr, ctx){
 }
 const EARLY_RUN_P=0.014;      // 라인을 미리 깨고 나가는 빈도
 const EARLY_RUN_LEAD=0.055;  // 그때 라인을 넘는 깊이(약 3.7m)
-const OFFSIDE_SEEN=0.011;
+const OFFSIDE_SEEN=0.002;   /* 패서가 「아슬아슬해서 못 본다」고 넘기는 폭(≈0.7m → 0.3m).
+   0.011 에서 오프사이드가 경기당 7.0 회(실축 4)라 좁힌다 — 좁힐수록 명백한 위치를 더 피한다. */
 /* ⚡ 좌표 세대 — 선수 좌표가 바뀔 때마다 올린다. 「이 배열·이 틱에서 이미 구한 값」을
    재사용하는 캐시(오프사이드 라인 등)가 스스로 낡음을 알아채는 기준이다. */
 let SQ_GEN=0;  // 패서가 "명백한 오프사이드"로 인지하는 최소 차이 (이보다 아슬아슬하면 못 본다)
@@ -61971,9 +62090,13 @@ class MatchSim{
     this.stats[a.side].lost++;
     this.cap(a.side, COMM.lvTakeOnLose, {p:this.nm(a)});
     if(Math.random() < TAKEON_FAIL_LOSS){
-      this.stats[target.side].tackleWon++; this.stats[target.side].tackle++;
-      if(Math.random()<0.35) this.looseBall(a, 0.22);    // 서로 엉켜 흘러나간다
-      else this.giveTo(target);                          // 수비수가 그대로 뺏는다
+      /* ⚠ 태클 성공률이 80%(실축 60%)로 찍히던 두 번째 출처가 여기였다.
+         돌파를 막아낸 건 태클이 맞지만, <b>서로 엉켜 공이 흘러나간</b> 경우까지
+         「따냈다」로 세고 있었다. 실축 집계에서 그건 성공한 태클이 아니다.
+         (경기 흐름은 그대로 — 바뀌는 건 집계뿐이다) */
+      this.stats[target.side].tackle++;
+      if(Math.random()<0.35){ this.looseBall(a, 0.22); }  // 서로 엉켜 흘러나간다
+      else { this.stats[target.side].tackleWon++; this.giveTo(target); }   // 수비수가 그대로 뺏는다
       return true;
     }
     return false;
@@ -62390,6 +62513,15 @@ class MatchSim{
               }
               if(!ah) b.hold=0.05;   // 지금 판단하라 — act()의 강제 슛 티어가 받는다
             }
+          }
+          /* 🎯 컷백을 받은 선수 — 잡자마자 때린다.
+             ⚠ 컷백 하한선을 evaluateShot 에 넣었는데도 슛이 안 늘었던 진짜 이유가 여기였다:
+                공을 잡으면 컨트롤 시간(hold)이 TEMPO 배율까지 곱해 <b>6~10초</b>가 된다.
+                그 사이 수비가 다 돌아와 다음 판단에서는 이미 슛 자리가 아니다.
+                실축에서 컷백을 받은 선수는 한 박자 안에 때린다 — 그 한 박자를 여기서 준다. */
+          if(carrier._cbFrom!=null && b.hold>0.40){
+            const gc=shotGeom(carrier);
+            if(gc.distM<22 && gc.angle>0.18) b.hold=0.35;
           }
         }
         /* 🚀 압박 순환 타이머 — 우리 진영에서 눌린 채(압박·재순환·탈출) 돌린 시간.
@@ -64066,7 +64198,11 @@ class MatchSim{
        ─ 슛이 빗나가면 상대 골킥·역습이 되고, 크로스가 걷히면 상대 진영에서 소유가 넘어간다.
           그 자리의 상대 기준 골 기대값이 곧 대가다. */
     // 슛 — 패스·크로스와 같은 점수 척도로 겨룬다. 각이 열려 있고 앞이 비었으면 때린다.
-    let shot=evaluateShot(carrier, opps, {selfPress, mentality:T.mentality, longShot:T.longShot});
+    let shot=evaluateShot(carrier, opps, {selfPress, mentality:T.mentality, longShot:T.longShot,
+      /* ⚠ 창을 2.2초로 잡았다가 <b>한 번도 안 걸렸다</b> — 공을 잡은 뒤의 컨트롤 시간(hold)이
+         TEMPO 배율까지 곱해 그보다 길다. 즉 다음 판단이 올 때는 이미 창이 닫혀 있었다.
+         시간이 아니라 <b>소유</b>로 잡는다 — 차거나 올리거나 쏘는 순간 지운다(아래 세 곳). */
+      cutback:(carrier._cbFrom!=null && this.t-carrier._cbFrom < 8.0)});
     /* ⑤ 슛·크로스도 <b>실패하면 넘어간다</b>는 대가를 문다 — 패스와 같은 자(골 확률 단위).
        빗나간 슛은 골킥, 걷힌 크로스는 상대 소유다. 그 자리의 상대 기준 골 기대값이 대가다.
        골문 앞에서는 이 값이 거의 0 이라 그대로 때리고, 먼 거리에서는 값이 커져 억제된다 —
@@ -64363,6 +64499,7 @@ class MatchSim{
       } else if(this.t>=ot0.until) b._oneTwo=null;
     }
     const opt=plan.opt||plan;
+    carrier._cbFrom=null;                    // 🎯 컷백 창 종료 — 찼다
     st.pass++; st.passLen+=opt.dist;
     if(opt.dist>0.45) st.longPass++;   // 30m 이상을 롱패스로 본다
     const ratio=opt.dist>1e-6 ? opt.forward/opt.dist : 0;   // 전진 성분의 비율(각도)로 분류
@@ -64705,6 +64842,7 @@ class MatchSim{
       : (cr.traj===CROSS_TRAJ.LOW)
         ? ["🛴 {p}, 낮게 깔아 보냅니다!","🛴 {p}의 낮은 크로스 — 문전을 가로지릅니다"]
       : COMM.lvCross, {p:this.nm(carrier)}, true);
+    carrier._cbFrom=null;                    // 🎯 컷백 창 종료 — 다시 올렸다
     b.aerial=cr.aerial;                      // 낮은 크로스·컷백은 땅볼
     b.isCross=true; b.crossType=cr.type; b.crossZone=cr.zone; b.crossTraj=cr.traj;
     // 크로스 정확도 — 능력치가 낮으면 목표에서 벗어나 흘러간다
@@ -64834,27 +64972,42 @@ class MatchSim{
        실축 4). 침투 지점을 라인 앞으로 당겨 놓는다 — 실제 공격수도 라인에 맞춰 선다. */
     let _line;
     try{ _line=offsideLineX(this.side(this.opp(carrier.side)), dir); }catch(e){ _line=null; }
+    /* 📏 20260913-3500 계측 — 컷백 5.0회/경기 중 <b>4.33회(87%)가 슛으로 이어지지 않는다.</b>
+       원인: 여기서 니어·중앙·파포스트 셋만 채웠다. 컷백이 떨어지는 자리는 페널티 마크 뒤
+       (박스 가장자리, adv≈0.846)인데 <b>아무도 배정되지 않았다</b> — 공만 가고 사람이 없었다.
+       ─ 실축에서 그 자리는 뒤늦게 들어오는 미드필더의 자리다. 캐리어가 바이라인 부근까지
+         파고들었을 때만 네 번째 자리를 연다(멀리서 올리는 크로스에 컷백은 성립하지 않는다). */
+    const _deep = advOf(carrier, dir) > 0.875;
     let zpts;
-    try{ zpts=crossZonePoints(carrier, dir).filter(p=>p.z===CZONE.NEAR||p.z===CZONE.CENTRAL||p.z===CZONE.FAR); }
+    try{ zpts=crossZonePoints(carrier, dir).filter(p=>
+           p.z===CZONE.NEAR||p.z===CZONE.CENTRAL||p.z===CZONE.FAR||(_deep && p.z===CZONE.CUTBACK)); }
     catch(e){ return; }
     const mates=this.side(carrier.side);
     const taken={};
     for(const p of zpts){
+      /* 컷백 자리는 성격이 다르다 — 문전으로 달려드는 공격수가 아니라
+         「뒤에서 늦게 들어오는 미드필더」다. 부르는 대상도, 부르는 거리도 따로 본다. */
+      const _cut = (p.z===CZONE.CUTBACK);
       let best=null, bd=1e9;
       for(const m of mates){
         if(m===carrier || m.slot==="GK" || taken[m.id]) continue;
         const band=SLOT_BAND[m.slot];
-        if(band!=="FW" && band!=="AM" && band!=="MF") continue;
-        if(advOf(m, dir)<0.50) continue;              // 아직 뒤에 있는 선수는 부르지 않는다
+        if(_cut){
+          if(band!=="MF" && band!=="AM" && band!=="DM") continue;
+          if(advOf(m, dir)<0.42) continue;
+        } else {
+          if(band!=="FW" && band!=="AM" && band!=="MF") continue;
+          if(advOf(m, dir)<0.50) continue;            // 아직 뒤에 있는 선수는 부르지 않는다
+        }
         const d=HYP((p.x-m.x)*PITCH_AR, p.y-m.y);
-        if(d>0.30) continue;                          // 20m 밖이면 제때 못 온다
+        if(d > (_cut?0.42:0.30)) continue;            // 컷백은 28m 까지, 문전은 20m 까지
         if(d<bd){ bd=d; best=m; }
       }
       if(!best) continue;
       taken[best.id]=1;
       let _tx=p.x;
-      if(_line!=null) _tx = dir>0 ? Math.min(_tx, _line-0.016) : Math.max(_tx, _line+0.016);   /* 0.006 → 오프사이드 8.7/경기(실축 4) */
-      best._chase={x:clamp01(_tx), y:p.y, until:this.t+1.6};
+      if(_line!=null) _tx = dir>0 ? Math.min(_tx, _line-0.026) : Math.max(_tx, _line+0.026);   /* 0.006 → 0.016 → 0.026 (오프사이드 6.4/경기, 실축 4) */
+      best._chase={x:clamp01(_tx), y:p.y, until:this.t+(_cut?2.2:1.6)};   /* 컷백 주자는 더 멀리서 온다 */
     }
   }
   /* 골키퍼의 공중볼 처리 — 박스로 떨어지는 뜬 공을 직접 나와서 잡거나 쳐낸다.
@@ -65535,6 +65688,11 @@ class MatchSim{
   }
   giveTo(a, opt){
     const b=this.ball;
+    /* 🎯 컷백을 받았다는 표시 — 아래 판단(decide)에서 「지금은 때리는 자리」로 읽는다.
+       📏 20260913-3600 계측(컷백 5.33회/경기): 낙하점 4.7m 안에 동료가 있고 실제로 받는데,
+          <b>받은 뒤 3.67회(69%)가 슛을 안 한다.</b> 자리도 배달도 되는데 마지막이 없었다. */
+    if(a && b.isCross && b.crossType===CROSS_TYPE.CUTBACK && b._passer && a.side===b._passer.side)
+      a._cbFrom=this.t;
     /* 🎯 압박 결과 — 릴리스 없이 소유가 수비 쪽으로 넘어오면 WIN. 릴리스가 이미 분류됐어도
        1.5초 안에 그 공을 회수하면 WIN 으로 승격한다(몰아서 차게 만든 공을 주웠다면 그게 성공이다) */
     try{
@@ -65986,10 +66144,12 @@ class MatchSim{
     /* §47 DOGSO — 명백한 득점 기회 저지: 박스 밖이면 퇴장, PK 면 옐로(이중 처벌 완화 규정) */
     if(fs.dogso && !fs.pen)      card=CARD.RED;
     else if(fs.dogso && fs.pen)  card=CARD.YELLOW;
-    else if(r < fs.sev*0.012*rc) card=CARD.RED;    // 심각한 반칙 — 다이렉트 퇴장 (실제 경기당 0.05회)
+    else if(r < fs.sev*0.005*rc) card=CARD.RED;    // 심각한 반칙 — 다이렉트 퇴장 (0.012 → 0.008 → 퇴장 0.38/경기, 실축 0.2)
     /* 🟨 파울/카드 밸런스(제보 후속) — 실측 옐로 6~9장/경기(파울당 25~33%), 실제 K리그는
-       경기당 3~5장(파울당 ~15%). 0.53 → 0.34 */
-    else if(r < fs.sev*0.34*rc) card=CARD.YELLOW;
+       경기당 3~5장(파울당 ~15%). 0.53 → 0.34
+       ⚠ 그 뒤 파울 자체가 30.7 → 23.3 으로 줄면서 경고도 2.57 장까지 내려갔다(실축 4).
+          파울당 비율을 다시 올린다 — 총량이 아니라 <b>비율</b>이 손잡이다. 0.34 → 0.50 */
+    else if(r < fs.sev*0.46*rc) card=CARD.YELLOW;   /* 0.50 에서 경고 4.07 — 파울을 조금 올리므로 함께 내린다 */
     else                     card=CARD.VERBAL;
     if(card===CARD.YELLOW){
       f.yellows=(f.yellows||0)+1;
@@ -66898,6 +67058,7 @@ class MatchSim{
      각 단계는 앞 단계를 통과한 슛만 받으므로, 몸을 던진 수비수 앞에서는 유효슈팅 자체가 나오지 않고
      굴절된 슛은 키퍼가 반응할 방향을 잃는다. */
   resolveShot(shooter, g, type, opts){
+    if(shooter) shooter._cbFrom=null;        // 🎯 컷백 창 종료 — 때렸다
     try{ this._pEpRelease(shooter, "shot", {distM:g&&g.distM, slot:null}); }catch(e){}   // 🎯 압박 결과
     this.evl("SHOT", shooter, {st:type, dM:Math.round(g.distM),
       pen:(opts&&opts.penalty)?1:0, fk:(opts&&opts.freeKick)?1:0});
@@ -67386,7 +67547,10 @@ class MatchSim{
         const nearPost = Math.abs(aimY-0.5)/GOAL_HALF;      // 0=정면, 1=골포스트 구석
         /* 얼마나 여유 있게 닿았는가가 캐치/쳐내기를 가른다 — 손끝에 걸린 공은 못 잡는다 (§25·§27) */
         const _mg=isPen?0.5:clamp(margin,0,1);
-        let hold = 0.10 + _a("han",62)*0.50 + _mg*0.42 - (power-1.0)*0.30 - nearPost*0.20;
+        /* 📏 문전 리바운드가 경기당 0.33회뿐이다(실축 1~2). 원인은 키퍼가 <b>너무 잘 잡아서</b>다 —
+           품에 안는(CATCH) 확률이 후해 쳐내기(PARRY)로 흘러나오는 공 자체가 드물었다.
+           실축 키퍼는 강한 슛을 그렇게 자주 잡지 않는다. 기준선을 낮춘다(0.10 → 0.02). */
+        let hold = 0.02 + _a("han",62)*0.50 + _mg*0.42 - (power-1.0)*0.30 - nearPost*0.20;
         /* 🧤 특성 — 펀칭 선호는 덜 잡고, 「품에 안는다」는 더 잡는다 */
         if(gk) hold -= FX(gk,"gkFist")*0.28;
         hold -= (WX_NOW.wet||0)*0.24;              // 🌧️ 젖은 공은 품에 안기지 않는다 (요청)
@@ -67398,7 +67562,7 @@ class MatchSim{
            ─ 「처리하기 쉬운 공」의 기준을 분명히 한다: 힘없이 오고, 정면이고, 여유 있게 닿은 공. */
         if(power<0.88) hold += 0.16;                       // 힘이 실리지 않은 공 — 품에 안는다
         if(nearPost<0.30) hold += 0.10;                    // 정면으로 온 공
-        if(_mg>0.55) hold += 0.10;                         // 여유 있게 닿았다
+        if(_mg>0.55) hold += 0.06;                         // 여유 있게 닿았다 (0.10 →)
         /* 🧤 ⚠ 제보 — 「키퍼가 슛을 하프라인 근처 터치라인까지 뻥 차서 막는 장면이 잦다.
            실축에서는 잡기 어려우면 옆으로 쳐내 코너를 만들고, 잡기 쉬우면 잡아 골킥으로 넘긴다」.
            ─ 잡을 수 있으면 잡고(CATCH), 못 잡을 공은 「옆으로 흘려 코너」(TIP)를 1순위로 둔다.
@@ -74548,6 +74712,13 @@ function delegFinish(M, tag, why, _inj, _acLv){
           mine>his?"good":mine<his?"warn":null, "club");
   try{ staffLog(`${acTitle()}가 ${opp.short}전을 ${_inj?"대신":"감독을 대신해"} 지휘했습니다. (${mine}-${his})`); }catch(e){}
   lastMatch={type:"match", res:{hg:M.hg,ag:M.ag,events:M.events,sc:M.sc||[],st:M.st,pmap:M.pmap||null, momo:M.momo||null}, h:M.home, a:M.away, att:M.att||0, mom:M.mom||null};
+  /* 🎩 ⚠ 위임 경기는 킥오프에 snapshotTactic() 을 찍어 두고(주석: 「코치가 성향을 손대면
+     경기 뒤 되돌린다」) <b>정작 되돌리지 않고 있었다</b> — restoreTactic() 호출이 직접 관전
+     경로에만 있었다. 그래서 수석코치가 경기 중에 만진 성향, 교체로 인계된 역할,
+     경기 중 굳어진 자리 배치가 <b>영구히</b> 전술에 남았다.
+     감독 눈에는 「가만히 뒀는데 롤·임무가 바뀌어 있다」로 보인다. 직접 지휘와 똑같이 되돌린다. */
+  try{ restoreTactic(); }catch(e){}
+  try{ pruneUserLineup(); }catch(e){}
   saveGame();
   const outcome=matchOutcome(M, isHome);
   const cls=outcome==="win"?"good":outcome==="loss"?"warn":"info";
@@ -74617,6 +74788,7 @@ function delegFriendlyFinish(M, _acLv){
   const f=G.pendingFriendly; G.pendingFriendly=null;
   if(f){ f.done=true; f.hg=M.hg; f.ag=M.ag; preFriendlyPlayed(); }
   applyMatchResult(M);
+  try{ restoreTactic(); }catch(e){}    // 🎩 위임 연습경기도 경기 중 조정을 되돌린다 (위 delegFinish 주석)
   socialOnResult(M);
   const t=userTeam();
   const isHome=M.home.isUser;
@@ -79999,7 +80171,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260913-3400";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260913-4200";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
