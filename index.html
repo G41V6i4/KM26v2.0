@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260913-4800-->
+<!--B:20260913-5000-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1703,7 +1703,18 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .fmkRow.pos .fmkTitle{color:#7ee787}
 .fmkRow.neg .fmkTitle{color:#ff9d95}
 .fmkTitle{font-size:13.5px;line-height:1.45;font-weight:600}
-.fmkMeta{display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--sub)}
+.fmkMeta{display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--sub);align-items:center}
+/* 🐶 등급 아이콘 — 실제 게시판처럼 닉네임 왼쪽에 붙는다 */
+.fmkRk{width:16px;height:16px;flex:0 0 16px;margin-right:-5px;image-rendering:auto;vertical-align:middle}
+/* 📑 라인업 팬 반응 탭 */
+.luTabs{display:flex;gap:6px;margin:2px 0 9px}
+.luTab{flex:1;padding:7px 8px;font-size:12.5px;font-weight:700;cursor:pointer;
+  background:var(--bg3);color:var(--sub);border:1px solid var(--line);border-radius:8px;
+  transition:background .14s,color .14s,border-color .14s}
+.luTab:hover{background:#242c36;color:var(--txt)}
+.luTab.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.luTab .luN{opacity:.75;font-weight:600;font-size:11px;margin-left:2px}
+@media (max-width:760px){ .fmkRk{width:18px;height:18px;flex-basis:18px} }
 .fmkUp{color:#f0883e}
 .fmkDn{color:#8d97a3}
 @media (max-width:760px){ .fmkTitle{font-size:14px} }
@@ -7516,7 +7527,7 @@ function procMinute(M, me, opp, atk, key){
     // 다혈질(pers===3) 선수는 거친 태클 지시 하에서 특히 다이렉트 퇴장 위험이 크게 뛴다.
     const hotHead = fouler.p.pers===3 ? (HI(T.tackle)?0.035:MID(T.tackle)?0.012:0.004) : 0;
     let redWidth = (clamp(0.0025+(T.tackle-1)*0.006, 0.0006, 0.0085) + hotHead)*meTune("card");
-    let yellowWidth = clamp(0.185+(T.tackle-1)*0.07, 0.11, 0.26)*meTune("card");
+    let yellowWidth = clamp(0.255+(T.tackle-1)*0.07, 0.15, 0.34)*meTune("card");   /* ⚖️ 압박 간격이 넓어져 경고 2.87(실축 4) — 파울당 경고율을 올린다 */
     let penW = 0.032;
     const penEnd=penW, redEnd=penEnd+redWidth, yellowEnd=redEnd+yellowWidth;
     if(r<penEnd && onPitch(opp).length){ // 페널티 헌납
@@ -8333,10 +8344,34 @@ const MOM_SOC={
    "{p} 저 선수 우리한테만 잘하는 것 같음","오늘 MOM이 상대팀이라는 게 다 말해준다",
    "{p} 데려올 수 없나 진지하게","저런 선수 하나만 있으면 우리도 다른 팀 됐다"]
 };
+/* ═══ 🔥 활약 반응 리뉴얼 ═══════════════════════════════════════════════
+   예전 MOM 반응은 여섯 줄짜리 한 덩어리라, 평점 7.2 로 MOM 을 받은 날과
+   해트트릭에 평점 9.4 를 찍은 날이 <b>같은 말</b>을 했다. 두 단계로 나눈다.
+     big  — MOM 급 활약 (평점·기록을 인용한다)
+     hype — 「이 새끼 미쳤다」 소리가 나오는 날. 커뮤니티가 이성을 놓는 결이다.        */
 const MOM_FMK={
  big:[["{t} {p} 오늘 경기 봤냐 평점 {r} ㄷㄷ",1],["{p} 이 정도면 리그 최고 아님?",1],
    ["MOM 논란 없는 경기였음",1],["{p} 하이라이트 올라왔는데 미쳤다",1],
-   ["이 선수 곧 해외 나갈 듯",0],["{t} 팬들 오늘 행복하겠네",0]]
+   ["이 선수 곧 해외 나갈 듯",0],["{t} 팬들 오늘 행복하겠네",0],
+   ["{p} 평점 {r} 실화냐 이거 조작 아님?",1],["{p} 오늘 풀타임 스탯 좀 보고 와라 말이 안 나온다",1],
+   ["솔직히 {p} 없었으면 오늘 경기 뒤집혔다",1],["{p} 몸값 지금 얼마임? 올려야 될 듯",0],
+   ["{t} 팬 아닌데 {p} 때문에 하이라이트 챙겨 봄",1],
+   ["{p} 국대 안 뽑으면 그건 감독이 이상한 거지",1],
+   ["에이전트한테 전화 몇 통 왔을지 궁금하다",0],
+   ["{p} 저 나이에 저 정도면 진짜 물건임",1],
+   ["그냥… 걷는 폼이 섹스였다. 가까이 오니까 {p}이었음.",1],
+   ["죽는 날까지 {p}을/를 우러러<br>한 점 부끄럼이 없기를",1],
+   ["형들 지금 {p} 의심하는겨? ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ",1]],
+ /* 🔥 광신 — 팬이 이성을 놓는 순간. 펨코 특유의 결이라 여기만 수위가 다르다 */
+ hype:[["크악 {p} 이 미친놈이 기어코 딸딸이를 부르는구나 오냐 덤벼라 딸딸딸딸딸딸딸",1],
+   ["{p} 크아아악 내 새끼 크아아아악",1],
+   ["형들 나 오늘 {p} 유니폼 질렀다 후회 안 함",1],
+   ["{p} 평점 {r} ㅋㅋㅋㅋ 이건 뭐 게임을 혼자 하네",1],
+   ["아 진짜 {p} 이런 거 보면 축구 못 끊는다",1],
+   ["{p} 오늘 경기 다시보기 세 번 돌림 미친놈아",1],
+   ["{p} 나 이 선수한테 인생 걸었다 진짜로",1],
+   ["{t} 프런트 지금 당장 재계약 들고 뛰어가라",1],
+   ["크 {p} 크 크 크 (더 이상 문장이 안 됨)",1]]
 };
 /* ═══ 🕸️ 패스맵 ══════════════════════════════════════════════════════════
    실제 패스맵과 같은 규칙으로 그린다.
@@ -9477,6 +9512,8 @@ function matchNews(M, div, rnd){
         addNews(`🏅 <b>${mm.name}</b>, ${rd} MOM 선정 — ${detail}평점 <b>${mm.rating.toFixed(2)}</b>`, "good", "club");
         socialFill(MOM_SOC.our, 2+R(2), 1, {p:mm.name, t:mt.short, r:mm.rating.toFixed(2)});
         if(mm.rating>=8.6 || mm.goals>=2) fmkFill(MOM_FMK.big, 1+R(2), {p:mm.name, t:mt.short, r:mm.rating.toFixed(2)});
+        /* 🔥 이성을 놓는 날 — 평점 9.0 이상이거나 3골 이상. 여기서만 광신 반응이 나온다 */
+        if(mm.rating>=9.0 || mm.goals>=3) fmkFill(MOM_FMK.hype, 2+R(2), {p:mm.name, t:mt.short, r:mm.rating.toFixed(2)});
         try{
           const pl=(userTeam().players||[]).find(x=>x.id===mm.id);
           if(pl){ pl.morale=clamp((pl.morale||70)+3,30,99); affAdd(pl, 2, "MOM 선정"); }
@@ -31349,7 +31386,11 @@ function gamPlay(kind){
 /* 🚨 발각 — 열기가 높을수록 기자·협회의 눈에 걸린다 */
 function gamCatchRoll(force){
   const g=gamOf(), M=me(), t=userTeam();
-  if(G.jobless && !force) { g.heat=clamp((g.heat||0)*0.9,0,100); return false; }
+  /* 🎰 무직이면 소문이 안 난다 (요청) — 소속 구단도, 협회에 걸 징계도, 실망할 팬도 없다.
+     ⚠ 예전에는 `!force` 가 붙어 있어서 <b>하루 단위 강제 굴림(gamDayTick)이 이 가드를 그대로 통과</b>했다.
+        열기가 18 이상이면 매일 4% 로 force=true 가 들어와, 무직인데도 「사생활 구설」 기사가 떴다.
+        force 는 「지금 굴려라」는 뜻이지 「가드를 무시하라」는 뜻이 아니다. */
+  if(G.jobless) { g.heat=clamp((g.heat||0)*0.9,0,100); return false; }
   const h=g.heat||0;
   const p=clamp((h-12)/260, 0, 0.16);
   if(!force && Math.random()>=p) return false;
@@ -32137,6 +32178,12 @@ function show(v){
     }
     pvpNavSync();
   } }catch(e){}
+  /* ⚔️ 무직 — 메뉴를 감추는 것만으로는 부족하다. 알림·단축키 같은 다른 경로로도 못 들어오게 막는다 */
+  try{ pvpMenuSync(); }catch(e){}
+  if(v==="pvp" && G && G.jobless){
+    try{ flash("⚔️ 소속 구단이 없어 <b>온라인 대전</b>을 이용할 수 없습니다.","warn"); }catch(e){}
+    return;
+  }
   /* 안전망 — 인트로 도중에는 어떤 경로로 불려도 화면을 옮기지 않는다.
      버튼은 이미 잠겨 있지만, 알림 클릭 같은 다른 경로로 show() 가 불릴 수 있다. */
   if(introLocked() && v!=="home"){
@@ -33606,6 +33653,32 @@ function socialOnResult(M){
     else if(ra-rf>=3){ rivalFill(RIV.loseBig, 2+R(2), -1, v); rivalFmk(FRIV.bigLose, 2+R(2), v); }
     else { rivalFill(RIV.lose, 2+R(2), -1, v); rivalFmk(FRIV.lose, 1+R(2), v); }
   }
+  /* 🎵 경기장 응원가 — 이긴 쪽이 떠나는 쪽에게 부른다 (요청).
+     홈 승리면 「잘~가세요」로 원정 팬을 배웅하고, 원정 승리면 「잘~있어요」로 인사하고 떠난다.
+     내 팀 팬(fmk)도 옆 동네(rival)도 같은 노래를 쓴다 — 원래 모두가 부르는 노래다. */
+  if(rf!==ra){
+    const _homeWon = (isHomeGame && rf>ra) || (!isHomeGame && rf<ra);
+    const _pool = _homeWon ? "byeHome" : "byeAway";
+    if(Math.random()<0.55) fmkFill(FMK[_pool], 1+R(2), v);
+    if(Math.random()<0.45) rivalFmk(FRIV[_pool], 1, v);
+  }
+  /* 🥁 이스터에그 (요청) — 수원이 지는 날 옆 동네에서 나오는 강등송 */
+  {
+    const _loser = rf>ra ? opp : (rf<ra ? t : null);
+    /* 1부면 「강등」, 2부면 「잔류」 — 있는 자리에 맞춰 부른다 */
+    if(_loser && _loser.id==="suwon")
+      rivalFmk((_loser.div===2 ? FRIV.suwonDown2 : FRIV.suwonDown1), 1+R(2), {t:_loser.short});
+  }
+  /* 🏙️ 시민구단이 기업구단을 잡은 날 (요청) — 승점 3점 이상의 의미가 있는 승리다.
+     우리가 이겼으면 우리 게시판이, 우리가 졌으면 옆 동네가 같은 말을 한다. */
+  {
+    const _w = rf>ra ? t : (rf<ra ? opp : null);
+    const _l = rf>ra ? opp : (rf<ra ? t : null);
+    if(_w && _l && !isCorpClub(_w) && isCorpClub(_l)){
+      if(_w===t) fmkFill(FMK.cityBeatCorp, 1+R(2), v);
+      else       rivalFmk(FRIV.cityBeatCorp, 1+R(2), v);
+    }
+  }
   /* ── 이스터에그 ────────────────────────────────────────────────
      수원 삼성 블루윙즈: 큰 격차 승리 때 나오는 그 응원가, 그리고 2부에서 헤맬 때 옆 동네가 던지는 한마디. */
   if(t.id==="suwon"){
@@ -33671,6 +33744,8 @@ function socialOnResult(M){
   const wStreak=(()=>{ let c=0; for(let i=f.length-1;i>=0&&f[i]==="W";i--) c++; return c; })();
   const lStreak=(()=>{ let c=0; for(let i=f.length-1;i>=0&&f[i]==="L";i--) c++; return c; })();
   if(wStreak>=3){ socialFill(SOC.streakW, 1+R(2), 1, {n:wStreak}); fmkFill(FMK.streakW, 1+R(2), {n:wStreak});
+    /* 🔥 5연승부터는 감독이 신이 된다 */
+    if(wStreak>=5) fmkFill(FMK.mgrHype, 1+R(2), {n:wStreak, m:(typeof mgrName==="function"?mgrName(t):"감독")});
     rivalFill(RIV.streakW, 1+R(2), 1, {n:wStreak, t:t.short}); rivalFmk(FRIV.streakW, 1+R(2), {n:wStreak, t:t.short}); }
   if(lStreak>=3){ socialFill(SOC.streakL, 1+R(2), -1, {n:lStreak}); fmkFill(FMK.streakL, 2+R(2), {n:lStreak});
     rivalFill(RIV.streakL, 1+R(2), -1, {n:lStreak, t:t.short}); rivalFmk(FRIV.streakL, 1+R(2), {n:lStreak, t:t.short}); }
@@ -33691,7 +33766,34 @@ function socialOnResult(M){
    (욕설은 초성으로 눌러 쓴다. 분위기는 살리되 그대로 읽히지는 않게.)
 ═══════════════════════════════════════════════════════════════ */
 const FMK_MAX=50;   // 진영별 상한
-const FMK_NICK=["ㅇㅇ","ㅁㄴㅇㄹ","축구가뭐길래","익명의그분","전술충","닉네임생각중",
+/* 🐶 에펨코리아 등급 아이콘 (요청 — 실제 등급표 이미지를 그대로 쓴다).
+   낮은 등급(알) → 높은 등급(흰여우) 순. 단일 파일 원칙을 지키려고 data URI 로 박아 넣었다(총 36KB).
+   실제 게시판이 그렇듯 <b>낮은 등급이 훨씬 흔하다</b> — 아래 fmkRankRoll 의 가중치가 그 분포를 만든다. */
+const FMK_RANK=[
+"data:image/png;base64,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",
+"data:image/png;base64,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",
+"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAQAElEQVR4AexZC7Bd1Vn+9nuf5z33/cyFkKRJIBBIeaRUCTfVFqfTsbWFaolQVFKbguIoY5npSGw7jqKlLdBqtRVRmCKgQMdOS0kJAUECKAUukJuEkIQE0uQ+znOf/V5+/765IdQQEh4zTqdn7r/X2uvxr+9b/2OtPVfHz8nvF0TezJBKKW1OxsfvsKX+ZnPeTv87ZhEBuu2xW8vTL246dWbnwx+r7Xns9+q7Nq+r7t78h4P5vi9LObl90yVTWzf8qozZs/mWbiH4dsAfPvdtExEwAkyA9g8v+o5uWHdCaf+EOL5Jqeh6LY3+ytDNP8lKw7hRt9y7ZEy+b+G3haAQkw04HNRbqb9lIq88+a385MSPzx4ujlwvwDQVX58m0cdVGi6GissqCe05iUNPi6O2nUReWSQOm4u1xP+olqqroBv/2Nk7+k0hJDrfCgmZc9xExIXEArnOxTeajnunhnSdgFdpTC4BJSSPEGn8miCJ8LOS9aeRpdJoBIl/sRByuhavl83ZuHG9KeCOR46LiLhRddd/flRB/YtmmJcRxKiKAw1pcgi8Yp2WgSL41yTmO0UpyFiRlHWVsI2EpUyj9oiKw6uTuP23p8//wEc2HieZYyYiwTmvOHq5Bv1ruoblhwgIcAHDUqmUgLn7rKdpjDlRikRFElqJ7UlKQkI09meJcR74E0KGZa9Ik+TaU+eNfep4YueYiOx7+nvzCz0nXJeq+C9UGo3KjsrOzwkxQAkYElBKZQRUmkozpJyTNI6yd6QRVURZPU5S1hNkrkcdtArS0FuexsHXu/pGvjDx6C3DmaI3ebwpESFhFitf0nRjDZKgzFWRELDAzIhw8ZTv0p5yt7PdJwnpy4ALeJFsTAp1sC79IjIPJCaE4ijiK0lRp6biShKGl3dUei47liRwVCISE1ahvEZXyUVZ1iEYIaGxlB1MpTwoqZAggTQMMrBgXSQjlrmVgKS7MS7SKGR2jjNJOT+OCZ4lWUDIZ4SEcNSuqNC/wnAGPy5YjmaUoxIZtLtWAWptmkaWxoVExI9Tuo+4ENgmpSJQAaDiCFIXSQUwRTEeRNJYSEScEiGzRBwAFJXFF/uoKz0oHIQ49DOhnn7o+lVuvbWaa2lvROYNiUiKjSP/L9OwNZIEbaQELwsRBTJrJAnXi5DtnliBwZtEATLAApoAU4qAljJhnaAgEtIiEcfMSsQ2RbXxIYzZOnxL6GqhV0PQqK4wTfPzuzfftpTNR/w7IpE9vD5oUFelob8irE8i8puICTYl+JjKRVLufkyXUFGbvAIk7BfQAlgkJtgkGx8i4kYk8j4nYcjxB4WEEmazOIqRULfKXHS2Lu2h10LUmoKKolWM0ysE25GY/B8iElhmqeezfm3fb0atabRqB+BTWSo7SvDcPsiOiSi2CUjZYQEukhJ8QsBK3IT9cdhGTICHS0I9mTCOYo5JfA8J3VB0xiQkEtG6EQm3PA9eo4q0XUUUttYESlsrGH+WzOuIiA9KYEmARV49365Po1GdYlAyGDlTFhJRsmsEEBFQLMC5YCJHAyWmlZhRD4FPOC5lLIS0WBQlEEk4JpaxMpckExJKqEvIiMQkIe8R9fp+C3ViCNok25opqTj6XDvI/5pgJaRDf68jMrX1gbPqM/uv9Wde7Rd3arcaaNXrEKWJLHhQUqJOlQbDsAFKqptI+C4C/mR8SqAhwYc+XYsEksBDSkLshjJtEorhNRtIGNQJ4y9rpxVlrlgpEhJBCD+IUK02EPpt+BwfVA8Mh6F39TP3feMMmTMnh4jIedGsvXKdmfgLwnYTCXcraLfQavuICMjPzB9m8yzHhYi8ZAtyESnlfXZ3E1okgKIOAR+HXuaO0i8iruM16/C8JoIwYqCnMEwLpuUwQekQ94y4ppAKg4DjPAiWiNb1GLNxbd85hqVd//QD31ws+kQyIuP88PGD2rq4UVslJDTDkD7UGw00my3EqZYpT7nNhmVlfaLYo8XazRqa1WnUa1NotzyOZcLmfE2bvfeJK8oEpVtINR2R0gk+yOKu2WihUatiplpHi8RCJgUZqxuz60s98APU6i3qTZmtfYS0VJPrRtUDq+xUrZuLl4xIT+IOx0F4QehVIT6sYNKUIZW3MiURd0eUikSBj9r0Aby6dw+2vDCBx5/agh3bt2H6wCRajRnO82QYd9iAbjow7XwmNq1oGhYSZjnZhBmCe2nXT/HQExN46NGfYNuWLahN7aeOJpJY7g3IQAe0tseATyQJMJZ8cVW+e3SzZqO2+kA9mScL6vKYmdo3GjRrw22aWqmYihLEdIcoUZicqqLBOAnFlxmQrUYN27bvwrf/dQPW33gX/uGuh3DHhuchoJrNJmJmLFMDiViwLANOLp+JuI1hGhCXld3f+/Ju/GjzVty+cQI33P4wvvR338f9Dz2FqclXsywV0Toh036dVvPadGlj1sIJvSLgxnrNKvxGbdSGOQD+MiJx4HeHXr2TJWKCTxmUCQPP9yM0G020OSmgOZvMHj/dsxO33b0Bt/3Ho9g346NjeCkef+EVPPnCbkQ0e0GAuy4M24bEkZkrwKQ7GqaVkXNsWiVOsHVvEz/Ztg/DJ866+bMv7sPN9zyC8WfG0Zjej1arinajpjzuPnFmf0mqK6kIRo/YiKtcn9p3grTpksb4gTQVpaouDSIRdz7kQRUQmLw36rXMl9v1aUxOTmJ8215pxoHpKh7ZtAHVegN+lKLUUYJTEOA2LNMkARu2ZdPF+E5iJi2SI8ne3i4UCjk0mUge/PF9mR7T0DDV8DOCjUYdrZkZWqamMTCyteJY3I3ByjeJVcXAl43ja/ana5qmdNfZrlI1EavXgixlone4eDaKD8vNI1/pRd/wfPQTSD7nIOfYkJ/Ul5zYj/7efsgcnsDQDSsjoJOQYRhM1UZGTKzUUSxg2aJ5GOoiaRKwTIPELRRzLk4Y6UeldwC5fAHKcER9JopnF3hoZi98iNunmrbD7e7ZzFfo8lh87qV7jVzh36QeJQnatESSRHBdC319XSiVO5AvVVAoVzAwOIDzVy7LFrVtE5VyCR885z0YO/cUONxtTTdIwISma9Dp15pmADxroGmQn25Iv4OFo524cPVSLOUGyEYUC3mcvmgAy5fMQ7mjC26pTH05wHSQz9mQ2IjkpKUSOYRZgInk3mlt/4tS1+UhUuoZuNV0C09EPEEVg0nMls/n0VmpwDRNmLoOg37uuA4+dN7puPK3zsPlH1uJL3z6fKy98DyMDA/DcnIwLEfU8WxQiOmeIQ/DVGnkoUNIGqbNcS46uCm/fNbJ+ONPno1rfueDmZ4r1nwAA/19nMtkQ9AmHT9vGxAc2ZnCDY6S2dPTKRQf7+kdvmlsbH0sC+ryEBGrQDdvSjWzHvAQSmmRYlcvuro6kONuaXQBGZemCt1dFXx49Upc8hurcf77z8DIyCCcfInTTZ43MZgp0WSmqTeaqlqtQaTFtBkSnOJHk9INGHYBXZ0dOOmkEfzSihOx6txTMTLQDS0Nmfl8WQrQLc0tFCESUqlcU+LQ10zLmiz3Dnz5rE9cs2N2IIfOVaQsLF1yu+3kb4kl2BNMuo77RK7UCZYwuLiMUcxmUubyLmzbge3asGy6gG5lV45GbQYzk/uxY8cuPLdlpzaxfTeeHudZ89IeptZpJospNGamRAUMi8nAtpGjHmlI6NZxoqBRl2lYMBg7NvtLeRtKgpt93MdAM+2vqkHrBzJnTvS5ipSnnHJhpBv21+x84e5CuePhcnf/f7kMOs2YHcYN5SIGfZ9i2izpboYBzSkhZqfv+zgwNYPHnnwGd37/Ydx676ZM7rrviez9v58ax/79k2gFKRJNh07/l3Ul1RvUk4nlQEpZU9cNFPKucooVWPmy0nXENMd3Fq14/yGXkvkiujzmRGMGE3MtXLr88sH3LL9Ss5wdJJI4lg3NsNTcOCkzy/DLUDdIiAsmzCh+mOClPZO454Gn8cizL+PVKS+Tid2TuP/R53DHD5/A+I79CHgZjElc00zohskM6yOm/4teEYklKU3LhGG7WiGXqxdKxXty5a5rT1k5ds2ilWsOHRUyTuR1RKRBZOScS6ckZkzLmHBsO5sUR76W0rxCIKULJKyTHWDaSOluxAUeJerp51/Cc9v3ojpTRZ13LxGpT9ea2Lb7AK8z2+FHitePBCH9RDddpIZJch7vYDGvMAHkdqAYo4LFdhyYhXITdu7m3NL+645EQsbp8ngjSaA/q7uFrU4unw1J+SWX8r4DlkJEwWCUmZBAzAbwYVuzKuWQ3LnrZby0cxdmajW6XsJewC10ZDeAphegzQQgl0nbpA5axOeVRFJ/FPmIGNy6lsCyHBi6saVgF58bG1sfZ0qO8Jhd9Qgd0hSVcwcYyPdrpqsMTVpmJSIBpTvQDAORAOAJLUHutwOtp6cbAwMDzP0OJENp2uwSJsf2dRXRUS5kFvF5qxUXC3g3SzQLOt1XtMs4KeXOlyoDummEuqH9KLdkwR5pfyPR36hD2pctuyi0DP27+XLxITkjpC2VE1YqlERps0S8OhqtAA1eVdiMwe58djWZIyGlbZvoZSqXfvm28Vt1hLxJxzxnYrqqtCvdziwn1pB30zRg285Wyy7cL1hwlN9RiWzcuN5sFO3tdFf+O8DaqxsGz4lZF8lSCD9JfQZuKFaRHeZnaeI3kDNiDHS6kFNfdjjP60x3yYVFV2m321maFjL1pkf3iiDAI2VCfjGDTa7sGhOB6zh1Wv3W3h5ri/QdTY5KZIw+KTuRc7wfaKb1DctxG6JMgh0w6DoadzWAx6CWHW7zphpxh13GSTcPu5G+MhaOdGGUZUe5SHezZTpCuTlwnBx+EeNCrh+mMQslZfzp5GQ6udB0S3erML1zovFqmE08ymN29lEGSNfge9e241T9s9Lsr+t2flox4BMGpPQZBwGIe1QbHmr8opT2gsNEwEqLJ7xp2ego5vgGyDyf3+FekIDXDVi2nQV0kuok6EMsYbmlMJcvfdew3Bua3cHu88+/dtYNMg1HfhwTkQcf/HNjMS+WytD/2nKdv6F1phNFUEy7hmkhX8jDpNvZPKFztgX5NfgF59ONpC5lGnkQS0m/61jIk2gpZ8Gl24G/iG6qGzbsQscrJvRvJUH0xdM+9LmnhITG841Djvp3TETG6GKiZU97u+do6u91y/1irlDKbp2WZUCu3N2dRXTmUnTlU8wfKOLs5Ytwwar34td/5Wx8eNWp2bu0S39nTqGr7KLUUcosIBmKKT50C5UHivnSlfMWDHxeLCFrasdAQsYdExEZKCK7M3z2JdOG496smcYVdr54r2lZ00LGyRXQzyv+kqVLcM6Zy/C+FSdj5fL5mZxx8okQWXbyIixYcBJ6+vpQLBVoRStLr7lCedzJ5f/M6Sivm3Snvzd05mc8WQvH8TsuIrI7IgvPubjxcrBrQ6XS/0dOrmOtZdk3lDq7NveOLJwcmf8eNTQ6HyPzRjA6bwhDf4lwHgAAASBJREFUQ70YPYF1ytDIKHoHR1DpH1WZC7mFB4SAnStfOjRUuXH56nUTYwetr9ESIsfK5biIzCmVBca4YP9pH9l50rlr/j0Z6L06VMmljpP7fZ45X8mVKvdWujrHy10905XugUmR3v6hF0tdlU2mZd3iWOafVjp7PzU0NHhRo9T+yvILrvifoTM/483pfyvlWyIyt5B2cNeW8eA8beyzW4WUrXvX5iz9dy3L+aRpmxfbrvXbGvAJz/MvsnLFi0u9A39QzVe/unT12k1ypxvjhszpezvl2yJy+MLaQVKyswLwhJVrnl/wvk/ft/Dcy34ooGXXJfPJpW/sHQJ/+PrvGJHDlc7VNZKbq7/b5btK5N0Gf7j+XxA5fDf+P9R/bizyvwAAAP//d0v7rwAAAAZJREFUAwAUcrj7OB8YvAAAAABJRU5ErkJggg==",
+"data:image/png;base64,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",
+"data:image/png;base64,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",
+"data:image/png;base64,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"];const FMK_RANK_N=["알","새싹","꼬맹이","개린이","멍뭉","흰여우"];
+/* 등급 굴림 — 알·새싹이 절반이 넘고 흰여우는 드물다. 좋아요를 많이 받는 글일수록 고인물일 확률이 조금 높다. */
+function fmkRankRoll(tone){
+  const r=Math.random() + (tone>0?0.06:0);
+  return r<0.26?0 : r<0.50?1 : r<0.70?2 : r<0.85?3 : r<0.95?4 : 5;
+}
+/* 예전 세이브에는 등급이 없다 — 닉네임에서 안정적으로 만들어 낸다(같은 글은 늘 같은 등급) */
+function fmkRankOf(x){
+  if(x && x.rk!=null) return clamp(x.rk|0, 0, FMK_RANK.length-1);
+  const u=(x&&x.u)||"", d=(x&&x.d)||0;
+  let h=d*2654435761>>>0;
+  for(let i=0;i<u.length;i++){ h=(Math.imul(h,31)+u.charCodeAt(i))>>>0; }
+  return [0,0,1,1,2,2,3,3,4,5][h%10];
+}
+const FMK_NICK=["조건도종신하면닉변","처칠","K리그매니저쏘쏘","행궁동즐라탄","청백적흑사탕",
+ "울상대학교울상캠","츄마시오른다리","브라질튀각맨","성남푸씨","김주찬의부주장교실",
+ "용병이름이약투지","승우대디","Caivl","대구풍뎅이","제주반도체목숨걺",
+ "INCHON","북끼소바먹지마요","kyurious","세징야호흥민",
+ "ㅇㅇ","ㅁㄴㅇㄹ","축구가뭐길래","익명의그분","전술충","닉네임생각중",
   "새벽3시","키보드감독","우리팀만아니면","골때리는그분","ㅋㅋㅋㅋㅋ","관중석에서","방구석해설위원",
   "탈퇴예정","시즌권환불각","존버중","눈물의버스",
   // 커뮤니티에서 실제로 굴러다닐 법한 닉네임들
@@ -33721,7 +33823,7 @@ function fmkPush(txt, tone, side){
   const rival = side==="rival";
   const C=(typeof customNicks==="function")?customNicks():[];
   const uNick=(C.length && Math.random()<Math.min(0.25, 0.05+C.length*0.025)) ? pick(C).n : pick(rival?FMK_RIVAL_NICK:FMK_NICK);
-  G.fmk.unshift({txt, tone, u:uNick, up:tone>0?20+R(400):5+R(220), dn:R(60),
+  G.fmk.unshift({txt, tone, u:uNick, rk:fmkRankRoll(tone), up:tone>0?20+R(400):5+R(220), dn:R(60),
                  v:120+R(4000), d:(G.day||0), s:G.season, sd:rival?"r":"o"});
   G.fmk=trimBySide(G.fmk, FMK_MAX);
 }
@@ -34012,11 +34114,45 @@ const FMK={
   ["차라리 내가 감독하는 게 낫겠다 진심으로",-1],
   ["선수들 인터뷰 좀 그만하고 훈련이나 해라",-1],
   ["ㅋㅋㅋㅋㅋ 오늘 상대팀 갤 축제 분위기더라",-1]],
+ /* 🎵 경기장 응원가 — 이긴 쪽이 떠나는 쪽에게 부른다.
+    홈이 이기면 원정 팬을 배웅하고(잘~가세요), 원정이 이기면 원정 팬이 인사하고 떠난다(잘~있어요).
+    ⚠ 내 팀 팬도 타팀 팬도 같은 노래를 쓴다 — 원래 그런 노래다. */
+ byeHome:[["잘~가세요🏃🤪🤸잘가세요~🕺🤩🤸‍♀️그~한마디(ᕕ( ᐛ )ᕗ)였었네~",1],
+  ["잘~가세요🏃🤪🤸잘가세요~🕺🤩🤸‍♀️그~한마디(ᕕ( ᐛ )ᕗ)였었네~ (원정석 텅 빔)",1],
+  ["오늘 이 노래 부르려고 왔다 잘~가세요🏃🤪🤸",1]],
+ byeAway:[["잘~있어요🤩🤪 잘있어요~🤸‍♂️🕺🥳인~사만🙇🙇‍♀️했었네~",1],
+  ["잘~있어요🤩🤪 잘있어요~🤸‍♂️🕺🥳인~사만🙇🙇‍♀️했었네~ (원정 승리 감사합니다)",1],
+  ["원정 와서 이 노래 부르는 맛에 축구 본다 잘~있어요🤩",1]],
+ /* 🏙️ 시민구단이 기업구단을 잡은 날 — 이건 승점 3점 이상의 의미다 */
+ /* 🗞️ 영입 루머 — 기대는 늘 「큰거」이고, 뚜껑을 열면 임대다 */
+ rumorHype:[["{t} 큰거 온다 ({p} 임대)",1],
+  ["{t} 큰거 온다 ({p} 임대)ㅋㅋㅋㅋㅋ",1],
+  ["형들 {t} 큰거 온다는데?? → ({p} 임대)",1],
+  ["{p} 링크 떴다는데 이번엔 진짜냐",0],
+  ["또 시작이네 {t} 영입설 시즌",0],
+  ["{p} 데려올 돈이 있으면 그걸 먼저 다른 데 써라",-1],
+  ["기자 이름 보고 걸러야 함 ㅋㅋ",0]],
+ cityBeatCorp:[["꺼지세요ㅋㅋㅋ 가만히 앉아있다가 운좋게 기업구단된 팀 주제에ㅋㅋㅋ",1],
+  ["돈 쓴다고 축구 잘하는 거 아니라는 걸 오늘 배웠길",1],
+  ["우리 예산으로 저 팀 이긴 거 계산기 두들겨 봐라",1],
+  ["기업구단 소리 들으려면 축구부터 좀 하고",1]],
  streakW:[
   ["{n}연승 ㅋㅋㅋㅋ 우승할듯?",1],["{n}연승인데 아직도 우리를 무시하는 언론들",1],
   ["감독님 종신계약 갑시다",1],["{n}연승 중인데 왜 나는 불안하지",0],
   ["{n}연승 ㅋㅋ 이제 우승 얘기해도 되지 않냐",1],
-  ["감독 초상화 걸자 경기장에",1],["연승 끊기면 다시 욕할 거임 미리 말해둠",0]],
+  ["감독 초상화 걸자 경기장에",1],["연승 끊기면 다시 욕할 거임 미리 말해둠",0],
+  ["{n}연승째인데 아직도 우리 순위 낮게 잡는 예측 사이트 뭐임",1],
+  ["이 감독 데려온 프런트만 칭찬한다 딱 한 번만",1]],
+ /* 🔥 감독 광신 — 연승이 길어지면 선수 못지않게 감독이 신이 된다 */
+ mgrHype:[["크악 {m} 이 미친놈이 기어코 딸딸이를 부르는구나 오냐 덤벼라 딸딸딸딸딸딸딸",1],
+  ["{m} 감독 {n}연승 ㅋㅋㅋㅋ 이 형 뭐임 진짜",1],
+  ["{m} 감독 동상 세우자 진심임",1],
+  ["전술 노트 좀 팔아라 {m}감독님 사겠습니다",1],
+  ["{m} 감독 부임 전후로 팀이 딴 팀임 ㄹㅇ",1],
+  ["아 {m} 감독 이 사람 절대 뺏기면 안 된다 계약 몇 년 남았냐",1],
+  ["나 {m} 감독 부임 때 반대했던 사람인데 사과함",1],
+  ["죽는 날까지 {m}을/를 우러러<br>한 점 부끄럼이 없기를",1],
+  ["형들 지금 {m} 의심하는겨? ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ",1]],
  streakL:[
   ["{n}연패 ㅋㅋㅋㅋㅋㅋ 이쯤 되면 재능이다",-1],
   ["{n}연패면 감독 나가야지 상식적으로",-1],
@@ -34886,7 +35022,7 @@ function fmkCard(side, n){
   ${list.length?`<div class="fmkList">${list.map(x=>`
     <div class="fmkRow ${x.tone>0?"pos":x.tone<0?"neg":""}">
       <div class="fmkTitle">${x.txt}</div>
-      <div class="fmkMeta"><span class="sueName" title="닉네임을 눌러 이 글을 고소할 수 있습니다" onclick="openSue('fmk','${feedId(x)}')">${x.u}</span><span class="fmkDate">${feedDate(x)}</span>
+      <div class="fmkMeta"><img class="fmkRk" src="${FMK_RANK[fmkRankOf(x)]}" alt="${FMK_RANK_N[fmkRankOf(x)]}" title="${FMK_RANK_N[fmkRankOf(x)]}"><span class="sueName" title="닉네임을 눌러 이 글을 고소할 수 있습니다" onclick="openSue('fmk','${feedId(x)}')">${x.u}</span><span class="fmkDate">${feedDate(x)}</span>
         <span>조회 ${x.v}</span>
         <span class="fmkUp">▲${x.up}</span><span class="fmkDn">▼${x.dn}</span></div>
     </div>`).join("")}</div>`
@@ -40935,7 +41071,16 @@ function brewRumors(){
   const cnt = transferOpen() ? (Math.random()<0.5?1:2) : 1;
   for(let i=0;i<cnt;i++){
     const r=genRumor();
-    if(r){ rumorPush(r); rumorToFeed(r); }
+    if(r){ rumorPush(r); rumorToFeed(r);
+      /* 🗞️ 우리 팀으로 «들어오는» 루머면 게시판이 들썩인다 (요청) */
+      try{
+        const _ut=userTeam();
+        if(_ut && r.toId===_ut.id && Math.random()<0.75){
+          const _p=(typeof findAnyPlayer==="function" && r.pid!=null) ? findAnyPlayer(r.pid) : null;
+          fmkFill(FMK.rumorHype, 1+R(2), {t:_ut.short, p:(_p&&_p.name)||"이름 모를 외국인"});
+        }
+      }catch(e){}
+    }
   }
   applyRumorFallout();
 }
@@ -47374,6 +47519,10 @@ FMK.suwonStay=[
  "수원이 2부에 있는 것도 이제 익숙해졌다 🥶 2️⃣"];
 /* 무승부는 아무 일도 안 일어난 경기다. 그럴 때 커뮤니티는 축구 얘기를 안 한다. */
 FMK.drawNoise=[
+ /* 🥱 아무 일도 없던 경기 — 이럴 때 커뮤니티는 축구 얘기를 안 한다. 게시판 얘기를 한다. */
+ "가무댕댕",
+ "근데 여기 친목 있는것 같긴해. 뉴비유저로 쉽게 접근을 못하겠음.",
+ "가무댕댕...",
  "응가.. 응가..",
  "곤쥬, 이 경기보다가 잠들었어요",
  "듀오링고 할시간이네",
@@ -48742,7 +48891,30 @@ RIV.refRed=[
  ["저게 퇴장이면 아까 {t} 태클은 삼진아웃이다",-1],
  ["10명으로 만들어 놓고 이겼다고 좋아하네",-1],
  ["퇴장 번복 청원 간다 진짜",-1]];
+/* 🏙️ 기업구단 — 모기업이 있는 구단. 나머지는 시민·도민구단이다.
+   K리그 팬 문화에서 이 구분은 단순한 분류가 아니라 «자존심»이라, 시민구단이 기업구단을 잡은 날의
+   반응은 결이 완전히 다르다. 예산(budget)으로 가르면 잘사는 시민구단이 섞여 버려서 명단으로 둔다. */
+const CORP_CLUBS=new Set(["ulsan","jeonbuk","seoul","pohang","suwon","jeju","daejeon","gangwon","seoule"]);
+function isCorpClub(t){ return !!(t && CORP_CLUBS.has(t.id)); }
 const FRIV={
+ /* 🥁 이스터에그 — 수원이 지는 날 옆 동네가 부르는 그 노래.
+    ⚠ 부(division)에 따라 부르는 노래가 다르다. 1부에서는 「내려가라」고,
+       2부에서는 「거기 그대로 있어라」고 부른다 — 후자가 더 아프다. */
+ suwonDown1:[["강등🤪강등😜강등😛강등😝벌레윙🥁🥁강등🤪강등😜강등😛강등😝벌레윙🥁🥁",-1],
+  ["🎵🟦 강등만이 🔵⚪️🔴 나를 기쁘게 해😜 🥁🔵⚪️🔴🎶🥶<br>🎵🟦 너의🥁 강등을🥁 보고🥁 싶어🥁 😜🤪 🔵⚪️🔴🎶🥶",-1],
+  ["강등🤪강등😜강등😛강등😝벌레윙🥁🥁 (드럼 소리가 들리는 듯)",-1],
+  ["오늘도 어김없이 강등송 나왔다 ㅋㅋㅋㅋ",-1]],
+ suwonDown2:[["🎵 🟦 잔류🥁 잔류🥁 잔류🥁 잔류🥁 벌레윙~ 🔵⚪️🔴 🔵🥶<br>🎶 🎵 🟦 잔류🥁 잔류🥁 잔류🥁 벌레윙~ 🔵⚪️🔴 🔵🥶",-1],
+  ["🎵🟦 너의🥁 잔류를 🥁 보고🥁 싶어🥁 😜🤪 🔵⚪️🔴🎶🥶 🎵<br>🎵🟦 화려하게✨️ 잔류해버려🥁 😜😝😛",-1],
+  ["2부에서 부르는 노래는 강등송이 아니라 잔류송임 ㅋㅋㅋㅋ",-1],
+  ["올라오지 마라 거기가 네 자리다",-1]],
+ /* 🎵 응원가는 옆 동네도 같이 쓴다 */
+ byeHome:[["잘~가세요🏃🤪🤸잘가세요~🕺🤩🤸‍♀️그~한마디(ᕕ( ᐛ )ᕗ)였었네~",0],
+  ["원정석에서 저 노래 들으면 진짜 킹받음",0]],
+ byeAway:[["잘~있어요🤩🤪 잘있어요~🤸‍♂️🕺🥳인~사만🙇🙇‍♀️했었네~",0],
+  ["홈에서 저 노래 들려주면 그날 잠 안 옴",0]],
+ cityBeatCorp:[["꺼지세요ㅋㅋㅋ 가만히 앉아있다가 운좋게 기업구단된 팀 주제에ㅋㅋㅋ",-1],
+  ["기업구단 예산으로 시민구단한테 지면 그건 좀",-1]],
  stadDone:[["{t} {w} 개장 ㅊㅊ K리그 인프라 올라간다",1],["구장 부심 시작되는 소리 ㅋㅋ",0],
    ["저기서 우리 팀 경기 보고 싶다",1],["{w} 검색해봤는데 진짜 잘 지었네",1],
    ["이제 {t} 팬들 구장 자랑만 하겠네 ㅋㅋㅋ",0],["솔직히 배 아프지만 축하한다",1],
@@ -55014,7 +55186,11 @@ function oneTouchEval(a, b, opps, gk){
        11~17m 의 「받자마자 그냥 때리기」만 강하게 누른다. */
   /* ⚠ 돌파·태클 시도를 줄이면 캐리어가 공을 덜 잃어 공격이 길어지고 슛이 되레 는다
      (2400→2600 실측: 슛 24.9→27.9). 그 되돌아온 몫을 여기서 다시 깎는다. */
-  const need = inBox ? (1.36 + clamp((g.distM-6)/11, 0, 1)*0.85) : 1.98;   /* 슛 27.1(실축 23) — 중거리를 조금 더 */
+  /* ⚖️ 압박자 명단을 연속으로 바꾸면서(전환 비용) 수비가 조금 강해졌다 — 슛 22.2 → 20.2.
+     수비 안정화는 언제나 공격으로 되갚아야 한다. 원터치 문턱을 조금 내려 되돌린다. */
+  /* ⚠ 되갚기를 박스 <b>밖</b>까지 열었더니 60경기에서 장거리슛 5.6 → 7.5, 슛 26.0(실축 23),
+     코너 11.8(실축 10)까지 따라 올라갔다. 박스 밖은 원래대로 두고 박스 안만 남긴다. */
+  const need = inBox ? (1.26 + clamp((g.distM-6)/11, 0, 1)*0.85) : 1.90;   /* ⚖️ 마킹 정확도 개선으로 슛 22.4→19.1 — 되갚는다 */   /* 슛 27.1(실축 23) — 중거리를 조금 더 */
   const ok = s>=need;
   return {ok, score:s, need, g, blk, inBox, aerial, speedK, inLine, faceK};
 }
@@ -55111,6 +55287,8 @@ const CROSS_CORNER_P=0.26;   // 바이라인 근처에서 막힌 크로스가 �
 /* 📏 유효슛 7.07/경기 · 유효슛% 30.6 (실축 8 · 35%). 슛 총량(22.3)은 맞는데
    골문 안으로 가는 비율이 낮다 — 기준선을 올린다. 0.07 → 0.115 */
 const ACC_BASE=0.150;       // 유효슈팅 기준선 (0.07 → 0.115(유효슛 7.58) → 0.150. 실축 8)
+/* ⏭ 남은 것: 유효슛 6.95·유효슛% 32.7 (실축 8·35). 0.178 로 올리고 SAVE_BASE 도 함께 올리는 안까지
+   갔다가 60경기 검증을 못 끝내 되돌렸다 — 검증 없이 넣지 않는다. */
 /* 🧤 골키퍼 세이브 물리 — 확률이 아니라 시간과 거리로 막는다 */
 /* 🧤 가만히 서서 손이 닿는 범위 — 키와 점프 도달력이 정한다.
    Reflexes 를 선방 확률에 곱하는 대신, 이렇게 「몸이 실제로 닿는 거리」로 만든다. */
@@ -55180,7 +55358,9 @@ const GK_HOLD_MAX=3.2;             // 🧤 키퍼가 공을 안고 버틸 수 �
 /* 📏 n=60 — 상한을 열기 전 유효값은 1.25 로 고정돼 있었다(위 clamp 주석).
    그 상태의 실측이 선방률 62.7% · 골 2.95(실축 70% · 2.45)다.
    상한을 연 뒤 1.45 는 도달 배율 1.7375 → 1.9275 (+11%) 에 해당한다. */
-const SAVE_BASE=1.45;
+/* ⚠ 수비 히스테리시스 작업(4700~4900)으로 수비가 전반적으로 강해졌다 —
+   선방률 77.8% · 골 1.93(실축 70% · 2.45). 상한을 연 뒤로는 이 계수가 실제로 들으므로 내린다. */
+const SAVE_BASE=1.24;   /* ⚖️ 윙어 압박 개선으로 슛 질이 떨어져 선방% 78.6(실축 70) — 되갚는다 */   /* ⚖️ 발 데드존·목표 평활로 수비가 세졌다(차단 +11.7·태클 +4.8·선방% +13.6) — 되갚는다 */   // 선방% 64.4(실축 70) — 다음 작업 후보
 const SHOT_DIV=46;          // 거리 감쇠 분모 — 작을수록 먼 거리 슛이 줄어든다
 /* 🎯 「키퍼와 1대1」 하한선이 성립하는 최소 골문 각(rad) — evaluateShot 주석 참고.
    0.30 ≈ 17°: 정면 24m 에서 보이는 골문 각. 측면 12m·전방 12m 지점(0.31)은 통과,
@@ -55798,7 +55978,7 @@ function meTuneSet(k, v){
       낙하점 경주로 경합 자체가 2배가 됐는데 확률을 덜 내린 탓이다. */
 /* ⚠ 공중볼 경합이 경기당 250회나 잡히므로 이 확률 하나가 파울 총량을 지배한다
    (0.075 × 250 ≈ 19회 = 파울 30회의 3분의 2). 실축 파울 24회에 맞춰 내린다. */
-const AERIAL_FOUL_P=0.048;   // 공중볼 경합에서 파울이 날 확률 (0.050 → 0.042 → 파울 21.9(실축 24) 라 조금 되돌린다)
+const AERIAL_FOUL_P=0.036;   // 공중볼 경합에서 파울이 날 확률 (수비 히스테리시스 뒤 경합·파울이 늘어 파울 30.7(실축 24) — 다시 내린다)
 const SHIRT_FOUL_P=0.0055;   // 제쳐진 수비수가 잡아챌 틱당 확률 (0.0110 → 절반)
 const TACKLE_WON_FOUL=0.40;  // 「공은 따냈는데 파울」 배율 — evW.won 에 곱한다
 const TAKEON_RANGE=0.042;    // 이 거리(약 2.8m) 안에서 앞을 막고 있으면 돌파 대상
@@ -55844,7 +56024,7 @@ const COMPACT_MAX=0.76;       // 볼이 우리 박스 앞까지 왔을 때의 �
    아래로 떨어졌다. 총량은 예전 수준에 두고, 바뀌는 건 <b>어디서 끊기느냐</b>다. */
 /* ⚠ 실패의 구성을 바꾼다 — 오차를 키운 만큼 인터셉트를 줄여야 총 성공률이 유지된다.
    차단 154/경기(패스의 18.6%)는 실축의 6~8배다. */
-const ITC_MUL=0.31;   /* 0.53 → 0.38(차단 154→122) → 0.31. 실축 패스 성공률 80% */
+const ITC_MUL=0.27;   /* 0.53 → 0.38(차단 154→122) → 0.31. 실축 패스 성공률 80% */
 const ITC_BLIND_M=3.2;        // 🧹 발끝 사각 — 찬 공이 이만큼 나가기 전에는 길목 차단이 성립하지 않는다 (2.2 →)
 /* 🧹 ⚠ 폐기된 손잡이 기록 — 한때 길목 차단을 「확률 하나」로 눌렀다(ITC_REACT).
    선분 판정만 넣었을 때 차단 총량은 그대로인데(114→119) 골이 2.3 → 4.8 로 두 배가 됐고
@@ -56020,7 +56200,7 @@ function lbAnt(p){
 /* ⚠ 이 값은 「시계가 2배로 흐르던 시절」 90분 기록을 채우려고 올려 둔 보정이었다.
    시계를 1:1 로 되돌린 뒤에도 남아 있어 이중 계산이 되고 있었다 → 0 으로 내린다. */
 const SHOT_BIAS_ADJ=0.00;    // 슛 남발 억제 (1대1 하한선은 그대로 유지된다)
-const CROSS_ADJ=0.42;         // 크로스 남발 억제 (0.05 → 0.30 → 42.2회/경기(실축 38) 라 조금 더)   // 포지션 규율 (테스트에서 조정 가능)
+const CROSS_ADJ=0.22;         // 크로스 남발 억제 (0.30→0.42 로 조였는데, 수비가 측면에 붙기 시작하면서 크로스가 28.7회(실축 38)로 떨어져 되돌린다)   // 포지션 규율 (테스트에서 조정 가능)
 const SPACING_R=0.055;       // 같은 팀끼리 유지하려는 간격 (약 3.7m) — 서로 겹쳐 뛰지 않게
 const SPACING_PUSH=0.006;    // 그 간격을 지키려 목표를 옆으로 미는 힘
 const PUSH_MAX=0.011;        // 한 틱에 밀려나는 최대 거리 (약 0.75m)
@@ -56046,6 +56226,9 @@ const POS_ERR_MAX=0.055;     // 위치 선정이 최악일 때 벌어지는 오�
 const POS_ERR_DRIFT=0.9;     // 오차가 새로 바뀌는 주기(초)
 const POS_ERR_LERP=0.10;     // 🧭 적용 오차가 새 목표 오차를 따라가는 비율(틱당) — 튀지 않고 흐른다
 const HESITATE_MAX=1.0;      // 판단력이 최악일 때 멈칫하는 시간(초)
+/* 🔒 수비 역할 최소 유지 시간(초) — 이 안에는 상황이 진짜로 바뀌지 않는 한 역할을 바꾸지 않는다.
+   0.4초(역할 재배정 주기)의 두 배 — 「한 번은 그냥 넘긴다」는 뜻이다. */
+const ROLE_DWELL=2.0;
 const LINE_SYNC=0.55;        // 센터백끼리 깊이를 맞추는 정도 (1이면 완전히 일자)
 /* 센터백 존 마킹 — 라인을 지키면서 자기 구역에 들어온 공격수를 잡는다 */
 /* 부상 — 틱마다 뽑는 기본 확률. 자연 발생 0.2 + 태클 0.25 ≈ 경기당 0.45명(양 팀 합계).
@@ -56076,6 +56259,26 @@ const CB_ZONE_NEAR=13;       // 담당까지 이 거리(m) 안이어야 실제�
 const PRESS_STICK=0.32;      // 지금 압박 중인 선수는 이만큼 점수 우위를 갖는다 — 명확히 뒤지기 전엔 유지
 /* 🔒 압박 전념 — 나가기로 정한 뒤 이 시간 동안은 역할이 흔들리지 않는다 (실측: 역할 전환 분당 31회) */
 const PRESS_COMMIT=1.4, PRESS_COMMIT_W=1.20;
+/* 🔀 압박자 «명단» 전환 비용 (슈미트 트리거).
+   ⚠⚠ 떨림의 마지막 뿌리 — <b>두 척도가 서로를 모른다</b>.
+      · 역할 선택(pickDef)에는 이미 히스테리시스가 있다 — intentSwitch 가 최소 유지 시간(SW_DWELL)과
+        전환 마진(SW_MARGIN)을 요구한다. 그래서 LANE↔MARK 같은 <b>대형 역할끼리의</b> 전환은 얌전하다.
+      · 그런데 PRESS 는 pickDef 가 정하지 않는다. 그 위의 압박자 선정 블록이 별도 척도(pressScore)로
+        top-N 을 뽑고, assignDefRoles 는 그 명단을 <b>그대로 받아 적는다</b>. 즉 PRESS↔나머지 경계에는
+        intentSwitch 가 아예 걸리지 않는다.
+      실측 전환쌍이 정확히 그 경계에서만 대칭이었던 이유다:
+        PRESS↔MARK 227/221 · PRESS↔SCREEN 141/140 · PRESS↔LINE 112/110 · PRESS↔DROP 120/115
+      (대형 역할끼리의 쌍은 이 목록에 없다 — intentSwitch 가 막고 있다.)
+   ─ 명단 문턱을 <b>사람마다 다르게</b> 준다. 나가 있던 사람은 더 내려가야 물러나고(PR_EXIT),
+     안 나가 있던 사람은 더 올라와야 나간다(PR_ENTER). 점수가 문턱 위에서 진동해도 명단은 안 바뀐다. */
+const PR_ENTER=0.22, PR_EXIT=0.30;
+/* 🔀 압박 점수 저역통과 — 틱 잡음은 죽이고 추세만 남긴다. 전환 29.4 → 26.3.
+   ⚠ 🚫 0.22(더 세게)는 전환을 23.2 까지 내렸지만 <b>측면 깊은 곳 물러남이 10.8% → 14.1%</b> 로
+      나빠졌다. 너무 매끄럽게 하면 멀리 있는 사람의 점수가 천천히 떠올라 압박자로 뽑히고,
+      달려오다 다시 천천히 가라앉아 되돌아간다 — 정원 래치 때와 <b>정확히 같은 실패</b>다.
+   ─ 이 계열의 교훈: 안정화를 세게 걸수록 <b>먼 사람이 개입</b>하고, 그게 화면의 왕복이 된다. */
+const PRESS_SMOOTH=0.35;
+const ROLE_STICK=0.35;       // 압박자 자리를 빼앗으려면 그 자리 사람보다 이만큼 나아야 한다
 const HOLE_STICK=0.30;       // 지금 COVER/COVER_WIDE 인 선수는 같은 구멍을 계속 맡는다
 const CB_ZONE_KEEP_Y=1.25;   // 존마크 유지 — 구역 폭의 이 배수 안이면 대상을 바꾸지 않는다
 const CB_ZONE_KEEP_D=1.35;   // 존마크 유지 — CB_ZONE_NEAR 의 이 배수 안이면 대상을 바꾸지 않는다
@@ -56116,6 +56319,22 @@ const BREF_K=0.08;           // 틱당 추종 비율 — 공격 국면 (SIM_DT/�
 const PHASE_BLEND_K=0.10;    // 국면 혼합값 추종 (틱당) — τ≈2초
 const BLOCK_SHIFT_K=0.20;    // 블록 깊이 이동 = (기준점 x − 0.5) × 이 값 — 4라운드 0.38 → 0.26 → 0.20(13.3km 에서 2차)
 const BREF_K_DEF=0.17;       // 수비 국면 (τ≈1.2초) — 패스를 읽고 움직인다 (4라운드 2차 0.22 → 0.17)
+/* 🦶 발 데드존 — 자리 역할은 목표가 이 안이면 서 있는다(들어가는 문턱/나오는 문턱) */
+const DEF_DEAD_IN=1.1, DEF_DEAD_OUT=2.8;
+const DEF_CHASE_ROLES={PRESS:1, JOCKEY:1, SECOND:1, RECOVER:1, BLOCK_SHOT:1};
+/* 🎯 목표 저역통과 — 자리 역할 τ≈0.45초 · 볼 추격 역할 τ≈0.15초 · 이 거리(m) 밖이면 평활 안 함 */
+const TGT_SM_K=0.35, TGT_SM_CHASE=0.72, TGT_SM_FAR=14;
+/* 🧭 위험 방향 혼합 — 상대가 달리고 있으면 그 방향의 길목을 우선한다 */
+const MARK_V_MIN=0.0035, MARK_V_W=0.70, PRESS_V_W=0.40;
+const MARK_JOG_GAP=1.6;      // 🚶 마크 자리를 이 안까지 잡았으면 걷는다 — 아니면 뛴다
+const MARK_LEAD=0.80;        // 🔮 담당의 이 시간 뒤 위치를 기준으로 자리를 잡는다
+const MARK_SPD_K=1.06;       // 🏃 마커는 담당 속도의 이 배수까지 낸다 (자리를 잡아야 하니 조금 더)      // 🚶 마크 자리를 이 안까지 잡았으면 걷는다 — 아니면 뛴다
+/* 🪽 윙어 압박 — 이 바깥·이 깊이면 「전진 통로 앞」을 막는다 · 안쪽 치우침 · 간격 배수 */
+/* 📏 압박 강도 → 간격 배수 (압박 자제 = HI · 극한 압박 = LO) */
+const PRESS_GAP_HI=7.4, PRESS_GAP_LO=1.0;
+const WING_Y=0.26, WING_X=0.44, WING_IN=0.72, WING_STAND=1.35, WING_MIN=0.040;
+const PRESS_LEAD=0.45;       // 🔮 캐리어의 이 시간 뒤 위치를 기준으로 압박 자리를 잡는다
+const PRESS_BODY_D=0.036;    // ⚽ 공이 발에서 이 안(약 2.5m)이면 «사람»을 기준으로 압박한다
 const BREF_DEAD=0.045;       // 이 안(약 3m)의 볼 이동은 블록을 움직이지 않는다 — 4라운드 2 → 3m
 const POS_SMOOTH=0.06;       // 자리 역할의 목표 스무딩 (기본 TARGET_SMOOTH 0.16) — 3라운드 0.08 → 0.06
 const POS_HOLD=0.085;        // 자리 역할은 목표에서 이 거리(약 6m) 안이면 버틴다 — 4라운드 4.5 → 6m
@@ -59225,6 +59444,15 @@ function pressScore(d, carrier, ctx){
   const at=(k,fb)=>clamp(attr20(A[k]!=null?A[k]:(fb||60))/20, 0.15, 1);
   const dist=HYP((carrier.x-d.x)*PITCH_AR, carrier.y-d.y);
   /* ① 닿을 수 있는가 — 멀면 나가 봐야 소용없다 */
+  /* ⚠ 🚫 이 항을 «도착 가능성»(ETA 를 상황 수명 b.hold 와 견주고 2.0초 넘으면 급락)으로
+     바꿔 봤다. 진단 자체는 맞다고 보지만 <b>증상은 나아지지 않았다</b>:
+       안정화 장치를 약하게(평활 0.75·문턱 0.10·명단 0.3초) — 크게 물러남 112 → 127 · 측면 15.4%
+       안정화 장치를 그대로                                  — 112 → 121 · 측면 12.6%
+     못 닿는 사람을 빼도 그 자리를 「닿긴 하는데 더 나쁜」 사람이 받고 그가 다시 돌아선다.
+     ⚠⚠ 여섯 번의 시도(명단 연속·점수 평활·정원 래치·제자리 정지·ETA 감점·ETA 재정의)에서
+        <b>크게 물러남은 한 번도 111 아래로 내려간 적이 없다.</b> 어떤 개입을 해도 나빠지기만 한다.
+        이 정도로 완강하면 이 지표의 대부분은 «정상적인 수비»일 가능성이 높다 —
+        압박자 선정을 더 만지기 전에 <b>지표가 무엇을 세고 있는지부터</b> 다시 봐야 한다. */
   let s = clamp(1-dist/0.20, 0, 1)*1.10;
   /* ② 상대가 지금 취약한가 — 등을 보이거나 공이 발에서 멀면 나갈 때다 (§10·§53) */
   const bd=ctx.ballD;                                   // 공이 상대 발에서 떨어진 거리
@@ -59556,6 +59784,50 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
       a._wmBack=false;
     }
     a.defRole=null;      // 아직 미정 — 구멍 배정과 2차 판단으로 넘긴다
+  }
+  /* ══════════════════════════════════════════════════════════════
+     🔒 역할 최소 유지 — 수비 역할 히스테리시스
+     ⚠⚠ 제보 — 「수비수가 다가왔다가 뒤로 갔다가 다시 다가온다」.
+        실측(측면 깊은 곳, 볼 15m 안): 역할 전환이 <b>선수당 분당 31회</b>. 2초에 한 번씩
+        자기 일이 바뀐다. 게다가 전환쌍이 완벽하게 대칭이다 —
+          PRESS↔MARK 227/221 · PRESS↔SCREEN 141/140 · PRESS↔LINE 112/110 · PRESS↔DROP 120/115
+        판단이라면 한쪽으로 치우쳐야 한다. 대칭이라는 건 <b>동전을 던지고 있다</b>는 뜻이다.
+     원인 — 역할마다 점수를 매기는 자가 <b>따로 논다</b>:
+          · 압박 여부는 pressScore (압박 전용 척도, PRESS_STICK 0.32)
+          · 나머지는 pickDef (LANE·MARK·LINE·SCREEN…, 잡음 ±0.175)
+        두 척도 사이에는 「바꾸는 값어치」라는 개념이 아예 없다. 두 후보가 비슷하면
+        0.4초마다 승자가 뒤집히고, PRESS 일 때 목표는 「볼」·나머지는 「대형 안 자리」라
+        선수가 10m 를 앞뒤로 오간다. 화면에 보이는 게 그것이다.
+     ⚠ 먼저 시도했다가 실패한 것들(전부 실측): 압박 전념 가산 · 압박자 명단 0.4초 고정 ·
+        역할 잡음 선수별 고정 → 31 → 31 → 29.5. 전부 「누구를 뽑는가」만 건드렸기 때문이다.
+     ─ 해법은 척도를 통일하는 게 아니라 <b>바꾸는 데 시간 문턱을 두는 것</b>이다.
+       한 번 정한 역할은 ROLE_DWELL 동안 유지한다. 다만 상황이 <b>진짜로</b> 바뀌면 즉시 푼다:
+         · 압박 대상(캐리어)이 바뀌었다   · 담당(마크 대상)을 잃었거나 남이 가져갔다
+         · 볼이 멀어졌다(PRESS)          · 이번 틱에 이미 다른 역할이 확정됐다(압박·복귀 등)
+       구멍 배정(COVER·DROP)은 장부(board)와 얽혀 있어 여기서 건드리지 않는다.
+     ══════════════════════════════════════════════════════════════ */
+  {
+    const _cidNow = carrier ? carrier.id : 0;
+    for(const a of mine){
+      if(a.slot==="GK" || a.defRole) continue;      // 이번 틱에 이미 확정된 사람은 그대로
+      const pv=a._prevDef;
+      if(!pv) continue;
+      if(!(pv===DEF_ROLE.PRESS || pv===DEF_ROLE.MARK || pv===DEF_ROLE.LANE ||
+           pv===DEF_ROLE.LINE  || pv===DEF_ROLE.SCREEN || pv===DEF_ROLE.BLOCK_SHOT)) continue;
+      if(a._dRoleAt==null || (t-a._dRoleAt)>=ROLE_DWELL) continue;
+      if(a._dRoleCid!==_cidNow) continue;           // 상대 소유자가 바뀌었다 — 새 상황이다
+      if(pv===DEF_ROLE.PRESS){
+        /* 볼에서 멀어졌으면 압박이 아니다 — 붙잡아 두면 「따라다니기만」이 된다 */
+        if(HYP((ball.x-a.x)*PITCH_AR, ball.y-a.y) > 0.075) continue;
+      } else if(pv===DEF_ROLE.MARK){
+        if(!a._mark || taken.has(a._mark.id)) continue;
+        if(HYP((a._mark.x-a.x)*PITCH_AR, a._mark.y-a.y) > 0.22) continue;
+        taken.add(a._mark.id);
+      } else if(pv===DEF_ROLE.LANE){
+        if(!a._laneTo) continue;
+      }
+      a.defRole=pv; a._dwellHeld=true;
+    }
   }
   /* 🕳️ 빈 자리 장부 — 「누가 어디를 비웠고, 누가 메우는가」를 한 곳에서 정한다.
      ⚠ 예전에는 세 갈래가 서로를 모른 채 각자 굴러갔다:
@@ -60005,6 +60277,9 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
   for(const a of mine){
     if(a.slot==="GK") continue;
     if(a.defRole===DEF_ROLE.PRESS) a._pressStay=t;      // 🔒 「방금까지 압박하던 사람」 표식
+    if(a._dRoleAt==null || a._lastRole!==a.defRole){     // 🔒 역할이 바뀐 시각 — 최소 유지 판정 기준
+      a._dRoleAt=t; a._dRoleCid=(carrier?carrier.id:0);
+    }
     if(a._lastRole !== a.defRole){
       if(a._lastRole !== undefined){
         const dec=a.decSkill||0.6;
@@ -60085,6 +60360,11 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
   }
 }
 /* 수비 역할별 목표 지점 */
+/* ⚠ 🚫 «물러나지 않는다»(볼에서 멀어지는 목표를 받으면 제자리에 선다)를 넣었다가 걷어냈다 —
+   물러남 112 → 124 로 <b>되레 나빠지고</b> 밸런스가 무너졌다(골 2.27 → 1.20 · 선방% 64 → 85).
+   제자리에 선 선수가 대형의 빈 자리를 만들고, 그 자리를 메우러 온 다른 수비수가 다시 물러난다.
+   ─ 이 계열(래치·평활·정지)은 전부 같은 결말이다. 남은 떨림은 계수가 아니라
+     압박 점수를 «누가 갈 수 있는가»로 다시 짜야 풀린다. */
 function defTargetXY(a, anchor, ball, carrier, threat, dir){
   const ownGoalX = dir>0 ? 0.015 : 0.985;
   /* 판단이 굳어 있는 동안에는 바뀌기 전 역할의 목표를 붙들고 있다 — 역동작이 그대로 보인다.
@@ -60127,10 +60407,36 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
     case DEF_ROLE.PRESS:
     case DEF_ROLE.JOCKEY: {
       const own = (dir>0) ? 0.02 : 0.98;                 // 우리 골문 쪽
-      const gx=(own-ball.x)*PITCH_AR, gy=0.5-ball.y;
+      let gx=(own-ball.x)*PITCH_AR, gy=0.5-ball.y;
       const gl=HYP(gx,gy)||1e-6;
       const jk=(role===DEF_ROLE.JOCKEY) || (a._pressPurpose===PRESS_PURPOSE.DELAY);
-      const stand=jk ? JOCKEY_D : JOCKEY_D*0.30;         // 저지·DELAY 는 간격을 유지한다
+      /* 📏 <b>압박 강도가 «간격»을 정한다.</b>
+         ⚠⚠ 제보: 「압박 강도에 따라 상대와 얼마나 거리를 두는지 봐 달라, 지금은 너무 붙는다」.
+            실측(같은 시드, 압박 슬라이더 0~4 로 한 경기씩):
+              압박자–캐리어 거리  자제 <b>2.45m</b> · 보통 3.28m · 극한 <b>4.84m</b>
+              동시 압박 인원      자제 0.90 · 보통 1.11 · 극한 1.61
+            <b>거리가 거꾸로다.</b> 목표 간격은 JOCKEY_D×0.30 = <b>0.55m 상수</b>라 설정과 무관하고,
+            슬라이더는 「몇 명이 나가는가」만 바꾼다. 압박을 올리면 <b>더 먼 선수까지</b> 압박자로
+            뽑혀서 평균 거리가 되레 늘어난 것이다 — 간격이 조절된 게 아니다.
+            그래서 「압박 자제」를 골라도 나간 사람은 공 앞 반 미터까지 파고든다.
+         ─ 슬라이더가 실제로 «간격»을 정하게 한다.
+             압박 자제 ≈ 2.3m (지연·각만 막는다) · 보통 ≈ 1.5m · 극한 압박 ≈ 0.6m (밀착)
+           저지(JOCKEY·DELAY)도 같은 방향으로 움직이되 폭은 절반이다 — 원래 간격을 두는 역할이라. */
+      const _pTac=clamp(TAC(a.team).press!=null?TAC(a.team).press:1, 0, 2);
+      const _gapK=PRESS_GAP_LO + (PRESS_GAP_HI-PRESS_GAP_LO)*(1-_pTac/2);
+      const stand=jk ? JOCKEY_D*(1+(_gapK-1)*0.45) : JOCKEY_D*0.30*_gapK;
+      /* 🧭 압박도 「골문 중앙」만 보고 있었다 — 캐리어가 <b>지금 몰고 가는 방향</b>을 섞는다.
+         실측: 압박자가 캐리어의 진행 방향 길목에 있던 비율 하프스페이스에서 <b>25.5%</b>.
+         드리블 방향을 무시하면 옆이나 뒤에서 따라붙게 되고, 그게 「막지 못하고 따라만 다니는」 그림이다. */
+      if(carrier && role===DEF_ROLE.PRESS){
+        const _cvx=(carrier.vx||0)*PITCH_AR, _cvy=(carrier.vy||0), _cvl=HYP(_cvx,_cvy);
+        if(_cvl>MARK_V_MIN){
+          const _w=PRESS_V_W*clamp(_cvl/(SPD.RUN*SIM_DT), 0, 1);
+          const _nx=(gx/gl)*(1-_w)+(_cvx/_cvl)*_w, _ny=(gy/gl)*(1-_w)+(_cvy/_cvl)*_w;
+          const _nl=HYP(_nx,_ny)||1e-6;
+          gx=_nx*gl/_nl*1; gy=_ny*gl/_nl*1;   // 길이는 유지하고 방향만 돌린다
+        }
+      }
       /* 🎯 커버 섀도 — 그림자 대상이 있으면 캐리어→그림자 선 위에 선다 (pressPurposeFor 주석) */
       /* 🚫 클로즈다운 — 골사이드가 아니면 먼저 슛 선을 잡고, 잡았으면 볼로 붙는다 (CLOSE 주석) */
       if(role===DEF_ROLE.PRESS && a._pressPurpose===PRESS_PURPOSE.CLOSE){
@@ -60165,6 +60471,32 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
         const _dTgt=HYP((ball.x-_tx)*PITCH_AR, ball.y-_ty);
         if(_dMe > _dTgt) return {x:_tx, y:_ty};      // 아직 회랑 끝보다 멀다 — 거기까지만 나간다
         /* 이미 더 가깝다 — 물러나지 않고 아래의 일반 압박 자리로 이어 간다 */
+      }
+      /* 🪽 <b>윙어 지역 — 골문 «중앙» 이 아니라 캐리어의 «전진 통로» 앞을 막는다.</b>
+         ⚠⚠ 제보: 「수비수가 상대가 돌파할 수 있는 공간을 마킹하려고 안 한다, 특히 윙어 지역」.
+            실측(3경기, 터치라인 쪽 + 상대 진영 3분의 1, 캐리어 기준 가장 가까운 수비수):
+              거리 중앙값 <b>2.3m</b> — 붙어는 있다.
+              안쪽(컷인) 통로 각도 <b>78.8°</b> · 바깥(바이라인) 통로 각도 <b>138.7°</b>
+              <b>두 통로 모두 안 막고 있는 시간 70.3%</b> (안쪽 차단 24.3% · 바깥 차단 12.2%)
+            78.8° 는 「옆에 나란히」, 138.7° 는 「뒤에」 라는 뜻이다. 몸이 통로에 안 들어가 있다.
+            원인은 기준 벡터다 — 압박 자리는 캐리어→<b>골문 중앙</b> 선 위인데, 윙어 자리에서
+            골문 중앙은 «안쪽 뒤편» 대각선이다. 그 자리는 골사이드로는 맞지만
+            윙어가 실제로 갈 두 곳(안쪽 컷인·바이라인)은 <b>둘 다 열어 둔다.</b>
+         ─ 윙어 지역에서는 기준을 바꾼다: <b>캐리어가 전진하는 방향의 앞</b>에 서고,
+           반 발 안쪽으로 치우쳐 컷인을 막고 바깥(터치라인)을 보여준다 — 실제 수비의 기본이다.
+           간격도 조금 벌린다(WING_STAND): 코앞에 붙으면 통로를 «막는» 게 아니라 몸만 대는 것이다. */
+      if(role===DEF_ROLE.PRESS && carrier){
+        const _wSd=(ball.y<0.5?-1:1);
+        const _wOwn=(dir>0?ball.x:1-ball.x);
+        if(Math.abs(ball.y-0.5)>WING_Y && _wOwn<WING_X){
+          const _fx=(own-ball.x)>0 ? 1 : -1;              // 캐리어가 전진하는 x 방향(우리 골문 쪽)
+          let _wx=_fx*1.0, _wy=-_wSd*WING_IN;             // 앞 + 반 발 안쪽
+          const _wl=HYP(_wx,_wy)||1e-6; _wx/=_wl; _wy/=_wl;
+          /* 통로를 «막으려면» 몸이 통로 안에 들어가야 한다 — 코앞 간격(약 1m)으로는 옆에 서는 것과 같다.
+             최소 절대 간격을 준다(WING_MIN). */
+          const _ws=Math.max(stand*WING_STAND, WING_MIN*clamp(_gapK/2.65, 0.72, 1.45));
+          return {x:clamp01(ball.x + _wx*_ws/PITCH_AR), y:clamp01(ball.y + _wy*_ws)};
+        }
       }
       /* 🔄 제쳐졌다 — 사거리 밖에서도 볼 뒤 꼬리 추격 대신 볼→우리 골문 선의 앞 지점으로 돌아 들어간다 (CLOSE 호와 같은 기하) */
       if(role===DEF_ROLE.PRESS){
@@ -60211,10 +60543,43 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
       /* ⚠ 간격까지 절반으로 좁혔더니 <b>과했다</b> — 골 2.97 → 1.93 · 선방률 66.9 → 77.5.
          크로스 각을 지우는 건 <b>서는 위치(바깥)</b>가 하는 일이지 간격이 아니다. 간격은 그대로 둔다. */
       const stand = _wideM ? stand0*0.82 : stand0;
-      const mx = Math.max(0.022, own(m.x) - stand - deep*0.010);
-      const my = _wideM ? clamp01(m.y + (m.y<0.5?-1:1)*0.013)
-                        : clamp01(m.y+(0.5-m.y)*(0.08+deep*0.12));
-      return {x:clamp01(dir>0?mx:1-mx), y:my};
+      /* 🧭 <b>어디를 막는가</b> — 제보: 「상대가 이동할 방향의 길목을 막아야 하는데 엉뚱한 자리에 선다」.
+         ⚠⚠ 코드가 정확히 그랬다. 골사이드를 <b>x축 한 방향으로만</b> 잡고 있었다(own(m.x) − stand).
+            골문은 «점»이라 방향이 대각선인데, 담당 앞을 세로로만 막으면 하프스페이스처럼
+            골문이 비스듬히 있는 자리에서는 <b>대각선이 통째로 열린다.</b>
+            실측(하프스페이스, 3경기): 담당의 <b>진행 방향</b> 기준 각도 오차 중앙값 <b>106.7°</b> —
+            90°를 넘는다는 건 상대가 가려는 쪽의 <b>반대편</b>에 서 있었다는 뜻이다.
+            실제로 길을 막고 있던 비율은 <b>16.5%</b>. 골문 기준으로도 96.4°로 틀렸다
+            (하프스페이스 밖에서는 81.8° — 대각선일수록 나빠진다는 게 원인의 증거다).
+         ─ 두 가지를 벡터로 합쳐 그 «위험 방향» 위에 선다.
+           ① 담당 → 우리 골문 (대각선 포함)   ② 담당이 <b>지금 달리는 방향</b>
+           멈춰 있으면 ①만 쓴다. 달리고 있으면 그쪽 길목을 먼저 막는다 — 그게 「따라다니기」와
+           「길을 끊기」의 차이다. */
+      const _gvx=((dir>0?0.02:0.98)-m.x)*PITCH_AR, _gvy=0.5-m.y, _gvl=HYP(_gvx,_gvy)||1e-6;
+      let _ux=_gvx/_gvl, _uy=_gvy/_gvl;
+      const _mvx=(m.vx||0)*PITCH_AR, _mvy=(m.vy||0), _mvl=HYP(_mvx,_mvy);
+      if(_mvl>MARK_V_MIN){
+        const _w=MARK_V_W*clamp(_mvl/(SPD.RUN*SIM_DT), 0, 1);
+        _ux=_ux*(1-_w)+(_mvx/_mvl)*_w; _uy=_uy*(1-_w)+(_mvy/_mvl)*_w;
+        const _ul=HYP(_ux,_uy)||1e-6; _ux/=_ul; _uy/=_ul;
+      }
+      /* stand 는 예전에 «x-iso» 단위로 쓰였다 — 등방 거리로 옮기면서 크기를 그대로 보존한다
+         (골문이 정면일 때 예전과 완전히 같은 자리가 된다). */
+      const _sI=(stand+deep*0.010)*PITCH_AR;
+      /* 🔮 <b>담당이 있을 자리로 간다</b> — 추격자는 구조적으로 항상 뒤처진다.
+         목표가 「담당 + 오프셋」이면 담당이 움직이는 한 목표도 같이 움직여서, 아무리 빨라도
+         간격이 안 줄어든다. 실측: 마커는 자기 목표에서 중앙값 3.4m 뒤 — 담당까지 거리(4.0m)와
+         거의 같다. 즉 <b>영원히 반 박자 늦은 자리</b>에 서 있다.
+         ─ 실제 수비수는 지금 위치가 아니라 <b>갈 곳</b>을 보고 먼저 가 있는다. 담당의 속도로
+           MARK_LEAD 초 앞을 내다본 지점 기준으로 자리를 잡는다. */
+      const _lx=m.x + (m.vx||0)*(MARK_LEAD/SIM_DT), _ly=m.y + (m.vy||0)*(MARK_LEAD/SIM_DT);
+      let _mx2=_lx + (_ux*_sI)/PITCH_AR, _my2=_ly + _uy*_sI;
+      /* 🚧 측면은 반 발 «바깥»으로 — 안으로 몰아 크로스 각을 지운다 (위 주석) */
+      if(_wideM) _my2 = _my2 + (m.y<0.5?-1:1)*0.013;
+      else       _my2 = _my2 + (0.5-m.y)*(0.05+deep*0.08);
+      const _own2=dir>0?_mx2:1-_mx2;
+      if(_own2<0.022) _mx2 = dir>0?0.022:0.978;
+      return {x:clamp01(_mx2), y:clamp01(_my2)};
     }
     case DEF_ROLE.LANE: {   // 볼 소유자와 그가 노리는 상대 사이를 끊는다
       const th = a._laneTo || threat;
@@ -62534,6 +62899,23 @@ class MatchSim{
               // 몰린 정도에 비례해 가담한다 — 「측면에 있다」가 아니라 「빠져나갈 곳이 없다」가 기준이다
               if(mySide===trapSide) s0 += 0.35+0.45*_pin;
             }
+            /* ⚠ 🚫 «도착 가능성»(자기 속도로 캐리어까지 가는 시간이 상황 수명을 넘으면 감점)도
+               실패했다. 강하게(1.1초·0.55) — 물러남 112 → 111 인데 압박 에피소드가 25% 사라졌다.
+               약하게(1.7초·0.28) — 물러남 130 으로 <b>더 나빠졌다.</b> 둘 다 측면 비율은 13.4%.
+               못 닿을 사람을 빼면 그 자리를 «닿긴 하지만 더 나쁜» 사람이 받고, 그가 다시 돌아선다.
+               ─ 이 문제에서 시도한 다섯 가지가 전부 같은 결말이다(명단 연속·점수 평활·정원 래치·
+                 제자리 정지·도착시간). 압박자 «선정»을 어떻게 손봐도 왕복은 안 없어진다.
+                 남은 가설은 선정이 아니라 <b>이동 자체</b>(목표가 바뀌는 순간의 감속·관성)인데,
+                 이건 검증 없이 손댈 곳이 아니라 여기서 멈춘다. */
+            /* 🔀 점수 «값»을 평활한다 — 결정 규칙이 아니라 그 재료가 흔들리고 있었다.
+               pressScore 는 매 틱 거리·각도·회랑 같은 연속값으로 백지에서 계산되는데,
+               상위 3~4명의 점수가 소수점 차이 안에 몰려 있다. 그래서 문턱을 걸든(슈미트)
+               명단을 이어 붙이든 <b>동전 던지기의 위치만 옮길 뿐</b>이었다(28.8 → 28.3).
+               같은 캐리어를 상대하는 동안은 점수를 저역통과로 흘린다 — 진짜 추세는 살아남고
+               틱 단위 잡음은 죽는다. 캐리어가 바뀌면 즉시 새로 시작한다. */
+            const _pcid=carrier?carrier.id:0;
+            if(a._psCid===_pcid && a._psV!=null) s0 = a._psV + (s0-a._psV)*PRESS_SMOOTH;
+            a._psCid=_pcid; a._psV=s0;
             return {a, s:s0};
           }).sort((p,q)=>q.s-p.s);
           // 트랩에서는 한 명 더, 완전히 몰렸으면 두 명 더. 다만 전체 정원은 5명이 상한이다 —
@@ -62542,35 +62924,78 @@ class MatchSim{
           /* ⚠ 🚫 여기서 「크로스 위험 구간에서는 문턱을 낮추고 정원을 늘린다」를 시도했다가 걷어냈다 —
              압박자 지명을 건드리는 순간 공격이 통째로 죽었다(슛 24 → 17 · 크로스 36 → 23).
              측면 방치는 회랑 완화만으로 충분히 잡힌다. 지명 규칙은 그대로 둔다. */
+          /* 🔀 전환 비용 ③ — <b>정원</b>은 손대지 않는다 (실측 결론).
+             원인 분해에서 가장 큰 조각은 정원이었다(명단 변화 363회 중 축소 144 · 확대 112).
+             `extra` 는 트리거 창(_tg.add)과 「볼이 상대 진영인가」로, `trapAdd` 는 몰린 정도로
+             매 틱 다시 계산되는데, 창은 열렸다 닫히고 볼은 하프라인을 넘나든다.
+             그래서 정원에도 래치를 걸어 봤다 — 양쪽 방향 모두.
+             ⚠ 🚫 「늘리는 건 즉시 · 줄이는 건 0.9초 뒤」 — 역할 전환 28.3 → 26.0 으로 줄었지만
+                <b>화면에 보이는 증상은 되레 나빠졌다</b>(4m+ 크게 물러남 103 → 144).
+                정원을 오래 열어 두면 멀리 있던 사람까지 압박자로 뽑혀 달려 나왔다가
+                정원이 닫힐 때 한꺼번에 되돌아간다.
+             ⚠ 🚫 「늘리는 건 0.6초 이어질 때만 · 줄이는 건 즉시」 — 전환 26.5, 크게 물러남은
+                8경기 기준 219 vs 231 로 <b>차이가 없고</b>, 정작 제보의 무대인
+                <b>측면 깊은 곳의 물러남 비율은 10.2% → 12.0% 로 나빠졌다.</b>
+             ─ <b>전환 «횟수»와 눈에 보이는 «왕복»은 같은 것이 아니다.</b> 숫자를 6% 깎자고
+               제보 장면을 18% 나쁘게 만들 수는 없다. 정원은 상황이 시키는 대로 둔다.
+               떨림은 명단의 연속성(위)과 이동 계층에서 잡는다. */
           const cap=Math.min(5, 1+extra+trapAdd);
           pressers=[];
           /* ⚡ 창 안에서는 나갈 값어치의 문턱이 내려간다 — 평소라면 물러났을 사람도 나간다 */
           const goNeed = _tg.go;
-          for(const it of scored){
-            if(pressers.length>=cap) break;
-            if(it.s < goNeed){ break; }                    // 나갈 값어치가 없다
-            pressers.push(it.a); it.a._pressS=it.s;
-          }
-          /* 🔒 압박자 명단 고정 — 역할 배정과 <b>같은 0.4초 주기</b>로만 바뀐다.
-             ⚠⚠ 제보(「다가왔다 물러났다를 반복한다」)의 마지막 조각.
-                역할 배정(assignDefRoles)은 0.4초마다 도는데 <b>압박자 선정은 매 틱(0.2초) 돌았다.</b>
-                점수가 조금만 흔들려도 명단이 바뀌고, 바뀔 때마다 그 선수의 목표가
-                「볼」↔「대형 안 자리」로 튄다. 실측: 측면 깊은 곳에서 역할 전환 <b>선수당 분당 31회</b>,
-                전환쌍은 PRESS↔MARK / PRESS↔SCREEN / PRESS↔DROP 처럼 완벽히 대칭 — 판단이 아니라 떨림이다.
-                전념 가산(PRESS_COMMIT)만으로는 부족했다(31 → 31). 주기 자체를 맞춘다.
-             ⚠ 캐리어가 바뀌면 즉시 다시 정한다 — 그건 진짜로 상황이 바뀐 것이다. */
+          /* 🔀 압박자 명단 — <b>매번 새로 뽑지 않는다. 지난 명단에서 출발해 필요한 만큼만 고친다.</b>
+             ⚠⚠ 떨림의 진짜 뿌리. 원인을 분해해 보니(2경기·측면 깊은 곳, 명단 변화 363회):
+                 정원 축소 <b>144</b> · 순위 뒤바뀜 <b>107</b> · 정원 확대 <b>112</b> ·
+                 「나갈 값어치 미달」 <b>0</b>
+               문턱은 한 번도 원인이 아니었다. 매 주기 top-N 을 <b>백지에서</b> 다시 뽑기 때문에
+               점수가 소수점 단위로 흔들리기만 해도 명단이 갈렸다.
+               그래서 문턱에 슈미트 트리거(PR_ENTER/PR_EXIT)를 걸어도 28.8 → 28.8, 아무 변화가 없었다.
+             ─ 세 가지 규칙으로 바꾼다.
+               ① <b>빠지는 건 값어치를 잃었을 때만</b> (goNeed − PR_EXIT 아래로)
+               ② <b>새로 들어오는 건 자리가 남았을 때만</b> (goNeed + PR_ENTER 위로)
+               ③ <b>자리를 빼앗으려면 확실히 더 나아야 한다</b> (최하위보다 ROLE_STICK 이상)
+             pickDef 의 intentSwitch 가 대형 역할끼리 하던 일을, PRESS 경계에서도 하게 만드는 것이다.
+             (설계 의도: PRESS 와 나머지 역할이 <b>같은 전환 비용 규칙</b>을 공유한다.) */
           {
             const _prk="pr"+key, _cid3=carrier?carrier.id:0;
             this._prHold=this._prHold||{};
             const _ph=this._prHold[_prk];
-            if(_ph && _ph.cid===_cid3 && (this.t-_ph.t)<0.4){
-              const keep=_ph.list.filter(q=>mine.indexOf(q)>=0 && !(q._down&&q._down>this.t));
-              if(keep.length) pressers=keep;
-              else this._prHold[_prk]={t:this.t, cid:_cid3, list:pressers.slice()};
+            const _sc=new Map(); for(const it of scored) _sc.set(it.a, it.s);
+            const _ok=(q)=>_sc.has(q) && mine.indexOf(q)>=0 && !(q._down&&q._down>this.t);
+            /* 명단 갱신 주기는 역할 배정(0.4초)보다 조금 길게 — 그 사이에는 손대지 않는다 */
+            if(_ph && _ph.cid===_cid3 && (this.t-_ph.t)<0.5 && _ph.list.some(_ok)){
+              pressers=_ph.list.filter(_ok);
             } else {
+              const prev=(_ph && _ph.cid===_cid3) ? _ph.list.filter(_ok) : [];
+              pressers=prev.filter(q=>_sc.get(q) >= goNeed-PR_EXIT);          // ① 값어치를 잃은 사람만 뺀다
+              for(const it of scored){
+                if(pressers.indexOf(it.a)>=0) continue;
+                if(pressers.length<cap){                                       // ② 자리가 남았다
+                  if(it.s >= goNeed+PR_ENTER) pressers.push(it.a);
+                  continue;
+                }
+                let wi=-1, wv=Infinity;                                        // ③ 자리를 빼앗는다
+                for(let k=0;k<pressers.length;k++){ const v=_sc.get(pressers[k]); if(v<wv){ wv=v; wi=k; } }
+                if(wi>=0 && it.s >= wv+ROLE_STICK && it.s >= goNeed+PR_ENTER) pressers[wi]=it.a;
+                else break;                                                    // 정렬돼 있으니 아래는 볼 것도 없다
+              }
+              pressers.sort((x,y)=>_sc.get(y)-_sc.get(x));
+              if(pressers.length>cap) pressers.length=cap;                     // 정원이 줄었다 — 낮은 순으로 뺀다
+              /* 🥇 «누가 볼로 가는가» 도 전환 비용을 갖는다. 아래 가르기에서 1순위는 볼, 2순위는
+                 패스길을 맡으므로, 둘이 자리를 맞바꾸면 <b>두 사람이 동시에</b> 목표를 바꾼다.
+                 확실히 나은 사람이 나타나기 전까지는 붙어 있던 사람이 계속 볼을 맡는다. */
+              if(_ph && _ph.cid===_cid3 && _ph.list.length){
+                const _inc=_ph.list[0], _k=pressers.indexOf(_inc);
+                if(_k>0 && _sc.get(_inc) >= _sc.get(pressers[0])-ROLE_STICK){
+                  pressers.splice(_k,1); pressers.unshift(_inc);
+                }
+              }
               this._prHold[_prk]={t:this.t, cid:_cid3, list:pressers.slice()};
             }
+            for(const q of pressers) q._pressS=_sc.get(q);
           }
+          /* (명단 고정·유지 규칙은 위 «압박자 명단» 블록으로 합쳤다 — 두 곳에서 명단을 만지면
+              한쪽의 히스테리시스를 다른 쪽이 지운다.) */
           /* 🎯 목적·그림자 — 압박자마다 (pressPurposeFor 주석) */
           for(const a2 of mine){ a2._shadowDuty=null; }
           const _oppsP=this.side(this.opp(key));
@@ -62578,7 +63003,24 @@ class MatchSim{
           /* 🎯 역할 분담 — 트랩·트리거가 아니면 두 번째 압박자는 볼이 아니라 남은 패스길을 맡는다 */
           /* ⚠ 🚫 1차 시도: 사거리(CLOSE)에서는 둘 다 볼로 보냈다 — 3시드 골 14 → 20, 슛 119 → 137. 두 번째 압박자가
              패스길(컷백)을 비워 박스 안 패스가 자유로워졌다. 사거리에서도 두 번째는 패스길을 맡는다. */
-          if(pressers.length>=2 && !trapZone && !_tg.on){
+          /* 🔀 전환 비용 ② — 이 «가르기»가 매 틱 뒤집히고 있었다.
+             `trapZone` 과 `_tg.on`(카운터프레스·백패스·뜬공 창)은 <b>매 틱 새로 계산</b>되고,
+             창은 열렸다 닫혔다 한다. 명단(_prHold)은 0.5초 붙들어 놨는데 <b>가르기는 안 붙들려 있어서</b>
+             같은 두 번째 압박자가 「볼로 간다 ↔ 패스길을 맡는다」를 매 틱 오간다 —
+             그때마다 목표가 「볼」↔「대형 안 자리」로 튀는, 화면에서 보이는 바로 그 왕복이다.
+             실측(원인 분해, 2경기·측면 깊은 곳): 압박자 명단 변화 363회 중
+               정원 축소 144 · 순위 뒤바뀜 107 · 정원 확대 112 — 「문턱 미달」은 <b>0회</b>였다.
+               즉 떨림의 원인은 「나갈 값어치」가 아니라 <b>정원과 가르기가 흔들리는 것</b>이었다.
+             ─ 가르기 결정도 명단과 같은 주기로 붙든다. 캐리어가 바뀌면 즉시 다시 정한다. */
+          let _splitSecond=(!trapZone && !_tg.on);
+          {
+            const _sk="sp"+key, _scid=carrier?carrier.id:0;
+            this._prSplit=this._prSplit||{};
+            const _sp=this._prSplit[_sk];
+            if(_sp && _sp.cid===_scid && (this.t-_sp.t)<0.5) _splitSecond=_sp.v;
+            else this._prSplit[_sk]={t:this.t, cid:_scid, v:_splitSecond};
+          }
+          if(pressers.length>=2 && _splitSecond){
             const second=pressers.splice(1,1)[0];
             second._shadowDuty=(pressers[0]._pressShadow&&pressers[0]._pressShadow.id)||0;   // 첫 압박자의 그림자는 제외
             second._pressPurpose=null; second._pressShadow=null;
@@ -62732,6 +63174,16 @@ class MatchSim{
         const _k = (phase==="DEF") ? (_dz ? 0.5 : BREF_K_DEF) : BREF_K;
         if(!bR || b.setPiece){ bR=this._bRef[key]={x:b.x, y:b.y}; }
         else if(_follow){
+          /* ⚠ 🚫 <b>기준볼 데드존 가설 — 틀렸다.</b>
+             「3m 안이면 정지, 넘으면 따라감」이라는 온·오프 구조가 연속 입력을 <b>계단</b>으로 바꿔
+             열한 명의 목표를 동시에 1~2m 씩 옮기고, 그게 요요의 뿌리라고 봤다.
+             넘은 <b>초과분만</b> 따라가는 연속형(소프트 데드존)으로 바꿔 실측:
+               요요 <b>2.5 → 2.7</b> (측면 2.5 → 3.1) — 목표 「2.0 이하」에 한참 못 미치고 되레 나빠졌다.
+             이유는 반대였다. 이 데드존은 계단을 «만드는» 장치가 아니라 블록의 움직임을 <b>억제하는</b>
+             장치다. 연속으로 바꾸면 볼의 모든 흔들림이 그대로 블록에 전달돼 목표가 더 자주 움직인다.
+             ─ 기준볼은 요요의 «원인»이 아니다. 원인 분해에서 41% 로 1위였던 것은
+               「목표를 움직인 것이 무엇인가」이지 「떨게 만든 것이 무엇인가」가 아니었다.
+               둘을 같은 것으로 읽은 게 이 가설의 오류다. */
           const dx=b.x-bR.x, dy=b.y-bR.y;
           if(HYP(dx*PITCH_AR, dy)>BREF_DEAD){ bR.x+=dx*_k; bR.y+=dy*_k; }
         }
@@ -63115,7 +63567,22 @@ class MatchSim{
         } else {
           // 수비 — 역할별로 다르게 움직인다(길목 차단 / 대인마크 / 라인 유지 / 커버)
           a._now=this.t;
-          const dt=defTargetXY(a, anchor, DEF_POS_ROLES[a.defRole] ? bR : b, carrier, defThreat, a.dir);   // 🧭 자리 역할은 기준점
+          /* ⚽ <b>사람을 막는다, 발밑 공을 쫓지 않는다.</b>
+             ⚠⚠ 제보(「다가왔다 물러났다」)의 가장 큰 단일 원인. 압박 목표는 «볼 + 골 쪽으로 2m» 인데,
+                여기 들어오던 `b` 는 <b>드리블러 발밑에서 앞뒤로 튀는 공</b>이다. 캐리어가 제자리에
+                서 있어도 공은 매 틱 1~3m 씩 왔다 갔다 하고, 압박자는 그 목표를 성실히 따라
+                <b>앞뒤로 걸어 다녔다.</b> 역할도 압박 목적도 그림자도 바뀌지 않는데 목표만 움직이는
+                실측 사례의 정체가 이것이다(캐리어 정지 구간의 1.5m+ 왕복 중 압박 29% · 회랑 20%).
+             ─ 통제된 공이면 <b>캐리어의 몸</b>을 기준으로 선다. 발에서 공이 크게 떨어졌을 때
+               (PRESS_BODY_D 밖 — 나쁜 첫 터치·헛발질)만 공을 직접 노린다. 그게 실제 수비다. */
+          let _dref = DEF_POS_ROLES[a.defRole] ? bR : b;
+          if(!DEF_POS_ROLES[a.defRole] && carrier
+             && HYP((b.x-carrier.x)*PITCH_AR, b.y-carrier.y) < PRESS_BODY_D){
+            /* 🔮 압박도 «갈 곳»을 본다 — 지금 자리로 가면 도착했을 때 캐리어는 이미 지나가 있다 */
+            _dref={x:clamp01(carrier.x+(carrier.vx||0)*(PRESS_LEAD/SIM_DT)),
+                   y:clamp01(carrier.y+(carrier.vy||0)*(PRESS_LEAD/SIM_DT))};
+          }
+          const dt=defTargetXY(a, anchor, _dref, carrier, defThreat, a.dir);   // 🧭 자리 역할은 기준점
           /* 🚫 「위험하면 역할보다 골문 앞이 먼저」 — 예전에 있던 3단계(계약 표 참고)를
              <b>걷어냈다</b>. 실측에서 두 번 다 순손해였다: 박스 안 수비 인원은 1.9 → 2.6명으로
              늘었는데 골이 11 → 17 로 뛰었고, 마킹 중인 선수를 뺀 뒤에도 14 였다.
@@ -63183,6 +63650,55 @@ class MatchSim{
             a._posEy=(a._posEy||0)+((a._posGy||0)-(a._posEy||0))*POS_ERR_LERP;
             tx=clamp01(tx+(a._posEx||0)); ty=clamp01(ty+(a._posEy||0));
           }
+          /* 🦶 <b>발 데드존</b> — 제보(「다가왔다 물러났다」)의 실제 원인.
+             원인을 끝까지 분해한 결과(캐리어가 <b>가만히 있는</b> 순간만 골라 접근↔후퇴 방향 전환을 셈):
+               같은 역할인데 목표만 움직임 <b>81%</b> · 회랑완화 11% · 멈칫 5% · <b>역할 전환 3%</b>
+             역할 떨림은 원인이 아니었다. 다시 그 81% 를 분해하면:
+               블록 기준볼(bR)이 움직임 <b>41%</b> · 이미 목표에 있고 몸싸움 25% · 앵커가 움직임 <b>18%</b> ·
+               위협 대상 교체 8% · 목표가 튐 9%   — <b>평균 목표 점프 1.75m</b>
+             즉 수비수는 자기 역할을 바꾸지 않았다. 블록 기준점과 앵커가 계속 표류하니
+             <b>목표가 1~2m 씩 앞뒤로 흔들렸고, 선수는 그걸 성실하게 따라다녔다.</b>
+             ⚠ 그래서 압박자 «선정»을 여섯 번 고쳐도 아무 변화가 없었던 것이다(3% 짜리 문제였다).
+           ─ 실제 수비수는 2m 목표 보정을 위해 앞뒤로 걷지 않는다. 서 있는다.
+             자리 역할(블록을 이루는 역할)에 한해, 목표가 코앞이면 발을 떼지 않는다.
+             한번 서면 목표가 확실히 멀어질 때까지 계속 선다(슈미트) — 경계에서 다시 떨리지 않게.
+             ⚠ 자리를 잡는 <b>모든 보정이 끝난 뒤</b>에 건다. 처음에 defTargetXY 직후에 넣었더니
+                아래 4셰이프 혼합(_shBond)과 위치 오차(_posEx)가 다시 목표를 흔들어 효과가 0 이었다.
+             ⚠ 볼을 쫓는 역할(압박·저지·세컨볼·복귀·슛막기)은 제외한다 — 그들은 서 있으면 안 된다. */
+          {
+            /* 압박·저지는 데드존이 작다 — 붙어야 하는 역할이라 크게 주면 압박이 헐거워진다.
+               그래도 <b>0 이면 안 된다</b>: 캐리어가 멈춰 있을 때의 왕복 중 압박 역할이 29% 로 1위였다. */
+            /* ⚠ 🚫 데드존을 1.8/4.2m 로 키우고 압박 역할까지 포함해 봤다 — 2.2 → 2.5 로 <b>나빠졌다</b>.
+               데드존이 크면 「멈춰 있다 한꺼번에 튀어나가는」 스톱-고 자체가 새 왕복이 된다.
+               작게, 그리고 볼을 쫓는 역할은 제외 — 그 조합이 가장 좋았다. */
+            const _gm=HYP((tx-a.x)*PITCH_AR, ty-a.y)*ISO_TO_M;
+            if(DEF_CHASE_ROLES[a.defRole]) a._footHold=false;
+            else if(a._footHold){ if(_gm>DEF_DEAD_OUT) a._footHold=false; }
+            else if(_gm<DEF_DEAD_IN) a._footHold=true;
+            if(a._footHold){ tx=a.x; ty=a.y; }
+          }
+          /* 🎯 <b>목표 저역통과</b> — 떨림의 마지막 조각이자 가장 큰 조각.
+             수비 목표 좌표는 연속값 위에 <b>딱딱한 임계값</b>이 여러 겹 얹혀 있다:
+               클로즈다운 호 전환(cs &lt; CLOSE_COS) · 제쳐짐 판정(cs2 &lt; −0.20) ·
+               회랑 끝 판정(_pressHomeD &gt; _pressCorr×1.15) · 블록 기준볼(bR) 데드존 ·
+               위협 대상 교체 · 4셰이프 혼합 · 위치 오차 난수
+             각각은 한 틱 만에 목표를 <b>1~3m 옮긴다</b>. 임계값 근처에서 값이 미세하게 오르내리면
+             목표가 앞뒤로 튀고, 선수는 그걸 성실히 따라가 «다가왔다 물러났다»가 된다.
+             실측: 캐리어가 멈춰 있을 때의 1.5m+ 왕복 중 <b>역할 전환은 5.5%뿐</b>이고
+             나머지는 전부 「같은 역할인데 목표가 움직임」이었다. 그래서 압박자 선정을 여섯 번
+             고쳐도 아무 변화가 없었다 — 손잡이가 처음부터 여기 있었다.
+           ─ 임계값을 하나씩 없애는 대신 <b>결과를 매끄럽게</b> 한다. 목표가 튀어도 발은 튀지 않는다.
+             ⚠ 멀리 떨어져 있으면(진짜 이동 중) 평활하지 않는다 — 복귀가 굼떠진다.
+             ⚠ 볼을 쫓는 역할은 약하게만 건다 — 반응이 늦으면 압박이 죽는다. */
+          {
+            const _far=HYP((tx-a.x)*PITCH_AR, ty-a.y)*ISO_TO_M > TGT_SM_FAR;
+            if(_far || a._tSmX==null){ a._tSmX=tx; a._tSmY=ty; }
+            else {
+              const _k2=DEF_CHASE_ROLES[a.defRole] ? TGT_SM_CHASE : TGT_SM_K;
+              a._tSmX += (tx-a._tSmX)*_k2;  a._tSmY += (ty-a._tSmY)*_k2;
+              tx=a._tSmX; ty=a._tSmY;
+            }
+          }
           // 볼이 우리 진영으로 넘어오면 수비진은 걷지 않는다. 공격수는 전력질주로 들어오는데
           // 수비가 조깅으로 내려가면 라인은 영원히 볼보다 뒤에 놓인다.
           const deepBall = clamp01((0.34-(a.dir>0?b.x:1-b.x))/0.34);
@@ -63196,8 +63712,26 @@ class MatchSim{
               : (a._mkTrack=(a.defRole===DEF_ROLE.MARK && !!a._mark && (a.dir>0?a._mark.x:1-a._mark.x)<0.42   // 우리 진영 깊숙한 담당만 (이동 거리: 전 구역이면 +1km · 0.5 → 0.42 로 -0.2km)
                              && (HYP((a._mark.vx||0)*PITCH_AR, a._mark.vy||0)/SIM_DT > SPD.RUN*0.85 || (_dz && b.state==="PASS")))) ? SPD.SPRINT*0.95
               /* 🚶 4라운드 — 마크는 담당과 가까우면(5m 안) 조깅으로 따라간다. 멀면 RUN. */
-              : (a.defRole===DEF_ROLE.MARK && a._mark && HYP((a._mark.x-a.x)*PITCH_AR, a._mark.y-a.y)<0.072) ? SPD.JOG*1.3
-              : (a.defRole===DEF_ROLE.MARK || a.defRole===DEF_ROLE.LANE || a.defRole===DEF_ROLE.COVER_WIDE) ? SPD.RUN
+              /* 🚶 ⚠⚠ 여기가 「엉뚱한 자리에서 마크한다」의 <b>진짜 원인</b>이었다.
+                 조깅 판정 기준이 <b>담당까지의 거리</b>였다 — 담당 5m 안이면 무조건 걸었다.
+                 그런데 마크 자리는 담당 <b>옆</b>이 아니라 담당과 골문 <b>사이</b>다. 담당에 가깝다고
+                 자리를 잡은 게 아닌데, 가깝다는 이유로 걸어서 영영 자리에 못 갔다.
+                 실측(하프스페이스, 2경기): 마커의 <b>목표까지 거리 중앙값 4.6m</b> — 담당까지 거리(4.2m)보다
+                 <b>멀다.</b> 목표의 골방향 오차는 44°인데 <b>실제 위치는 97°</b> — 자리는 옳게 계산해 놓고
+                 그 자리에 서 있질 않았다. 화면에서 「길목을 안 막고 옆에 서 있는」 그림이 이것이다.
+                 (이 규칙은 이동거리 12km 맞추기에서 들어왔다 — 절약할 곳을 잘못 골랐다.)
+               ─ 기준을 <b>목표까지의 거리</b>로 바꾼다. 자리를 잡았으면 걷고, 아니면 뛴다. */
+              : (a.defRole===DEF_ROLE.MARK && a._mark
+                 && HYP((tx-a.x)*PITCH_AR, ty-a.y)*ISO_TO_M < MARK_JOG_GAP) ? SPD.JOG*1.3
+              /* 🏃 <b>담당의 속도에 맞춘다</b> — 마커의 상한이 RUN(4.6m/s)인데 공격수는 SPRINT(7.2m/s) 다.
+                 구조적으로 골사이드를 <b>지킬 수가 없다.</b> 실측(하프스페이스): 마커는 자기 목표에서
+                 중앙값 3.4m 뒤에 있고, 그래서 목표의 골방향 오차 62°가 실제로는 <b>99.6°</b>가 된다 —
+                 자리는 옳게 계산해 놓고 그 자리에 영영 도착하지 못한다.
+                 ─ 자리를 못 잡았으면 담당이 뛰는 만큼은 뛴다. 자리를 잡았으면 위의 조깅 규칙이 받는다. */
+              : (a.defRole===DEF_ROLE.MARK && a._mark) ?
+                  Math.min(SPD.SPRINT*0.98,
+                    Math.max(SPD.RUN, HYP((a._mark.vx||0)*PITCH_AR, (a._mark.vy||0))/SIM_DT*MARK_SPD_K))
+              : (a.defRole===DEF_ROLE.LANE || a.defRole===DEF_ROLE.COVER_WIDE) ? SPD.RUN
               : (a.defRole===DEF_ROLE.BLOCK_SHOT) ? SPD.SPRINT*0.92       // 🚫 슛 선은 걸어가지 않는다 (CLOSE 주석 ②)
               : (a.defRole===DEF_ROLE.SECOND) ? (((a.dir>0?b.x:1-b.x)<0.35) ? SPD.SPRINT*0.95 : SPD.RUN)   // ⚽ 우리 진영 낙하점은 전력 (0.4 → 0.35 거리 절약)
               : lerp(SPD.JOG, SPD.RUN*0.7, deepBall);    // 🏃 사다리 개편: 라인 조정은 RUN 까지 (예전 SPRINT) · 3라운드 ×0.85 · 4라운드 ×0.7
@@ -66319,7 +66853,7 @@ class MatchSim{
        경기당 3~5장(파울당 ~15%). 0.53 → 0.34
        ⚠ 그 뒤 파울 자체가 30.7 → 23.3 으로 줄면서 경고도 2.57 장까지 내려갔다(실축 4).
           파울당 비율을 다시 올린다 — 총량이 아니라 <b>비율</b>이 손잡이다. 0.34 → 0.50 */
-    else if(r < fs.sev*0.46*rc) card=CARD.YELLOW;   /* 0.50 에서 경고 4.07 — 파울을 조금 올리므로 함께 내린다 */
+    else if(r < fs.sev*0.40*rc) card=CARD.YELLOW;   /* 0.46 에서 경고 5.37(실축 4) — 파울과 함께 내린다 */
     else                     card=CARD.VERBAL;
     if(card===CARD.YELLOW){
       f.yellows=(f.yellows||0)+1;
@@ -69736,45 +70270,140 @@ function fanTownhallThrowBottle(){
   }, {okLabel:"투척", danger:true});
 }
 /* ---------- 선수별 개별 반응 (FM처럼 — 같은 말이라도 선수 성격·컨디션에 따라 제각각 다르게 반응한다) ---------- */
+/* ═══ 🚪 라커룸 반응 — 리뉴얼 ═══════════════════════════════════════════
+   ⚠ 예전 판은 <b>성격(4종) · 팀 사기 · 감독 호감도 · 지시 톤</b> 넷만 보고 카테고리를 뽑았다.
+      그래서 해트트릭을 한 선수와 퇴장당한 선수가 <b>같은 문장</b>을 말했다.
+      경기에서 무슨 일이 있었는지가 반응에 하나도 반영되지 않았다 —
+      x.rating · x.goals · x.assists · x.y · x.red · 교체 시점 · 스코어 · 주장 · 불만/약속 ·
+      컨디션 같은 재료가 <b>이미 다 있는데</b> 아무것도 읽지 않았다.
+   ─ 반응의 재료를 「성격」에서 「성격 + 오늘 있었던 일」로 넓힌다.
+     문장도 사실을 인용한다({g}골 · 평점 {r} · 교체 시각 {m}분).                       */
 const REACT_POOL={
-  determined:  ["🔥 {p}, 결의에 찬 표정으로 고개를 끄덕입니다.","🔥 {p}: \"반드시 해내겠습니다.\"","🔥 {p}, 눈빛이 달라졌습니다.","🔥 {p}: \"오늘은 다릅니다. 지켜봐 주세요.\""],
-  fired_up:    ["💥 {p}, 흥분을 감추지 못하고 주먹을 불끈 쥡니다.","💥 {p}: \"당장 나가서 뛰고 싶습니다!\"","💥 {p}, 잔뜩 격앙된 표정입니다."],
+  /* ── 기존 결(성격·톤) ── */
+  determined:  ["🔥 {p}, 결의에 찬 표정으로 고개를 끄덕입니다.","🔥 {p}: \"반드시 해내겠습니다.\"","🔥 {p}, 정강이 보호대를 고쳐 차며 눈빛이 달라집니다.","🔥 {p}: \"오늘은 다릅니다. 지켜봐 주세요.\""],
+  fired_up:    ["💥 {p}, 흥분을 감추지 못하고 주먹을 불끈 쥡니다.","💥 {p}: \"당장 나가서 뛰고 싶습니다!\"","💥 {p}, 라커를 손바닥으로 한 번 치고 일어섭니다."],
   confident:   ["😎 {p}: \"맡겨만 주세요.\"","😎 {p}, 자신감 넘치는 표정으로 팀원들을 다독입니다.","😎 {p}: \"문제없습니다, 감독님.\""],
   calm:        ["😐 {p}, 별다른 동요 없이 담담하게 듣습니다.","😐 {p}: \"네, 알겠습니다.\" (덤덤한 반응)","😐 {p}, 평소와 다름없는 표정입니다."],
   nervous:     ["😰 {p}, 살짝 긴장한 기색이 역력합니다.","😰 {p}: \"잘할 수 있을까요...\" 하며 손을 꼭 쥡니다.","😰 {p}, 시선을 피하며 조용히 고개만 끄덕입니다."],
   distracted:  ["🙄 {p}, 다른 생각을 하는 듯 집중력이 흐트러져 보입니다.","🙄 {p}, 표정이 영 딴 데 가 있습니다.","🙄 {p}, 건성으로 고개만 끄덕입니다."],
   unhappy:     ["😤 {p}, 못마땅한 표정을 숨기지 않습니다.","😤 {p}, 팔짱을 낀 채 시선을 돌립니다.","😤 {p}: \"...\" (불만스러운 표정)"],
-  relieved:    ["🙂 {p}, 안도한 표정으로 미소를 짓습니다.","🙂 {p}, 긴장이 풀린 듯 어깨를 폅니다."]
+  relieved:    ["🙂 {p}, 안도한 표정으로 미소를 짓습니다.","🙂 {p}, 긴장이 풀린 듯 어깨를 폅니다."],
+  /* ── 🆕 오늘 있었던 일이 만드는 결 ── */
+  proud:       ["🌟 {p}, {g}골을 넣은 얼굴로 조용히 웃습니다. \"더 넣을 수 있었습니다.\"",
+                "🌟 동료들이 {p}의 등을 두드리고 지나갑니다. 애써 담담한 척하지만 입꼬리가 올라가 있습니다.",
+                "🌟 {p}: \"골은 제가 넣었지만 만들어 준 건 팀입니다.\" 평점 {r}짜리 경기였습니다."],
+  humble_star: ["🫡 {p}, 평점 {r}을 받고도 \"수비에서 한 번 놓친 게 계속 걸립니다\"라며 고개를 젓습니다.",
+                "🫡 {p}, 칭찬이 나오자 오히려 자세를 고쳐 앉습니다. \"다음 경기가 더 중요합니다.\""],
+  guilty:      ["😞 {p}, 고개를 들지 못합니다. 오늘의 실수가 계속 머릿속을 맴도는 표정입니다.",
+                "😞 {p}: \"제 탓입니다. 변명하지 않겠습니다.\" 목소리가 잠겨 있습니다.",
+                "😞 {p}, 유니폼으로 얼굴을 덮은 채 한참을 그대로 앉아 있습니다."],
+  red_shame:   ["🟥 {p}, 퇴장당한 뒤로 라커룸 구석에서 한마디도 하지 않습니다.",
+                "🟥 {p}: \"동료들한테 미안합니다. 제가 팀을 열 명으로 만들었습니다.\"",
+                "🟥 {p}, 주장이 어깨를 두드리자 그제서야 고개를 들었습니다."],
+  angry_off:   ["😠 {p}, {m}분 만에 교체된 것이 못마땅한 표정입니다. 벤치에 앉을 때 물병을 툭 밀쳤습니다.",
+                "😠 {p}: \"제가 그렇게 못했습니까?\" {m}분 교체에 납득하지 못한 얼굴입니다.",
+                "😠 {p}, 교체 사인을 보고 장갑을 벗어 던지듯 내려놓았습니다."],
+  pro_off:     ["🤝 {p}, {m}분 교체를 담담히 받아들이고 들어온 선수와 손바닥을 마주칩니다.",
+                "🤝 {p}: \"팀에 필요한 결정이었다면 괜찮습니다.\""],
+  rally:       ["🅒 주장 {p}가 자리에서 일어나 라커룸을 둘러봅니다. \"고개 들어. 아직 안 끝났다.\"",
+                "🅒 주장 {p}: \"감독님 말씀대로 갑니다. 각자 자기 자리에서 한 발씩만 더 뜁시다.\"",
+                "🅒 {p}, 완장을 고쳐 매며 어린 선수들을 하나씩 눈으로 붙잡습니다."],
+  defiant:     ["🧨 {p}, 감독의 말이 끝나기도 전에 짧게 코웃음을 쳤습니다.",
+                "🧨 {p}: \"...그 얘긴 지난번에도 들었습니다.\" 라커룸이 순간 조용해집니다.",
+                "🧨 {p}, 대놓고 휴대폰을 꺼내 들여다봅니다."],
+  drained:     ["🥵 {p}, 벽에 등을 기댄 채 숨을 고르느라 말이 없습니다.",
+                "🥵 {p}, 고개를 끄덕이긴 하는데 다리가 풀려 일어서질 못합니다.",
+                "🥵 {p}, 얼음주머니를 허벅지에 올린 채 눈을 감고 듣습니다."],
+  debut_awe:   ["🐣 {p}, 선배들 사이에서 잔뜩 굳은 얼굴로 감독의 말을 한 마디도 놓치지 않으려 합니다.",
+                "🐣 {p}, 심장이 뛰는 게 보일 만큼 긴장했습니다. 물을 두 번이나 들이켰습니다."]
 };
-function playerReactionCategory(p, toneScore){
+/* 반응 카테고리별 개인 사기 증감 — 오늘 있었던 일이 만드는 결은 폭이 더 크다 */
+const CATEGORY_MORALE_DELTA={
+  determined:2, fired_up:3, confident:1, calm:0, relieved:1, nervous:-1, distracted:-2, unhappy:-3,
+  proud:4, humble_star:2, guilty:-3, red_shame:-5, angry_off:-4, pro_off:0,
+  rally:2, defiant:-4, drained:-1, debut_awe:1
+};
+/* 🆕 오늘 이 선수에게 무슨 일이 있었나 — 라커룸 반응의 재료.
+   경기 전·하프타임에는 x.rating 이 아직 없다(경기 종료 시 계산). 없으면 없는 대로 굴러가게 만든다. */
+function reactCtxOf(p, x, M, stage){
+  const t=userTeam();
+  const c={g:0, a:0, y:0, red:false, rating:null, mins:null, offAt:null, early:false,
+           cap:false, unhappy:0, cond:(p.cond!=null?p.cond:100), rookie:false, res:0};
+  try{
+    if(x){
+      c.g=x.goals||0; c.a=x.assists||0; c.y=x.y||0; c.red=!!x.red;
+      c.rating=(x.rating!=null?x.rating:null);
+      if(x.on!=null) c.mins=((x.off!=null?x.off:(M&&M.min!=null?M.min:90))-x.on);
+      if(x.off!=null && !x.red && !x.injGap){ c.offAt=x.off; c.early=(x.off<66 && x.on===0); }
+    }
+    const ci=(typeof capInfo==="function")?capInfo(t):null;
+    c.cap = !!(ci && ci.c===p.id);
+    c.unhappy=(p.unhappy||0)+((p.promiseBroken||0)>0?1:0);
+    c.rookie = ((p.apps||0)<=2 && (p.age||25)<=21);
+    if(M){ const us=(M.home.id===t.id), gf=us?M.hg:M.ag, ga=us?M.ag:M.hg;
+           c.res = gf>ga?1 : gf<ga?-1 : 0; }
+  }catch(e){}
+  return c;
+}
+/* 🆕 카테고리 선택 — ① 오늘 있었던 일이 먼저, ② 그다음이 성격·톤.
+   실제 라커룸이 그렇다. 퇴장당한 선수에게 성격은 부차적이다. */
+function playerReactionCategory(p, toneScore, ctx, stage){
   const pers=p.pers||0; // 0프로페셔널 1야심가 2온화함 3다혈질
-  const moraleLow = (p.morale||70) < 55;
-  // 감독을 신뢰하는 선수는 같은 말도 좋게 듣고, 등 돌린 선수는 뭐라 해도 삐딱하게 듣는다
-  toneScore += aff(p)>=72 ? 1 : aff(p)<=30 ? -1 : 0;
+  const moraleLow=(p.morale||70)<55;
+  const A=aff(p);
+  toneScore += A>=72 ? 1 : A<=30 ? -1 : 0;
   const r=Math.random();
-  if(toneScore>=3){ // 매우 긍정적/독려하는 지시
+  const c=ctx||{};
+  /* ── ① 사건 우선순위 ── */
+  if(c.red) return r<0.75?'red_shame':'guilty';
+  if(c.unhappy>=2 && A<=45 && r<0.62) return 'defiant';
+  if(stage==='post'){
+    if(c.rating!=null){
+      if(c.rating>=8.0 || (c.g>=2)) return (pers===0 && r<0.5) ? 'humble_star' : 'proud';
+      if(c.g>=1 || c.a>=2) return r<0.62?'proud':(pers===0?'humble_star':'confident');
+      if(c.rating<=5.4) return r<0.6?'guilty':(pers===3?'unhappy':'nervous');
+    } else if(c.g>=1) return 'proud';
+    if(c.cond<=62 && r<0.55) return 'drained';
+  } else {
+    if(c.g>=1 && r<0.7) return 'proud';
+  }
+  if(c.early && stage!=='pre'){
+    /* 조기 교체 — 야심가·다혈질은 대놓고 화를 내고, 프로페셔널은 받아들인다 */
+    const mad = (pers===1?0.72 : pers===3?0.80 : pers===2?0.40 : 0.28) + (A<=45?0.15:0) - (c.res>0?0.18:0);
+    return r<clamp(mad,0.10,0.92) ? 'angry_off' : 'pro_off';
+  }
+  if(c.cap && toneScore<=0 && r<0.55) return 'rally';          // 분위기가 가라앉으면 주장이 먼저 일어선다
+  if(c.rookie && r<0.55) return 'debut_awe';
+  /* ── ② 성격·톤 (기존 결) ── */
+  if(toneScore>=3){
     if(pers===3) return r<0.55?'fired_up':'determined';
     if(pers===1) return r<0.6?'determined':'confident';
     if(pers===0) return r<0.65?'determined':'confident';
-    return r<0.5?'relieved':(r<0.85?'calm':'confident'); // 온화함
+    return r<0.5?'relieved':(r<0.85?'calm':'confident');
   }
-  if(toneScore<=-1){ // 냉정하거나 질책하는 지시
+  if(toneScore<=-1){
     if(moraleLow) return r<0.5?'unhappy':'distracted';
     if(pers===3) return r<0.55?'unhappy':'distracted';
     if(pers===2) return r<0.5?'nervous':'calm';
     if(pers===1) return r<0.45?'unhappy':'nervous';
     return r<0.4?'nervous':'calm';
   }
-  if(toneScore===0){ // 중립적인 지시
+  if(toneScore===0){
     if(pers===3) return r<0.3?'distracted':(r<0.65?'calm':'nervous');
     if(pers===2) return r<0.6?'calm':'nervous';
     return r<0.5?'calm':(r<0.8?'nervous':'determined');
   }
-  // 약한 긍정(1~2점)
   if(moraleLow) return r<0.4?'nervous':'calm';
   if(pers===2) return r<0.55?'calm':'relieved';
   if(pers===3) return r<0.35?'distracted':(r<0.7?'determined':'fired_up');
   return r<0.4?'calm':(r<0.75?'determined':'confident');
+}
+/* 문장 안의 사실 자리표를 채운다 — {p} 이름 · {g} 골 · {r} 평점 · {m} 교체 시각 */
+function reactFill(line, p, c){
+  return line.replace(/\{p\}/g, p.name)
+             .replace(/\{g\}/g, String(c&&c.g?c.g:1))
+             .replace(/\{r\}/g, (c&&c.rating!=null)?c.rating.toFixed(2):"—")
+             .replace(/\{m\}/g, String((c&&c.offAt!=null)?c.offAt:"?"));
 }
 function samplePlayers(t, n){
   // 선발급(상위) 선수 위주로 후보를 뽑되, 매번 다른 얼굴이 나오도록 순서를 섞는다
@@ -69791,29 +70420,52 @@ function matchSquadFor(M){
   return M.home.id===t.id ? M.h : M.a;
 }
 // 반응 카테고리별 "개인 사기" 증감폭 — 같은 지시를 들어도 결의에 차면 더 오르고, 못마땅해하면 오히려 떨어진다(FM처럼 개인차를 준다)
-const CATEGORY_MORALE_DELTA={determined:2, fired_up:3, confident:1, calm:0, relieved:1, nervous:-1, distracted:-2, unhappy:-3};
+/* (카테고리별 사기 증감표는 REACT_POOL 옆으로 옮겼다 — 새 카테고리와 한자리에서 관리한다) */
 /* 경기 후 라커룸에서 "결장(벤치에만 있었던)" 선수들의 반응 — 실제로 뛰지 못했으니 감독의 지시 톤과 별개로
    기본적으로 아쉬움·불만이 깔려 있다(FM처럼 현실적으로: 선수들은 못 뛰면 기분이 나쁘다). */
+/* 🪑 벤치 반응도 같은 원칙으로 리뉴얼한다.
+   ⚠ 예전 판은 성격 하나로만 갈렸다 — <b>이번 시즌 한 번도 못 뛴 선수</b>와
+      <b>지난 경기에 풀타임을 뛴 선수</b>가 똑같이 「아쉬워」했다.
+      게다가 감독이 <b>출전 약속을 깨 놓은</b> 선수도 그냥 「마뜩잖은 표정」이었다.
+   ─ 출전 가뭄(시즌 출전 시간)·약속 파기·불만 단계·팀 승패를 함께 본다. */
 const BENCH_REACT_POOL={
   annoyed:     ["😑 {p}, 오늘도 벤치 신세였습니다. 마뜩잖은 표정입니다.","😑 {p}: \"언제쯤 기회가 올까요...\" 씁쓸해합니다.","😑 {p}, 애써 태연한 척하지만 아쉬움이 묻어납니다.","😑 {p}, 유니폼을 정리하며 한숨을 내쉽니다."],
   frustrated:  ["😤 {p}, 노골적으로 불만스러운 표정을 짓습니다.","😤 {p}: \"이 정도면 저도 뛸 자격 있는 거 아닙니까?\"","😤 {p}, 팔짱을 낀 채 시선을 피합니다.","😤 {p}, 라커룸 문을 세게 닫고 나갑니다."],
-  patient:     ["🙂 {p}, 묵묵히 다음 기회를 기다립니다.","🙂 {p}: \"제 차례가 올 겁니다.\" 담담한 표정입니다.","🙂 {p}, 프로답게 담담히 받아들입니다."]
+  patient:     ["🙂 {p}, 묵묵히 다음 기회를 기다립니다.","🙂 {p}: \"제 차례가 올 겁니다.\" 담담한 표정입니다.","🙂 {p}, 프로답게 담담히 받아들입니다."],
+  /* 🆕 */
+  drought:     ["🥀 {p}, 이번 시즌 출전 시간이 거의 없습니다. 아무 말 없이 가방을 챙깁니다.",
+                "🥀 {p}: \"제가 여기 왜 있는지 모르겠습니다.\" 혼잣말에 가까웠습니다.",
+                "🥀 {p}, 벤치에서 몸을 푸는 것도 이제 그만뒀습니다."],
+  betrayed:    ["💔 {p}, 출전 약속을 떠올리는 표정으로 감독을 똑바로 쳐다봅니다.",
+                "💔 {p}: \"약속하셨잖습니까.\" 짧은 한마디에 라커룸이 조용해집니다."],
+  glad_win:    ["👏 {p}, 못 뛴 아쉬움보다 팀이 이긴 게 먼저인 듯 동료들과 손뼉을 마주칩니다.",
+                "👏 {p}: \"오늘은 형들이 다 했네요.\" 웃으며 물병을 돌립니다."],
+  ready:       ["🔥 {p}, 못 나간 게 분한 듯 다음 경기를 벼르는 눈빛입니다.",
+                "🔥 {p}: \"다음엔 준비돼 있겠습니다.\" 목소리에 힘이 들어가 있습니다."]
 };
-const BENCH_MORALE_DELTA={annoyed:-2, frustrated:-4, patient:-1};
-function benchReactionCategory(p){
+const BENCH_MORALE_DELTA={annoyed:-2, frustrated:-4, patient:-1, drought:-5, betrayed:-6, glad_win:0, ready:-1};
+function benchReactionCategory(p, ctx){
   const pers=p.pers||0; // 0프로페셔널 1야심가 2온화함 3다혈질
-  const r=Math.random();
-  if(pers===0) return r<0.55?'patient':(r<0.85?'annoyed':'frustrated'); // 프로페셔널은 비교적 담담
-  if(pers===1) return r<0.4?'annoyed':(r<0.75?'frustrated':'patient'); // 야심가는 기회에 민감, 불만이 큼
-  if(pers===2) return r<0.5?'patient':(r<0.85?'annoyed':'frustrated'); // 온화함은 중간
-  return r<0.35?'annoyed':(r<0.75?'frustrated':'patient'); // 다혈질은 감정 기복이 큼
+  const c=ctx||{}; const r=Math.random();
+  /* 약속을 깨 놓고 또 앉혀 두면 그게 제일 크게 남는다 */
+  if((p.promiseBroken||0)>0 && r<0.70) return 'betrayed';
+  /* 출전 가뭄 — 시즌 누적 출전 시간이 사실상 없다 */
+  if((p.apps||0)<=1 && (G.round||0)>=6 && r<0.65) return 'drought';
+  if((p.unhappy||0)>=2 && r<0.60) return 'frustrated';
+  /* 팀이 이겼으면 못 뛴 아쉬움이 조금 묻힌다 — 프로페셔널·온화함일수록 */
+  if(c.res>0 && r<(pers===0?0.55:pers===2?0.45:0.25)) return 'glad_win';
+  if(pers===0) return r<0.45?'patient':(r<0.72?'annoyed':(r<0.90?'ready':'frustrated'));
+  if(pers===1) return r<0.32?'annoyed':(r<0.66?'frustrated':(r<0.88?'ready':'patient'));
+  if(pers===2) return r<0.45?'patient':(r<0.78?'annoyed':(r<0.92?'ready':'frustrated'));
+  return r<0.28?'annoyed':(r<0.66?'frustrated':(r<0.88?'ready':'patient'));
 }
 /* kind: 'starter'(선발로 뛴 선수) | 'sub'(교체로 투입돼 뛴 선수) | 'unused'(경기 후 — 벤치에서 한 번도 못 뛴 선수) */
-function reactAndApply(p, toneScore, kind){
+function reactAndApply(p, toneScore, kind, x, M, stage){
   kind = kind||'starter';
+  const ctx=reactCtxOf(p, x, M, stage);
   if(kind==='unused'){
-    const cat=benchReactionCategory(p);
-    const line=pick(BENCH_REACT_POOL[cat]).replace("{p}", p.name);
+    const cat=benchReactionCategory(p, ctx);
+    const line=reactFill(pick(BENCH_REACT_POOL[cat]), p, ctx);
     // 감독이 아무리 좋은 말을 해도 못 뛴 아쉬움이 더 크게 작용하지만, 톤이 긍정적이면 그나마 조금은 누그러진다
     const delta=(BENCH_MORALE_DELTA[cat]!==undefined?BENCH_MORALE_DELTA[cat]:0)+Math.round(toneScore*0.15);
     p.morale=clamp((p.morale||70)+delta,30,99);
@@ -69821,10 +70473,16 @@ function reactAndApply(p, toneScore, kind){
     return {p, cat, line, delta, kind};
   }
   const effTone = kind==='sub' ? toneScore+1 : toneScore; // 교체로나마 뛴 선수는 출전 자체를 긍정적으로 받아들인다
-  const cat=playerReactionCategory(p, effTone);
-  let line=pick(REACT_POOL[cat]).replace("{p}", p.name);
-  if(kind==='sub') line += ` <span class="small">(교체 출전)</span>`;
-  const delta=Math.round(toneScore*0.4)+(CATEGORY_MORALE_DELTA[cat]!==undefined?CATEGORY_MORALE_DELTA[cat]:0)+(kind==='sub'?1:0);
+  const cat=playerReactionCategory(p, effTone, ctx, stage);
+  let line=reactFill(pick(REACT_POOL[cat]), p, ctx);
+  if(kind==='sub') line += ` <span class="small">(교체 출전 · ${ctx.mins!=null?ctx.mins+"분":"—"})</span>`;
+  /* 🆕 사기 증감에도 오늘의 활약이 들어간다 — 잘한 선수는 같은 말에도 더 오르고,
+     퇴장·저평점은 감독이 뭐라 하든 스스로 깎인다. */
+  let perf=0;
+  if(ctx.rating!=null) perf += clamp((ctx.rating-6.6)*1.6, -3, 3);
+  perf += ctx.g*1.2 + ctx.a*0.6 - (ctx.red?2.5:0) - ctx.y*0.3;
+  const delta=Math.round(toneScore*0.4 + perf*0.6)
+             +(CATEGORY_MORALE_DELTA[cat]!==undefined?CATEGORY_MORALE_DELTA[cat]:0)+(kind==='sub'?1:0);
   p.morale=clamp((p.morale||70)+delta,30,99);
   affAdd(p, delta*0.22, "라커룸");     // 라커룸에서 들은 말이 감독에 대한 인상을 만든다
   return {p, cat, line, delta, kind};
@@ -69848,12 +70506,12 @@ function computeSquadReactions(M, toneScore, stage){
   const sd=matchSquadFor(M);
   if(!sd){
     const picks=samplePlayers(userTeam(), 4+R(2));
-    return {onPitch:picks.map(p=>reactAndApply(p,toneScore,'starter')), bench:[]};
+    return {onPitch:picks.map(p=>reactAndApply(p,toneScore,'starter',null,M,stage)), bench:[]};
   }
   // 출전 선수 = 선발이든 교체든 실제로 그라운드를 밟은 모든 선수(현재 뛰고 있는지 여부와 무관 — 이미 교체돼 나간 선수도 포함)
-  const onPitch=sd.list.map(x=>reactAndApply(x.p, toneScore, x.on>0?'sub':'starter'));
+  const onPitch=sd.list.map(x=>reactAndApply(x.p, toneScore, x.on>0?'sub':'starter', x, M, stage));
   const benchKind = stage==='post' ? 'unused' : 'starter';
-  const bench=sd.bench.slice().map(p=>reactAndApply(p,toneScore, benchKind));
+  const bench=sd.bench.slice().map(p=>reactAndApply(p,toneScore, benchKind, null, M, stage));
   return {onPitch, bench};
 }
 /* 스무 명 넘는 반응을 한 줄씩 세로로 쌓으면 화면을 한참 굴려야 한다 — 2열로 접어 한눈에 담는다. */
@@ -71646,7 +72304,8 @@ const LU_OURS={
     "오늘 {p} 폼이면 상대 수비 세 명 붙여도 못 막음",
     "{p}은/는 우리 팀 훈장입니다 진짜",
     "{p} 나오는 날은 그냥 마음이 편해",
-    "타팀 팬들 오늘 {p} 처음 보면 놀랄 듯"],
+    "타팀 팬들 오늘 {p} 처음 보면 놀랄 듯",
+    "크악 {p}이/가 선발이라니 기어코 딸딸이를 부르는구나 오냐 덤벼라 딸딸딸딸딸딸딸"],
   young:["{p}은/는 경험치 잘먹네",
     "{p} 또 선발이야? 얘 크는 거 실시간으로 보는 중",
     "{p} 나이 생각하면 이 정도면 미친 거 아님?",
@@ -71669,7 +72328,8 @@ const LU_OURS={
     "{p} 계약 연장 언제 합니까 구단아 제발",
     "{p} 요즘 경기 보려고 퇴근 시간 조정했다",
     "{p} 이번 시즌 끝나면 못 잡을 것 같아서 무섭다",
-    "{p}, 우리 팀에 있어 줘서 고맙습니다 진심으로"],
+    "{p}, 우리 팀에 있어 줘서 고맙습니다 진심으로",
+    "크악 {p}이/가 선발이라니 기어코 딸딸이를 부르는구나 오냐 덤벼라 딸딸딸딸딸딸딸"],
   cold:["{p}은/는 아직도 선발이네...",
     "{p} 폼 안 올라오는데 계속 쓰는 이유가 뭘까",
     "{p} 오늘은 좀 살아나자 제발 부탁이야",
@@ -71739,6 +72399,41 @@ const LU_RIVAL={
     "{p} 안 나온다 이건 호재다 진짜",
     "{p} 빠진 거 확인하고 맥주 꺼냈다",
     "{p} 후반에 나올 텐데 그때가 진짜 고비"],
+  /* 🆕 상대 팬 관점 확장 — 우리 팬 쪽은 13갈래인데 여기는 9갈래라 반응 수가 늘 모자랐다.
+     ① 상대 팀(=우리) 명단을 보는 각도를 늘리고 ② 자기 팀 선수 얘기도 하게 만든다.
+     실제 타팀 팬은 남의 명단만 보지 않는다 — 자기 팀 키퍼 걱정을 더 많이 한다. */
+  theirVeteran:["{p} 아직도 뛰네 저 나이에",
+    "{p} 느려진 거 다 보인다 그쪽으로 파고들자",
+    "{p} 노련해서 우리 어린 선수들 다 속을 듯 조심",
+    "{p} 은퇴 전에 한 번은 이겨 보고 싶었다"],
+  theirForeign:["{p} 저 외국인 물건이던데",
+    "{p} 몸값 얼마였지? 그 돈 값은 하는 듯",
+    "{p} K리그 적응 끝난 것 같아서 무섭다",
+    "{p} 우리도 저런 외국인 좀 데려와라 프런트야"],
+  theirDebut:["{p} 데뷔전이라는데 우리한테? 만만하게 봤나",
+    "{p} 첫 경기부터 험한 꼴 보게 해주자",
+    "{p} 데뷔전 상대가 우리라니 운도 없다"],
+  theirLowCond:["{p} 몸 상태 안 좋다던데 그대로 나오네 ㅋㅋ 호재다",
+    "{p} 저 컨디션으로 90분? 후반에 무너진다",
+    "{p} 무리해서 나온 티가 난다 그쪽 집중 공략"],
+  theirGK:["{p} 저 키퍼 요즘 안정적이라 걱정이다",
+    "{p} 발밑 약한 거 알고 있다 전방 압박 걸자",
+    "{p}만 넘으면 되는데 그게 제일 어렵지"],
+  theirHot:["{p} 요즘 폼 미쳤던데 하필 오늘 만나네",
+    "{p} 최근 경기 다 봤는데 진짜 답이 없다",
+    "{p} 오늘만 좀 쉬어 가면 안 되나"],
+  /* 자기 팀 얘기 — 상대 팬도 결국 자기 팀이 제일 걱정이다 */
+  ourYoung:["우리 {p} 오늘 큰 경기 데뷔인데 잘 버텨라",
+    "{p} 이런 경기에서 크는 거지",
+    "{p} 얘 오늘 잘하면 진짜 물건이다"],
+  ourGK:["{p} 오늘 하나만 막아주면 된다 진짜",
+    "{p} 제발 오늘은 실수 없이",
+    "{p} 뒤에 있으니까 그나마 마음이 놓인다"],
+  ourVeteran:["{p} 형이 오늘 뒤를 잡아줘야 한다",
+    "{p} 아직 안 죽었다는 거 보여주자"],
+  ourForm:["우리도 요즘 폼 나쁘지 않다 해볼 만해",
+    "지난 경기 보고 기대치 좀 올렸다",
+    "솔직히 오늘 지면 좀 그렇지 않냐"],
   theirTall:["{p} 저 키... 세트피스 때 조심해야 함",
     "{p} 공중볼은 그냥 포기하고 세컨볼 노리자",
     "{p} 우리 센터백보다 머리 하나 크네"],
@@ -71798,14 +72493,37 @@ const LU_PRE={
     "{o}전이지만 오늘은 결과보다 내용",
     "슬슬 시즌 시작이구나 설렌다 진짜"]
 };
+/* 🆕 프리시즌 상대 팬 — 예전에는 갈래가 «둘»뿐이라(우리 팬은 열둘) 반응 수가 7:4 로 벌어졌다.
+   프리시즌의 타팀 팬은 「정찰」하러 온다 — 남의 영입·유망주·노장을 자기 팀과 견주는 게 본업이다. */
 const LU_PRE_R={
   theirAce:["{p} 연습경기에 저 선수를 왜 쓰지",
     "{p} 몸 상태 미리 보는 것도 나쁘지 않네",
-    "{p} 시즌 들어가면 우리도 만나야 하는데 벌써 머리 아프다"],
+    "{p} 시즌 들어가면 우리도 만나야 하는데 벌써 머리 아프다",
+    "{p} 벌써 저 정도 몸이면 개막 때는 어떡하라고",
+    "{p} 저 선수만 없으면 {t}은/는 그냥 중위권인데"],
+  theirYoung:["{p} 쟤 누구냐 처음 보는데 좋아 보인다",
+    "{p} {t} 유스에서 또 하나 나왔네 부럽다 진짜",
+    "{p} 이름 적어 뒀다 나중에 우리가 데려오자"],
+  theirForeign:["{p} 새 외국인이라던데 어떤가 보러 왔다",
+    "{p} 이번 영입 성공이면 {t} 골치 아파진다",
+    "{p} 몸값 들었는데 그 돈이면 우리는 셋 데려온다"],
+  theirVeteran:["{p} 아직도 뛰네 프리시즌부터 무리하는 거 아님?",
+    "{p} 저 나이에 연습경기 풀타임? 관리 좀 해줘라"],
+  theirDebut:["{p} 처음 보는 이름인데 유스인가",
+    "{p} 프리시즌은 저런 선수 보는 재미로 본다"],
+  theirNew:["{t} 이번 겨울에 돈 좀 썼네 명단이 달라졌다",
+    "{t} 영입 명단 보고 왔는데 솔직히 부럽다",
+    "{t} 저 정도 보강했으면 올해는 진짜 노리는 듯"],
+  ourSquad:["우리 팀 프리시즌은 언제 하냐",
+    "남의 팀 보다가 우리 팀 생각나서 우울해짐",
+    "우리도 저런 영입 좀 해줘라 프런트야"],
   team:["연습경기라 별 의미 없다 그냥 보는 거지",
     "{t} 새 선수들 어떤지 정찰하러 왔습니다",
     "우리도 프리시즌인데 이런 거 신경 쓸 때가 아님",
-    "결과 말고 조직력만 보고 가겠다"]
+    "결과 말고 조직력만 보고 가겠다",
+    "{t} 전술 바뀐 것 같은데 캡처해 뒀다",
+    "프리시즌 성적으로 시즌 예측하는 건 매년 틀리더라",
+    "개막까지 얼마 안 남았네 슬슬 실감 난다"]
 };
 /* ── 시즌 국면별 ───────────────────────────────────────────────── */
 const LU_CTX={
@@ -71924,11 +72642,21 @@ function lineupFanReactions(M){
     cand.push({side:"o", pool:LU_PRE.team, v:V(null)});
     cand.push({side:"o", pool:LU_PRE.team, v:V(null)});
     const rv=p=>({p:p?p.name:"", t:us.short, o:them.short});
+    const addPR=(pool,pp)=>{ if(pool&&pool.length&&pp) cand.push({side:"r",pool,v:rv(pp)}); };
     const ta=top(ours); if(ta) cand.push({side:"r", pool:LU_PRE_R.theirAce, v:rv(ta)});
+    /* 🆕 정찰 나온 타팀 팬의 눈 — 유망주·새 외국인·노장·처음 보는 이름까지 본다 */
+    addPR(LU_PRE_R.theirYoung,   one(ours,p=>age(p)<=21));
+    addPR(LU_PRE_R.theirForeign, one(ours,p=>p.frn));
+    addPR(LU_PRE_R.theirVeteran, one(ours,p=>age(p)>=34));
+    addPR(LU_PRE_R.theirDebut,   one(ours,p=>(p.career||0)<=1));
+    cand.push({side:"r", pool:LU_PRE_R.theirNew, v:rv(null)});
+    cand.push({side:"r", pool:LU_PRE_R.ourSquad, v:rv(null)});
     cand.push({side:"r", pool:LU_PRE_R.team, v:rv(null)});
     cand.push({side:"r", pool:LU_PRE_R.team, v:rv(null)});
     cand.push({side:"r", pool:LU_PRE_R.team, v:rv(null)});
-    return luDraw(cand, 7, 5);
+    cand.push({side:"r", pool:LU_PRE_R.team, v:rv(null)});
+    /* 📏 프리시즌도 양쪽 개수를 맞춘다 (요청) — 예전 7:5 (제보: 「상대 구단 팬 반응도 동일한 개수로」) */
+    return luDraw(cand, 8, 8);
   }
   for(const pl of (ctx||[])){ cand.push({side:"o", pool:pl, v:V(null)}); cand.push({side:"o", pool:pl, v:V(null)}); }
   for(const pl of (ctxR||[])){ cand.push({side:"r", pool:pl, v:V(null)}); }
@@ -71965,31 +72693,87 @@ function lineupFanReactions(M){
     const avg=ours.reduce((s,p)=>s+p.ovr,0)/Math.max(1,ours.length);
     addR(LU_RIVAL.theirBench, one(ourBench,p=>p.ovr>=avg));
   }
-  addR(LU_RIVAL.ourAce, top(theirs));
+  addR(LU_RIVAL.theirVeteran, one(ours,p=>age(p)>=34));
+  addR(LU_RIVAL.theirForeign,  one(ours,p=>p.frn));
+  addR(LU_RIVAL.theirDebut,    one(ours,p=>(p.career||0)<=1&&!(p.apps>0)));
+  addR(LU_RIVAL.theirLowCond,  one(ours,p=>(p.cond||100)<=70));
+  addR(LU_RIVAL.theirGK,       one(ours,p=>p.pos==="GK"));
+  addR(LU_RIVAL.theirHot,      one(ours,p=>rate(p)>=7.3));
+  /* 자기 팀 선수 얘기 — theirs 는 상대 팬 입장에서 «우리» 선수다 */
+  addR(LU_RIVAL.ourAce,      top(theirs));
+  addR(LU_RIVAL.ourYoung,    one(theirs,p=>age(p)<=21));
+  addR(LU_RIVAL.ourGK,       one(theirs,p=>p.pos==="GK"));
+  addR(LU_RIVAL.ourVeteran,  one(theirs,p=>age(p)>=34));
+  cand.push({side:"r", pool:LU_RIVAL.ourForm, v:RV(null)});
   cand.push({side:"r", pool:LU_RIVAL.ourWorry, v:RV(null)});
   cand.push({side:"r", pool:LU_RIVAL.team, v:RV(null)});
 
-  return luDraw(cand, 8, 7);
+  /* 📏 양쪽 개수를 맞춘다 (요청) — 예전에는 8:7 이었고, 게다가 상대 팬 후보 갈래가
+     적어서 실제로는 4:2 까지 벌어지는 경기도 있었다. 위에서 갈래를 늘렸으니 정원도 같게 준다. */
+  return luDraw(cand, 8, 8);
 }
+/* 🔥 펨코 전용 문장 — 소셜미디어 탭에 뜨면 결이 안 맞는 줄들. 채널 배정에서 강제로 게시판에 보낸다. */
+const LU_FMK_ONLY=new Set([
+  "크악 {p}이/가 선발이라니 기어코 딸딸이를 부르는구나 오냐 덤벼라 딸딸딸딸딸딸딸",
+  "저는 동성애자가 아니지만 {p} 선수와 함께 숲속 통나무 집에서 살고 싶습니다."
+]);
 /* 후보에서 실제로 뽑아 문장으로 만든다 — 같은 문장·같은 선수가 도배되지 않게 거른다 */
 function luDraw(cand, nOur, nRiv){
-  const seen=new Set(), out=[], nameCnt={};
-  for(const c of sampleN(cand.filter(x=>x.side==="o"), nOur).concat(sampleN(cand.filter(x=>x.side==="r"), nRiv))){
-    // 한 선수가 한쪽 팬 사이에서 두 번까지만 화제가 되게 — 아니면 명단 전체가 한 명 얘기로 덮인다
-    const nk=c.side+"|"+(c.v.p||"");
-    if(c.v.p){ if((nameCnt[nk]||0)>=2) continue; nameCnt[nk]=(nameCnt[nk]||0)+1; }
-    let txt=null;
-    for(const t of sampleN(c.pool, c.pool.length)){ if(!seen.has(t)){ seen.add(t); txt=t; break; } }
-    if(!txt) continue;
-    const h = c.side==="r" ? rivalHandle() : socHandle();
-    out.push({side:c.side, u:h.n, e:h.e, txt:F_(txt, c.v)});
-  }
+  const seen=new Set(), nameCnt={};
+  /* 📏 ⚠ 예전에는 후보를 «한 바퀴»만 돌았다. 그래서 조건에 맞는 선수가 없어 후보가 적은 쪽은
+     정원을 못 채운 채 끝났다 — 상대 팬 후보 갈래가 적어 실측 7:4 까지 벌어졌다(제보).
+     ─ 정원을 채울 때까지 남은 후보에서 «다른 문장»을 더 뽑는다. 같은 문장은 seen 이 막고,
+       한 선수가 두 번 넘게 화제가 되는 것은 nameCnt 가 막으므로 도배는 그대로 방지된다. */
+  const drawSide=(side, want)=>{
+    const pool=cand.filter(x=>x.side===side), got=[];
+    for(let round=0; round<3 && got.length<want; round++){
+      for(const c of sampleN(pool, pool.length)){
+        if(got.length>=want) break;
+        // 한 선수가 한쪽 팬 사이에서 두 번까지만 화제가 되게 — 아니면 명단 전체가 한 명 얘기로 덮인다
+        const nk=side+"|"+(c.v.p||"");
+        if(c.v.p && (nameCnt[nk]||0)>=2) continue;
+        let txt=null;
+        for(const t of sampleN(c.pool, c.pool.length)){ if(!seen.has(t)){ seen.add(t); txt=t; break; } }
+        if(!txt) continue;                       // 이 갈래는 쓸 문장이 바닥났다
+        if(c.v.p) nameCnt[nk]=(nameCnt[nk]||0)+1;
+        got.push({side, txt:F_(txt, c.v), raw:txt});
+      }
+    }
+    return got;
+  };
+  const out=drawSide("o", nOur).concat(drawSide("r", nRiv));
+  /* 📑 채널 분배 (요청 — 라인업 팬 반응을 「FM코리아」와 「소셜미디어」 두 탭으로 나눈다).
+     같은 반응이 양쪽에 동시에 뜨면 탭을 나눈 의미가 없다 — 한 줄은 한 채널에만 간다.
+     닉네임·아이콘도 채널 문법을 따른다: 소셜은 @핸들 + 이모지, 펨코는 익명 닉 + 등급 아이콘. */
+  out.forEach((o,i)=>{
+    /* 펨코 전용 줄은 무조건 게시판으로 — 소셜 탭에 뜨면 결이 안 맞는다 */
+    o.ch = LU_FMK_ONLY.has(o.raw) ? "fmk" : ((i%2===0) ? "fmk" : "soc");
+    if(o.ch==="fmk"){
+      o.u = pick(o.side==="r" ? FMK_RIVAL_NICK : FMK_NICK);
+      o.rk = fmkRankRoll(0);
+      o.up = 3+R(180); o.dn = R(30); o.v = 60+R(1400);
+    } else {
+      const h = o.side==="r" ? rivalHandle() : socHandle();
+      o.u=h.n; o.e=h.e;
+    }
+  });
   return out;
 }
 /* 한 팀의 팬 반응만 — 라인업 프리뷰에서 그 팀 라인업 바로 아래에 붙인다.
    (제보 — 원정 경기면 우리 라인업은 오른쪽인데 우리 팬 반응은 늘 왼쪽이라 눈이 어긋난다) */
+/* 📑 탭 상태 — 팀(홈/원정)마다 따로 기억한다 */
+let LU_RTAB={h:"fmk", a:"fmk"};
+function setLuTab(w, ch){
+  LU_RTAB[w]=ch;
+  try{ if(inLineupPreview && pendingLiveM) $("#main").innerHTML=lineupPreviewLayout(pendingLiveM, pendingLiveTag); }catch(e){}
+}
 function lineupReactionCardFor(M, which){
-  let rs=[]; try{ rs=lineupFanReactions(M); }catch(e){ return ""; }
+  /* ⚠ 탭을 누를 때마다 다시 뽑으면 반응 내용이 매번 바뀐다 — 경기마다 한 번만 만들어 붙들어 둔다 */
+  let rs=[];
+  try{
+    if(!M._luReact) M._luReact=lineupFanReactions(M);
+    rs=M._luReact;
+  }catch(e){ return ""; }
   if(!rs.length) return "";
   const meH=!!M.home.isUser;
   /* rs 의 side 는 우리 팬("o")·상대 팬("r") 기준이다. 홈/원정으로 바꿔 준다. */
@@ -71998,12 +72782,26 @@ function lineupReactionCardFor(M, which){
   const list = rs.filter(x=>x.side===side);
   if(!list.length) return "";
   const mine = (which==="h")===meH;
+  const tab = LU_RTAB[which]||"fmk";
+  const fmk = list.filter(x=>x.ch==="fmk"), soc = list.filter(x=>x.ch!=="fmk");
+  const body = (tab==="fmk")
+    ? (fmk.length ? `<div class="fmkList">${fmk.map(x=>`
+        <div class="fmkRow ${mine?"":""}">
+          <div class="fmkTitle">${x.txt}</div>
+          <div class="fmkMeta"><img class="fmkRk" src="${FMK_RANK[clamp(x.rk|0,0,FMK_RANK.length-1)]}" alt="${FMK_RANK_N[clamp(x.rk|0,0,FMK_RANK.length-1)]}" title="${FMK_RANK_N[clamp(x.rk|0,0,FMK_RANK.length-1)]}"><span>${x.u}</span>
+            <span>조회 ${x.v}</span><span class="fmkUp">▲${x.up}</span><span class="fmkDn">▼${x.dn}</span></div>
+        </div>`).join("")}</div>` : `<p class="small">아직 올라온 글이 없습니다.</p>`)
+    : (soc.length ? soc.map(x=>`<div class="socPost${mine?"":" riv"}">
+        <div class="socHead"><span class="socAv">${x.e}</span><b>@${x.u}</b></div>
+        <div class="socTxt">${x.txt}</div>
+      </div>`).join("") : `<p class="small">아직 올라온 글이 없습니다.</p>`);
   return `<div class="card" style="margin-top:10px">
     <h3 style="color:${mine?"var(--acc)":"var(--sub)"}">💬 ${team.short} 팬 반응</h3>
-    ${list.map(x=>`<div class="socPost${mine?"":" riv"}">
-      <div class="socHead"><span class="socAv">${x.e}</span><b>@${x.u}</b></div>
-      <div class="socTxt">${x.txt}</div>
-    </div>`).join("")}
+    <div class="luTabs">
+      <button class="luTab${tab==="fmk"?" on":""}" onclick="setLuTab('${which}','fmk')">🔥 FM코리아 <span class="luN">${fmk.length}</span></button>
+      <button class="luTab${tab==="soc"?" on":""}" onclick="setLuTab('${which}','soc')">💬 소셜미디어 <span class="luN">${soc.length}</span></button>
+    </div>
+    ${body}
   </div>`;
 }
 function lineupPreviewLayout(M, tag){
@@ -75350,6 +76148,16 @@ function pvpBusy(){ return !!PVP_BUSY || !!(PVP && ["queue","room","connecting",
 let PVP_NAVLOCK=false;
 /* ⚠ 제보 — 「온라인 매칭을 할 때는 다른 메뉴들은 비활성화」. 상태가 바뀔 때만 건드려서
    부임 절차 잠금(applyNavLock) 등 다른 잠금 체계와 싸우지 않는다. */
+/* ⚔️ 온라인 대전 메뉴 노출 — 서버가 있고 <b>소속 구단이 있을 때만</b> 보인다 (요청: 무직이면 블라인드).
+   대전은 내 팀 스쿼드를 클론으로 내보내는 모드라, 무직이면 내보낼 팀 자체가 없다. */
+function pvpMenuSync(){
+  try{
+    const b=document.querySelector('[data-v="pvp"]');
+    if(!b) return;
+    const okp=(typeof pvpOn==="function") && pvpOn() && !(G && G.jobless);
+    b.style.display = okp ? "" : "none";
+  }catch(e){}
+}
 function pvpNavSync(){
   try{
     const on=pvpBusy();
@@ -80396,7 +81204,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260913-4800";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260913-5000";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
@@ -80513,7 +81321,7 @@ function updInit(){
   }catch(e){}
 }
 applyFontScale();
-try{ if(pvpOn()){ const b=document.querySelector('[data-v="pvp"]'); if(b) b.style.display=""; } }catch(e){}
+try{ pvpMenuSync(); }catch(e){}
 /* 🗣️ 커뮤니티도 같은 서버를 쓴다 — 주소가 없으면 메뉴 자체가 숨는다 (요청) */
 try{ if(cmOn()){ const b=document.querySelector('[data-v="comm"]'); if(b) b.style.display=""; } }catch(e){}
 /* 🔔 시작하고 조금 뒤에 게시판을 한 번 받아 둔다 — 내 글의 새 댓글을 곧바로 알리기 위해서다.
