@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260913-4200-->
+<!--B:20260913-4800-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -55177,7 +55177,10 @@ const GK_HOLD_MAX=3.2;             // 🧤 키퍼가 공을 안고 버틸 수 �
    n=30 에서 선방률의 짝 차이 SE 가 5pp 안팎이라 이 구간은 노이즈에 묻힌다.
    같은 세 빌드의 골은 2.43 · 1.87 · 2.03 (평균 2.1, 실축 2.45) 이므로 조금 내린다. */
 /* n=60 확인: 1.74 → 선방률 72.2%(실축 70) · 골 2.18(실축 2.45). 조금 내린다. */
-const SAVE_BASE=1.62;
+/* 📏 n=60 — 상한을 열기 전 유효값은 1.25 로 고정돼 있었다(위 clamp 주석).
+   그 상태의 실측이 선방률 62.7% · 골 2.95(실축 70% · 2.45)다.
+   상한을 연 뒤 1.45 는 도달 배율 1.7375 → 1.9275 (+11%) 에 해당한다. */
+const SAVE_BASE=1.45;
 const SHOT_DIV=46;          // 거리 감쇠 분모 — 작을수록 먼 거리 슛이 줄어든다
 /* 🎯 「키퍼와 1대1」 하한선이 성립하는 최소 골문 각(rad) — evaluateShot 주석 참고.
    0.30 ≈ 17°: 정면 24m 에서 보이는 골문 각. 측면 12m·전방 12m 지점(0.31)은 통과,
@@ -56071,6 +56074,8 @@ const CB_ZONE_NEAR=13;       // 담당까지 이 거리(m) 안이어야 실제�
    수비 3분의 1 패스 수신 순간 마크율 27%. 원인은 markBest 가 아니라 그 위층 — PRESS·COVER·DROP 이
    매 틱 기억 없이 재결정되고, 존마크 대상도 매 틱 재배정돼 좋은 계산이 매 틱 지워졌다. */
 const PRESS_STICK=0.32;      // 지금 압박 중인 선수는 이만큼 점수 우위를 갖는다 — 명확히 뒤지기 전엔 유지
+/* 🔒 압박 전념 — 나가기로 정한 뒤 이 시간 동안은 역할이 흔들리지 않는다 (실측: 역할 전환 분당 31회) */
+const PRESS_COMMIT=1.4, PRESS_COMMIT_W=1.20;
 const HOLE_STICK=0.30;       // 지금 COVER/COVER_WIDE 인 선수는 같은 구멍을 계속 맡는다
 const CB_ZONE_KEEP_Y=1.25;   // 존마크 유지 — 구역 폭의 이 배수 안이면 대상을 바꾸지 않는다
 const CB_ZONE_KEEP_D=1.35;   // 존마크 유지 — CB_ZONE_NEAR 의 이 배수 안이면 대상을 바꾸지 않는다
@@ -59766,7 +59771,24 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
       for(const m of mine) if(m.defRole===DEF_ROLE.LINE) lineN++;
       const lineS = clamp((3-lineN)/3, 0, 1)*0.95;
       const dec=(a.decSkill!=null?a.decSkill:0.55);
-      const noise=()=>(Math.random()-0.5)*(0.12+(1-dec)*0.58);   // 판단력이 낮으면 잘못 고른다
+      /* ⚠⚠ 제보(「수비수가 다가왔다 물러났다를 반복한다」)의 <b>진짜 뿌리</b>가 이 한 줄이었다.
+         이 잡음은 역할을 고를 때마다(0.4초) 새로 굴렀다. 진폭이 ±0.175 라 후보 점수 차가
+         0.35 안이면 <b>승자가 매번 바뀐다</b>. PRESS 일 때 목표는 「볼」, MARK·SCREEN·LINE 일 때는
+         「대형 안 자리」이므로, 역할이 뒤집힐 때마다 선수가 앞뒤로 오간다.
+         실측(측면 깊은 곳): 역할 전환 <b>선수당 분당 31회</b> — 2초에 한 번.
+         게다가 전환쌍이 완벽히 대칭이었다(PRESS↔MARK 227/221 · PRESS↔SCREEN 141/140) —
+         판단이 아니라 동전 던지기다.
+         ⚠ 앞서 압박자 전념(PRESS_COMMIT)과 명단 고정(0.4초 주기)을 먼저 넣었지만
+            31 → 31 로 꿈쩍도 안 했다. 손잡이는 명단이 아니라 <b>이 잡음</b>이었다.
+         ─ 「판단력이 낮으면 잘못 고른다」는 맞지만 「2초마다 마음이 바뀐다」는 아니다.
+           선수·역할·시간대(약 3초)로 <b>고정된</b> 값을 쓴다. 잘못 고른 선수는 그 선택을
+           한동안 유지한다 — 그게 판단력이 낮다는 뜻이다. */
+      const _nEp=Math.floor(t/3);
+      const noise=(k)=>{
+        let h=((a.id|0)*2654435761 + (k|0)*40503 + _nEp*97) >>> 0;
+        h ^= h>>>13; h=Math.imul(h, 1274126177)>>>0; h ^= h>>>16;
+        return ((h/4294967296)-0.5)*(0.12+(1-dec)*0.58);
+      };
       const C=[];
       /* ══════════════════════════════════════════════════════════
          🛡️ 포백 보호 — 미드필더만 후보로 갖는다.
@@ -59794,7 +59816,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
           const screenS = clamp(1-bOwn/0.62, 0, 1)*0.85 + bCen*0.55 + clamp(pocket*0.34,0,0.85)
                         - screenTaken*(_band==="DM" ? 0.40 : 0.95)
                         + (_band==="DM" ? 0.85 : 0.10);
-          C.push({r:DEF_ROLE.SCREEN, s:screenS+noise()});
+          C.push({r:DEF_ROLE.SCREEN, s:screenS+noise(1)});
         }
       }
       /* ⚽ 세컨볼 — 뜬 공이 날아가는 중이면 낙하 지점을 선점한다 (§27).
@@ -59832,7 +59854,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
                제대로 고치려면 z 를 적분해 실제 낙하점을 구하는 함수가 먼저 있어야 한다. */
             const _deepLP=(dir>0?LP.x:1-LP.x)<0.33 ? 0.55 : 0;   // ⚽ 우리 파이널서드 낙하 — 다투러 나가는 게 라인보다 급하다
             C.push({r:DEF_ROLE.SECOND,
-                    s:near2*(1.55+_an*1.05) + 0.30 + _deepLP - secTaken*0.95 + noise()});
+                    s:near2*(1.55+_an*1.05) + 0.30 + _deepLP - secTaken*0.95 + noise(2)});
           }
         }
       }
@@ -59864,17 +59886,17 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
           const bandB = (_band0==="DF"||_band0==="SW") ? 0.30 : (_band0==="DM") ? 0.15 : 0.20;
           C.push({r:DEF_ROLE.BLOCK_SHOT,
                   s:reachL*0.90 + nearL*0.75 + urgent*urgent*4.60 + bandB
-                    - blkTaken*0.70 + noise()});
+                    - blkTaken*0.70 + noise(3)});
         }
       }
-      if(wLane>0) C.push({r:DEF_ROLE.LANE, s:wLane*(0.30+rPress*0.70)+laneS*2.40+noise()});
+      if(wLane>0) C.push({r:DEF_ROLE.LANE, s:wLane*(0.30+rPress*0.70)+laneS*2.40+noise(4)});
       /* ⚠ MARK 후보에는 markS 와 무관한 상수항(wMark×성향)이 붙어 있었다. 그래서
          「내 구역에 아무도 없는데」도 MARK 가 이기고, 바로 아래 배정 단계에서 대상을 못 찾아
          LINE 으로 강등됐다(실측: 풀백 기준 30.8%). 역할이 한 틱 동안 헛돌고,
          그 헛된 전환이 멈칫(_hesitateUntil)까지 물고 들어간다.
          ─ 잡을 사람이 있을 때만 후보로 내놓는다. 강등 경로는 이제 안전망으로만 남는다. */
-      if(wMark>0 && _mk.o) C.push({r:DEF_ROLE.MARK, s:wMark*(0.30+rMark*0.95)+markS*1.15+noise()});
-      if(wLine>0) C.push({r:DEF_ROLE.LINE, s:wLine*(0.30+rDeep*0.60)+lineS*1.15+noise()});
+      if(wMark>0 && _mk.o) C.push({r:DEF_ROLE.MARK, s:wMark*(0.30+rMark*0.95)+markS*1.15+noise(5)});
+      if(wLine>0) C.push({r:DEF_ROLE.LINE, s:wLine*(0.30+rDeep*0.60)+lineS*1.15+noise(6)});
       a._defS={lane:laneS, mark:markS, line:lineS};      // 디버그·검증용
       if(!C.length) return DEF_ROLE.LINE;
       const prev=a._prevDef;
@@ -59982,6 +60004,7 @@ function assignDefRoles(mine, opps, carrier, pressers, t, dir, ball, jockey){
   // 판단력이 낮을수록 오래 굳어 있고, 그동안은 직전 역할의 목표를 붙들고 있다(역동작).
   for(const a of mine){
     if(a.slot==="GK") continue;
+    if(a.defRole===DEF_ROLE.PRESS) a._pressStay=t;      // 🔒 「방금까지 압박하던 사람」 표식
     if(a._lastRole !== a.defRole){
       if(a._lastRole !== undefined){
         const dec=a.decSkill||0.6;
@@ -60070,9 +60093,29 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
         (실측: 파울 21.9 → 7.4, 상대 슛 15.1 → 30.3). */
   /* ⚽ SECOND 도 예외 — 단계 추적(빌드 1600 작업 중): 역할이 SECOND 로 바뀐 뒤에도 0.4~1초 동안 옛 역할(LINE)의
      목표를 붙들었고(멈칫), 풀린 뒤에도 스무딩(τ≈1.1초)이 12→8→5m 로 기어갔다. 비행 2초짜리 크로스에는 치명적. */
-  const _live = (a.defRole===DEF_ROLE.PRESS || a.defRole===DEF_ROLE.JOCKEY || a.defRole===DEF_ROLE.SECOND);
+  /* 🔒 붙어 있던 사람은 계속 붙는다 — 역할표가 뒤집혀도 <b>물러나지 않는다</b>.
+     ⚠⚠ 제보 — 「수비수가 다가왔다가 뒤로 갔다가 다시 다가온다」.
+        실측(측면 깊은 곳): 수비 역할이 <b>선수당 분당 30회</b> 바뀌고, 전환쌍이 완벽히 대칭이다
+        (PRESS↔MARK 227/221 · PRESS↔SCREEN 141/140). 판단이 아니라 떨림이다.
+        PRESS 일 때 목표는 「볼」, MARK·SCREEN·LINE 일 때는 「대형 안 자리」라
+        한 번 뒤집힐 때마다 선수가 10m 를 앞뒤로 오간다 — 화면에 보이는 게 그것이다.
+        ⚠ 떨림 자체를 잡으려고 세 가지를 먼저 시도했지만 전부 헛수고였다(31 → 31 → 29.5):
+           ① 압박자 전념 가산(PRESS_COMMIT) ② 압박자 명단 0.4초 고정 ③ 역할 잡음 고정.
+           손잡이는 「누구를 뽑는가」가 아니라 <b>「뽑히지 않은 순간 어디로 가는가」</b>였다.
+     ─ 볼에서 6m 안에 있고 방금까지 압박하던 사람은, 역할표가 뭐라 하든 2초 동안 계속 압박한다.
+       떨림은 남아도 <b>그림은 흔들리지 않는다</b>. */
+  const _dBall = HYP((ball.x-a.x)*PITCH_AR, ball.y-a.y);
+  /* ⚠ 2.0초·6m 로 잡았더니 <b>수비가 과해졌다</b> — 슛 27.2→20.3 · 크로스 35.1→28.1 ·
+     태클 34.5→39.9. 붙어 있던 사람이 계속 붙으면 사실상 상시 협력수비가 된다.
+     「물러나는 그림」만 지우면 되므로 창을 절반으로 줄인다(1.0초·4.5m). */
+  const _stayPress = a.defRole!==DEF_ROLE.PRESS && a._pressStay!=null
+                     && (a._now-a._pressStay)<0.6 && _dBall<0.053;
+  /* ⚠ 1.0초·4.5m 도 아직 셌다 — 크로스 35.1 → 27.8(실축 38) · 파울 25.1 → 28.3.
+     붙어 있던 사람이 오래 붙으면 측면 공격 자체가 사라진다. 창을 0.6초·3.5m 까지 줄인다:
+     「닿을 거리까지 갔다가 곧바로 물러나는」 그 한 장면만 지우는 최소폭이다. */
+  const _live = (a.defRole===DEF_ROLE.PRESS || a.defRole===DEF_ROLE.JOCKEY || a.defRole===DEF_ROLE.SECOND || _stayPress);
   const _froz = !_live && a._hesitateUntil && a._hesitateUntil>a._now;
-  const role = _froz ? a._frozenRole : a.defRole;
+  const role = _stayPress ? DEF_ROLE.PRESS : (_froz ? a._frozenRole : a.defRole);
   const mark = _froz ? a._frozenMark : a._mark;
   switch(role){
     /* 🛡️ 압박·저지 — 공으로 곧장 달려들지 않는다 (§14·§62).
@@ -60104,11 +60147,24 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
         }
         return {x:clamp01(ball.x + ux*stand/PITCH_AR), y:clamp01(ball.y + uy*stand)};
       }
-      /* 🛤️ 회랑 가장자리 — PRESS 인데 캐리어가 회랑의 1.25배 밖이면 홈→캐리어 선 위 회랑 끝에서 저지 간격으로 선다 */
-      if(role===DEF_ROLE.PRESS && a._pressHome && a._pressCorr && a._pressHomeD>a._pressCorr*1.15){
+      /* 🛤️ 회랑 가장자리 — PRESS 인데 캐리어가 회랑의 1.25배 밖이면 홈→캐리어 선 위 회랑 끝에서 저지 간격으로 선다.
+         🚨 ⚠ 여기가 「멀찍이 서서 구경하는」 그림을 만드는 자리였다. 압박자로 뽑혀 놓고도
+            회랑 끝(홈에서 8~11m)에 멈춰 서서, 캐리어와 5~9m 를 벌린 채 가만히 있었다.
+            볼이 우리 진영 깊이 들어왔으면 지킬 대형이 없다 — 끝까지 나간다. */
+      if(role===DEF_ROLE.PRESS && !(a._pressRelax>0.5) && a._pressHome && a._pressCorr && a._pressHomeD>a._pressCorr*1.15){
         const hx=(ball.x-a._pressHome.x)*PITCH_AR, hy=ball.y-a._pressHome.y, hl=HYP(hx,hy)||1e-6;
         const e=a._pressCorr*1.15;
-        return {x:clamp01(a._pressHome.x + (hx/hl)*e/PITCH_AR), y:clamp01(a._pressHome.y + (hy/hl)*e)};
+        const _tx=clamp01(a._pressHome.x + (hx/hl)*e/PITCH_AR), _ty=clamp01(a._pressHome.y + (hy/hl)*e);
+        /* 🚫 <b>물러나게 만들지 않는다</b> — 이미 그 지점보다 볼에 가까이 있으면 그대로 둔다.
+           ⚠ 제보 — 「수비수가 다가왔다가 뒤로 갔다가 다시 다가온다」. 완화 래치가 잠깐 꺼지는
+              순간 이 분기가 되살아나 <b>붙어 있던 수비수를 회랑 끝으로 도로 끌어냈다.</b>
+              래치를 히스테리시스로 바꿔도(0.58 → 0.28회/초) 한 번만 꺼져도 눈에는 그 「후진」이 보인다.
+              회랑은 「멀리까지 쫓아가지 마라」는 장치이지 「붙었다가 물러나라」는 장치가 아니다.
+              앞으로 나가는 방향으로만 쓴다 — 그러면 플래그가 흔들려도 그림은 흔들리지 않는다. */
+        const _dMe =HYP((ball.x-a.x)*PITCH_AR, ball.y-a.y);
+        const _dTgt=HYP((ball.x-_tx)*PITCH_AR, ball.y-_ty);
+        if(_dMe > _dTgt) return {x:_tx, y:_ty};      // 아직 회랑 끝보다 멀다 — 거기까지만 나간다
+        /* 이미 더 가깝다 — 물러나지 않고 아래의 일반 압박 자리로 이어 간다 */
       }
       /* 🔄 제쳐졌다 — 사거리 밖에서도 볼 뒤 꼬리 추격 대신 볼→우리 골문 선의 앞 지점으로 돌아 들어간다 (CLOSE 호와 같은 기하) */
       if(role===DEF_ROLE.PRESS){
@@ -60141,9 +60197,24 @@ function defTargetXY(a, anchor, ball, carrier, threat, dir){
       const tight = clamp(0.24 + (a._markTight||0)*0.55 + (a.markSkill||0.6)*0.40, 0.15, 1.20);
       /* 밸런스 사이클(요청) — 골 21 → 30 의 정체는 「4m 안에 수비수 없는 슛」 17 → 29. 마크 거리 중앙값 4.7m 는
          박스에서 자유 슛이다. 볼이 우리 골문 근처(deep)일수록 간격을 줄인다: deep=1 이면 절반. */
-      const stand = (0.058 - tight*0.042) * (1 - deep*0.5);   // 3.9m(느슨) ~ 0.6m(밀착) · 깊을수록 밀착
+      const stand0 = (0.058 - tight*0.042) * (1 - deep*0.5);   // 3.9m(느슨) ~ 0.6m(밀착) · 깊을수록 밀착
+      /* 🚧 측면 마크 — 크로스 각을 막는다.
+         ⚠ 제보 — 「공격수가 박스 측면에 가만히 서 있는데 수비수들이 거리를 두고 구경한다.
+            현실 축구라면 거리를 좁히고 크로스 각을 막을 텐데」.
+            마커는 담당보다 <b>안쪽</b>으로 당겨 서고 있었다(y 보정 0.08~0.20 = 최대 5.5m).
+            중앙을 비우지 말라는 뜻이지만 측면에서 그러면 담당과 터치라인 사이가 통째로 열린다.
+            크로스는 정확히 그 열린 각으로 올라간다 — 담당 옆에 서 있는데도 못 막는 이유였다.
+         ─ 담당이 측면(중앙선에서 11m 밖)이고 우리 진영 깊이 있으면
+           ① 안쪽 보정을 끄고 반 발 <b>바깥</b>에 붙어 서서 안으로 몰고
+           ② 간격을 절반으로 좁힌다. */
+      const _wideM = Math.abs(m.y-0.5) > 0.165 && own(m.x) < 0.42;
+      /* ⚠ 간격까지 절반으로 좁혔더니 <b>과했다</b> — 골 2.97 → 1.93 · 선방률 66.9 → 77.5.
+         크로스 각을 지우는 건 <b>서는 위치(바깥)</b>가 하는 일이지 간격이 아니다. 간격은 그대로 둔다. */
+      const stand = _wideM ? stand0*0.82 : stand0;
       const mx = Math.max(0.022, own(m.x) - stand - deep*0.010);
-      return {x:clamp01(dir>0?mx:1-mx), y:clamp01(m.y+(0.5-m.y)*(0.08+deep*0.12))};
+      const my = _wideM ? clamp01(m.y + (m.y<0.5?-1:1)*0.013)
+                        : clamp01(m.y+(0.5-m.y)*(0.08+deep*0.12));
+      return {x:clamp01(dir>0?mx:1-mx), y:my};
     }
     case DEF_ROLE.LANE: {   // 볼 소유자와 그가 노리는 상대 사이를 끊는다
       const th = a._laneTo || threat;
@@ -61285,14 +61356,18 @@ class MatchSim{
     if(side==="h") this.M.hg++; else this.M.ag++;
     const scorer=this.byId(sh.shooterId);
     const sx=this.entryOf(scorer);
-    if(sx){ sx.goals++; if(sx.p) sx.p.goals=(sx.p.goals||0)+1; }
+    /* 🥅 자책골 — 득점은 상대 팀에 오르지만 개인 득점 기록에는 넣지 않는다(분 단위 엔진과 같은 규칙).
+       넣은 선수에게는 자책골만 남긴다. */
+    if(sh.og){ if(scorer && scorer.p) scorer.p.ownGoals=(scorer.p.ownGoals||0)+1; }
+    else if(sx){ sx.goals++; if(sx.p) sx.p.goals=(sx.p.goals||0)+1; }
     /* 득점자 명단 — 결과창·리포트·해트트릭 기사에 쓴다 */
     if(!Array.isArray(this.M.sc)) this.M.sc=[];
     /* 🕐 제보 — 전광판(clockLabel)과 같은 글자로 남긴다. 예전엔 내부 카운터를 그대로 찍어
        추가시간 골이 명단에서만 46' · 93' 로 보였다. */
     const _scMin=(()=>{ try{ const v=String(this.clockLabel()); return (v==="0"||v==="")?"1":v; }
                         catch(e){ return this.M.min||Math.ceil(this.clock/60)||0; } })();
-    this.M.sc.push({n:scorer&&scorer.p?scorer.p.name:"?", side, min:_scMin});
+    this.M.sc.push({n:scorer&&scorer.p?scorer.p.name:"?", side, min:_scMin, og:sh.og?1:0});
+    if(sh.og) this.lastAssist=null;          // 자책골에는 도움이 없다
     // 도움 — 마지막 패스가 같은 팀이고 8초 이내여야 인정
     let ax=null;
     const la=this.lastAssist;
@@ -62340,6 +62415,32 @@ class MatchSim{
       const _pin = (carrier && _trapArea) ? pinScore(carrier, this.side(this.opp(key)), cand) : 0;
       const trapZone = _trapArea && _pin>0.30;
       const trapSide = b.y<0.5 ? -1 : 1;
+      /* 🚶 방치 래치 — 캐리어가 아무도 안 붙은 채로 오래 서 있는가.
+         ⚠ 🚫 제보 — 「수비수가 다가왔다가 뒤로 갔다가 다시 다가왔다가를 반복한다」.
+            원인이 여기였다. 1차 판은 <b>거리 하나로</b> 완화를 켜고 껐다:
+              ① 6m 안에 아무도 없다 → 0.6초 뒤 완화 ON → 회랑이 풀려 수비수가 볼로 간다
+              ② 6m 안에 들어오는 순간 타이머가 초기화 → 완화 OFF → 회랑 감점이 되살아나
+                 그를 회랑 끝으로 <b>도로 밀어낸다</b> → 물러난다
+              ③ 다시 6m 밖이 된다 → ①로 …
+            실측: 박스 근처 측면에서 완화 플래그가 <b>초당 0.58회</b> 껐다 켜졌다 했다.
+            같은 문턱 하나로 켜고 끄면 반드시 이렇게 떤다.
+         ─ 켜는 문턱과 끄는 문턱을 <b>따로</b> 두고(6m / 4m), 끌 때는 <b>실제로 붙어 있는
+           시간</b>을 요구한다. 한 번 걸리면 붙을 때까지 유지된다 — 그게 「달려든다」의 의미다. */
+      let _relax=0;
+      if(carrier){
+        let _nd=9;
+        for(const q of cand){ const d=HYP((q.x-carrier.x)*PITCH_AR, q.y-carrier.y); if(d<_nd) _nd=d; }
+        if(_nd>0.060){                                  // 4m 밖 — 아직 안 붙었다
+          carrier._engSince=null;
+          if(_nd>0.090 && carrier._freeSince==null) carrier._freeSince=this.t;   // 6m 밖에서만 타이머 시작
+        } else {                                        // 4m 안 — 붙었다
+          if(carrier._engSince==null) carrier._engSince=this.t;
+          carrier._freeSince=null;
+        }
+        if(carrier._freeSince!=null && this.t-carrier._freeSince>0.6) carrier._relaxOn=true;
+        if(carrier._engSince!=null && this.t-carrier._engSince>1.0) carrier._relaxOn=false;
+        _relax=carrier._relaxOn?1:0;
+      }
       const scored=cand.map(a=>{
             /* 내 뒤를 받쳐 줄 동료가 있는가 — 나보다 골문 쪽에 있는 사람 */
             const cover=cand.some(o=>o!==a && (o.x-a.x)*myDir<-0.012 &&
@@ -62360,8 +62461,30 @@ class MatchSim{
                  나가지 못했다 (실측: 텐백 실점 7/6/4 vs 일반 최수비 3/1/5, 자유 슛 급증).
                  블록이 이미 깊게 서 있으니 한 명이 나가도 구조가 안 깨진다 — 볼이 우리 진영
                  42% 안이면 회랑 감점을 1/4 로 줄인다 */
-              const _busP=blockComp(T)>=0.75 && ((mine[0].dir>0?carrier.x:1-carrier.x)<0.42);
-              if(_hd>_cr) s0 -= ((_hd-_cr)/_cr)*PRESS_CORR_PEN*(_busP?0.25:1);
+              const _ownC=(mine[0].dir>0?carrier.x:1-carrier.x);
+              const _busP=blockComp(T)>=0.75 && (_ownC<0.42);
+              /* 🚨 ⚠ 제보 — 「공격수가 하프스페이스·박스 측면에 <b>가만히 서 있는데</b> 수비수들이
+                 거리를 두고 구경만 한다. 현실 축구라면 거리를 좁히고 크로스 각을 막을 텐데」.
+                 실측(박스 깊이·측면): 가장 가까운 수비수 <b>15.9m</b> · 8m 안 <b>0.07명</b> ·
+                 97% 의 시간 동안 아무도 6m 안에 없었다. 그 자리 수비수의 97% 가 압박 회랑 밖이다.
+                 ⚠ 🚫 그래서 「볼이 우리 진영 깊이 들어오면 회랑을 푼다」로 갔다가 되돌렸다 —
+                    방치는 줄었지만 <b>공격이 통째로 죽었다</b>(슛 24.2 → 19.4 · 크로스 35.8 → 26.9).
+                    회랑은 측면 공격이 전개될 공간을 만들어 주는 장치이기도 했다.
+                 ─ 제보의 핵심은 위치가 아니라 <b>「가만히」</b> 다. 대형을 지키는 것과
+                   <b>아무도 안 붙은 채로 몇 초가 지나는 것</b>은 다른 얘기다.
+                   6m 안에 아무도 없는 상태가 이어진 <b>시간</b>으로만 회랑을 푼다 —
+                   전개 중인 측면 공격은 건드리지 않고, 서서 구경하는 그림만 없앤다. */
+              const _dgr=_relax;
+              if(_hd>_cr) s0 -= ((_hd-_cr)/_cr)*PRESS_CORR_PEN*(_busP?0.25:1)*(1-_dgr*0.80);
+              a._pressRelax=_dgr;
+              /* 🏃 회랑을 풀면 <b>엉뚱한 사람이 나간다</b> — 실측으로 확인했다.
+                 회랑 완화 후 박스 측면의 압박자 슬롯 분포: CAM 194 · LDM 76 vs <b>LB 5 · RB 6</b>.
+                 20m 밖 공격형 미드필더가 압박자로 뽑혀 달려오다 크로스가 올라가고 끝났다.
+                 ⚠ 🚫 그래서 「가까우면 가산 · 멀면 감점」을 넣었더니 압박자는 풀백으로 바뀌었지만
+                    (RB 199) <b>수비가 과해져 공격이 죽었다</b> — 슛 24.2 → 16.9 · 크로스 35.8 → 22.7.
+                    가까운 사람이 없으면 전원이 문턱 아래로 떨어져 아무도 안 나가는 부작용도 있었다.
+                 ─ 거리 항과 「무조건 한 명」 강제는 걷어낸다. 남기는 것은 회랑 완화 하나다 —
+                   그것만으로 측면 방치가 47% → 25% 로 줄고 공격 지표는 그대로였다. */
             }
             /* 🧱 안정화 A-1 — 압박자 유지. 매 틱 top-N 재계산이라 점수가 조금만 흔들려도 압박자가
                바뀌고, 바뀔 때마다 멈칫(_hesitateUntil)이 걸렸다(실측 CB PRESS 26%·전환 42회/분). */
@@ -62372,6 +62495,17 @@ class MatchSim{
               const _beh=(myDir>0 ? a.x-carrier.x : carrier.x-a.x) > 0.015;   // 캐리어가 나보다 골 쪽
               s0 += _beh ? -0.10 : PRESS_STICK;
             }
+            /* 🔒 압박 전념 — 한 번 「나간다」고 정했으면 최소 PRESS_COMMIT 초는 유지한다.
+               ⚠⚠ 제보 — 「수비수가 다가왔다가 뒤로 갔다가 다시 다가온다」의 <b>진짜 원인</b>이 여기였다.
+                  측면 깊은 곳 캐리어 주변 수비수의 역할 전환을 재 보니 <b>선수당 분당 31회</b> —
+                  2초에 한 번씩 자기 일이 바뀐다. 게다가 전환쌍이 완벽하게 대칭이다:
+                    PRESS↔MARK 208/187 · SCREEN↔PRESS 157/141 · DROP↔PRESS 135/128 · LINE↔PRESS 112/110
+                  판단이 아니라 <b>떨림</b>이다. PRESS 일 때 목표는 「볼」, 다른 역할일 때는 「대형 안 자리」라
+                  역할이 뒤집힐 때마다 선수가 앞뒤로 오간다 — 화면에 보이는 그 움직임이 이것이다.
+                  PRESS_STICK(0.32)은 있었지만 이 경계에서는 그 정도로 안 잡힌다.
+               ─ 같은 캐리어를 상대로 압박을 시작한 뒤 1.4초 동안은 큰 우위를 준다. */
+            if(a._pressSince!=null && carrier && a._pressCid===carrier.id
+               && (this.t-a._pressSince) < PRESS_COMMIT) s0 += PRESS_COMMIT_W;
             /* 🧱 안정화 A-3 — CB 압박 게이트. 내 구역(CB_ZONE_Y)에 캐리어가 아닌 상대가 들어와 있으면
                그 공간이 내 일이다 — 캐리어가 코앞(CB_PRESS_NEAR)이 아닌 한 나가지 않는다.
                pressScore 의 _deep 가점이 박스 근처에서 CB 를 매번 내보내고, 그 빈 앵커를 다른 CB 가
@@ -62405,6 +62539,9 @@ class MatchSim{
           // 트랩에서는 한 명 더, 완전히 몰렸으면 두 명 더. 다만 전체 정원은 5명이 상한이다 —
           // 그 이상은 압박이 아니라 대형 붕괴다.
           const trapAdd = trapZone ? (_pin>0.70 ? 2 : 1) : 0;
+          /* ⚠ 🚫 여기서 「크로스 위험 구간에서는 문턱을 낮추고 정원을 늘린다」를 시도했다가 걷어냈다 —
+             압박자 지명을 건드리는 순간 공격이 통째로 죽었다(슛 24 → 17 · 크로스 36 → 23).
+             측면 방치는 회랑 완화만으로 충분히 잡힌다. 지명 규칙은 그대로 둔다. */
           const cap=Math.min(5, 1+extra+trapAdd);
           pressers=[];
           /* ⚡ 창 안에서는 나갈 값어치의 문턱이 내려간다 — 평소라면 물러났을 사람도 나간다 */
@@ -62413,6 +62550,26 @@ class MatchSim{
             if(pressers.length>=cap) break;
             if(it.s < goNeed){ break; }                    // 나갈 값어치가 없다
             pressers.push(it.a); it.a._pressS=it.s;
+          }
+          /* 🔒 압박자 명단 고정 — 역할 배정과 <b>같은 0.4초 주기</b>로만 바뀐다.
+             ⚠⚠ 제보(「다가왔다 물러났다를 반복한다」)의 마지막 조각.
+                역할 배정(assignDefRoles)은 0.4초마다 도는데 <b>압박자 선정은 매 틱(0.2초) 돌았다.</b>
+                점수가 조금만 흔들려도 명단이 바뀌고, 바뀔 때마다 그 선수의 목표가
+                「볼」↔「대형 안 자리」로 튄다. 실측: 측면 깊은 곳에서 역할 전환 <b>선수당 분당 31회</b>,
+                전환쌍은 PRESS↔MARK / PRESS↔SCREEN / PRESS↔DROP 처럼 완벽히 대칭 — 판단이 아니라 떨림이다.
+                전념 가산(PRESS_COMMIT)만으로는 부족했다(31 → 31). 주기 자체를 맞춘다.
+             ⚠ 캐리어가 바뀌면 즉시 다시 정한다 — 그건 진짜로 상황이 바뀐 것이다. */
+          {
+            const _prk="pr"+key, _cid3=carrier?carrier.id:0;
+            this._prHold=this._prHold||{};
+            const _ph=this._prHold[_prk];
+            if(_ph && _ph.cid===_cid3 && (this.t-_ph.t)<0.4){
+              const keep=_ph.list.filter(q=>mine.indexOf(q)>=0 && !(q._down&&q._down>this.t));
+              if(keep.length) pressers=keep;
+              else this._prHold[_prk]={t:this.t, cid:_cid3, list:pressers.slice()};
+            } else {
+              this._prHold[_prk]={t:this.t, cid:_cid3, list:pressers.slice()};
+            }
           }
           /* 🎯 목적·그림자 — 압박자마다 (pressPurposeFor 주석) */
           for(const a2 of mine){ a2._shadowDuty=null; }
@@ -62425,6 +62582,18 @@ class MatchSim{
             const second=pressers.splice(1,1)[0];
             second._shadowDuty=(pressers[0]._pressShadow&&pressers[0]._pressShadow.id)||0;   // 첫 압박자의 그림자는 제외
             second._pressPurpose=null; second._pressShadow=null;
+          }
+          /* 🔒 전념 시각 — <b>패스길 담당(두 번째)을 덜어낸 뒤</b>에 기록한다 (위 PRESS_COMMIT 주석).
+             ⚠ 덜어내기 <b>전</b>에 기록했더니 오히려 나빠졌다: 매 틱 splice 로 빠지는 두 번째 압박자도
+                전념 가산을 들고 있어서, 다음 틱에 그가 1순위가 되고 원래 1순위가 밀려나는
+                <b>자리 바꾸기</b>가 매 틱 일어났다. 볼에 붙는 사람만 전념한다. */
+          {
+            const _cid=carrier?carrier.id:0;
+            for(const q of mine){
+              if(pressers.indexOf(q)>=0){
+                if(q._pressSince==null || q._pressCid!==_cid){ q._pressSince=this.t; q._pressCid=_cid; }
+              } else { q._pressSince=null; q._pressCid=0; }
+            }
           }
           this._pEpTick(key, carrier, pressers);        // 🎯 압박 결과 판정 — 에피소드 추적
           if(carrier._ftBad>this.t && pressers.length && this.emitEvents && !carrier._ftSaid){
@@ -65688,6 +65857,7 @@ class MatchSim{
   }
   giveTo(a, opt){
     const b=this.ball;
+    if(a){ a._relaxOn=false; a._freeSince=null; a._engSince=null; }   // 🚶 방치 래치 초기화 (새 소유)
     /* 🎯 컷백을 받았다는 표시 — 아래 판단(decide)에서 「지금은 때리는 자리」로 읽는다.
        📏 20260913-3600 계측(컷백 5.33회/경기): 낙하점 4.7m 안에 동료가 있고 실제로 받는데,
           <b>받은 뒤 3.67회(69%)가 슛을 안 한다.</b> 자리도 배달도 되는데 마지막이 없었다. */
@@ -66808,6 +66978,28 @@ class MatchSim{
         }
         this.rollInGoal(lastSide); return true;
       }
+      /* 🥅 자책골 — 마지막으로 만진 사람이 공을 <b>자기 골문</b> 안으로 넣었다.
+         ⚠ 규칙 감사에서 나온 구멍 — 여태 이 경우가 <b>상대 코너킥</b>이 됐다.
+            2D 매치엔진에는 자책골이라는 개념 자체가 없었다(분 단위 엔진에는 있다).
+            걷어내려던 공이 굴절되어 자기 골문으로 들어가는 장면은 실제로 나오는 일이고,
+            그게 코너킥으로 처리되면 감독 눈에는 「분명히 들어갔는데」가 된다. */
+      if(outAt!==theirGoal && Math.abs(y-0.5)<GOAL_HALF && (this.ball.z||0)<CROSSBAR_Z){
+        /* ⚠ 문을 열자마자 <b>경기당 0.67골</b>이 자책골로 나왔다(실축 0.08). 규칙은 맞지만
+           우리 공 물리에서는 「골문 폭 안으로 골라인을 넘는 공」이 실축보다 훨씬 흔하다 —
+           키퍼가 쳐낸 공, 느리게 굴러 들어간 공까지 전부 골이 되어 버렸다.
+           ─ 실제로 자책골이 되는 장면만 남긴다: <b>속도가 실린 공</b>(걷어내기·굴절)이고,
+             <b>키퍼가 손 쓸 자리에 없을 때</b>. 나머지는 예전처럼 코너킥이다. */
+        const _b=this.ball;
+        const _spd=HYP((_b.vx||0)*PITCH_AR, _b.vy||0)*ISO_TO_M/SIM_DT;      // m/s
+        const _gk=this.side(lastSide).find(a=>a.slot==="GK");
+        const _gkd=_gk ? HYP((_gk.x-x)*PITCH_AR, _gk.y-y)*ISO_TO_M : 99;
+        if(_spd>=12 && _gkd>6){    /* 8m/s·5m 로는 경기당 0.25골 — 실축(0.17)보다 잦고 총 득점을 밀어 올렸다 */
+          const _og=(_b.ownerId!=null?this.byId(_b.ownerId):null)
+                 || (_b._rollOwner!=null?this.byId(_b._rollOwner):null)
+                 || this.side(lastSide)[0];
+          this.rollInGoal(this.opp(lastSide), _og); return true;
+        }
+      }
       /* 🥅 골라인을 넘은 공(골이 아닌 공)은 골망 뒤·포스트 바깥에 놓는다 — placeGoalOut 주석 참고.
          (예전엔 라인 뒤 0.010 · 포스트 밖 0.020 이라 화면상 골문 안에 박힌 것처럼 보였다) */
       const outY = placeGoalOut(this.ball, outAt, y).y;
@@ -67402,7 +67594,14 @@ class MatchSim{
          키퍼의 실력은 아래에서 반응 시간·도달 범위·서 있는 위치라는 물리량으로 들어간다. */
       /* ⚠ 상한이 0.97 이라 SAVE_BASE 를 그 위로 올려도 소용이 없었다 — 실측 계단을 만들려고
          상한을 함께 연다. (SAVE_BASE 주석의 계측표 참고) */
-      save = clamp(SAVE_BASE * meTune("save"), 0.05, 1.25);
+      /* 🚨🚨 ⚠ 규칙 감사 중 발견 — <b>SAVE_BASE 가 1.25 에서 잘려 있었다.</b>
+         상한이 1.25 라서 1.25 를 넘는 값은 전부 같은 값이다. 즉 1.62 · 1.72 · 1.85 가
+         <b>완전히 같은 경기</b>를 만든다(실측: 60경기 30개 지표가 소수 둘째 자리까지 동일).
+         이 구간에서 「올렸더니 선방률이 올랐다/내렸다」고 읽었던 것은 전부 <b>노이즈</b>였다.
+         (예전에도 같은 일이 있었다 — 그때는 0.97 상한을 1.25 로 열었는데, 그 뒤 계수가
+          다시 상한을 넘어 올라가면서 같은 함정에 다시 빠졌다.)
+         ─ 상한을 열고, 계수를 실제로 듣는 구간으로 다시 잡는다. */
+      save = clamp(SAVE_BASE * meTune("save"), 0.05, 2.20);
       save -= clamp(g.angle/0.60,0,1)*0.22;
       /* 거리가 멀면 반응할 시간이 생기는 건 맞지만, 그 폭이 너무 컸다(0.26).
          실제로는 잘 맞은 중거리 슛이 코너로 꽂히면 키퍼가 손도 못 댄다. */
@@ -67500,7 +67699,7 @@ class MatchSim{
       /* 상황 계수(save)는 「막기 좋은 상황인가」만 곱한다. 키퍼의 실력은
          gkReachBase(키·점프·민첩)와 diveV(반사·민첩), reactT(예측·반사·집중),
          그리고 gkPosError(서 있는 자리)로 이미 물리량에 들어가 있다. */
-      let reach=(gkReachBase(gk) + diveV*tAvail) * clamp(0.55+save*0.95, 0.30, 2.0);
+      let reach=(gkReachBase(gk) + diveV*tAvail) * clamp(0.55+save*0.95, 0.30, 2.60);   /* 2.0 상한도 함께 연다 — 위 주석 */
       /* 🧤 아주 먼 거리에서 오는 공 — 키퍼는 자리를 잡고 기다릴 시간이 충분하다.
          ⚠ 제보 — 「패스 같은 공에 실점한다. 키퍼가 잡을 수 있어 보이는데 못 잡는다」.
             느리게 떠오는 장거리 슛일수록 사람은 오히려 편하게 처리한다. */
@@ -67779,6 +67978,11 @@ class MatchSim{
         return;
       }
       case "MISS":  this.lastEvent={kind:"MISS", side, t:this.t};
+                    /* 🚩 ⚠ 규칙 감사 — 굴절되어 골라인을 넘은 공은 <b>코너킥</b>이다.
+                       마지막으로 몸에 닿은 사람이 수비수이기 때문이다. 여태 굴절 여부와
+                       무관하게 전부 골킥으로 처리했다(경기당 빗나간 슛 7.5개 중 일부).
+                       블록된 슛에는 이미 코너 처리가 있는데(BLOCK_CORNER_P) 굴절만 빠져 있었다. */
+                    if(sh && sh.deflected){ placeGoalOut(b, gx, b.y); this.cornerKick(side, gx, b.y); return; }
                     this.goalKick(oKey); return;       // 골라인을 넘었다 → 상대 골킥
       case SAVE_TYPE.CATCH: {                          // 캐칭 — 품에 안았다. 그대로 소유권이 넘어간다.
         const gk=this.byId(actorId);
@@ -67866,21 +68070,26 @@ class MatchSim{
     }
   }
   /* ⚽ 굴러 들어간 골 — 드리블로 몰고 들어갔거나 굴절된 공이 골문 사이로 넘은 경우 */
-  rollInGoal(side){
+  rollInGoal(side, ogBy){
     const b=this.ball, oKey=this.opp(side);
     /* 늦은 깃발 — 오프사이드 대기 중이었으면 취소 */
-    const scorer=(b.ownerId!=null?this.byId(b.ownerId):null)
+    const scorer= ogBy || (b.ownerId!=null?this.byId(b.ownerId):null)
               || (b._rollOwner!=null?this.byId(b._rollOwner):null);
-    const sh={shooterId:scorer?scorer.id:null, type:SHOT_TYPE.PLACED, isPen:false};
+    const sh={shooterId:scorer?scorer.id:null, type:SHOT_TYPE.PLACED, isPen:false, og:!!ogBy};
     if(this.pendingOff && this.pendingOff.by===side && this.t<=this.pendingOff.until){
       this.disallowGoal(side, sh); return;
     }
-    this.stats[side].goal++; this.stats[side].shot++; this.stats[side].shotOn++;
+    this.stats[side].goal++;
+    if(!ogBy){ this.stats[side].shot++; this.stats[side].shotOn++; }   // 자책골은 득점팀의 슛이 아니다
     this.score[side]++;
     this.lastEvent={kind:"GOAL", type:SHOT_TYPE.PLACED, side, t:this.t};
     this.recordGoal(side, sh);
-    if(this.emitEvents) this.cap(side, ["🥅 {p}, 공을 그대로 몰고 골문 안까지! 침착한 마무리"],
-                                 {p:scorer?this.nm(scorer):"공격수"});
+    if(this.emitEvents){
+      if(ogBy) this.cap(side, ["😱 아, 이럴 수가… {p}의 공이 그대로 자기 골문으로! 자책골입니다"],
+                        {p:this.nm(ogBy)});
+      else this.cap(side, ["🥅 {p}, 공을 그대로 몰고 골문 안까지! 침착한 마무리"],
+                    {p:scorer?this.nm(scorer):"공격수"});
+    }
     this.markHighlight("goal", side, HL_W.goal);
     b.inNet=true; b.vx*=0.55; b.vy*=0.55; b.vz*=0.35;
     { const dirIn=b.x>0.5?1:-1; if(Math.abs(b.vx)<0.085) b.vx=dirIn*0.085; }
@@ -68563,6 +68772,22 @@ class MatchSim{
       if(b.setPiece){ this.advanceSetPiece(); this.stats[this.possSide].poss++; this.stats.ticks++; this.t+=SIM_DT; return; }
       const carrier=this.byId(b.ownerId);
       if(!carrier){ this.kickoff(this.possSide); return; }
+      /* 🚩 몰고 나갔다 — 소유 중이라도 공 중심이 라인을 완전히 넘었으면 아웃이다.
+         ⚠ 규칙 감사 — 아웃 판정(outOfPlay)이 <b>패스와 루즈볼에만</b> 걸려 있었다.
+            드리블로 라인을 넘어간 공에는 아무 일도 일어나지 않는다. 선수 좌표는 회수·스로인
+            동작 때문에 라인 밖 2~3.4m 까지 허용되고, 공은 그대로 따라 나간다.
+            실측: 경기당 <b>37틱(7.5초)</b> 동안 공이 라인 밖에 있는데 경기가 계속됐다(최대 0.84m).
+            측면에서 캐리어가 라인에 붙어 버티는 그림도 여기서 나온다. */
+      /* ⚠ 스로인은 <b>규칙상 라인 밖</b>에서 던진다 — 던지는 선수가 공을 들고 서 있는
+         동안(isThrow) 공은 정당하게 라인 밖에 있다. 이걸 빼먹으면 스로인이 스로인을
+         부르는 무한 루프가 된다(실측: 경기당 스로인 1,419회). */
+      if(!b.foulScene && !b.celebrate && !b.isThrow){
+        const _oX=(b.x<0?-b.x:(b.x>1?b.x-1:0))*PITCH_AR*ISO_TO_M;
+        const _oY=(b.y<0?-b.y:(b.y>1?b.y-1:0))*ISO_TO_M;
+        if(Math.max(_oX,_oY)>0.20 && this.outOfPlay(b.x, b.y, carrier.side)){
+          this.stats[this.possSide].poss++; this.stats.ticks++; this.t+=SIM_DT; return;
+        }
+      }
       this.rollBall(carrier);
       if(!this.tryTackle(carrier)){
         b.hold-=SIM_DT;
@@ -80171,7 +80396,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260913-4200";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260913-4800";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
