@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--B:20260913-5000-->
+<!--B:20260913-5031-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1719,6 +1719,80 @@ tr.yArmy{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,0
 .fmkDn{color:#8d97a3}
 @media (max-width:760px){ .fmkTitle{font-size:14px} }
 .fmkDate{color:#a9b4c0}
+/* ── 🗞️ FM코리아 루머 게시판 ───────────────────────── */
+.rumList{display:flex;flex-direction:column;border-top:1px solid #1b2129}
+.rumRow{display:flex;align-items:center;gap:7px;padding:8px 6px;border-bottom:1px solid #1b2129;
+  cursor:pointer;font-size:13px;transition:background .12s}
+.rumRow:hover{background:#131a22}
+.rumTag{flex:0 0 auto;color:#8b949e;font-size:11.5px;font-weight:700}
+.rumGap{flex:1 1 auto;min-width:8px}
+.rumTtl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-weight:600;color:#e6edf3}
+.rumTtl.read{color:#8b949e;font-weight:400}
+.rumCm{flex:0 0 auto;color:#e5534b;font-weight:800;font-size:12px}   /* 제목 바로 뒤 — 실제 게시판과 같은 자리 */
+.rumConf{flex:0 0 auto;color:#f85149;font-weight:900;font-size:12px;letter-spacing:-.5px;
+  transform:rotate(-4deg);display:inline-block}
+.rumU{flex:0 0 auto;display:flex;align-items:center;gap:4px;color:#a9b4c0;font-size:12px;
+  max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rumV{flex:0 0 42px;text-align:right;color:#8b949e;font-size:11.5px}
+.rumUp{flex:0 0 44px;text-align:right;color:#58a6ff;font-size:12px;font-weight:700}
+.rumUp.neg{color:#f85149}
+.rumTrollTag{flex:0 0 auto;background:#3d1418;color:#ff8b80;font-size:10.5px;font-weight:800;
+  padding:1px 5px;border-radius:3px}
+.rumHead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:8px}
+.rumMeta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--sub);
+  padding-bottom:10px;border-bottom:1px solid #1b2129}
+.rumBody{padding:14px 2px;font-size:14px;line-height:1.9;color:#e6edf3}
+.rumBody p{margin:0 0 6px}
+.rumBtns{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px;border-bottom:1px solid #1b2129}
+.rumCmHead{font-size:13px;font-weight:700;color:var(--sub);padding:10px 0 6px}
+.rumCm1{padding:8px 6px;border-bottom:1px solid #161c24}
+.rumCm1.best{background:#0f1620;border-left:3px solid #58a6ff}
+.rumCmTop{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--sub)}
+.rumCmTop b{color:#e6edf3;font-weight:700;font-size:13px}   /* 작성자 — 진하고 살짝 크게 */
+.rumBest{background:#1f6feb;color:#fff;font-size:10.5px;font-weight:800;padding:1px 5px;border-radius:3px}
+.rumCmUp{margin-left:auto;color:#8b949e;font-size:11.5px}
+.rumCmTxt{margin-top:3px;font-size:13.5px;line-height:1.6;color:#dbe3ea}
+.rumNick{color:#a9b4c0;cursor:default}
+/* 💬 댓글 추천·비추천 */
+.rumCmVote{margin-left:auto;display:flex;gap:4px;align-items:center}
+.rumVb{background:none;border:1px solid #2a323c;color:#8b949e;border-radius:5px;
+  padding:1px 6px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;
+  transition:border-color .12s,color .12s,background .12s}
+.rumVb:hover{border-color:#4b5663;color:#dbe3ea}
+.rumVb.on{border-color:#1f6feb;color:#79c0ff;background:#0d1b2c}
+.rumVb span{font-weight:700}
+/* ↳ 대댓글 */
+.rumRe{display:flex;gap:6px;margin:6px 0 0 14px;padding:6px 8px;background:#0f141a;
+  border-left:2px solid #232b34;border-radius:0 6px 6px 0}
+.rumReArrow{color:#4b5663;font-size:12px;flex:0 0 auto}
+.rumTo{color:#6e7781;font-weight:400;margin-right:3px}   /* 답글 대상 — 흐리게 */
+/* 🍪 포텐 / 방출 — 실제 게시판처럼 글 아래 가운데 */
+.rumPotenWrap{text-align:center;padding:16px 0 12px;border-top:1px solid #1b2129}
+.rumPotenTag{font-size:11.5px;color:#8b949e;margin-bottom:7px}
+.rumPoten{display:inline-flex;align-items:stretch;gap:0}
+.rumPoten .pbtn{background:#fff;border:2px solid #4a90d9;color:#1f6feb;font-weight:800;
+  font-size:13.5px;padding:7px 16px;cursor:pointer;border-radius:7px 0 0 7px;
+  display:inline-flex;align-items:center;gap:5px;transition:filter .12s}
+.rumPoten .pbtn.dn{border-color:#e06c5a;color:#d1442f;border-radius:0 7px 7px 0}
+.rumPoten .pbtn:hover{filter:brightness(.94)}
+.rumPoten .pbtn.done{opacity:.5;cursor:default}
+.rumPoten .pnum{background:#fff;border-top:2px solid #c8ced6;border-bottom:2px solid #c8ced6;
+  font-weight:900;font-size:15px;padding:7px 16px;min-width:52px;
+  display:inline-flex;align-items:center;justify-content:center}
+.rumPoten .pnum.up{color:#1f6feb}
+.rumPoten .pnum.dn{color:#d1442f;border-left:1px solid #dfe3e8}
+/* 눌렀을 때 숫자가 «튀어» 오른다 — 반영됐다는 게 눈에 보여야 한다 */
+@keyframes rumPop{0%{transform:scale(1)}35%{transform:scale(1.28)}100%{transform:scale(1)}}
+.rumPoten .pnum.pop{animation:rumPop .32s ease-out}
+.rumVb.pop{animation:rumPop .32s ease-out}
+@media (max-width:760px){
+  .rumV,.rumU{display:none}
+  .rumTtl{font-size:13.5px}
+  .rumPoten .pbtn{padding:7px 12px;font-size:12.5px}
+  .rumPoten .pnum{padding:7px 14px;min-width:50px}
+}
 /* ── 득점자 패널 (FM식) ───────────────────────────── */
 .goalPanel{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
   pointer-events:none; z-index:5}
@@ -16245,6 +16319,236 @@ const BUD_MIN=0.15, BUD_MAX=0.85;      // 전체 재원 중 이적 예산이 차
 function budPool(t){
   return Math.round((t.budget + ((t.wageCap||0)-totalWage(t))/BUD_CONV)*10)/10;
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   🏢 모기업 실적 → 구단 예산
+   ⚠ 여태 연결이 <b>한 방향뿐</b>이었다. 구단 성적이 모기업 주가를 움직이는 길(stkClubEffect)은
+      있는데, 그 반대 — 모기업이 흔들리면 구단이 쪼그라드는 길 — 이 없었다.
+      `stkOfTeam()` 은 정의만 되어 있고 <b>어디서도 쓰이지 않았다</b>.
+   ─ 실제 K리그가 그렇다. 기업구단 예산의 대부분은 모기업 지원금이고, 모기업이 어려워지면
+     지원금이 먼저 깎인다. 선수를 팔아야 하고, 심하면 매각·해체까지 간다.
+   ─ 체력(ownHealth)은 <b>주가 / 90일 평균</b>이다. 1.0 이 평시, 아래로 내려가면 긴축이다.
+     시민·도민구단은 모기업이 없으므로 언제나 1.0 (시의회 추경은 기존 경로 그대로).      */
+const OWN_H_LO=0.86, OWN_H_HI=1.22;   // 이 아래면 긴축, 이 위면 특별 지원
+const OWN_H_MIN=0.55, OWN_H_MAX=1.45; // 계수 상·하한 — 예산이 0 이 되거나 폭주하지 않게
+const OWN_EV_COOL=45;                 // 같은 구단에 사건이 연달아 나지 않게 (일)
+function ownStock(t){ try{ return t?stkOfTeam(t.id):null; }catch(e){ return null; } }
+function ownHealth(t){
+  try{
+    if(!t) return 1;
+    if(clubType(t).k!=="corp") return 1;          // 모기업이 없다
+    const s=ownStock(t); if(!s || s.dead) return (s&&s.dead)?OWN_H_MIN:1;
+    const H=(s.hist||[]).slice(-90);
+    if(H.length<20) return 1;                     // 아직 볼 기록이 없다
+    const avg=H.reduce((a,b)=>a+b,0)/H.length;
+    if(!(avg>0)) return 1;
+    return clamp(s.p/avg, OWN_H_MIN, OWN_H_MAX);
+  }catch(e){ return 1; }
+}
+/* 예산에 곱하는 계수 — 체력 1.0 이 1.0 이 되도록 완만하게 편다 */
+function ownBudK(t){
+  const h=ownHealth(t);
+  return clamp(1 + (h-1)*0.55, 0.62, 1.30);
+}
+function ownLabel(t){
+  const h=ownHealth(t);
+  return h<=0.70 ? {t:"위기", c:"#f85149"} : h<OWN_H_LO ? {t:"긴축", c:"#ff9d5c"}
+       : h<=OWN_H_HI ? {t:"안정", c:"var(--sub)"} : {t:"호황", c:"var(--green)"};
+}
+/* ═══════════════════════════════════════════════════════════════════════════
+   🏳️ 모기업 부도 → 구단 매각
+   실제 K리그에서 여러 번 있었던 일이다. 모기업이 무너지면 구단은 매물이 되고,
+   ① 다른 기업이 인수하거나 ② 연고 지자체가 떠안아 시민구단이 된다.
+   ─ 해체는 넣지 않는다. 리그 구조가 깨지고 일정·순위표가 통째로 흔들린다.
+     대신 「아무도 안 나서면 지자체가 마지막으로 떠안는다」로 간다 — 실제로도 그랬다. */
+const SALE_DAYS=[18,32];        // 매각 절차에 걸리는 기간
+const SALE_CORP_P=0.55;         // 기업 인수 성사 확률 — 나머지는 지자체 인수
+const CITY_OF={ulsan:"울산광역시", jeonbuk:"전주시", daejeon:"대전광역시", gimcheon:"김천시",
+  gangwon:"강원도", gwangju:"광주광역시", seoul:"서울특별시", pohang:"포항시", jeju:"제주특별자치도",
+  anyang:"안양시", incheon:"인천광역시", bucheon:"부천시", suwon:"수원시", daegu:"대구광역시",
+  suwonfc:"수원시", busan:"부산광역시", jeonnam:"전라남도", seoule:"서울특별시", seongnam:"성남시",
+  cheongju:"청주시", asan:"아산시", hwaseong:"화성시", gimpo:"김포시", gyeongnam:"경상남도",
+  cheonan:"천안시", ansan:"안산시", gimhae:"김해시", yongin:"용인시", paju:"파주시"};
+function cityOf(t){ return (t && CITY_OF[t.id]) || `${t?t.short:""}시`; }
+/* 🌍 구단을 «두루뭉술하게» 부르는 법 — 이적시장 루머는 실명을 안 쓴다.
+     「지방구단 선수 A가 기업구단에 갈 예정!」 이 장르의 문법이다. */
+const RUM_CAPITAL=new Set(["seoul","seoule","incheon","suwon","suwonfc","seongnam","anyang",
+  "bucheon","ansan","gimpo","hwaseong","yongin","paju"]);
+function rumVague(t){
+  try{
+    if(!t) return "어느 구단";
+    const out=[];
+    const ct=(typeof clubType==="function")?clubType(t):{k:"civic"};
+    if(ct.k==="corp") out.push("기업구단","모기업 있는 구단");
+    else out.push("시민구단","시도민구단");
+    out.push(RUM_CAPITAL.has(t.id) ? "수도권 구단" : "지방구단");
+    out.push(RUM_CAPITAL.has(t.id) ? "수도권 팀" : "지방 팀");
+    if(t.div===1) out.push("1부 구단","K리그1 팀"); else out.push("2부 구단","K리그2 팀");
+    /* 순위가 잡히면 성적으로도 부른다 */
+    try{
+      const tb=(typeof tableOf==="function")?tableOf(t.div):null;
+      if(tb&&tb.length){ const i=tb.findIndex(x=>(x.t?x.t.id:x.id)===t.id);
+        if(i>=0){ const q=i/tb.length;
+          out.push(q<0.25?"상위권 팀":q<0.6?"중위권 팀":"하위권 팀"); } }
+    }catch(e){}
+    if((t.form||[]).slice(-3).join("")==="WWW") out.push("요즘 잘나가는 팀");
+    return pick(out);
+  }catch(e){ return "어느 구단"; }
+}
+/* 🗓️ 시기 — 게시판이 무슨 얘기를 하는 계절인가 */
+function rumWhen(){
+  try{
+    const d=(typeof dateOfDay==="function")?dateOfDay(G.day||0):new Date();
+    const mo=d.getMonth()+1;
+    if(mo===11||mo===12||mo===1) return "stove";    // 스토브리그 — 이적시장이 게시판을 덮는다
+    if(mo===2) return "pre";                         // 프리시즌 — 기대와 걱정
+    if(mo===6||mo===7) return "summer";              // 여름 이적시장
+    return "league";                                 // 시즌 중 — 목격담·폼·부상
+  }catch(e){ return "league"; }
+}
+
+function saleState(){ if(!G.sale) G.sale={}; return G.sale; }
+/* 매각 절차 시작 — 모기업이 부도났다 */
+function clubSaleStart(t){
+  try{
+    if(!t) return;
+    const SL=saleState(); if(SL[t.id]) return;             // 이미 진행 중
+    const ct=clubType(t), mine=!!t.isUser;
+    SL[t.id]={due:(G.day||0)+SALE_DAYS[0]+R(SALE_DAYS[1]-SALE_DAYS[0]), from:ct.o};
+    addNews(`🏳️ <b>${ct.o} 부도 — ${t.name} 매각 절차 착수</b>`, "warn", "club",
+      {cat:"club", ic:"🏳️", tone:-1, tid:t.id, src:"K리그 공식",
+       head:`${t.name}, 새 주인을 찾는다`,
+       sub:`모기업 ${ct.o}가 무너지면서 구단이 매물로 나왔다. 연맹은 시즌 운영에 차질이 없도록 인수 절차를 서두르겠다고 밝혔다. 인수자가 나서지 않으면 연고 지자체가 떠안는 방안도 거론된다.`});
+    if(mine){
+      try{ notify(`🏳️ <b>${ct.o}가 부도났습니다.</b><br>구단이 매각 절차에 들어갑니다 — 새 주인이 정해질 때까지 <b>예산 증액 요청이 막힙니다.</b><br><span class="small">기업 인수와 지자체 인수 중 어느 쪽이 될지는 아직 알 수 없습니다.</span>`,"warn"); }catch(e){}
+      try{ addMood(`🏳️ 모기업이 무너졌습니다. 선수단이 술렁입니다 — "우리 어떻게 되는 겁니까?"`); }catch(e){}
+      try{ for(const q of (t.players||[])) q.morale=clamp((q.morale||70)-6, 20, 99); }catch(e){}
+      try{ socialFill(["모기업 부도라니... 구단은 어떻게 되는 거야","제발 누구라도 인수해줘라","20년 응원했는데 이런 일이"], 3+R(3), -1, {t:t.short}); }catch(e){}
+      try{ fmkFill([["{t} 모기업 부도 ㄷㄷ 이거 진짜 큰일인데",-1],
+        ["{t} 인수 후보 나왔냐? 아직이면 시청밖에 없다",-1],
+        ["시민구단 되면 예산 반토막인데",-1]], 3+R(2), {t:t.short}); }catch(e){}
+    } else {
+      try{ fmkFill([["{t} 모기업 부도래 남 일 같지가 않다",-1]], 1+R(2), {t:t.short}); }catch(e){}
+    }
+  }catch(e){}
+}
+/* 인수 후보 — 상장사 중에서 고른다. 이미 구단을 가진 기업은 제외한다(1기업 1구단) */
+function saleBidders(t){
+  try{
+    const S=stkState(); if(!S) return [];
+    const owned=new Set(Object.values(G.teams||{}).map(x=>clubType(x).o));
+    return (S.list||[]).filter(x=>!x.dead && !x.tid && !owned.has(x.n))
+      .sort((a,b)=>stkCap(b)-stkCap(a)).slice(0, 8);
+  }catch(e){ return []; }
+}
+/* 매각 결론 */
+function clubSaleResolve(t){
+  try{
+    const SL=saleState(), rec=SL[t.id]; if(!rec) return;
+    delete SL[t.id];
+    const mine=!!t.isUser, city=cityOf(t);
+    const bids=saleBidders(t);
+    const corp = bids.length && Math.random()<SALE_CORP_P;
+    if(corp){
+      /* 🏢 기업 인수 — 새 모기업이 생기고 예산도 회복된다 */
+      const b=bids[R(Math.min(4,bids.length))];
+      if(!G.ownerNames) G.ownerNames={};
+      if(!G.ownerKinds) G.ownerKinds={};
+      G.ownerNames[t.id]=b.n; G.ownerKinds[t.id]="corp";
+      b.tid=t.id;                                   // 그 종목이 이 구단의 모기업이 된다
+      const add=Math.round(Math.max(3, budPool(t)*0.30)*10)/10;
+      t.budget=Math.round(((t.budget||0)+add)*10)/10;
+      addNews(`🤝 <b>${b.n}, ${t.name} 인수</b> — 새 모기업으로`, "good", "club",
+        {cat:"club", ic:"🤝", tone:1, tid:t.id, src:"K리그 공식",
+         head:`${t.name}, ${b.n} 품으로`,
+         sub:`${rec.from} 부도 이후 표류하던 구단이 새 주인을 찾았다. ${b.n}은 구단 운영을 정상화하겠다며 지원금 ${add}억을 우선 투입하기로 했다.`});
+      if(mine){
+        try{ notify(`🤝 <b>${b.n}</b>이(가) 구단을 인수했습니다.<br>새 모기업의 첫 지원금 <b>${add}억</b>이 들어왔습니다.`,"good"); }catch(e){}
+        try{ addMood(`🤝 새 모기업이 정해졌습니다. 라커룸이 한숨 돌렸습니다.`, "good"); }catch(e){}
+        try{ for(const q of (t.players||[])) q.morale=clamp((q.morale||70)+5, 20, 99); }catch(e){}
+        try{ adjustTrust("fans", +3, "구단 인수 성사"); }catch(e){}
+        try{ socialFill(["살았다 진짜 살았다","인수 확정 떴다 눈물 난다","{t} 다시 시작이다"], 3+R(3), 1, {t:t.short}); }catch(e){}
+        try{ fmkFill([["{t} 인수 확정 ㅊㅋ 부럽다 진짜",1],["새 모기업 돈 좀 있냐?",0]], 2+R(2), {t:t.short}); }catch(e){}
+      }
+    } else {
+      /* 🏙️ 지자체 인수 — 시민구단이 된다. 살아남지만 규모는 줄어든다 */
+      if(!G.ownerNames) G.ownerNames={};
+      if(!G.ownerKinds) G.ownerKinds={};
+      G.ownerNames[t.id]=`${city}`; G.ownerKinds[t.id]="civic";
+      try{ stkSyncClubListing(t); }catch(e){}       // 상장 종목은 비상장 전환으로 정리된다
+      const cut=Math.round(Math.max(1, budPool(t)*0.22)*10)/10;
+      t.budget=Math.round(Math.max(0,(t.budget||0)-cut)*10)/10;
+      addNews(`🏙️ <b>${city}, ${t.name} 인수 — 시민구단으로 전환</b>`, "warn", "club",
+        {cat:"club", ic:"🏙️", tone:0, tid:t.id, src:"K리그 공식",
+         head:`${t.name}, 시민구단으로 새출발`,
+         sub:`기업 인수자가 끝내 나서지 않으면서 ${city}가 구단을 떠안았다. 리그 잔류는 확정됐지만 운영 예산은 ${cut}억 줄어든다. "규모는 작아져도 축구는 계속된다"는 것이 시의 설명이다.`});
+      if(mine){
+        try{ notify(`🏙️ <b>${city}</b>가 구단을 인수했습니다 — <b>시민구단</b>으로 전환됩니다.<br>리그에는 남지만 예산이 <b>${cut}억</b> 줄었습니다.<br><span class="small">이제 예산은 모기업이 아니라 시의회 추경으로 움직입니다.</span>`,"warn"); }catch(e){}
+        try{ addMood(`🏙️ 시민구단으로 전환됩니다. 팀은 남았지만 씀씀이는 줄어듭니다.`); }catch(e){}
+        try{ socialFill(["시민구단이라도 남은 게 어디냐","돈은 없어도 팀은 있다","이제 진짜 우리 팀이네"], 3+R(3), 0, {t:t.short}); }catch(e){}
+        try{ fmkFill([["{t} 시민구단 전환 확정 ㅠㅠ 그래도 살았다",0],
+          ["{t} 이제 예산 반토막인데 감독 불쌍하다",-1],
+          ["시민구단도 잘하는 팀 많다 힘내라",1]], 3+R(2), {t:t.short}); }catch(e){}
+      }
+    }
+  }catch(e){}
+}
+/* 매각 진행 중인가 — 예산 증액 요청 등을 막는 데 쓴다 */
+function clubForSale(t){ try{ return !!(t && saleState()[t.id]); }catch(e){ return false; } }
+/* 하루에 한 번 — 모기업 사정이 실제로 구단 예산을 움직인다 */
+function ownTick(){
+  try{
+    const S=stkState(); if(!S) return;
+    if(!G.own) G.own={last:{}};
+    /* 🏳️ 진행 중인 매각의 결론이 오늘인가 */
+    { const SL=saleState();
+      for(const tid in SL){ const rec=SL[tid];
+        if(rec && (G.day||0)>=rec.due){ const tt=G.teams[tid]; if(tt) clubSaleResolve(tt); else delete SL[tid]; } } }
+    for(const t of Object.values(G.teams||{})){
+      if(!t || clubType(t).k!=="corp") continue;
+      const s=ownStock(t);
+      const dead=!s;                                  // 상장폐지 = 모기업 부도
+      const h=ownHealth(t);
+      if(!dead && h>=OWN_H_LO && h<=OWN_H_HI) continue;
+      if(((G.day||0)-(G.own.last[t.id]||-999)) < OWN_EV_COOL) continue;
+      G.own.last[t.id]=G.day||0;
+      const ct=clubType(t), pool=budPool(t), mine=!!t.isUser;
+      if(dead) clubSaleStart(t);                      // 🏳️ 모기업 부도 → 매각 절차
+      if(dead || h<=0.70){
+        /* 🔻 긴급 지원금 삭감 — 모기업이 흔들리면 구단이 먼저 줄인다 */
+        const cut=Math.round(Math.max(1, pool*(dead?0.35:0.18))*10)/10;
+        t.budget=Math.round(Math.max(0, (t.budget||0)-cut)*10)/10;
+        const head=dead ? `${ct.o} 부도 — ${t.short} 지원금 전면 중단`
+                        : `${ct.o} 실적 악화 — ${t.short} 지원금 ${cut}억 삭감`;
+        try{ addNews(`🔻 <b>${head}</b>`, "warn", "club",
+          {cat:"club", ic:"🔻", tone:-1, tid:t.id, src:"산업 담당",
+           head, sub: dead
+             ? `모기업이 상장폐지되면서 구단 운영자금 조달 경로가 끊겼다. 겨울 이적시장에서 주력 선수 매각이 불가피할 전망이다.`
+             : `모기업 주가가 90일 평균 대비 ${Math.round((1-h)*100)}% 낮은 수준에 머물면서, 구단 지원금이 ${cut}억 줄었다.`}); }catch(e){}
+        if(mine){
+          try{ notify(`🔻 <b>${ct.o}</b>의 사정이 나빠졌습니다.<br>구단 이적 예산이 <b>${cut}억</b> 삭감됐습니다. <span class="small">(모기업 체력 ${Math.round(h*100)}%)</span>`,"warn"); }catch(e){}
+          try{ addMood(`🔻 모기업 사정으로 예산이 ${cut}억 깎였습니다. 프런트도 난감한 표정입니다.`); }catch(e){}
+          try{ socialFill(["모기업이 흔들리는데 구단이 무사할 리가 없지","돈 없다는 소리 또 나오겠네","이러다 선수 다 팔리는 거 아니냐"], 2+R(2), -1, {t:t.short}); }catch(e){}
+          try{ fmkFill([["{t} 모기업 실적 봤냐 이거 구단까지 온다",-1],
+            ["{t} 겨울에 주력 팔릴 각",-1],["모기업 주가로 구단 예산 예측하는 시대",0]], 2+R(2), {t:t.short}); }catch(e){}
+        }
+      } else if(h>=OWN_H_HI){
+        /* 🔺 특별 지원금 — 모기업이 좋으면 구단에도 돈이 돈다 */
+        const add=Math.round(Math.max(1, pool*0.16)*10)/10;
+        t.budget=Math.round(((t.budget||0)+add)*10)/10;
+        const head=`${ct.o} 호실적 — ${t.short}에 특별 지원금 ${add}억`;
+        try{ addNews(`🔺 <b>${head}</b>`, "good", "club",
+          {cat:"club", ic:"🔺", tone:1, tid:t.id, src:"산업 담당",
+           head, sub:`모기업 주가가 90일 평균을 ${Math.round((h-1)*100)}% 웃돌면서 구단 지원금이 늘었다. 겨울 이적시장에서 움직일 여지가 생겼다.`}); }catch(e){}
+        if(mine){
+          try{ notify(`🔺 <b>${ct.o}</b>의 실적이 좋습니다.<br>특별 지원금 <b>${add}억</b>이 이적 예산에 들어왔습니다.`,"good"); }catch(e){}
+          try{ addMood(`🔺 모기업 특별 지원금 ${add}억이 들어왔습니다. 프런트 분위기가 밝습니다.`, "good"); }catch(e){}
+          try{ fmkFill([["{t} 모기업 실적 좋다던데 이거 영입 기대해도 됨?",1],
+            ["{t} 지원금 들어왔다는데 누구 데려오냐",1]], 1+R(2), {t:t.short}); }catch(e){}
+        }
+      }
+    }
+  }catch(e){}
+}
 function budSplit(t){ if(t._split==null) t._split=0.5; return t._split; }
 /* 슬라이더 값(0~100 = 이적 예산 비중)으로 두 주머니를 다시 나눈다 */
 function applyBudgetSplit(t, pct){
@@ -21100,7 +21404,31 @@ function haveSave(){
    ⚠ 큰 저장소가 살아 있으면 굳이 줄일 이유가 없다 — 한도가 기가바이트 단위다.
      기본 저장소가 막혔을 때만 이 값이 의미를 갖는다. */
 const SAVE_SOFT_MAX=1500000;   // 약 1.5M 글자(≈3MB)
+/* 💤 연타 흡수 — 저장 한 번에 1.6MB 직렬화 + 두 저장소 쓰기가 든다(데스크톱 ~46ms, 폰은 그 몇 배).
+     화면 조작마다 saveGame() 이 붙은 곳이 300군데라, 빠르게 누르면 그만큼 화면이 멈춘다.
+   ─ 첫 저장은 즉시 한다. 그 직후 1.1초 안에 몰려드는 호출만 하나로 합쳐 꼬리에서 한 번 쓴다.
+     탭이 숨거나 닫힐 때·불러오기·내보내기 직전에는 saveFlush() 로 밀린 저장을 먼저 흘려보낸다.
+     ⚠ 반환값을 쓰는 호출부는 없다(전수 확인). 미룬 저장은 true 를 돌려준다. */
+const SAVE_COALESCE=1100;
+let _svTimer=null, _svLastAt=0;
+function saveFlush(){
+  if(!_svTimer) return false;
+  clearTimeout(_svTimer); _svTimer=null; _svLastAt=Date.now();
+  try{ return saveGameNow(); }catch(e){ return false; }
+}
 function saveGame(){
+  if(typeof PREGEN!=="undefined" && PREGEN) return true;
+  const now=Date.now(), gap=now-_svLastAt;
+  if(gap>=SAVE_COALESCE){
+    if(_svTimer){ clearTimeout(_svTimer); _svTimer=null; }
+    _svLastAt=now; return saveGameNow();
+  }
+  if(!_svTimer) _svTimer=setTimeout(()=>{
+    _svTimer=null; _svLastAt=Date.now(); try{ saveGameNow(); }catch(e){}
+  }, SAVE_COALESCE-gap);
+  return true;
+}
+function saveGameNow(){
   /* 🧬 팀 선택 화면에서 연 「선수 만들기」는 임시 세계다 — 저장소를 절대 건드리지 않는다.
      여기서 만든 선수는 preMade()(브라우저 별도 보관함)에 따로 쌓이고, 새 게임에 옮겨진다. */
   if(typeof PREGEN!=="undefined" && PREGEN) return true;
@@ -21150,6 +21478,7 @@ function saveGame(){
    브라우저 저장은 언제든 날아갈 수 있다(사파리는 한동안 안 들어오면 지운다).
    파일로 뽑아 두면 기기를 바꿔도, 브라우저를 갈아도 그대로 이어서 할 수 있다. */
 function exportSave(){
+  try{ saveFlush(); }catch(e){}      // 💤 미뤄 둔 저장을 먼저 반영하고 뽑는다
   try{
     saveGame();
     const s=localStorage.getItem(SAVE_KEY) || JSON.stringify(G);
@@ -21169,6 +21498,7 @@ function exportSave(){
   }catch(e){ notify("내보내기에 실패했습니다. 브라우저가 파일 저장을 막고 있을 수 있습니다.","warn"); }
 }
 function importSave(input){
+  try{ saveFlush(); }catch(e){}      // 💤 덮어쓰기 전에 밀린 저장을 정리한다 (백업이 최신이 되도록)
   const f=input && input.files && input.files[0];
   if(!f) return;
   const r=new FileReader();
@@ -22297,7 +22627,8 @@ function exitSaveNow(){
     if(!G || !G.teams) return;
     if(Date.now()-EXIT_SAVED_AT < 400) return;     // 이벤트가 겹쳐 들어와도 한 번만
     EXIT_SAVED_AT=Date.now();
-    saveGame();
+    try{ saveFlush(); }catch(e){}                  // 💤 미뤄 둔 저장이 있으면 그것부터
+    saveGameNow();                                 // 나갈 때만은 무조건 즉시 쓴다
   }catch(e){}
 }
 function exitGuardInit(){
@@ -27805,6 +28136,18 @@ function mgrFine(amt, why){
   amt=Math.round(Math.max(0,amt)*100)/100;
   if(!amt) return 0;
   G.mgrFineTot=Math.round(((G.mgrFineTot||0)+amt)*100)/100;   // ⚖️ 커리어 누적 징계 이력 — 감독 평판에 오래 남는다
+  /* 🎭 사건 장부 — 예능 모드의 「그 사건」들이 여기 다 모인다. 나중에 게시판이 후일담을 판다.
+     징계금이 나가는 지점이 곧 사건이 벌어진 지점이라, 이 한 곳만 물리면 전부 잡힌다. */
+  try{
+    if(/물병|폭행|난투|체벌|파손|소란|모욕|조롱|물의|난입|위협/.test(String(why||""))){
+      const kk = /기자/.test(why)?"press" : /팬|간담회/.test(why)?"fans"
+               : /라커룸|난투|난입/.test(why)?"locker" : /심판/.test(why)?"ref"
+               : /체벌|선수 폭행|합의금/.test(why)?"player" : /물의|도박/.test(why)?"gamble" : "etc";
+      (G.wildLog=G.wildLog||[]).unshift({k:kk, w:String(why), a:amt, d:G.day||0,
+        s:G.season, tid:(t?t.id:null), tn:(t?t.short:"")});
+      G.wildLog=G.wildLog.slice(0,24);
+    }
+  }catch(e){}
   /* 🤝 스폰서는 성적보다 이미지에 먼저 반응한다 — 징계가 클수록 압박도 세다 */
   try{ if(amt>=0.8) sponScandal(why||"감독 징계", amt>=5?2:1); }catch(e){}
   const own=Math.round(Math.min(Math.max(M.cash,0), amt)*100)/100;
@@ -28162,7 +28505,10 @@ function stkTurnover(s){
    순간부터 급격히 나빠진다. 「자산이 커질수록 굴리기 어렵다」가 이 한 줄에서 나온다. */
 function stkImpact(s, amount){
   if(!s || !(amount>0)) return 0;
-  return clamp(STK_LIQ_K*(amount/stkTurnover(s)), 0, STK_LIQ_MAX);
+  /* 📢 대량보유 공시된 종목은 시장이 내 매매를 «앞질러 간다» — 살 땐 먼저 오르고 팔 땐 먼저 빠진다.
+     세금과 달리 돈을 떼는 게 아니라 «굴리기 어려워지는» 방식의 제동이다. */
+  const k = (typeof stkDisclosed==="function" && stkDisclosed(s)) ? STK_DISCL_K : 1;
+  return clamp(STK_LIQ_K*k*(amount/stkTurnover(s)), 0, STK_LIQ_MAX);
 }
 /* 체결 단가 — side 는 매수 +1 · 매도 −1 */
 function stkFillPx(s, q, side){
@@ -28380,6 +28726,9 @@ function stkTick(){
     if(s.ohlc.length>STK_OHLC) s.ohlc.splice(0, s.ohlc.length-STK_OHLC);
   }
   try{ stkOrderTick(); }catch(e){}     // 📋 예약 주문 체결
+  try{ fssTick(); }catch(e){}          // 🚨 금감원 — 시세조종 조사
+  try{ ownTick(); }catch(e){}          // 🏢 모기업 실적 → 구단 예산 (지원금 삭감·특별 지원)
+  try{ rumTick(); }catch(e){}          // 🗞️ 펨코 루머 게시판
   try{ stkMarginTick(); }catch(e){}    // 💳 이자 · 반대매매
   try{ stkShortTick(); }catch(e){}     // 📉 공매도 — 대여 수수료 · 숏스퀴즈 · 강제 청산
   try{ stkDebtTick(); }catch(e){}      // 🩸 사채 이자 · 독촉 · 파산
@@ -28412,9 +28761,10 @@ function stkSplit(s, k){
                                                     Math.max(1,Math.round(c[2]/k)),Math.max(1,Math.round(c[3]/k)), Math.round((c[4]||0)*k)]);
     /* 내 계좌 */
     const h=M.stkInv && M.stkInv[s.id];
-    if(h && h.q>0){ h.q=Math.round(h.q*k); h.avg=Math.max(1, h.avg/k); }
+    /* 평균단가도 «원» 단위다 — 나누고 나서 반올림하지 않으면 소수점이 남는다 */
+    if(h && h.q>0){ h.q=Math.round(h.q*k); h.avg=Math.max(1, Math.round(h.avg/k)); }
     const sh2=M.short && M.short[s.id];
-    if(sh2 && sh2.q>0){ sh2.q=Math.round(sh2.q*k); sh2.avg=Math.max(1, sh2.avg/k); }
+    if(sh2 && sh2.q>0){ sh2.q=Math.round(sh2.q*k); sh2.avg=Math.max(1, Math.round(sh2.avg/k)); }
     for(const o of stkOrders()) if(o.sid===s.id){ o.px=Math.max(1, Math.round(o.px/k)); o.q=Math.round(o.q*k); }
     s.splitAt=G.day||0;
     stkLog("split", `✂️ <b>${s.n}</b> 액면분할 1:${k} — 주가 ${stkWon(s.p)}원으로 조정 (보유 주식 수는 ${k}배)`, s.id);
@@ -28504,6 +28854,25 @@ function stkShockTick(){
 function stkDelist(s){
   /* 관리종목 경고 없이 사라지지 않는다 — 팔 기회는 준다 */
   if(!s.warn && !s._forceDel){ s.warn=1; try{ stkLog("warn", `⚠️ ${s.n} 관리종목 지정 — 상장폐지 심사 대상`, s.id); stkPing(s, `⚠️ <b>${s.n}</b> 관리종목 지정 — 상장폐지 심사에 들어갑니다.`, "warn"); }catch(e){} return; }
+  /* 🔒 ⚠ 감사 — 상장폐지가 <b>공매도 잔고를 그대로 두고</b> 주가만 0으로 만들었다.
+     체결가 하한이 1원이라 폐지된 종목을 <b>1원에 전량 커버</b>할 수 있었다 —
+     실측: 100억으로 공매도 → 폐지 → 커버에 순이익 40.6억. 게다가 「관리종목 지정」이
+     미리 뜨니 <b>신호까지 주는 무위험 차익</b>이었다.
+     ─ 폐지되는 순간 <b>마지막 거래가로 강제 정산</b>한다. 이익도 손실도 그 값에서 확정된다. */
+  const lastP=Math.max(1, s.p||1);
+  {
+    const H=(typeof stkShorts==="function")?stkShorts():null;
+    const sh=H && H[s.id];
+    if(sh && sh.q>0){
+      const q=sh.q, real=(sh.avg-lastP)*q, cost=q*lastP*(1+STK_FEE);
+      stkCash(-cost + q*0);                       // 되사는 값을 치른다
+      me().stkReal=Math.round(((me().stkReal||0)+real/1e8)*1e8)/1e8;
+      try{ taxOnRealize(s, q, real, "상장폐지 정산"); }catch(e){}
+      delete H[s.id];
+      try{ stkTxAdd({k:"cover", sid:s.id, n:s.n, q, px:lastP, amt:cost, real}); }catch(e){}
+      try{ stkLog("delist", `🔒 <b>${s.n}</b> 상장폐지 — 공매도 ${q.toLocaleString()}주가 마지막 거래가 ${stkWon(lastP)}원으로 강제 정산되었습니다 (실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억)`, s.id); }catch(e){}
+    }
+  }
   s.dead=1; s.p=0;
   const S=stkState(); if(!S) return;
   const M=me();
@@ -28709,17 +29078,77 @@ function stkDividend(){
   for(const k in M.stkInv){
     const h=M.stkInv[k]; if(!h||!h.q) continue;
     const s=stkById(+k); if(!s||s.dead||!s.div) continue;
-    const cash=h.q*s.p*(s.div/100)*0.846;            // 배당소득세 15.4%
+    const cash=h.q*s.p*(s.div/100);                  // 세전 배당
     if(cash<1) continue;
     sum+=cash; rows.push(`${s.n} ${stkMoney(cash)}`);
   }
   if(sum<=0) return;
-  M.cash=Math.round((M.cash + sum/1e8)*1e4)/1e4;
+  /* 🧾 ② 금융소득 종합과세 — 연 2천만원까지는 15.4%, 넘는 몫은 종합과세로 세율이 뛴다 */
+  const _tx=taxOnDividend(sum);
+  const _net=Math.max(0, sum-_tx);
+  if(_tx>0){
+    try{ stkLog("tax", `🧾 배당소득세 <b>${stkMoney(_tx)}</b> 원천징수 — 세전 ${stkMoney(sum)} (연 누계가 종합과세 기준을 넘으면 세율이 올라갑니다)`); }catch(e){}
+  }
+  sum=_net;
+  stkCash(sum);
   M.earned=Math.round((M.earned+sum/1e8)*100)/100;
   M.stkDiv=Math.round(((M.stkDiv||0)+sum/1e8)*1e4)/1e4;
   stkLog("div", `💰 결산 배당 지급 — 총 ${stkMoney(sum)} (${rows.length}종목)`);
   try{ meLog(`💰 주식 배당 ${(sum/1e8).toFixed(2)}억 입금 (${rows.slice(0,3).join(" · ")}${rows.length>3?" 외":""})`); }catch(e){}
   try{ notifyStk(`💰 보유 주식 배당 <b>${(sum/1e8).toFixed(2)}억</b>이 입금되었습니다 — ${rows.slice(0,2).join(" · ")}${rows.length>2?` 외 ${rows.length-2}종목`:""}`,"good"); }catch(e){}
+}
+/* ═══ 🚨 금융감독원 — 시세조종 조사 ═══════════════════════════════════════
+   도박 발각(gamCatchRoll)과 같은 문법이다. 큰 주문으로 값을 반복해서 밀어 올리면 열기가 쌓이고,
+   걸리면 <b>돈을 뺏기는 게 아니라 사건이 일어난다</b> — 과징금·계좌 동결, 그리고 감독직에도 흠집이 난다.
+   K리그 감독이 주가조작 혐의로 조사받는 그림은 그 자체로 이야깃거리다. */
+const FSS_BAN_D=30;          // 계좌 동결 일수
+function fssTick(){
+  try{
+    const F=fssState();
+    F.heat=Math.max(0, (F.heat||0)*0.90);                  // 열기는 매일 식는다
+    if(fssFrozen()) return;
+    const h=F.heat||0;
+    if(h<18) return;
+    const p=clamp((h-18)/420, 0, 0.09);
+    if(Math.random()>=p) return;
+    /* 걸렸다 */
+    F.n=(F.n|0)+1; F.heat=h*0.30;
+    const M=me(), t=userTeam();
+    const gain=Math.max(0, (M.stkReal||0));                // 누적 실현이익(억)
+    const fine=Math.round(clamp(gain*0.25, 5, 4000)*100)/100;   // 부당이득 추정분의 25%
+    const pay=Math.min(fine, Math.max(0, M.cash||0));
+    stkCash(-pay*1e8);
+    F.fine=Math.round(((F.fine||0)+pay)*100)/100;
+    F.ban=(G.day||0)+FSS_BAN_D;
+    /* 🧑‍💼 무직 — 과징금과 계좌 동결은 «개인 금융» 문제라 그대로 간다.
+       다만 소속 구단이 없으니 구단주·팬 신뢰, 언론 관계, 구단 팬 반응은 건너뛴다
+       (도박 발각을 무직일 때 소문나지 않게 한 것과 같은 원칙). */
+    const jobless=!!(G && G.jobless);
+    const nm=(typeof mgrName==="function"&&t&&!jobless)?mgrName(t):"전 감독";
+    const tn=(t&&!jobless)?t.short:"";
+    try{ stkLog("fss", `🚨 <b>금융감독원 조사</b> — 시세조종 혐의로 과징금 <b>${pay.toFixed(2)}억</b> · 계좌 ${FSS_BAN_D}일 동결`); }catch(e){}
+    try{ notifyStk(`🚨 <b>금융감독원이 계좌를 들여다봤습니다.</b><br>과징금 <b>${pay.toFixed(2)}억</b> · ${FSS_BAN_D}일간 매수·공매도·신용거래 정지<br><span class="small">큰 주문으로 값을 반복해서 밀어 올린 기록이 남았습니다.</span>`,"warn"); }catch(e){}
+    try{ meLog(`🚨 금감원 과징금 ${pay.toFixed(2)}억 — 시세조종 혐의`); }catch(e){}
+    try{ addNews(jobless
+        ? `🚨 <b>${nm}, 주가조작 혐의로 금감원 조사</b> — 과징금 ${pay.toFixed(2)}억`
+        : `🚨 <b>${tn} ${nm} 감독, 주가조작 혐의로 금감원 조사</b> — 과징금 ${pay.toFixed(2)}억`, "warn", "stock",
+      {cat:"stock", ic:"🚨", tone:-1, tid:((t&&!jobless)?t.id:null), src:"금융감독원",
+       head:jobless?`${nm}, 시세조종 혐의 과징금 ${pay.toFixed(2)}억`:`${nm} 감독, 시세조종 혐의 과징금 ${pay.toFixed(2)}억`,
+       sub:`특정 종목에 대량 주문을 반복해 시세에 영향을 준 정황이 확인됐다. 계좌는 ${FSS_BAN_D}일간 동결된다.`}); }catch(e){}
+    if(!jobless){
+      /* 감독직에도 흠집이 난다 — 도박 물의와 같은 무게 */
+      try{ adjustTrust("owner", -10, "감독 주가조작 물의"); adjustTrust("fans", -6, "감독 주가조작 물의"); }catch(e){}
+      try{ if(G.press) G.press.rel=clamp((G.press.rel||50)-10, 0, 100); }catch(e){}
+      try{ G.mgrRepMod=(G.mgrRepMod||0)-3; }catch(e){}
+      try{ socialFill(["감독이 주식으로 뭘 한 거야...","축구나 잘하시죠 진짜","이건 좀 실망이다"], 3+R(2), -1, {t:tn}); }catch(e){}
+      try{ fmkFill([["{t} 감독 주가조작 ㄷㄷ 이거 커지겠는데",-1],
+        ["감독이 시세조종이라니 ㅋㅋㅋ 소설이냐",-1],
+        ["구단은 알고 있었냐 이거",-1]], 2+R(2), {t:tn}); }catch(e){}
+    } else {
+      /* 무직이라도 위신은 남는다 — 다음 부임 협상에서 이 기록이 따라온다 */
+      try{ G.mgrRepMod=(G.mgrRepMod||0)-3; }catch(e){}
+    }
+  }catch(e){}
 }
 /* ── ⚠️ 관리종목 — 상장폐지 전에 반드시 경고가 나간다 ────────── */
 function stkWatchTick(){
@@ -28769,6 +29198,11 @@ function stkSeasonEffect(){
    ═══════════════════════════════════════════════════════════════════════════ */
 const STK_MG_RATE=0.00022;   // 신용 이자 — 하루 0.022% (연 8%)
 const STK_MG_MAX =2.0;       // 순자산의 몇 배까지 빌릴 수 있나
+/* 🧱 ⚠ 감사 — <b>발행주식수보다 많이 살 수 있었다</b>(실측 발행량의 5배).
+   유동성 충격 상한이 45%라 시가총액의 몇 배를 부어도 최대 45% 비싸게 사면 그만이었고,
+   배당은 보유 수량에 그대로 비례해서 <b>배당 8회에 25조</b>가 들어왔다.
+   ─ 개인이 한 종목을 얼마나 가질 수 있는지에 상한을 둔다(실제로도 5%면 대량보유 공시 대상이다). */
+const STK_OWN_MAX=0.10;      // 한 종목 발행주식수의 10%까지
 const STK_MG_CALL=1.40;      // 담보비율이 이 아래로 내려가면 반대매매
 const STK_TX_MAX =200;       // 거래 내역 보관 건수
 
@@ -28812,9 +29246,121 @@ function stkTxAdd(o){
   if(T.length>STK_TX_MAX) T.length=STK_TX_MAX;
 }
 /* ── 💳 신용거래 ───────────────────────────────────────────── */
+/* 💰 ⚠ 감사 — 현금이 <b>1만원 단위로 반올림</b>되고 있었다(억 단위 소수점 4자리).
+   그래서 한 번에 5,000원 미만인 거래는 <b>비용이 통째로 사라졌다</b> —
+   실측: 191원짜리를 20주씩 300번 사도 현금 100억 그대로에 주식 6,000주가 공짜로 생겼다.
+   ─ 증권 계좌의 돈은 <b>1원 단위</b>로 다룬다. */
+function stkCash(won){
+  const M=me();
+  M.cash=Math.round((M.cash + won/1e8)*1e8)/1e8;
+  return M.cash;
+}
+/* 📊 증권 계좌의 «순자산» — 공매도 대금은 이미 현금에 들어와 있으므로 되사는 값을 빼야 한다.
+   ⚠ 감사 — 예전에는 여기에 stkShortPL(=(평단−현재가)×수량)을 «더했다».
+      현금에는 이미 매도 대금이 들어 있는데 부채를 평가손익으로만 반영하니
+      <b>공매도 대금이 통째로 이중 계산</b>됐다. 실측: 공매도 한 번에 신용대출 한도 200억 → 285억.
+      그 한도로 또 공매도를 하면 레버리지가 끝없이 불어난다. */
+function stkEquity(){
+  const M=me();
+  let v=M.cash*1e8;
+  try{ v+=stkEval(); }catch(e){}
+  try{ v-=stkShortVal(); }catch(e){}
+  return v;
+}
+/* ═══════════════════════════════════════════════════════════════════════════
+   🧾 세금 · 규제 — 「너무 많이 벌었을 때」를 실제로 있는 장치들로 되돌린다.
+   ⚠ 예전에는 금융자산 100조가 넘으면 국세청이 현금을 그냥 가져갔다. 그 밑에서는 아무 제동이
+      없다가 갑자기 벽을 만나는 구조라, 게임이 손을 뻗어 뺏는 느낌이 났다.
+   ─ 네 층으로 나눈다. 작게 굴리면 하나도 안 걸리고, 커질수록 차례로 물린다.
+       ① 대주주 양도소득세 — 팔 때 실현이익에 과세 (지분 1% 또는 10억 이상)
+       ② 금융소득 종합과세 — 배당이 연 2천만원을 넘으면 세율이 뛴다
+       ③ 5% 대량보유 공시 — 공시된 뒤로는 시장이 내 매매를 앞질러 간다
+       ④ 금감원 시세조종 조사 — 값을 반복해서 밀어 올리면 사건이 된다
+     ⑤(자금출처 세무조사)는 기존 국세청(ntsTick) 자리를 그대로 물려받는다. */
+const TAX_MAJOR_R=0.01;      // 지분 1% 이상이면 대주주
+const TAX_MAJOR_V=10e8;      // 또는 한 종목 10억 이상
+const TAX_CG_B1=3e8,   TAX_CG_R1=0.22;    // 양도차익 3억 이하 22%
+const TAX_CG_B2=1000e8, TAX_CG_R2=0.275;  // 3억~1,000억 27.5%
+const TAX_CG_R3=0.385;                    // 1,000억 초과 38.5% (최고구간)
+const TAX_DIV_BASE=0.154;    // 배당소득세 15.4%
+const TAX_DIV_LINE=0.2e8;    // 금융소득 종합과세 기준 — 연 2천만원
+const TAX_DIV_TOP=0.495;     // 초과분 종합과세 최고세율 49.5%
+const STK_DISCL_R=0.05;      // 5% 이상이면 대량보유 공시 대상
+const STK_DISCL_K=1.9;       // 공시된 종목의 시장충격 배수 — 시장이 내 매매를 앞질러 간다
+function taxState(){
+  if(!G.tax) G.tax={s:G.season, cg:0, div:0, divY:0, paid:0};
+  if(G.tax.s!==G.season){ G.tax={s:G.season, cg:0, div:0, divY:0, paid:0}; }   // 해가 바뀌면 초기화
+  return G.tax;
+}
+/* 대주주인가 — 파는 시점의 지분·평가액으로 본다 */
+function taxIsMajor(s, q){
+  if(!s||!(q>0)) return false;
+  return ((s.sh>0) && q/s.sh>=TAX_MAJOR_R) || (q*s.p>=TAX_MAJOR_V);
+}
+/* 양도소득세 — 실현이익(원)에 매기는 누진세. 소액주주는 0 */
+function taxCapGain(s, q, realWon){
+  if(!(realWon>0) || !taxIsMajor(s, q)) return 0;
+  let t=0, r=realWon;
+  const b1=Math.min(r, TAX_CG_B1); t+=b1*TAX_CG_R1; r-=b1;
+  if(r>0){ const b2=Math.min(r, TAX_CG_B2-TAX_CG_B1); t+=b2*TAX_CG_R2; r-=b2; }
+  if(r>0) t+=r*TAX_CG_R3;
+  return Math.round(t);
+}
+/* 실제로 떼고 기록한다 — 매도·숏커버·반대매매 모든 실현 경로가 이 함수 하나를 부른다 */
+function taxOnRealize(s, q, realWon, why){
+  const t=taxCapGain(s, q, realWon);
+  if(t<=0) return 0;
+  stkCash(-t);
+  const T=taxState(); T.cg=Math.round(T.cg+t); T.paid=Math.round(T.paid+t);
+  try{ stkLog("tax", `🧾 <b>${s.n}</b> 양도소득세 <b>${stkMoney(t)}</b> 원천징수 — 실현이익 ${stkMoney(realWon)} (대주주 과세${why?" · "+why:""})`, s.id); }catch(e){}
+  try{ meLog(`🧾 양도소득세 ${(t/1e8).toFixed(2)}억 (${s.n})`); }catch(e){}
+  return t;
+}
+/* 배당소득세 — 연 누계가 종합과세 기준을 넘으면 초과분 세율이 뛴다 */
+function taxOnDividend(grossWon){
+  const T=taxState();
+  const before=T.divY||0, after=before+grossWon;
+  const lowPart=Math.max(0, Math.min(after, TAX_DIV_LINE)-Math.min(before, TAX_DIV_LINE));
+  const topPart=Math.max(0, after-Math.max(before, TAX_DIV_LINE));
+  const t=Math.round(lowPart*TAX_DIV_BASE + topPart*TAX_DIV_TOP);
+  T.divY=after; T.div=Math.round((T.div||0)+t); T.paid=Math.round(T.paid+t);
+  return t;
+}
+/* 📢 5% 대량보유 공시 — 넘어서는 순간 한 번 알리고, 그 뒤로는 체결이 계속 불리해진다 */
+function stkDisclosed(s){
+  if(!s||!(s.sh>0)) return false;
+  const q=(((me().stkInv)||{})[s.id]||{q:0}).q||0;
+  return q/s.sh>=STK_DISCL_R;
+}
+function stkDisclCheck(s){
+  try{
+    const M=me(); if(!M._discl) M._discl={};
+    const now=stkDisclosed(s);
+    if(now && !M._discl[s.id]){
+      M._discl[s.id]=1;
+      const q=((M.stkInv||{})[s.id]||{q:0}).q||0;
+      const pct=(q/s.sh*100).toFixed(1);
+      stkLog("discl", `📢 <b>${s.n}</b> 대량보유 공시 — 지분 <b>${pct}%</b> 보유 사실이 공시되었습니다. 이제 시장이 당신의 매매를 지켜봅니다.`, s.id);
+      try{ notifyStk(`📢 <b>${s.n}</b> 지분 ${pct}% — <b>대량보유 공시</b> 대상이 되었습니다.<br><span class="small">공시된 종목은 추종 매매가 붙어 체결가가 계속 불리해집니다.</span>`,"warn"); }catch(e){}
+      try{ const _t=userTeam(), _jb=!!(G&&G.jobless);
+        const _nm=(!_jb&&_t&&typeof mgrName==="function")?(mgrName(_t)||"감독"):"전 감독";
+        addNews(`📢 <b>${_nm}</b>, ${s.n} 지분 ${pct}% 대량보유 공시`, null, "stock", {cat:"stock", ic:"📢", src:"금융감독원", tid:null}); }catch(e){}
+    } else if(!now && M._discl[s.id]) delete M._discl[s.id];
+  }catch(e){}
+}
+/* 🚨 금감원 — 큰 주문이 값을 밀어 올릴 때마다 「열기」가 쌓인다 (도박 발각과 같은 문법) */
+function fssState(){ if(!G.fss) G.fss={heat:0, n:0, fine:0, ban:0}; return G.fss; }
+function fssFrozen(){ const F=fssState(); return (F.ban||0) > (G.day||0) || (F.banS||0) > (G.season||0); }
+function fssHeat(s, imp, amountWon){
+  try{
+    if(!(imp>0.02)) return;
+    const F=fssState();
+    F.heat=Math.min(100, (F.heat||0) + imp*22 + Math.min(6, amountWon/1e12));
+  }catch(e){}
+}
 function stkLoan(){ const M=me(); return Math.max(0, M.stkLoan||0); }        // 대출 잔액(원)
 /* 증권 계좌 안에서의 순자산 — 신용융자 한도 계산에만 쓴다 */
-function stkNet(){ return me().cash*1e8 + stkEval() + (typeof stkShortPL==="function"?stkShortPL():0)
+function stkNet(){ return stkEquity()
                         + (typeof stkFutEquity==="function"?stkFutEquity():0)
                         - stkLoan() - (typeof stkDebt==="function"?stkDebt():0); }
 /* ⚠ 감독의 「진짜」 순자산 — 부동산·은행 예금·모든 부채까지 합친다.
@@ -28824,7 +29370,7 @@ function netWorth(){
   const M=me();
   let v=M.cash*1e8;
   try{ v+=stkEval(); }catch(e){}
-  try{ v+=stkShortPL(); }catch(e){}
+  try{ v-=stkShortVal(); }catch(e){}      /* ⚠ 공매도 대금은 이미 현금에 있다 — 되사는 값을 뺀다 */
   try{ v+=stkFutEquity(); }catch(e){}
   try{ v+=propTotal()*1e8; }catch(e){}
   try{ v+=bankDepTotal()*1e8; }catch(e){}
@@ -28851,16 +29397,17 @@ function debtTotal(){
 function stkLoanMax(){ return Math.max(0, stkNet()*STK_MG_MAX - stkLoan()); }// 추가로 빌릴 수 있는 금액
 function stkRatio(){                                                          // 담보비율
   const L=stkLoan(); if(L<=0) return null;
-  return (me().cash*1e8 + stkEval())/L;
+  return stkEquity()/L;                    /* ⚠ 공매도 부채를 뺀 순자산으로 본다 */
 }
 function stkBorrow(amtWon){
   const M=me();
+  if(fssFrozen()){ flash("🚨 금융감독원 조사로 신용거래가 정지되었습니다.","warn"); return; }
   if(stkBadCredit()){ flash(`파산 이력으로 신용거래가 막혀 있습니다 — ${stkBadCreditLeft()}시즌 남음.`,"warn"); return; }
   const a=Math.max(0, Math.round(amtWon||0));
   if(a<=0){ flash("금액을 입력하세요.","warn"); return; }
   if(a>stkLoanMax()){ flash(`한도를 넘습니다 — 최대 ${stkMoney(stkLoanMax())}까지 가능합니다.`,"warn"); return; }
   M.stkLoan=stkLoan()+a;
-  M.cash=Math.round((M.cash + a/1e8)*1e4)/1e4;
+  stkCash(a);
   stkTxAdd({k:"borrow", amt:a});
   try{ meLog(`💳 신용융자 ${(a/1e8).toFixed(2)}억 인출 (잔액 ${(M.stkLoan/1e8).toFixed(2)}억)`); }catch(e){}
   saveGame(); show("mylife");
@@ -28871,7 +29418,7 @@ function stkRepay(amtWon){
   if(a<=0){ flash("상환할 금액이 없습니다.","warn"); return; }
   if(a > M.cash*1e8){ flash(`현금이 부족합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   M.stkLoan=stkLoan()-a;
-  M.cash=Math.round((M.cash - a/1e8)*1e4)/1e4;
+  stkCash(-a);
   stkTxAdd({k:"repay", amt:a});
   try{ meLog(`💳 신용융자 ${(a/1e8).toFixed(2)}억 상환 (잔액 ${(M.stkLoan/1e8).toFixed(2)}억)`); }catch(e){}
   saveGame(); show("mylife");
@@ -28900,14 +29447,16 @@ function stkMarginTick(){
       const q=Math.min(h.q, Math.max(1, Math.min(need, Math.ceil(h.q*0.4))));
       const net=q*s.p*(1-STK_FEE-STK_TAX);
       const real=(s.p-h.avg)*q;
-      M.cash=Math.round((M.cash + net/1e8)*1e4)/1e4;
+      stkCash(net);
+      const _hq=(M.stkInv[s.id]||{q:0}).q;
       M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e4)/1e4;
       const hh=M.stkInv[s.id]; hh.q-=q; if(hh.q<=0) delete M.stkInv[s.id];
+      try{ taxOnRealize(s, _hq, real, "반대매매"); }catch(e){}
       stkTxAdd({k:"call", sid:s.id, n:s.n, q, px:s.p, amt:net, real});
       sold+=net; if(names.indexOf(s.n)<0) names.push(s.n);
       /* 판 돈으로 곧바로 빚을 갚는다 */
       const pay=Math.min(stkLoan(), Math.round(net));
-      M.stkLoan=stkLoan()-pay; M.cash=Math.round((M.cash - pay/1e8)*1e4)/1e4;
+      M.stkLoan=stkLoan()-pay; stkCash(-pay);
     }
     if(sold>0){
       stkLog("call", `🔨 담보비율 부족으로 반대매매 — ${names.slice(0,3).join(", ")}${names.length>3?` 외 ${names.length-3}종목`:""} 강제 매도 (${stkMoney(sold)})`);
@@ -28967,7 +29516,13 @@ function stkOrderTick(){
         try{ notifyStk(`📋 <b>${s.n}</b> 매수 예약이 현금 부족으로 취소됐습니다.`,"warn"); }catch(e){}
         continue;
       }
-      M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
+      { const own=((M.stkInv&&M.stkInv[s.id])||{q:0}).q||0;
+        const cap=Math.floor((s.sh||0)*STK_OWN_MAX);
+        if(cap>0 && own+o.q>cap){
+          O.splice(i,1);
+          stkLog("order", `📋 ${s.n} 매수 예약이 <b>보유 한도</b>로 취소되었습니다 (발행주식수의 ${Math.round(STK_OWN_MAX*100)}%)`, s.id);
+          continue; } }
+      stkCash(-cost);
       if(!M.stkInv) M.stkInv={};
       const h=M.stkInv[s.id]||{q:0, avg:0};
       h.avg=Math.round((h.avg*h.q + px*o.q)/(h.q+o.q)); h.q+=o.q;
@@ -28982,10 +29537,12 @@ function stkOrderTick(){
       const q=Math.min(o.q, h.q);
       const net=q*px*(1-STK_FEE-STK_TAX);
       const real=(px-h.avg)*q;
-      M.cash=Math.round((M.cash + net/1e8)*1e4)/1e4;
+      const _hq3=h.q;
+      stkCash(net);
       M.earned=Math.round((M.earned+net/1e8)*100)/100;
       M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e4)/1e4;
       h.q-=q; if(h.q<=0) delete M.stkInv[s.id];
+      try{ taxOnRealize(s, _hq3, real, "예약 매도"); stkDisclCheck(s); }catch(e){}
       stkTxAdd({k:"sell", sid:s.id, n:s.n, q, px, amt:net, real, auto:1});
       stkLog("order", `📋 ${s.n} ${q.toLocaleString()}주 <b>예약 매도 체결</b> — ${stkWon(px)}원 (실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억)`, s.id);
       try{ notifyStk(`📋 <b>${s.n}</b> 예약 매도 체결 — ${q.toLocaleString()}주 @${stkWon(px)}원 · 실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억`, real>=0?"good":"warn"); }catch(e){}
@@ -29314,7 +29871,7 @@ function stkDebtBorrow(amtWon){
   if(a<=0){ flash("금액을 입력하세요.","warn"); return; }
   if(a/1e8 > stkDebtMax()){ flash(`이 이상은 빌려주지 않습니다 — 최대 ${stkDebtMax().toFixed(1)}억.`,"warn"); return; }
   M.stkDebt=stkDebt()+a;
-  M.cash=Math.round((M.cash + a/1e8)*1e4)/1e4;
+  stkCash(a);
   if(!M.stkDebtAt) M.stkDebtAt=G.day||0;
   stkTxAdd({k:"loanshark", amt:a});
   stkLog("debt", `🩸 사채 ${(a/1e8).toFixed(2)}억 차입 — 연 ${(stkDebtRate()*365*100).toFixed(0)}%${G.jobless?" (무직 가산)":""} (잔액 ${(M.stkDebt/1e8).toFixed(2)}억)`);
@@ -29328,7 +29885,7 @@ function stkDebtRepay(amtWon){
   if(a<=0){ flash("상환할 금액이 없습니다.","warn"); return; }
   if(a > M.cash*1e8){ flash(`현금이 부족합니다 (보유 ${moneyEok(M.cash)}).`,"warn"); return; }
   M.stkDebt=stkDebt()-a;
-  M.cash=Math.round((M.cash - a/1e8)*1e4)/1e4;
+  stkCash(-a);
   stkTxAdd({k:"sharkpay", amt:a});
   if(!stkDebt()){
     M.stkDebtAt=null; M._debtWarn=0;
@@ -29637,12 +30194,20 @@ const TROLL_WA=[
  "이쯤 되면 응원이 아니라 봉사활동이다 ㅇㅇ",
  "구단 망하면 니들 굿즈는 그냥 쓰레기다 미리 알려준다",
  "{t} 팬들 지금 화낼 데도 없지? ㅋㅋ 나한테 화내라 그건 받아준다"];
-const NTS_CAP=1000000;          // 100조 (억 단위) — 이 선까지는 남겨 준다
+/* 🧾 ⑤ 자금출처 세무조사 — 예전의 「100조 넘으면 현금 몰수」를 대체한다.
+   ⚠ 그 방식은 그 밑에서는 아무 제동이 없다가 갑자기 벽을 만나는 구조라, 게임이 손을 뻗어
+      뺏는 느낌이 났다. 이제 앞의 네 층(양도세·배당세·공시·금감원)이 상시로 물리므로,
+      국세청은 <b>「짧은 기간에 자산이 비정상적으로 불어난 경우」</b>만 본다.
+   ─ 실제 제도 그대로다: 자금 출처를 소명하지 못하면 <b>추징 + 가산세</b>. */
+const NTS_GROW=4.0;             // 이 배수 이상으로 불어나면 조사 대상
+const NTS_WIN=120;              // 비교 구간 (일)
+const NTS_FLOOR=3000;           // 이 금액(억) 아래는 보지 않는다
+const NTS_RATE=0.35;            // 소명하지 못한 증가분에 대한 추징·가산세율
 const NTS_MIN=1;                // 이만큼도 안 되면 굳이 손대지 않는다 (억)
 function ntsFin(){              // 감독의 금융자산 (억)
   const M=me(); let v=(M.cash||0)*1e8;
   try{ v+=stkEval(); }catch(e){}
-  try{ v+=stkShortPL(); }catch(e){}
+  try{ v-=stkShortVal(); }catch(e){}      /* ⚠ 공매도 부채 (netWorth 와 같은 규칙) */
   try{ v+=stkFutEquity(); }catch(e){}
   try{ v-=stkLoan(); }catch(e){}
   try{ v-=stkDebt(); }catch(e){}
@@ -29657,33 +30222,40 @@ function ntsTick(){
     const N=ntsState();
     if(N.day===(G.day||0)) return;             // 같은 날 두 번 굴리지 않는다
     const fin=ntsFin();
-    if(fin<=NTS_CAP) return;
-    const over=fin-NTS_CAP;
-    const take=Math.round(Math.min(M.cash||0, over)*100)/100;
-    if(take<NTS_MIN) return;                   // 가져갈 현금이 없다 — 주식은 건드리지 않는다
+    /* 기준선 — NTS_WIN 일 전의 금융자산을 기억해 둔다 */
+    if(N.baseD==null || ((G.day||0)-(N.baseD||0))>=NTS_WIN || (N.baseS!=null && N.baseS!==G.season)){
+      N.base=fin; N.baseD=G.day||0; N.baseS=G.season; return;
+    }
+    if(fin < NTS_FLOOR) return;                          // 아직 볼 규모가 아니다
+    const base=Math.max(1, N.base||1);
+    if(fin < base*NTS_GROW) return;                      // 정상적인 증가다
+    const grew=fin-base;
+    const take=Math.round(Math.min(M.cash||0, grew*NTS_RATE)*100)/100;
+    if(take<NTS_MIN) return;                             // 가져갈 현금이 없다 — 주식은 건드리지 않는다
     N.day=G.day||0; N.s=G.season;
-    M.cash=Math.round(((M.cash||0)-take)*100)/100;
+    stkCash(-take*1e8);
     N.n=(N.n|0)+1; N.tot=Math.round(((N.tot||0)+take)*100)/100;
+    N.base=ntsFin(); N.baseD=G.day||0; N.baseS=G.season;  // 조사 뒤 기준선을 다시 잡는다
     const left=Math.round(ntsFin()*100)/100;
-    try{ meLog(`－${take.toFixed(2)}억 · 🧾 국세청 초과 금융자산 국고 귀속`); }catch(e){}
-    try{ stkLog("nts", `🧾 국세청 — 금융자산 ${ntsJo(fin)} 중 한도 ${ntsJo(NTS_CAP)} 초과분 <b>${ntsJo(take)}</b>를 국고로 귀속`); }catch(e){}
-    try{ notifyStk(`🧾 <b>국세청, 초과 금융자산 ${ntsJo(take)}를 국고로 귀속했습니다.</b>
-      <span class="small">한도 ${ntsJo(NTS_CAP)}까지는 그대로 둡니다 — 남은 금융자산 ${ntsJo(left)}${
-        (M.cash<=0.01)?" · 통장은 비었지만 주식은 손대지 않았습니다":""}.</span>`, "warn"); }catch(e){}
-    try{ const t=userTeam();
-      addNews(`🧾 <b>국세청, ${t?t.name:"감독"} 감독에게 초과 금융자산 ${ntsJo(take)} 국고 귀속 통보</b>
-        <span class="small">— 개인 금융자산 한도 ${ntsJo(NTS_CAP)} 초과분 전액. 보유 주식은 처분 대상에서 제외됐습니다.</span>`, "warn", "club");
-      pushFeed({cat:"club", ic:"🧾", tone:-1, tid:t?t.id:null, src:"국세청 공고",
-        head:`감독 개인 금융자산 ${ntsJo(take)} 국고 귀속`,
-        sub:`한도는 ${ntsJo(NTS_CAP)}. 국세청은 「축구 감독 한 사람의 계좌가 국가 예산 규모에 이르렀다」며 초과분 전액을 환수했다고 밝혔다. 남은 금융자산은 ${ntsJo(left)}.`});
-      const V={t:t?t.short:"우리", n:t?t.name:"우리 팀", m:ntsJo(take), w:ntsJo(NTS_CAP)};
-      socialFill(NTS_SOC, 4+R(3), 0, V);
-      fmkFill(NTS_FMK, 4+R(3), V);
-      rivalFmk(NTS_FMK_RIV, 2+R(2), V);
+    try{ meLog(`－${take.toFixed(2)}억 · 🧾 국세청 자금출처 세무조사 추징`); }catch(e){}
+    try{ stkLog("nts", `🧾 국세청 자금출처 조사 — ${NTS_WIN}일 만에 금융자산이 ${ntsJo(base)} → ${ntsJo(fin)} 로 불어난 경위를 소명하지 못해 <b>${ntsJo(take)}</b>가 추징되었습니다`); }catch(e){}
+    try{ notifyStk(`🧾 <b>국세청 자금출처 세무조사</b><br>${NTS_WIN}일 만에 금융자산이 <b>${NTS_GROW}배</b> 넘게 불어난 경위를 소명하지 못해 <b>${take.toFixed(2)}억</b>이 추징됐습니다.<br><span class="small">남은 금융자산 ${ntsJo(left)}</span>`,"warn"); }catch(e){}
+    try{ const t=userTeam(), jobless=!!(G && G.jobless);
+      addNews(`🧾 <b>국세청, ${(t&&!jobless)?t.name+" 감독":"전 감독"} 자금출처 세무조사 — ${ntsJo(take)} 추징</b>
+        <span class="small">— ${NTS_WIN}일 만에 금융자산이 ${NTS_GROW}배 넘게 늘어난 경위를 소명하지 못했습니다. 보유 주식은 처분 대상에서 제외됐습니다.</span>`, "warn", "club");
+      pushFeed({cat:"club", ic:"🧾", tone:-1, tid:((t&&!jobless)?t.id:null), src:"국세청 공고",
+        head:`${(t&&!jobless)?"감독":"전 감독"} 자금출처 조사 — ${ntsJo(take)} 추징`,
+        sub:`짧은 기간에 금융자산이 ${ntsJo(base)}에서 ${ntsJo(fin)}로 불어난 경위가 문제가 됐다. 국세청은 소명되지 않은 증가분에 대해 추징과 가산세를 부과했다고 밝혔다. 남은 금융자산은 ${ntsJo(left)}.`});
+      /* 🧑‍💼 무직이면 「우리 구단 팬」이 없다 — 팬 반응은 건너뛴다 (도박·금감원과 같은 원칙) */
+      if(!jobless){
+        const V={t:t?t.short:"우리", n:t?t.name:"우리 팀", m:ntsJo(take), w:ntsJo(fin)};
+        socialFill(NTS_SOC, 4+R(3), 0, V);
+        fmkFill(NTS_FMK, 4+R(3), V);
+        rivalFmk(NTS_FMK_RIV, 2+R(2), V);
+      }
     }catch(e){}
-    /* 날짜 보내기 중이면 그날 기록에도 한 줄 남긴다 */
     try{ if(typeof PROG!=="undefined" && PROG && typeof prgPush==="function")
-      prgPush(`<span class="prgD">${dateLabel(G.day)}</span> 🧾 국세청이 초과 금융자산 <b>${ntsJo(take)}</b>를 국고로 귀속시켰습니다.`, "prgDay"); }catch(e){}
+      prgPush(`<span class="prgD">${dateLabel(G.day)}</span> 🧾 국세청 자금출처 조사로 <b>${ntsJo(take)}</b>가 추징되었습니다.`, "prgDay"); }catch(e){}
     try{ saveGame(); }catch(e){}
   }catch(e){}
 }
@@ -30064,11 +30636,10 @@ function stkShortVal(){ return stkShortList().reduce((n,h)=>n+h.q*h.s.p, 0); }  
 function stkShortPL(){ return stkShortList().reduce((n,h)=>n+(h.avg-h.s.p)*h.q, 0); } // 평가손익
 /* 공매도 계좌의 증거금 여력 */
 function stkShortRoom(){
-  const M=me();
-  const need=stkShortVal()*STK_SH_MARGIN;
-  return (M.cash*1e8 + stkEval()) - need;
+  return stkEquity() - stkShortVal()*STK_SH_MARGIN;   /* ⚠ 매도 대금으로 또 공매도하지 못하게 */
 }
 function stkShortOpen(){
+  if(fssFrozen()){ flash("🚨 금융감독원 조사로 계좌가 동결되어 공매도를 할 수 없습니다.","warn"); return; }
   if(stkBadCredit()){ flash(`파산 이력으로 신용거래(공매도)가 막혀 있습니다 — ${stkBadCreditLeft()}시즌 남음.`,"warn"); return; }
   const s=stkById(STK_SEL); if(!s||s.dead) return;
   const q=parseInt(STK_QTY,10)||0;
@@ -30076,11 +30647,11 @@ function stkShortOpen(){
   const M=me();
   const F=stkFillPx(s, q, -1);                  // 💥 던지는 만큼 값이 흘러내린다
   const gross=q*F.px, need=gross*STK_SH_MARGIN;
-  if(need > M.cash*1e8 + stkEval() - stkShortVal()*STK_SH_MARGIN){
+  if(need > stkShortRoom()){
     flash(`증거금이 부족합니다 — ${stkMoney(need)} 필요 (매도 대금의 ${Math.round(STK_SH_MARGIN*100)}%)`,"warn"); return;
   }
   const net=gross*(1-STK_FEE-STK_TAX);
-  M.cash=Math.round((M.cash + net/1e8)*1e4)/1e4;
+  stkCash(net);
   const H=stkShorts();
   const h=H[s.id]||{q:0, avg:0};
   h.avg=Math.round((h.avg*h.q + F.px*q)/(h.q+q)); h.q+=q;
@@ -30092,6 +30663,8 @@ function stkShortOpen(){
 }
 function stkShortCover(){
   const s=stkById(STK_SEL); if(!s) return;
+  /* 🔒 폐지 종목은 폐지 시점에 이미 정산됐다 — 1원 커버로 이익을 만들 수 없다 */
+  if(s.dead){ flash("상장폐지 종목은 폐지 시점에 이미 정산되었습니다.","warn"); return; }
   const M=me(), H=stkShorts();
   const h=H[s.id]; if(!h||!h.q){ flash("공매도 잔고가 없습니다.","warn"); return; }
   let q=parseInt(STK_QTY,10)||0;
@@ -30100,9 +30673,11 @@ function stkShortCover(){
   const cost=q*F.px*(1+STK_FEE);
   if(cost > M.cash*1e8){ flash(`현금이 부족합니다 — ${stkMoney(cost)} 필요`,"warn"); return; }
   const real=(h.avg-F.px)*q;
-  M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
+  stkCash(-cost);
   M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e4)/1e4;
   h.q-=q; if(h.q<=0) delete H[s.id];
+  taxOnRealize(s, q, real, "공매도 청산");       // 🧾 공매도 차익도 같은 세금을 낸다
+  fssHeat(s, F.imp, cost);
   stkPushMom(s, +1, F.imp);
   stkTxAdd({k:"cover", sid:s.id, n:s.n, q, px:F.px, amt:cost, real});
   try{ meLog(`📈 ${s.n} ${q.toLocaleString()}주 숏커버 (실현 ${real>=0?"+":""}${(real/1e8).toFixed(2)}억)`); }catch(e){}
@@ -30112,11 +30687,39 @@ function stkShortCover(){
 function stkShortTick(){
   const M=me();
   const L=stkShortList(); if(!L.length) return;
-  /* 대여 수수료 */
+  /* 대여 수수료
+     ⚠ 감사 — 잔고를 보지 않고 그냥 빼서 <b>현금이 음수로 내려갔다</b>(실측 −49.5억).
+        파산 처리도 없이 마이너스 통장이 되는 셈이라, 손실을 무한히 미룰 수 있었다.
+     ─ 낼 수 있는 만큼만 내고, 모자라면 그 자리에서 <b>강제 상환</b>으로 현금을 만든다. */
   const fee=Math.round(stkShortVal()*STK_SH_FEE);
   if(fee>0){
-    M.cash=Math.round((M.cash - fee/1e8)*1e4)/1e4;
-    M.stkShFee=Math.round(((M.stkShFee||0)+fee/1e8)*1e4)/1e4;
+    const have=Math.max(0, Math.round(M.cash*1e8));
+    const pay=Math.min(fee, have);
+    if(pay>0){ stkCash(-pay); M.stkShFee=Math.round(((M.stkShFee||0)+pay/1e8)*1e8)/1e8; }
+    let owe=fee-pay, guard0=0;
+    while(owe>0 && guard0++<20){
+      const L2=stkShortList(); if(!L2.length) break;
+      const h2=L2[0], s2=h2.s;
+      if(s2.dead) break;
+      const need=Math.min(h2.q, Math.max(1, Math.ceil(owe/Math.max(1,s2.p))*3));
+      let px=Math.max(1, s2.p), cost=need*px*(1+STK_FEE);
+      const canQ=Math.floor((Math.max(0,me().cash*1e8))/Math.max(1, px*(1+STK_FEE)));
+      if(canQ<=0) break;                        // 현금이 없으면 여기서 멈춘다 (음수 금지)
+      const need2=Math.min(need, canQ);
+      cost=need2*px*(1+STK_FEE);
+      const real=(h2.avg-px)*need2;
+      stkCash(-cost);
+      M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e8)/1e8;
+      try{ taxOnRealize(s2, need2, real, "강제 상환"); }catch(e){}
+      const H2=stkShorts(); const hh=H2[s2.id];
+      if(hh){ hh.q-=need2; if(hh.q<=0) delete H2[s2.id]; }
+      try{ stkTxAdd({k:"cover", sid:s2.id, n:s2.n, q:need2, px, amt:cost, real}); }catch(e){}
+      try{ stkLog("call", `🔨 <b>${s2.n}</b> 대여 수수료 미납으로 ${need.toLocaleString()}주 강제 상환`, s2.id); }catch(e){}
+      const have2=Math.max(0, Math.round(M.cash*1e8));
+      const pay2=Math.min(owe, have2);
+      if(pay2>0){ stkCash(-pay2); owe-=pay2; } else break;
+    }
+    if(M.cash<0) M.cash=0;                     // 마지막 안전망 — 증권 계좌 현금은 음수가 되지 않는다
   }
   /* 🚀 숏스퀴즈 — 공매도가 몰린 종목이 급등하면 되사기가 되사기를 부른다 */
   for(const h of L){
@@ -30139,13 +30742,41 @@ function stkShortTick(){
     if(equity >= cover*STK_SH_CALL) break;
     const list=stkShortList(); if(!list.length) break;
     const h=list[0], s=h.s;
-    const q=Math.max(1, Math.ceil(h.q*0.4));
-    const _F=stkFillPx(s, q, +1);
-    const cost=q*_F.px*(1+STK_FEE);
+    /* 💰 ⚠ 감사 — 되사는 값을 현금에서 그냥 뺐다. 현금보다 비싸면 <b>계좌가 음수</b>가 됐다(실측 −49.5억).
+       ─ 먼저 보유 주식을 팔아 현금을 만들고, 그래도 모자라면 <b>살 수 있는 만큼만</b> 되산다. */
+    let q=Math.max(1, Math.ceil(h.q*0.4));
+    let _F=stkFillPx(s, q, +1);
+    let cost=q*_F.px*(1+STK_FEE);
+    if(cost > me().cash*1e8){
+      /* ① 보유 주식을 팔아 현금을 만든다 (평가액이 큰 것부터) */
+      let g2=0;
+      while(cost > me().cash*1e8 && g2++<20){
+        const hv=stkHeld().filter(x=>!x.s.dead && x.q>0);
+        if(!hv.length) break;
+        const hh=hv[0], s2=hh.s;
+        const need2=Math.min(hh.q, Math.max(1, Math.ceil((cost - me().cash*1e8)/Math.max(1,s2.p))));
+        const net2=need2*s2.p*(1-STK_FEE-STK_TAX);
+        const real2=(s2.p-hh.avg)*need2;
+        stkCash(net2);
+        const _hq2=(M.stkInv[s2.id]||{q:0}).q;
+        M.stkReal=Math.round(((M.stkReal||0)+real2/1e8)*1e8)/1e8;
+        const hx=M.stkInv[s2.id]; hx.q-=need2; if(hx.q<=0) delete M.stkInv[s2.id];
+        try{ taxOnRealize(s2, _hq2, real2, "증거금 충당 매도"); }catch(e){}
+        try{ stkTxAdd({k:"call", sid:s2.id, n:s2.n, q:need2, px:s2.p, amt:net2, real:real2}); }catch(e){}
+      }
+      /* ② 그래도 모자라면 되살 수 있는 수량으로 줄인다 */
+      if(cost > me().cash*1e8){
+        const canQ=Math.floor((me().cash*1e8)/Math.max(1, _F.px*(1+STK_FEE)));
+        if(canQ<=0) break;                      // 한 주도 못 산다 — 다음 날로 넘긴다
+        q=Math.min(q, canQ); _F=stkFillPx(s, q, +1); cost=q*_F.px*(1+STK_FEE);
+        if(cost > me().cash*1e8) break;
+      }
+    }
     const real=(h.avg-_F.px)*q;
     stkPushMom(s, +1, _F.imp);
-    M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
-    M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e4)/1e4;
+    stkCash(-cost);
+    M.stkReal=Math.round(((M.stkReal||0)+real/1e8)*1e8)/1e8;
+    try{ taxOnRealize(s, q, real, "공매도 강제 청산"); }catch(e){}
     const H=stkShorts(); H[s.id].q-=q; if(H[s.id].q<=0) delete H[s.id];
     stkTxAdd({k:"shcall", sid:s.id, n:s.n, q, px:_F.px, amt:cost, real});
     if(guard===1){
@@ -30153,6 +30784,7 @@ function stkShortTick(){
       try{ notifyStk(`🔨 <b>공매도 강제 청산</b> — ${s.n} 되사기가 실행됐습니다. 손실이 확정됩니다.`,"warn"); }catch(e){}
     }
   }
+  if(me().cash<0) me().cash=0;      // 🔒 증권 계좌 현금은 어떤 경로로도 음수가 되지 않는다
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -30204,7 +30836,7 @@ function stkFutOpen(side){
   const notion=idx*q*STK_FUT_MULT;
   const need=Math.round(notion*STK_FUT_MARGIN + notion*STK_FUT_FEE);
   if(need > M.cash*1e8){ flash(`증거금이 부족합니다 — ${stkMoney(need)} 필요 (보유 ${moneyEok(M.cash)})`,"warn"); return; }
-  M.cash=Math.round((M.cash - need/1e8)*1e4)/1e4;
+  stkCash(-need);
   /* 만기 — 분기(90일) 경계 */
   const d=G.day||0, due=Math.ceil((d+1)/90)*90;
   M.fut={side, q, entry:idx, margin:Math.round(notion*STK_FUT_MARGIN), at:d, due};
@@ -30218,7 +30850,7 @@ function stkFutClose(why){
   const idx=stkIndex();
   const pl=stkFutPL();
   const back=Math.max(0, F.margin+pl);
-  M.cash=Math.round((M.cash + back/1e8)*1e4)/1e4;
+  stkCash(back);
   M.stkReal=Math.round(((M.stkReal||0)+pl/1e8)*1e4)/1e4;
   M.fut=null;
   stkTxAdd({k:"futclose", n:`지수선물 청산${why?" ("+why+")":""}`, q:F.q, px:Math.round(idx), amt:back, real:pl});
@@ -30340,7 +30972,7 @@ function stkIpoTick(){
         P.got=got;
         const M=me();
         const use=got*P.px, back=P.want*P.px-use;
-        M.cash=Math.round((M.cash + back/1e8)*1e4)/1e4;   // 못 받은 청약증거금 환불
+        stkCash(back);   // 못 받은 청약증거금 환불
         stkLog("ipo", `🆕 ${P.n} 공모 청약 마감 — 경쟁률 <b>${P.rate.toLocaleString()}:1</b> · 배정 ${got.toLocaleString()}주 (환불 ${stkMoney(back)})`);
         try{ notifyStk(`🆕 <b>${P.n}</b> 청약 경쟁률 ${P.rate.toLocaleString()}:1 — ${got.toLocaleString()}주 배정, ${stkMoney(back)} 환불`,"info"); }catch(e){}
       } else {
@@ -30400,7 +31032,7 @@ function stkIpoApply(){
   if(q<=0){ flash("청약 수량을 입력하세요.","warn"); return; }
   const need=q*P.px;
   if(need > M.cash*1e8){ flash(`청약증거금이 부족합니다 — ${stkMoney(need)} 필요`,"warn"); return; }
-  M.cash=Math.round((M.cash - need/1e8)*1e4)/1e4;
+  stkCash(-need);
   P.want=(P.want||0)+q;
   stkLog("ipo", `🆕 ${P.n} 공모 청약 — ${q.toLocaleString()}주 신청 (증거금 ${stkMoney(need)})`);
   STK_IQ=""; saveGame(); show("mylife");
@@ -30417,7 +31049,7 @@ function stkIpoCancel(){
   showConfirm(`<b>🆕 ${P.n} 공모 청약 취소</b>\n\n신청 <b>${q.toLocaleString()}주</b>를 물립니다.\n증거금 <b>${stkMoney(back)}</b>이 전액 환불됩니다.\n\n<span class="small">청약 마감 전까지는 언제든 다시 신청할 수 있습니다.</span>`,
     ()=>{
       const M=me();
-      M.cash=Math.round((M.cash + back/1e8)*1e4)/1e4;
+      stkCash(back);
       P.want=0;
       stkLog("ipo", `🆕 ${P.n} 공모 청약 취소 — ${q.toLocaleString()}주 (증거금 ${stkMoney(back)} 환불)`);
       try{ notifyStk(`🆕 <b>${P.n}</b> 청약을 취소했습니다 — 증거금 ${stkMoney(back)} 환불`,"info"); }catch(e){}
@@ -30485,14 +31117,20 @@ function stkQtyBtn(kind){
   show("mylife");
 }
 function stkBuy(){
+  if(fssFrozen()){ flash("🚨 금융감독원 조사로 계좌가 동결되어 매수할 수 없습니다.","warn"); return; }
   const s=stkById(STK_SEL); if(!s||s.dead) return;
   const q=parseInt(STK_QTY,10)||0;
   if(q<=0){ flash("수량을 입력하세요.","warn"); return; }
   const M=me();
+  /* 🧱 보유 상한 — 발행주식수의 STK_OWN_MAX 를 넘겨 살 수 없다 */
+  { const own=((M.stkInv&&M.stkInv[s.id])||{q:0}).q||0;
+    const cap=Math.floor((s.sh||0)*STK_OWN_MAX);
+    if(cap>0 && own+q>cap){
+      flash(`한 종목은 발행주식수의 ${Math.round(STK_OWN_MAX*100)}%까지만 보유할 수 있습니다 — 최대 ${Math.max(0,cap-own).toLocaleString()}주 더 가능`,"warn"); return; } }
   const F=stkFillPx(s, q, +1);                  // 💥 큰 주문일수록 비싸게 체결된다
   const cost=q*F.px*(1+STK_FEE);
   if(cost > M.cash*1e8){ flash(`현금이 부족합니다 — ${stkMoney(cost)} 필요 (보유 ${moneyEok(M.cash)})`,"warn"); return; }
-  M.cash=Math.round((M.cash - cost/1e8)*1e4)/1e4;
+  stkCash(-cost);
   if(!M.stkInv) M.stkInv={};
   const h=M.stkInv[s.id]||{q:0, avg:0};
   /* 📅 처음 담은 날 — 나중에 「얼마나 들고 있었나」를 계산하는 기준이 된다 */
@@ -30502,6 +31140,8 @@ function stkBuy(){
   M.stkInv[s.id]=h;
   M.spent=Math.round((M.spent+cost/1e8)*100)/100;
   stkPushMom(s, +1, F.imp);                     // 내가 밀어 올린 값은 시장에 남는다
+  fssHeat(s, F.imp, cost);                      // 🚨 값을 밀어 올린 만큼 감독당국의 눈에 띈다
+  stkDisclCheck(s);                             // 📢 5% 를 넘겼는가
   stkTxAdd({k:"buy", sid:s.id, n:s.n, q, px:F.px, amt:cost});
   if(F.imp>0.01) stkLog("slip", `💥 <b>${s.n}</b> 매수 체결가가 시세보다 <b>${(F.imp*100).toFixed(1)}%</b> 높았습니다 — 물량이 호가를 밀어 올렸습니다`, s.id);
   try{ meLog(`📈 ${s.n} ${q.toLocaleString()}주 매수 (${stkWon(F.px)}원 · ${stkMoney(cost)})`); }catch(e){}
@@ -30518,11 +31158,15 @@ function stkSell(){
   const F=stkFillPx(s, q, -1);                  // 💥 큰 물량을 던지면 값이 흘러내린다
   const gross=q*F.px, net=gross*(1-STK_FEE-STK_TAX);
   const real=(F.px-h.avg)*q;
-  M.cash=Math.round((M.cash + net/1e8)*1e4)/1e4;
+  stkCash(net);
   M.earned=Math.round((M.earned+net/1e8)*100)/100;
   M.stkReal=Math.round(((M.stkReal||0) + real/1e8)*1e4)/1e4;
+  const _hq0=h.q;
   h.q-=q;
   if(h.q<=0) delete M.stkInv[s.id]; else M.stkInv[s.id]=h;
+  taxOnRealize(s, _hq0, real, "매도");          // 🧾 ① 대주주 양도소득세 (팔기 전 지분으로 판정)
+  fssHeat(s, F.imp, gross);
+  stkDisclCheck(s);
   stkPushMom(s, -1, F.imp);
   stkTxAdd({k:"sell", sid:s.id, n:s.n, q, px:F.px, amt:net, real,
             bavg:h.avg, hold:stkHoldDays(h), ret:h.avg>0?((F.px-h.avg)/h.avg):null});
@@ -30754,18 +31398,36 @@ function stkView(){
       <div><span>배당 수령 누계</span><b style="color:${(M.stkDiv||0)>0?"var(--green)":"var(--sub)"}">${(M.stkDiv||0).toFixed(2)}억</b></div>
       ${stkShortList().length?`<div><span>공매도 평가손익</span><b style="color:${stkShortPL()>=0?"#f85149":"#58a6ff"}">${stkShortPL()>=0?"+":""}${stkMoney(stkShortPL())}</b></div>`:""}
       ${stkDebt()>0?`<div><span>🩸 사채 잔액</span><b style="color:#f85149">${stkMoney(stkDebt())}</b></div>`:""}
-      ${(G.nts&&G.nts.n)?`<div><span>🧾 국고 귀속 누계</span><b style="color:#ff9d5c">${ntsJo(G.nts.tot)} <span class="small">(${G.nts.n}회)</span></b></div>`:""}
+      ${(function(){ try{ const T=taxState(); return (T.paid>0)
+        ? `<div><span>🧾 올해 낸 세금</span><b style="color:#ff9d5c">${stkMoney(T.paid)} <span class="small">(양도 ${stkMoney(T.cg)} · 배당 ${stkMoney(T.div)})</span></b></div>` : ""; }catch(e){ return ""; } })()}
+      ${(G.fss&&G.fss.n)?`<div><span>🚨 금감원 과징금</span><b style="color:#f85149">${(G.fss.fine||0).toFixed(2)}억 <span class="small">(${G.fss.n}회)</span></b></div>`:""}
+      ${(G.nts&&G.nts.n)?`<div><span>🧾 세무조사 추징 누계</span><b style="color:#ff9d5c">${ntsJo(G.nts.tot)} <span class="small">(${G.nts.n}회)</span></b></div>`:""}
       ${loan>0?`<div><span>신용융자 잔액</span><b style="color:#ff9d5c">${stkMoney(loan)}</b></div>
       <div><span>담보비율</span><b style="color:${ratio<STK_MG_CALL?"#f85149":ratio<STK_MG_CALL+0.3?"#ff9d5c":"var(--green)"}">${Math.round(ratio*100)}%</b></div>`:""}
     </div>
     ${(function(){ try{
-      const f=ntsFin(); if(f < NTS_CAP*0.8) return "";
-      /* 🧾 요청 — 100조를 넘으면 국세청이 초과분을 국고로 귀속시킨다. 넘기 전에 알려 준다. */
-      return f>NTS_CAP
-        ? `<div class="msg warn" style="margin-top:8px">🧾 <b>개인 금융자산 한도 초과</b> — 현재 <b>${ntsJo(f)}</b> / 한도 <b>${ntsJo(NTS_CAP)}</b>.
-             국세청이 <b>초과분을 현금에서</b> 환수합니다. <span class="small">보유 주식은 처분하지 않습니다 — 익절하는 순간 그만큼 귀속됩니다.</span></div>`
-        : `<div class="msg" style="margin-top:8px">🧾 개인 금융자산 <b>${ntsJo(f)}</b> — 국세청 한도 <b>${ntsJo(NTS_CAP)}</b>의 <b>${Math.round(f/NTS_CAP*100)}%</b>입니다.
-             <span class="small">한도를 넘으면 넘은 만큼이 현금에서 국고로 귀속됩니다.</span></div>`;
+      /* 🚨 금감원 — 지금 얼마나 눈에 띄어 있는가. 걸리기 «전에» 보여 준다 */
+      const F=fssState(), h=F.heat||0;
+      if(fssFrozen()) return `<div class="msg warn" style="margin-top:8px">🚨 <b>계좌 동결</b> — 금융감독원 조사로 <b>${Math.max(0,(F.ban||0)-(G.day||0))}일</b> 동안
+        매수·공매도·신용거래가 정지되었습니다. <span class="small">매도는 할 수 있습니다.</span></div>`;
+      if(h>=18) return `<div class="msg warn" style="margin-top:8px">🚨 <b>금융감독원이 지켜보고 있습니다</b> — 시세 영향 지수 <b>${Math.round(h)}</b>.
+        <span class="small">큰 주문으로 값을 밀어 올린 기록이 쌓였습니다. 걸리면 과징금과 계좌 동결, 그리고 감독직에도 흠집이 남습니다. 주문을 나눠서 내면 식습니다.</span></div>`;
+      return "";
+    }catch(e){ return ""; } })()}
+    ${(function(){ try{
+      /* 📢 대량보유 공시된 종목 — 체결이 계속 불리해진다 */
+      const M=me(), D=M._discl||{}; const ns=Object.keys(D).map(id=>{ const s2=stkById(+id); return s2?s2.n:null; }).filter(Boolean);
+      if(!ns.length) return "";
+      return `<div class="msg" style="margin-top:8px">📢 <b>대량보유 공시</b> — ${ns.slice(0,3).join(" · ")}${ns.length>3?` 외 ${ns.length-3}종목`:""} (지분 ${Math.round(STK_DISCL_R*100)}% 이상).
+        <span class="small">시장이 당신의 매매를 앞질러 갑니다 — 살 때는 더 비싸게, 팔 때는 더 싸게 체결됩니다.</span></div>`;
+    }catch(e){ return ""; } })()}
+    ${(function(){ try{
+      const N=ntsState(), f=ntsFin(), base=N.base||0;
+      if(f<NTS_FLOOR || !(base>0)) return "";
+      const mul=f/Math.max(1,base);
+      if(mul < NTS_GROW*0.6) return "";
+      return `<div class="msg ${mul>=NTS_GROW?"warn":""}" style="margin-top:8px">🧾 <b>자금출처 세무조사</b> — 최근 ${NTS_WIN}일간 금융자산이
+        ${ntsJo(base)} → <b>${ntsJo(f)}</b> (<b>${mul.toFixed(1)}배</b>). <span class="small">${NTS_GROW}배를 넘으면 소명하지 못한 증가분의 ${Math.round(NTS_RATE*100)}%가 추징됩니다.</span></div>`;
     }catch(e){ return ""; } })()}
     ${stkBadCredit()?`<div class="msg warn" style="margin-top:8px">💀 <b>파산 이력</b> — 신용융자·사채·공매도·선물이 <b>${stkBadCreditLeft()}시즌</b> 동안 막혀 있습니다.
       현금으로만 거래할 수 있고, 월급의 30%가 압류되며, 감독 위신이 <b>${stkBankMark()}</b> 깎여 있습니다.</div>`:""}
@@ -33065,7 +33727,50 @@ function socialFill(list, n, tone, vars, side){
 /* 타구단 팬 반응 — 호출부를 짧게 쓰기 위한 별칭 */
 function rivalFill(list, n, tone, vars){ socialFill(list, n, tone, vars, "rival"); }
 function rivalFmk(list, n, vars){ fmkFill(list, n, vars, "rival"); }
+/* 💬 소셜 — 이번에 생긴 시스템들(모기업 실적·구단 매각·감독 물의)에 대한 팬 반응.
+   ⚠ 예전에는 이벤트 자리에 배열을 «직접 박아» 두어서 같은 사건이 늘 같은 세 줄만 말했다.
+     이름 있는 풀로 빼내 결을 늘리고, 다른 이벤트에서도 다시 쓸 수 있게 한다. */
+const SOC_EXTRA_ownTight=[
+  "모기업이 흔들리는데 구단이 무사할 리가 없지",
+  "돈 없다는 소리 또 나오겠네",
+  "이러다 선수 다 팔리는 거 아니냐",
+  "감독한테 뭘 더 바라냐 예산이 저런데",
+  "겨울 이적시장 조용할 각이다",
+  "주가 보고 마음의 준비를 하게 될 줄이야"];
+const SOC_EXTRA_ownRich=[
+  "모기업 실적 좋다는데 우리도 좀 쓰자",
+  "지원금 들어왔다니까 기대는 해본다",
+  "이럴 때 한 명이라도 제대로 데려와라",
+  "돈 쓸 때 안 쓰면 나중에 후회한다"];
+const SOC_EXTRA_clubSale=[
+  "모기업 부도라니... 구단은 어떻게 되는 거야",
+  "제발 누구라도 인수해줘라",
+  "20년 응원했는데 이런 일이",
+  "선수들한테 미안해서 어떡하냐",
+  "일단 리그에만 남아 있어 줘",
+  "오늘 하루 종일 뉴스만 새로고침 중"];
+const SOC_EXTRA_saleCorp=[
+  "살았다 진짜 살았다",
+  "인수 확정 떴다 눈물 난다",
+  "{t} 다시 시작이다",
+  "새 주인 누군지는 몰라도 일단 고맙다",
+  "이제 축구 얘기만 하자 제발"];
+const SOC_EXTRA_saleCity=[
+  "시민구단이라도 남은 게 어디냐",
+  "돈은 없어도 팀은 있다",
+  "이제 진짜 우리 팀이네",
+  "예산은 줄어도 응원은 그대로다",
+  "시청이 떠안아 준 것만으로 감사하다"];
+const SOC_EXTRA_mgrScandal=[
+  "감독이 주식으로 뭘 한 거야...",
+  "축구나 잘하시죠 진짜",
+  "이건 좀 실망이다",
+  "성적이라도 좋으면 모를까",
+  "구단 이미지까지 같이 깎이는 거잖아"];
 const SOC={
+ ownTight:SOC_EXTRA_ownTight, ownRich:SOC_EXTRA_ownRich,
+ clubSale:SOC_EXTRA_clubSale, saleCorp:SOC_EXTRA_saleCorp, saleCity:SOC_EXTRA_saleCity,
+ mgrScandal:SOC_EXTRA_mgrScandal,
  /* ── 구장 사업 ────────────────────────────────────────────────
     K리그 팬에게 전용구장은 우승만큼, 어떤 팬에게는 우승보다 큰 이야기다.
     트랙 너머로 축구를 보던 세월이 길수록 그렇다. 돔은 아예 다른 사건이다. */
@@ -33789,10 +34494,14 @@ function fmkRankOf(x){
   for(let i=0;i<u.length;i++){ h=(Math.imul(h,31)+u.charCodeAt(i))>>>0; }
   return [0,0,1,1,2,2,3,3,4,5][h%10];
 }
-const FMK_NICK=["조건도종신하면닉변","처칠","K리그매니저쏘쏘","행궁동즐라탄","청백적흑사탕",
+const FMK_NICK=["대전루빅발","우영쌀","보라남이","차가운프라푸치노","조팡뇌","악질씨드대디",
+ "숭3아레나","0115","감자파인애플피자",
+ "조건도종신하면닉변","처칠","K리그매니저쏘쏘","행궁동즐라탄","청백적흑사탕",
  "울상대학교울상캠","츄마시오른다리","브라질튀각맨","성남푸씨","김주찬의부주장교실",
  "용병이름이약투지","승우대디","Caivl","대구풍뎅이","제주반도체목숨걺",
- "INCHON","북끼소바먹지마요","kyurious","세징야호흥민",
+ "INCHON","북끼소바먹지마요","kyurious","세징야호흥민","안목병신박재앙","방병찬.","잉토소심남","귤꿀","프렌테트리콜콜",
+  "삶은왜이리쉽지","마르무대변","테라박스","고구마갤러거","이정효의강등계획","다마노빗취",
+  "이청용의섹시풋볼","국대축구좆문가","리쥬란킬러","내려갈수원삼성",
  "ㅇㅇ","ㅁㄴㅇㄹ","축구가뭐길래","익명의그분","전술충","닉네임생각중",
   "새벽3시","키보드감독","우리팀만아니면","골때리는그분","ㅋㅋㅋㅋㅋ","관중석에서","방구석해설위원",
   "탈퇴예정","시즌권환불각","존버중","눈물의버스",
@@ -34123,6 +34832,35 @@ const FMK={
  byeAway:[["잘~있어요🤩🤪 잘있어요~🤸‍♂️🕺🥳인~사만🙇🙇‍♀️했었네~",1],
   ["잘~있어요🤩🤪 잘있어요~🤸‍♂️🕺🥳인~사만🙇🙇‍♀️했었네~ (원정 승리 감사합니다)",1],
   ["원정 와서 이 노래 부르는 맛에 축구 본다 잘~있어요🤩",1]],
+ /* 🏢 모기업 — 예산의 뿌리가 흔들릴 때 (모기업 실적 → 구단 예산 연결과 짝이다) */
+ ownTight:[["{t} 모기업 주가 봤냐 이거 겨울에 영입 없다",-1],
+  ["모기업 실적으로 구단 예산 예측하는 게 맞는 시대가 옴",0],
+  ["{t} 프런트가 아니라 모기업을 욕해야 하는 거 아님?",-1],
+  ["예산 깎이면 제일 먼저 나가는 건 결국 선수임",-1],
+  ["감독 탓하지 마라 돈이 없는 걸 어떡하냐",0]],
+ ownRich:[["{t} 모기업 실적 터졌다는데 이번 겨울 기대해도 되냐",1],
+  ["지원금 들어왔다는데 누구 데려오냐",1],
+  ["돈 있는 구단 부럽다 진짜",-1],
+  ["이럴 때 안 지르면 언제 지르냐",1]],
+ clubSale:[["{t} 매각 절차 들어갔대... 진짜 실화냐",-1],
+  ["인수 후보 나왔냐? 아직이면 시청밖에 없다",-1],
+  ["20년 응원했는데 이런 일이 생기네",-1],
+  ["선수들부터 먼저 나갈 텐데 걱정이다",-1],
+  ["제발 누구라도 좀 나서라",-1]],
+ saleCorp:[["{t} 인수 확정 ㅊㅋ 부럽다 진짜",1],
+  ["새 모기업 돈 좀 있냐? 이게 제일 중요함",0],
+  ["살았다는 말이 이렇게 와닿을 줄 몰랐다",1],
+  ["엠블럼은 안 바뀌었으면 좋겠다",0]],
+ saleCity:[["{t} 시민구단 전환 ㅠㅠ 그래도 살았다",0],
+  ["예산 반토막인데 감독 불쌍하다",-1],
+  ["시민구단도 잘하는 팀 많다 힘내라",1],
+  ["이제 진짜 우리 팀이라는 느낌은 드네",1]],
+ /* 🚨 감독 개인의 물의 — 도박·주가조작은 결이 같다 */
+ mgrScandal:[["{t} 감독 이거 축구만 해도 모자란 판에 뭐하는 거냐",-1],
+  ["구단은 알고 있었냐 이거",-1],
+  ["성적이라도 좋으면 덮어주는데 그것도 아니잖아",-1],
+  ["감독 개인 문제라고 넘어가기엔 좀 크다",-1],
+  ["이런 걸로 뉴스 나오는 게 제일 창피함",-1]],
  /* 🏙️ 시민구단이 기업구단을 잡은 날 — 이건 승점 3점 이상의 의미다 */
  /* 🗞️ 영입 루머 — 기대는 늘 「큰거」이고, 뚜껑을 열면 임대다 */
  rumorHype:[["{t} 큰거 온다 ({p} 임대)",1],
@@ -34714,18 +35452,44 @@ function sueState(){
 let SUE_UID=0;
 function feedId(x){ if(x && !x.fid) x.fid="f"+(++SUE_UID); return x?x.fid:""; }
 function findFeed(kind, fid){
-  const arr = kind==="fmk" ? (G.fmk||[]) : (G.social||[]);
+  /* 🗞️ 루머 게시판 글도 고소 대상이다 — txt 에 제목+본문이 합쳐져 있어 판정 로직이 그대로 통한다 */
+  const arr = kind==="rum" ? (G.rum||[]) : kind==="fmk" ? (G.fmk||[]) : (G.social||[]);
   return arr.find(x=>x.fid===fid) || null;
 }
 /* 이 글이 얼마나 험한가 — 험할수록 이길 확률이 높다 */
 const SUE_HARSH=["ㅅㅂ","ㅆㅂ","씨발","좆","병신","ㅂㅅ","븅신","ㅄ","ㅉㅉ","븅","세금리그","인생 낭비","인생 망","꺼져","뒤져","죽어","등신","멍청","머저리","무능","사퇴","경질","환불","쓰레기","답없","답 없"];
 function sueHarshness(x){
-  const t=String(x&&x.txt||"");
+  const t=String((typeof rumFill==="function")?rumFill(x&&x.txt||""):(x&&x.txt||""));
   let h=0;
   for(const w of SUE_HARSH) if(t.indexOf(w)>=0) h++;
   if((x&&x.tone)<0) h+=1;
   if(x && x.troll) h+=2;      // 상주 악플러는 누적된 전력이 있다 — 법원도 그걸 본다
   return clamp(h, 0, 5);
+}
+/* ⚖️ 고소를 걸 수 있는 상태인가 — 막는 이유를 <b>한곳</b>에 모은다.
+   ⚠ 예전에는 「이미 진행 중」과 「시즌 한도」 두 가지만 봤다. 그 사이에 시스템이 여럿 생겼는데
+      어디에도 연결돼 있지 않았다 — <b>무직인 감독이 「구단 법무팀」을 부르고</b>,
+      매각 절차로 주인이 없는 구단이 소송을 걸고, 금감원 조사로 계좌가 얼어붙은 감독이
+      변호사비를 치렀다. 전부 말이 안 된다.
+   ─ 막을 이유가 있으면 그 «이유»를 돌려주고, 없으면 null 을 돌려준다. */
+function sueBlock(){
+  try{
+    if(G.jobless || !userTeam())
+      return `소속 구단이 없습니다.\n\n"구단 법무팀은 «구단 소속 감독»을 위한 조직입니다. 무직 상태에서는 쓰실 수 없습니다."\n\n<span class="small">개인 변호사를 선임하는 것은 말릴 수 없지만, 그건 게임에서 다루지 않습니다.</span>`;
+    if(G.phase==="sacked") return `지휘할 팀이 없습니다.`;
+    if(typeof clubForSale==="function" && clubForSale(userTeam())){
+      const _r=(typeof saleState==="function")?saleState()[userTeam().id]:null;
+      return `구단이 «매각 절차» 중입니다.\n\n"소송을 결재할 주인이 없습니다. 인수 결론이 난 뒤에 다시 말씀해 주세요."${_r?`\n\n<span class="small">결론 예정일: ${dateLabel(_r.due)}</span>`:""}`;
+    }
+    if(typeof fssFrozen==="function" && fssFrozen())
+      return `금융감독원 조사로 계좌가 동결돼 있습니다.\n\n"지금 감독님이 남을 고소할 처지가 아닙니다. 그쪽부터 정리하시죠."`;
+    if(typeof stkBadCredit==="function" && stkBadCredit())
+      return `파산 이력이 남아 있습니다.\n\n"변호사 선임비를 감당하실 수 있는 상태가 아닙니다."`;
+    const _st=sueState();
+    if(_st.n>=SUE_MAX_SEASON)
+      return `올 시즌 벌써 ${_st.n}건입니다. 더는 안 됩니다.\n\n<span class="small">한 시즌 고소는 ${SUE_MAX_SEASON}건까지입니다.</span>`;
+  }catch(e){}
+  return null;
 }
 function sueChance(x){
   const st=sueState();
@@ -34733,6 +35497,13 @@ function sueChance(x){
   c += (G.trust?(G.trust.owner-70)/400:0);       // 구단이 밀어 주면 변호사도 좋은 사람이 붙는다
   c -= st.n*0.07;                                 // 남발할수록 법원도 지겨워한다
   if(x && x.sd==="r") c += 0.05;                  // 남의 팬 글은 감정적으로 걸기 쉽다
+  /* 🗞️ 루머 게시판 — <b>사실이면 명예훼손이 안 된다.</b> 「정ㅋ벅ㅋ」이 붙은 글,
+     즉 커뮤니티가 확정으로 받아들인 글은 오히려 지기 쉽다. */
+  if(x && x.conf) c -= 0.16;
+  /* 📰 언론 관계 — 기자들이 등을 돌려 있으면 여론전에서 진다 */
+  try{ if(G.press && G.press.rel!=null) c += (G.press.rel-50)/500; }catch(e){}
+  /* 🎖️ 감독 위신 — 물의를 일으킨 이력이 있으면 법정에서도 불리하다 (도박·주가조작) */
+  try{ c += clamp((G.mgrRepMod||0)*0.012, -0.12, 0.06); }catch(e){}
   return clamp(c, 0.05, 0.88);
 }
 function openSue(kind, fid){
@@ -34745,19 +35516,21 @@ function openSue(kind, fid){
       ()=>{}, {okLabel:"알겠습니다", cancelLabel:""});
     return;
   }
+  /* ⚖️ 지금 고소를 걸 수 있는 상태인가 (sueBlock 주석) */
+  { const why=sueBlock();
+    if(why){ showConfirm(`<b>⚖️ 구단 법무팀</b>\n\n${why}`, ()=>{}, {okLabel:"알겠습니다", cancelLabel:""}); return; } }
   const x=findFeed(kind, fid);
   if(!x){ notify("그 글을 찾을 수 없습니다.","warn"); return; }
+  /* ⚖️ 루머 게시판은 «우리 구단 관련 글»만 고소할 수 있다 (제보) — 남의 집 싸움에 낄 수 없다 */
+  if(kind==="rum"){
+    const _ut=userTeam();
+    if(G.jobless || !_ut){ flash("소속 구단이 없어 구단 법무팀을 쓸 수 없습니다.","warn"); return; }
+    if(x.tid!==_ut.id){
+      const _t2=G.teams[x.tid];
+      flash(`⚖️ <b>${_t2?_t2.short:"타 구단"}</b> 관련 글입니다 — 우리 구단 법무팀이 나설 사안이 아닙니다.`,"warn"); return;
+    }
+  }
   const t=userTeam(); const st=sueState();
-  if(false){
-    showConfirm(`<b>⚖️ 구단 법무팀</b>\n\n"이미 진행 중인 소송이 있습니다. 두 건을 동시에 끌고 갈 수는 없습니다."\n\n<span class="small">📰 뉴스/소셜 탭의 소송 카드에서 진행 상황을 확인하세요.</span>`,
-      ()=>{}, {okLabel:"알겠습니다", cancelLabel:""});
-    return;
-  }
-  if(st.n>=SUE_MAX_SEASON){
-    showConfirm(`<b>⚖️ 구단 법무팀</b>\n\n"감독님, 올 시즌 벌써 ${st.n}건입니다. 더는 안 됩니다."\n\n<span class="small">한 시즌 고소는 ${SUE_MAX_SEASON}건까지입니다.</span>`,
-      ()=>{}, {okLabel:"알겠습니다", cancelLabel:""});
-    return;
-  }
   const ch=sueChance(x), h=sueHarshness(x);
   const L=ch>=0.6?["승소 유력","var(--green)"]:ch>=0.35?["반반","var(--gold)"]:["희박","var(--red)"];
   const hn=h>=4?"매우 험함":h>=2?"험함":h>=1?"거친 편":"평범함";
@@ -34765,10 +35538,12 @@ function openSue(kind, fid){
   const M=me();
   showConfirm(
     `<b style="font-size:16px">⚖️ 이 글을 고소하시겠습니까?</b>\n\n`+
-    `<div class="msg ${x.tone<0?"warn":"info"}" style="margin:6px 0">@${x.u} <span class="small">(${who})</span><br>"${x.txt}"</div>`+
+    `<div class="msg ${x.tone<0?"warn":"info"}" style="margin:6px 0">@${x.u} <span class="small">(${who})</span><br>"${(typeof rumFill==="function")?rumFill(x.txt):x.txt}"</div>`+
     `· 표현 수위: <b>${hn}</b>\n· 기본 승소 전망: <b style="color:${L[1]}">${L[0]}</b> <span class="small">(${Math.round(ch*100)}%)</span>\n`+
     `· 올 시즌 고소: <b>${st.n}/${SUE_MAX_SEASON}건</b>\n\n`+
-    (x.troll
+    (x.conf
+      ? `<span style="color:var(--red)">⚠ 커뮤니티가 <b>「정ㅋ벅ㅋ」</b>으로 받아들인 글입니다 — <b>사실이면 명예훼손이 성립하지 않습니다.</b> 승소 전망이 크게 떨어집니다.</span>`
+      : x.troll
       ? `<span style="color:var(--green)">✅ 커뮤니티 전체가 지긋지긋해하는 상주 악플러입니다. 팬들이 오히려 박수를 칠 겁니다.</span>`
       : `<span class="small">이겨도 "검열 감독" 소리를 듣습니다. 다음 단계에서 변호를 누구에게 맡길지 고릅니다.</span>`),
     ()=>sueFirmPick(kind, fid), {okLabel:"⚖️ 진행한다", cancelLabel:"🚪 넘어간다", danger:true});
@@ -34785,17 +35560,28 @@ const SUE_FIRMS=[
 function sueFirmPick(kind, fid){
   const x=findFeed(kind, fid); if(!x) return;
   const M=me(), t=userTeam(), ch=sueChance(x);
-  const rows=SUE_FIRMS.map(f=>{
+  /* 🏢 구단 법무팀은 «구단이 감독을 밀어 줄 때»만 붙는다. 구단주 신뢰가 바닥이면 알아서 하라고 한다.
+     모기업이 흔들리는 구단도 이런 데 사람을 못 뺀다. */
+  const _own=(G.trust&&G.trust.owner!=null)?G.trust.owner:60;
+  const _tight=(typeof ownHealth==="function" && ownHealth(t)<0.82);
+  const FIRMS=SUE_FIRMS.filter(f=>f.k!=="club" || (_own>=45 && !_tight));
+  if(FIRMS.length<SUE_FIRMS.length){
+    try{ flash(_own<45 ? "🏢 구단 법무팀은 이번 건에 손대지 않겠다고 합니다 — 구단주 신뢰가 낮습니다."
+                       : "🏢 모기업 사정으로 구단 법무팀을 쓸 수 없습니다 — 외부 로펌만 가능합니다.","warn"); }catch(e){}
+  }
+  const rows=FIRMS.map(f=>{
     const eff=clamp(ch+f.chMod, 0.05, 0.92);
     const afford=(M.cash>=f.cost)||(t.budget>=f.cost);
     return `${f.ic} <b>${f.n}</b> — ${f.cost}억 · 승소 ${Math.round(eff*100)}% · ${f.days[0]}~${f.days[1]}일${afford?"":" <span style=\"color:var(--red)\">(잔고 부족)</span>"}\n<span class="small">${f.d}</span>`;
   });
   showChoice(`<b>⚖️ 변호를 누구에게 맡기시겠습니까?</b>\n<span class="small">비용은 감독 사비에서 나갑니다 (보유 ${moneyEok(M.cash)})</span>`,
-    rows, (i)=>sueFile(kind, fid, SUE_FIRMS[i].k));
+    rows, (i)=>sueFile(kind, fid, FIRMS[i].k));
 }
 /* ── 소송 제기 — 이제 결과는 며칠 뒤에 나온다 ── */
 function sueFile(kind, fid, firmK){
   const x=findFeed(kind, fid); if(!x) return;
+  { const why=sueBlock();
+    if(why){ try{ flash("⚖️ 지금은 고소를 진행할 수 없습니다.","warn"); }catch(e){} return; } }
   const firm=SUE_FIRMS.find(f=>f.k===firmK)||SUE_FIRMS[1];
   const t=userTeam(), st=sueState();
   st.n++;
@@ -35022,7 +35808,9 @@ function fmkCard(side, n){
   ${list.length?`<div class="fmkList">${list.map(x=>`
     <div class="fmkRow ${x.tone>0?"pos":x.tone<0?"neg":""}">
       <div class="fmkTitle">${x.txt}</div>
-      <div class="fmkMeta"><img class="fmkRk" src="${FMK_RANK[fmkRankOf(x)]}" alt="${FMK_RANK_N[fmkRankOf(x)]}" title="${FMK_RANK_N[fmkRankOf(x)]}"><span class="sueName" title="닉네임을 눌러 이 글을 고소할 수 있습니다" onclick="openSue('fmk','${feedId(x)}')">${x.u}</span><span class="fmkDate">${feedDate(x)}</span>
+      <div class="fmkMeta"><img class="fmkRk" src="${FMK_RANK[fmkRankOf(x)]}" alt="${FMK_RANK_N[fmkRankOf(x)]}" title="${FMK_RANK_N[fmkRankOf(x)]}">${G.jobless
+        ? `<span class="rumNick" title="소속 구단이 없어 고소할 수 없습니다">${x.u}</span>`
+        : `<span class="sueName" title="닉네임을 눌러 이 글을 고소할 수 있습니다" onclick="openSue('fmk','${feedId(x)}')">${x.u}</span>`}<span class="fmkDate">${feedDate(x)}</span>
         <span>조회 ${x.v}</span>
         <span class="fmkUp">▲${x.up}</span><span class="fmkDn">▼${x.dn}</span></div>
     </div>`).join("")}</div>`
@@ -35048,7 +35836,9 @@ function socialCard(side, n){
     <span class="small">— ${rival?"우리를 보는 시선":"팬 여론"}: <b style="color:${mood.c}">${mood.t}</b></span></h3>
   ${list.length?`<div class="socFeed">${list.map(x=>`
     <div class="socPost ${x.tone>0?"pos":x.tone<0?"neg":""}${rival?" riv":""}">
-      <div class="socHead"><span class="socAv">${x.e}</span><b class="sueName" title="닉네임을 눌러 이 글을 고소할 수 있습니다" onclick="openSue('soc','${feedId(x)}')">@${x.u}</b>
+      <div class="socHead"><span class="socAv">${x.e}</span>${G.jobless
+        ? `<b class="rumNick" title="소속 구단이 없어 고소할 수 없습니다">@${x.u}</b>`
+        : `<b class="sueName" title="닉네임을 눌러 이 글을 고소할 수 있습니다" onclick="openSue('soc','${feedId(x)}')">@${x.u}</b>`}
         <span class="small">${feedDate(x)}</span></div>
       <div class="socTxt">${x.txt}</div>
     </div>`).join("")}</div>`
@@ -35131,24 +35921,1086 @@ function econTabView(){
       :`<p class="small" style="padding:14px 4px">아직 들어온 소식이 없습니다. 주식·예금·대출·부동산에 손을 대면 이곳에 쌓입니다.</p>`}
   </div>`;
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   🗞️ FM코리아 루머 게시판
+   제보 원문 — 「소셜탭 아래 [우리구단팬] [타구단팬] 옆에 [펨코 루머탭]을 추가하고, 펨코 유저들이
+   만들어내는 루머를 만들자. 고소도 되고, 게시글 형태라 누르면 내용이 나오는 형식으로」.
+   ─ 기존 펨코 카드(fmkCard)는 «한 줄짜리 반응»이다. 루머는 다르다 —
+     제목 · 본문 여러 줄 · 댓글 · 조회수 · 추천, 그리고 「정ㅋ벅ㅋ」(확정) 표식까지 붙는 진짜 게시판이다.
+   ─ 내용은 <b>실제 게임 상태에서 뽑는다</b>. 계약 만료가 임박한 선수, 폼이 떨어진 선수,
+     연패 중인 감독, 모기업이 흔들리는 구단… 그래서 「어? 이거 진짜네」가 나온다.        */
+const RUM_MAX=40;                       // 게시판에 남기는 글 수
+const RUM_CONF_P=0.42;                  // 「정ㅋ벅ㅋ」 확정 표식이 붙을 확률
+/* ═══ ✍️ 펨코 말투 ═══════════════════════════════════════════════════════════
+   실제 게시판(fmkorea 국내축구·루머)에서 관찰한 규칙을 그대로 옮긴다.
+     · 제목이 <b>극도로 짧다</b> — 이름만, 「팀 이름」만. "전남 발디" "한국영" "조규성"
+       서술어도 조사도 없다. 길어질 때는 「~관련」「~ 팩트체크-」가 붙는다.
+     · 띄어쓰기를 안 지킨다 — "사임할것을" "알고있었던" "영입가능성에"
+     · 본문은 짧은 줄 여러 개. 줄 끝이 ".." "...." 로 흐려진다. 단정하지 않는다.
+     · 출처는 「ㅊㅊ:」 로 붙인다. 없으면 없다고 적는다.
+     · 비속어는 순화하지 않고 그대로 쓴다 — "ㅅㅂ" "시발련들" "씹창"
+     · 댓글은 더 짧다. 물음표 앞을 띄운다("있겠지 ?"). ";;;" "...." 를 즐겨 쓴다.
+     · 대댓글은 <b>상대 닉네임을 부르고</b> 한 줄로 묻거나 답한다.                */
+const RUM_TAIL=["..","....","…","...",""];            // 줄 끝 흐리기
+const RUM_TAIL2=[" ?"," ??"," ?;;",";;",";;;","."];   // 댓글 끝
+const RT=()=>pick(RUM_TAIL);
+/* 📎 ㅊㅊ(출처) — 각 줄에 «등급»을 달아둔다. 댓글이 이 등급을 보고 깐다.
+     kin=아는 사람 · ins=구단 라인 · nbr=건너건너 · pro=기자/에이전트 · none=출처 없음 */
+const RUM_SRC=[
+  ["ㅊㅊ:아는 형","kin"],["ㅊㅊ:아는 동생","kin"],["ㅊㅊ:아는 지인","kin"],
+  ["ㅊㅊ:친구 형","kin"],["ㅊㅊ:사촌 형","kin"],["ㅊㅊ:군대 선임","kin"],
+  ["아는 형이 구단에 있음","kin"],["ㅊㅊ:아는 형의 아는 형","kin"],
+  ["ㅊㅊ:구단 관계자 형","ins"],["ㅊㅊ:구단 관계자","ins"],["ㅊㅊ:구단 직원 썰","ins"],
+  ["ㅊㅊ:프런트에 아는 사람","ins"],["ㅊㅊ:훈련장 목격담","ins"],["ㅊㅊ:선수 아버지 지인","ins"],
+  ["ㅊㅊ:스카우트 쪽 형","ins"],
+  ["ㅊㅊ:옆집 아저씨","nbr"],["ㅊㅊ:옆집 형","nbr"],["ㅊㅊ:건너건너 들은 내용","nbr"],
+  ["ㅊㅊ:건너건너 들었음","nbr"],["ㅊㅊ:동네 형","nbr"],["ㅊㅊ:같은 회사 사람","nbr"],
+  ["ㅊㅊ:택시기사님","nbr"],["ㅊㅊ:미용실에서 들음","nbr"],["ㅊㅊ:PC방에서 옆자리 대화","nbr"],
+  ["ㅊㅊ:에이전트","pro"],["ㅊㅊ:기자 지인","pro"],["ㅊㅊ:기자 형","pro"],
+  ["ㅊㅊ:방송국에 아는 형","pro"],
+  ["ㅊㅊ 없음 그냥 들은 거","none"],["ㅊㅊ은 못 밝힘","none"],["믿거나 말거나","none"],
+  ["ㅊㅊ 밝히면 그 형 짤림","none"],["ㅊㅊ 나중에 공개함","none"]];
+/* 🗣️ ㅊㅊ 보고 까는 댓글 — 등급별로 까는 포인트가 다르다 */
+const RUM_CM_SRC={
+ kin:[["아는 형이 누군데 ㅋㅋ","doubt"],["아는 형 시리즈 또 시작이네","mock"],
+   ["님 아는 형 직급이 어떻게 되심 ?","mock"],["그 아는 형 작년에도 틀렸음","doubt"],
+   ["아는 형 = 나무위키","mock"],["형 동생 지인 다 나왔는데 정작 ㅊㅊ은 없네","doubt"],
+   ["아는 동생이면 걔도 아는 형한테 들은거겠지 ㅋㅋ","joke"],["세상에 아는 형 참 많다","mock"],
+   ["그 형 좀 데려와봐","mock"],["아는 형 라인이 의외로 잘 맞더라","believe"],
+   ["아는 형 ㅊㅊ은 걸러도 됨","doubt"]],
+ ins:[["구단 관계자 형이면 실명 까고 와라","angry"],["구단 관계자 형은 대체 몇명임","mock"],
+   ["진짜 관계자면 이런거 커뮤에 안 흘림","doubt"],["관계자라기엔 내용이 너무 팬 시선인데","doubt"],
+   ["관계자 ㅊㅊ이면 그래도 좀 무겁긴 함","believe"],["훈련장 목격담이면 사진은 ?","ask"],
+   ["프런트 라인이면 이정도는 알겠지","believe"],["관계자 팔이 좀 그만해라","angry"],
+   ["선수 아버지 지인 ㅋㅋㅋ 족보 길다","joke"]],
+ nbr:[["건너건너면 그냥 소문이잖아 ㅋㅋ","doubt"],["옆집 아저씨가 구단 사정을 어케 암","mock"],
+   ["건너건너 들은거 = 지어낸거","doubt"],["몇 다리 건넜는지부터 세보자","mock"],
+   ["택시기사님 라인 ㅋㅋㅋㅋ","joke"],["동네 형이 스카우트냐","mock"],
+   ["미용실 ㅊㅊ 진짜 어이없네 ㅋㅋ","joke"],["근데 이런건 뼈는 있더라","cool"],
+   ["옆집 형 승진했나보네","joke"]],
+ pro:[["기자 지인이면 왜 기사가 안 뜨는데","doubt"],["에이전트발은 반은 흘리는거임","cool"],
+   ["기자 형은 왜 자기 기사로 안 쓰고","mock"],["에이전트가 흘린거면 이미 협상 들어간거다","believe"],
+   ["방송국 라인은 좀 믿을만함","believe"],["기자 ㅊㅊ인데 이렇게 부실하다고 ?","doubt"]],
+ none:[["ㅊㅊ 없으면 그냥 소설","doubt"],["못 밝히는게 아니라 없는거겠지","mock"],
+   ["믿거나 말거나면 왜 씀","angry"],["ㅊㅊ 없음 = 내 상상","mock"],
+   ["나중에 공개한다더니 공개한 적이 없음","doubt"],["그래도 이사람 예전에 하나 맞췄음","believe"],
+   ["ㅊㅊ 밝히면 짤린다는 말은 10년째 나온다","mock"]]};
+/* ═══ 🤡 게시판 상주 인물 둘 ═══════════════════════════════════════════════
+   어느 게시판에나 있다. 글만 봐도 누군지 아는 사람들.
+     · <b>벤투</b>  — 「우리 에이스가 하부리그 간다」만 쓴다. 비추천이 압도적이고 댓글은 욕이다.
+     · <b>노루막이</b> — 스케일이 우주로 간다. PL 팀이 K리그에 편입된다는 식의 글을
+       번호까지 매겨 진지하게 쓴다. 길고, 구체적이고, 완전히 말이 안 된다.
+   ─ 둘 다 <b>troll</b> 표식이 붙어 고소 화면에서 「상주 악플러」로 잡힌다. */
+const RUM_TROLL_NICK={bt:"벤투", nr:"노루막이"};
+const RUM_LOWER=["3부 리그 팀","실업축구 팀","대학팀","동남아 2부 팀","4부 승격팀","지역 아마추어 클럽"];
+function rumTrollBenthu(){
+  try{
+    const T=Object.values(G.teams||{}).filter(t=>t && !isArmyTeam(t));
+    const t=pick(T); if(!t) return null;
+    const ps=(t.players||[]).filter(p=>p.pos!=="GK").sort((a,b)=>b.ovr-a.ovr).slice(0,4);
+    if(!ps.length) return null;
+    const P=pick(ps), low=pick(RUM_LOWER);
+    const B=[];
+    B.push(`${P.name} ${low}행 유력함`+RT());
+    B.push(pick([
+      `본인이 먼저 원했다고 함..`,
+      `구단도 잡을 생각 없다는듯..`,
+      `연봉 절반 깎고 가는 조건이라고 함....`]));
+    B.push(pick([
+      `내 정보력은 다들 알잖아 ㅇㅇ`,
+      `이번엔 진짜임 지난번이랑 다름`,
+      `믿기 싫으면 말고`]));
+    B.push(`ㅊㅊ: 말 못함`);
+    return {ttl:pick([`${P.name} ${low}행`, `${t.short} ${P.name}`, `${P.name} 이적 관련`]),
+      body:B, tid:t.id, pid:P.id, kind:"trollBt", troll:"bt", pn:P.name, tn:t.short, on:low};
+  }catch(e){ return null; }
+}
+function rumTrollNoru(){
+  try{
+    const T=Object.values(G.teams||{}).filter(t=>t && !isArmyTeam(t));
+    const home=pick(T); if(!home) return null;
+    /* 구단과 약칭은 짝으로 뽑는다 — 따로 뽑으면 「풀럼(약칭 CRY)」 같은 게 나온다 */
+    const _cl=pick([["풀럼","FU"],["에버턴","EV"],["울버햄튼","WO"],
+      ["크리스탈 팰리스","CP"],["사우스햄튼","SO"],["노팅엄","NO"]]);
+    const club=_cl[0], abbr=_cl[1]+"I";
+    const st=(function(){ try{ const s2=stadOf(home); return s2?s2.n:`${home.short} 월드컵경기장`; }catch(e){ return `${home.short} 월드컵경기장`; } })();
+    const st2=`${home.short} 아시아드주경기장`;
+    const name=`${club}${home.short}FC`;
+    const B=[];
+    B.push(`방금 전 ${club}이 한국프로축구연맹에 공식적으로 편입 의사를 밝힘.`);
+    B.push("");
+    B.push(`유럽팀, 그것도 PL팀이 지구 반대편 리그로 이전을 한다는 게 축구 역사 전체적으로 봐도 초유의 사태인지라, 현지 여론을 우려한 ${club}과 연맹은 팀의 빠른 이전을 위해 운영안을 내놓았는데, 정리하자면 일단 다음과 같음.`);
+    B.push("");
+    B.push(`1) 편입 시 2부가 아닌 K리그1로 직행하며, 이후 1부리그는 13팀으로 운영됨`);
+    B.push(`2) ${club}은 외국인 쿼터제의 제한을 받지 않음. 대신 매경기 한국인 선수 최소 2명 이상이 선발명단에 포함되어야 함.`);
+    B.push(`3) 국내 홈경기장에서 12경기, 중립구장에서 12경기, 원정에서 12경기를 치르게 되는데, 로빈 1에서 홈경기, 로빈 2에서 원정경기, 로빈 3에서 중립경기를 치름. (지난번에 팀을 통째로 옮기는건 아니라고 했었지? 그게 이걸 말하는 거였음)`);
+    B.push(`4) 유스 체계는 기존 그대로 잉글랜드 현지에서 운영함.`);
+    B.push(`5) (아직 확정된 건 아님) 팀 명칭은 ${name} (${club} ${home.short} FC, 약칭 ${abbr})일 예정`);
+    B.push("");
+    B.push(`전술했듯이, 홈구장은 빠른 출입국을 위해 ${home.short}에 마련하기로 함. 현재`);
+    B.push(`1.     ${st}`);
+    B.push(`2.     ${st2}`);
+    B.push(`이 후보로 올라있고, 둘 다 전면적인 리모델링 후 사용할 예정.`);
+    B.push("");
+    B.push(`중립구장은 사우디아라비아 아브하에 위치한 프린스 술탄 빈 압둘 아지즈 스타디움을 이용할 예정.`);
+    B.push(`구단주는 애초에 아시아 시장을 위해 연고를 사우디로 이전하고, 사우디 리그로 편입할 계획이었는데, 지난번 말했던 국내 대기업과의 계약으로 인해 K리그 편입으로 계획을 바꾼 듯 함.`);
+    B.push("");
+    B.push(`국내 선수 영입은 현재 아겜 멤버 공미가 1순위. 얼마전 언급됐던, 이 선수에 관심있다던 잉글랜드 팀이 ${club}인듯함.`);
+    B.push(`그 외에는, 일단 공격수 위주로 영입할 계획.`);
+    B.push("");
+    B.push(`현재 연고 이전에 관해서는 ${club} 수뇌부, 프로축구연맹 극히 일부만이 알고 있음.`);
+    B.push("");
+    B.push(`ㅊㅊ: ㅇㄱㅇㅈ`);
+    B.push("");
+    B.push(`일단 내가 알기론 여기까지. 가장 궁금했던건, 도대체 왜 갑자기 국외, 그것도 지구 반대편으로의 연고 이전을 선택했냐는 건데, 아직 이부분에 대해서는 아는 바가 없음. 추가적으로 정보 나오면 바로바로 올려볼게ㅇㅇ`);
+    return {ttl:pick([`${club} K리그 편입 관련`, `${club} 연고이전 후속`, `${club} 관련 정리`,
+      `${club} K리그 편입 (운영안 포함)`]), body:B, tid:home.id, pid:null, kind:"trollNr", troll:"nr",
+      pn:club, tn:home.short, on:club};
+  }catch(e){ return null; }
+}
+/* ═══ 🏷️ 탭 잘못 단 글 ═══════════════════════════════════════════════════════
+   루머탭에 루머가 아닌 글(점심 뭐먹지, 일상 잡담)을 올리면 게시판이 가만두지 않는다.
+   비추를 우수수 맞고, 댓글에는 「ㅌ」 「탭 확인」 이 <b>쫘르륵</b> 달린다.
+   ─ 「이거 루머맞다」는 비꼬는 말이고, 「아 포가 아깝다」는 잘못 누른 추천이 아깝다는 뜻이다. */
+const RUM_OFF=[
+  {t:"점심 뭐먹지", b:["회사 근처에 먹을게 없음..","추천좀"]},
+  {t:"응가 마려움", b:["회의 30분 남았는데","어떡함"]},
+  {t:"오늘 날씨 뭐냐", b:["아침에 나올땐 시원했는데","지금 미쳤음"]},
+  {t:"주말에 뭐하지", b:["경기도 없고","심심함"]},
+  {t:"직장인 여러분 힘내세요", b:["월요일이 제일 힘든듯","다들 파이팅"]},
+  {t:"이 노래 아는사람", b:["예전에 경기장에서 들었던건데","제목이 기억이 안남"]},
+  {t:"치킨 뭐가 제일 맛있음", b:["오늘 시켜먹으려는데","골라줘"]},
+  {t:"라면 맛있게 끓이는법", b:["물 조절이 제일 어려움","스프 먼저 넣는게 맞음 ?"]},
+  {t:"자기 전에 한마디", b:["다들 잘자라","내일 봅시다"]},
+  {t:"운동 시작했는데", b:["3일차인데 벌써 힘듬","다들 얼마나 하심"]},
+  {t:"차 뽑았다", b:["10년 탄 차 보내고 새로 뽑음","기분 좋아서 자랑함"]},
+  {t:"고양이 자랑", b:["우리집 고양이 좀 봐라","귀엽지"]}];
+/* 「탭 확인해라」 댓글 — 실제 게시판처럼 짧고 많이 달린다 */
+const RUM_CM_TAB=[
+  "ㅌ","ㅌㅌ","ㅌㅌㅌ","ㅌ;;","ㅌ 좀","탭","탭탭","탭 확인","탭 확인좀해라","탭 확인 좀",
+  "ㅉㅉ","이거 루머맞다","이거 루머맞음","루머네 ㅋㅋ","얼른 탭 고치셈","아 포가 아깝다",
+  "여기 루머탭임","이게 왜 루머탭에 있음","탭 옮겨라","방출 눌렀다","ㅌ ㅌ ㅌ",
+  "루머 아니면 나가라","ㅌ 안보이냐","포 아깝게 진짜","자유게시판 어디갔냐","ㅌ 좀 봐주세요"];
+const RUM_CM_TAB_RE=[
+  ["ㅈㅅ 바로 옮길게요","op"],["아 몰랐음 미안","op"],["이건 좀 심한거 아님 ?","op"],
+  ["ㅌ","x"],["ㅋㅋㅋㅋㅋ 벌써 20개 달렸네","x"],["글쓴이 도망감","x"],
+  ["옮기면 되는걸 왜 버티냐","x"],["그래도 답글은 다네 ㅋㅋ","x"],["ㅌ 아니고 그냥 지워라","x"]];
+function rumOffTopic(){
+  try{
+    const T=Object.values(G.teams||{}).filter(t=>t && !isArmyTeam(t));
+    const t=pick(T); if(!t) return null;
+    const o=pick(RUM_OFF);
+    return {ttl:o.t, body:o.b.slice(), tid:t.id, pid:null, kind:"offtopic", off:1,
+            pn:"", tn:t.short, on:t.short};
+  }catch(e){ return null; }
+}
+/* 댓글 — 이 둘의 글에는 결이 완전히 다른 반응이 달린다 */
+const RUM_CM_BT=[
+  ["또 벤투냐 ㅋㅋㅋㅋㅋ",42],["지랄하네 ㅄ아",67],["이 새끼 또 시작이네",38],
+  ["니가 하부리그 가라",55],["ㅅㅂ 진짜 이런 글로 게시판 더럽히지 마라",44],
+  ["작년에 니가 판 선수 지금 우리팀 주전이다",29],["ㅄ 인증 또 하네",33],
+  ["차단 좀 하자 진짜",27],["글 이력 봐라 100% 헛소리임",31],
+  ["이런거 올릴 시간에 경기나 봐라",19],["또 낚였네 ㅋㅋ 내가 진짜 ㅄ이지",24],
+  ["운영자 이 사람 좀 어떻게 해봐라",22],["벤투 = 반대로 하면 맞음 ㅇㅇ",48]];
+const RUM_CM_NR=[
+  ["ㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋㅋ 뭐라는거야",71],["지랄하네 ㅄ",63],
+  ["PL팀이 왜 한국을 와 ㅄ아",58],["이새끼 병원 가봐라 진심으로",49],
+  ["중립구장이 사우디 ㅋㅋㅋㅋㅋㅋㅋ 아 배아파",66],["소설 쓰는 정성은 인정한다",41],
+  ["약을 하셨네요",37],["3번 읽었는데 진짜 진지해서 더 웃김",52],
+  ["ㅊㅊ: ㅇㄱㅇㅈ ← 이게 킬포",59],["작년엔 레알이 부산 온다고 했었지",44],
+  ["노루막이 시리즈 언제 완결남 ?",33],["이걸 진심으로 쓴 거면 더 무섭다",39],
+  ["이새끼 그만해 제발",28],["이 정도면 재능임 인정",26]];
+function rumList(){ if(!Array.isArray(G.rum)) G.rum=[]; return G.rum; }
+function rumById(id){ return rumList().find(x=>x.id===id)||null; }
+/* 제목·본문 만들기 — 종류마다 재료가 다르다 */
+/* 🔄 살아 있는 이름 — 게시판 글은 «이름»이 아니라 «누구인지»를 저장한다.
+     예전엔 글을 만드는 순간의 이름을 문자열로 박아 넣어서, 에디터에서 구단명·선수명·
+     감독명을 바꿔도 옛 글에는 옛 이름이 그대로 남았다.
+   ─ 이제 글·본문·댓글의 이름 자리에 표식(⟦종류|번호⟧)을 넣고, 화면에 그릴 때마다 푼다.
+     종류: p=선수 · t=구단 약칭 · tn=구단 정식명 · m=감독 · ow=모기업 */
+function rumPlayerById(id){
+  try{
+    if(id==null) return null;
+    for(const t of Object.values(G.teams||{})){
+      const q=(t.players||[]).find(x=>x&&x.id===id); if(q) return q;
+    }
+    for(const src of [G.fa, G.retired, G.osPool]){
+      if(Array.isArray(src)){ const q=src.find(x=>x&&x.id===id); if(q) return q; }
+    }
+  }catch(e){}
+  return null;
+}
+function rumMgrName(t){
+  try{ const v=(typeof mgrName==="function")?mgrName(t):null;
+    return (!v||/감독님/.test(v)) ? `${t.short} 감독` : v; }catch(e){ return `${t?t.short:""} 감독`; }
+}
+function rumFill(str){
+  const S0=String(str==null?"":str);
+  const FJ=(z)=>{ try{ return (typeof fixJosa==="function")?fixJosa(z):z; }catch(e){ return z; } };
+  if(S0.indexOf("⟦")<0) return FJ(S0);
+  const S=S0;
+  return FJ(S.replace(/⟦([a-z]{1,2})\|([^⟧]*)⟧/g, (m,k,id)=>{
+    try{
+      if(k==="p"){ const q=rumPlayerById(isNaN(+id)?id:+id); return q?q.name:m.slice(0,0)||"그 선수"; }
+      const t=(G.teams||{})[id];
+      if(!t) return "그 구단";
+      if(k==="t")  return t.short;
+      if(k==="tn") return t.name;
+      if(k==="m")  return rumMgrName(t);
+      if(k==="ow") return (typeof clubType==="function")?clubType(t).o:t.name;
+    }catch(e){}
+    return "";
+  }));
+}
+/* 만들어진 문장에서 «지금 이름»을 찾아 표식으로 바꾼다. 긴 이름부터 — 약칭이 정식명을 갉아먹지 않게 */
+function rumTokenize(str, reg){
+  let S=String(str==null?"":str);
+  for(const [lit, tok] of reg){
+    if(!lit || lit.length<2) continue;
+    S=S.split(lit).join(tok);
+  }
+  return S;
+}
+/* 문장에 나올 수 있는 이름 목록 — 긴 것부터 (약칭이 정식명을 갉아먹지 않게) */
+function rumReg(t, other){
+  const R=[];
+  const add=(lit,tok)=>{ if(lit && String(lit).length>=2) R.push([String(lit), tok]); };
+  try{
+    for(const x of Object.values(G.teams||{})){
+      if(!x) continue;
+      add(x.name, `⟦tn|${x.id}⟧`);
+      add(x.short, `⟦t|${x.id}⟧`);
+      add(rumMgrName(x), `⟦m|${x.id}⟧`);
+      try{ add(clubType(x).o, `⟦ow|${x.id}⟧`); }catch(e){}
+    }
+    /* 글에 등장할 수 있는 선수는 이 두 팀 안에 있다 */
+    for(const x of [t, other]){
+      for(const q of ((x&&x.players)||[])) add(q&&q.name, `⟦p|${q.id}⟧`);
+    }
+  }catch(e){}
+  R.sort((a,b)=>b[0].length-a[0].length);
+  return R;
+}
+function rumMake(){
+  try{
+    const T=Object.values(G.teams||{}).filter(t=>t && !isArmyTeam(t));
+    if(!T.length) return null;
+    const ut=userTeam();
+    /* 🎲 ⚠ 제보 — 「포텐 루머글은 타구단 가릴 것 없이 다양하게 나와야 한다」.
+       예전에는 45% 가 내 팀 글이라 게시판이 우리 구단 이야기로만 도배됐다. */
+    const pickT=()=> (Math.random()<0.18 && ut && !G.jobless) ? ut : pick(T);
+    const t=pickT(); if(!t) return null;
+    const ps=(t.players||[]).filter(p=>p && p.pos!=="GK");
+    const P=ps.length?pick(ps):null;
+    const kinds=[];
+    if(P) kinds.push("move","renew","form","injury","bus","bus");   // 🚌 목격담은 자주 올라온다
+    if(T.length>=3) kinds.push("saga");   // 📖 대사까지 있는 장문 소설
+    if(P && P.frn) kinds.push("frnOut");
+    if((t.form||[]).slice(-3).join("")==="LLL") kinds.push("sack");
+    if(clubType(t).k==="corp" && typeof ownHealth==="function" && ownHealth(t)<0.9) kinds.push("owner");
+    kinds.push("stad","board");
+    /* 💢 불화 — 게시판이 제일 좋아하는 소재다. 재료가 있을 때만 올라온다. */
+    const _unh=ps.filter(x=>(x.unhappy||0)>0 || (x.sulk||0)>0 || (typeof aff==="function" && aff(x)<=35));
+    const _low=ps.filter(x=>(x.morale||70)<58);
+    if(ps.length>=2) kinds.push("feudPP");
+    if(_unh.length || _low.length) { kinds.push("feudPM"); kinds.push("feudPP"); }
+    if((G.trust&&G.trust.owner!=null?G.trust.owner:60) < 55) kinds.push("feudFO");
+    if(T.length>=2) kinds.push("feudMM");
+    /* 🗓️ 시기가 게시판의 화제를 정한다 — 겨울엔 이적시장, 시즌 중엔 목격담·폼·부상 */
+    const _wh=rumWhen();
+    if(_wh==="stove"){
+      if(P) kinds.push("market","market","market","market","move","move","renew","renew");
+      kinds.push("sack","board");
+    } else if(_wh==="summer"){
+      if(P) kinds.push("market","market","market","move","move","renew","injury");
+    } else if(_wh==="pre"){
+      if(P) kinds.push("market","market","form","form","renew");
+      kinds.push("stad","board");
+    } else {
+      if(P) kinds.push("bus","bus","bus","form","form","injury","injury");
+      kinds.push("stad");
+    }
+    const k=pick(kinds);
+    const other=pick(T.filter(x=>x.id!==t.id))||t;
+    const pn=P?P.name:"", tn=t.short, on=other.short;
+    const _mn=(x)=>{ try{ const v=(typeof mgrName==="function")?mgrName(x):null;
+      return (!v||/감독님/.test(v)) ? `${x.short} 감독` : v; }catch(e){ return `${x.short} 감독`; } };
+    const B=[];
+    let ttl="", _hit=0, _saga=0;   // 🚌 목격담 적중 여부 · 📖 소설 표식
+    /* 제목은 세 갈래로 짧게 — 이름만 / 팀+이름 / ~관련 */
+    /* 제목 조합 — 실제 게시판은 「팀+이름」이 가장 흔하고, 포지션이나 「베테랑」 같은
+       수식을 앞에 붙이기도 한다. 이름만 던지는 것도 물론 있다. */
+    const POSN={DF:"센터백", MF:"미드필더", FW:"공격수", GK:"골키퍼"};
+    const age0=(x)=>(G.season||2026)-((x&&x.by)||2000);
+    const deco=(x)=>{ if(!x) return "";
+      const r2=Math.random();
+      if(r2<0.30) return (POSN[x.pos]||"")+" ";
+      if(r2<0.42 && age0(x)>=33) return "베테랑 ";
+      if(r2<0.52 && x.frn) return "용병 ";
+      return ""; };
+    const T3=(a,b2)=>{ const r=Math.random(), d=deco(P);
+      return r<0.18 ? a
+           : r<0.58 ? `${tn} ${d}${a}`
+           : r<0.78 ? `${d}${a}`
+           : `${tn} ${a} ${b2||"관련"}`; };
+    if(k==="move"){
+      ttl=T3(pn, `${on}행`);
+      B.push(`${on} 쪽에서 먼저 찔러봤다고 함`+RT());
+      B.push(`${pn} 본인도 나쁘지않게 보고있다는듯`+RT());
+      if(Math.random()<0.5) B.push(`이적료는 생각보다 안된다는 얘기가`+RT());
+      B.push(`ㅅㅂ ${tn} 이거 막아야되는데`+RT());
+    } else if(k==="renew"){
+      ttl=T3(pn, "재계약");
+      B.push(`재계약 안 할 확률 높음`+RT());
+      B.push(`${pn} 연봉으로 용병 2명 영입가능성에 둠`+RT());
+      B.push(`ㅅㅂ ${tn} 망하겠네${pick(["...",".."])}${tn}팬들 유니폼&굿즈 많이 사자`+RT());
+    } else if(k==="form"){
+      ttl=pick([`${pn} 요즘 왜저럼`, `${tn} ${pn}`, `${tn} ${pn} 근황`, `${pn} 폼 관련`, `${tn} ${pn} 왜저럼`]);
+      B.push(`훈련장 분위기 안좋다는 얘기 돌음`+RT());
+      B.push(`코칭스탭이랑 뭐가 좀 있는듯`+RT());
+      if(Math.random()<0.45) B.push(`본인은 아무말 안하고 있다고 함`+RT());
+    } else if(k==="injury"){
+      ttl=pick([`${pn} 몸상태`, `${tn} ${pn}`, `${tn} ${pn} 부상 관련`, `${pn} ${on}전 결장 관련`]);
+      B.push(`생각보다 심각하다는 말이있음`+RT());
+      B.push(`구단은 쉬쉬하는중`+pick([".."," ㅋㅋ",""])+` 발표보다 길어질듯`+RT());
+      if(Math.random()<0.4) B.push(`${on}전에는 못나온다고 보면 됨`+RT());
+    } else if(k==="frnOut"){
+      ttl=T3(pn, "방출설");
+      B.push(`용병 정리 들어간다는 말 나옴`+RT());
+      B.push(`대체자 이미 보고있다고 함 ㅇㅇ`);
+      B.push(`${pn} 에이전트가 다른리그 알아보는중이라는 썰`+RT());
+    } else if(k==="sack"){
+      const mn=_mn(t);
+      ttl=pick([`${mn} 사임관련 팩트체크-`, `${tn} 감독 관련`, `${mn}`,
+        `${mn}이 이미 사임할것을 혼자 알고있었던 프런트`]);
+      B.push(`이미 내부적으로는 정리된 분위기라고 함`+RT());
+      B.push(`후임 후보도 두명정도 추려놨다는 얘기가`+RT());
+      B.push(`발표만 남았다는게 중론`+RT());
+    } else if(k==="owner"){
+      const ct=clubType(t);
+      ttl=pick([`${tn} 모기업 관련`, `${ct.o}`, `${tn}`]);
+      B.push(`${ct.o} 쪽 사정이 진짜 안좋다고 함`+RT());
+      B.push(`내년예산 얘기 나오는데 분위기 싸하다는듯`+RT());
+      B.push(`ㅅㅂ 이거 구단까지 오는거 아니냐`+RT());
+    } else if(k==="market"){
+      /* 💸 이적시장 루머 — 실명을 안 쓰고 «두루뭉술하게» 부른다. 신뢰도는 랜덤 */
+      const vFrom=rumVague(t), vTo=rumVague(other);
+      const A=pick([pn, `${pn}`, `${tn} ${pn}`, `${vFrom} ${pn}`]);
+      ttl=pick([
+        `${vFrom} 선수 ${pn}${(typeof hasJong==="function"&&hasJong(pn.slice(-1)))?"이":""} ${vTo}에 갈 예정!`,
+        `${vFrom} 주전 ${vTo}행 임박`,
+        `${pn} ${vTo}행 유력하다는데`,
+        `${vFrom} 핵심자원 ${vTo}으로/로 간다는 얘기`,
+        `[속보] ${vFrom} → ${vTo} 딜 진행중`,
+        `${vTo}, ${vFrom}에서 ${pn} 노린다`,
+        `${pn} 이적 관련 (${vTo})`]);
+      B.push(pick([`${vFrom} ${pn}${(typeof hasJong==="function"&&hasJong(pn.slice(-1)))?"이":"가"} ${vTo}에 갈 예정임`,
+        `${vTo}에서 ${pn} 데려가려고 사람 보냈다고 함`,
+        `${vFrom}쪽에서 이미 대체자 알아보는중이라는 얘기`,
+        `${pn} 에이전트가 ${vTo}과/와 얘기하고 있다는듯`])+RT());
+      B.push(pick([`이적료는 생각보다 안 크다고 함`,`연봉 두배 부른다는 말 있음`,
+        `구단끼리는 거의 합의됐고 본인 결정만 남음`,`메디컬 얘기까지 나왔다는듯`,
+        `아직 오퍼 단계고 확정은 아님`])+RT());
+      if(Math.random()<0.5) B.push(pick([`${vFrom} 팬들은 아직 모르는듯`,
+        `이 바닥에서 이정도 진행되면 거의 되는거임`,
+        `발표는 다음주쯤 나올거라고 함`,`반대급부로 선수 한명 내려온다는 얘기도`])+RT());
+      _hit=(Math.random()<0.5)?1:0;
+    } else if(k==="saga"){
+      /* 📖 「~썰」 — 대사가 통째로 들어간 장문. 아무도 안 믿지만 다들 끝까지 읽는다.
+         ㅊㅊ 자리에 「뇌피셜」이라고 스스로 적어놓는 게 이 장르의 핵심이다 */
+      const o2t=pick(T.filter(x=>x.id!==t.id&&x.id!==other.id))||other;
+      const mA=_mn(t), mB=_mn(other), mC=_mn(o2t);
+      const fr=pick([`${on} 프런트`, `${on} 관계자`, `${on} 사무국`]);
+      const V=pick([0,1,2]);
+      if(V===0){
+        ttl=pick([`${mB} ${tn}행 썰`, `${mB} ${tn}행 관련 썰 하나`, `${mB} ${tn} 간다는 썰`]);
+        B.push(`지난 라운드 결과가 ${pick(["무승부로","패배로","졸전으로","역전패로"])} 끝나고,`,"");
+        B.push(`${mA}에 대해 의문을 품은 ${fr}는`,"");
+        B.push(`${mB}에게 가장 먼저 접촉함.`,"");
+        B.push(`무려 K리그에서 탑급 대우해주는 조건이었음.`,"");
+        B.push(`하지만, ${mB}는 '단호' 하게 거절`,"");
+        B.push(`당황한 ${on} 관계자.`,"");
+        B.push(`이유를 묻자,`,"");
+        B.push(`'이미 갈 팀을 정했습니다.'`,"");
+        B.push(`${on} 관계자는 그것이 ${o2t.short}${(typeof hasJong==="function"&&hasJong(o2t.short.slice(-1)))?"이":""}냐며 다시 묻자,`,"");
+        B.push(`'아뇨, K리그 최고의 명문 ${t.name||tn}입니다.'`,"");
+        B.push(`라고 대답했다고 함`,"");
+        B.push(`${on} 관계자는 학을 떼며 딜을 파토냄`,"","");
+      } else if(V===1){
+        ttl=pick([`${pn||tn} 이적 썰 하나 풀어봄`, `${tn} ${pn} 관련 썰`, `${pn} 잔류 썰`]);
+        B.push(`이번 겨울에 ${on}에서 사람이 왔었다고 함.`,"");
+        B.push(`조건은 지금 연봉의 세 배.`,"");
+        B.push(`${pn}은/는 말없이 창밖만 봤다고 함.`,"");
+        B.push(`관계자가 조심스럽게 물었음.`,"");
+        B.push(`'왜 망설이십니까.'`,"");
+        B.push(`${pn}이/가 대답하길,`,"");
+        B.push(`'저는 여기서 데뷔했습니다.'`,"");
+        B.push(`'그리고 여기서 끝낼 생각입니다.'`,"");
+        B.push(`${on} 관계자는 아무말도 못하고 돌아갔다고 함`,"");
+        B.push(`그날 ${tn} 훈련장 불은 새벽 두시까지 꺼지지 않았다고 함`,"","");
+      } else {
+        ttl=pick([`${tn} 프런트 내부 썰`, `${tn} 사무국에서 있었던 일 썰`, `${tn} 회의실 썰`]);
+        B.push(`지난주 ${tn} 회의실.`,"");
+        B.push(`예산안을 본 ${mA}의 표정이 굳었다고 함.`,"");
+        B.push(`'이걸로 뭘 하라는 겁니까.'`,"");
+        B.push(`사무국장은 조용히 서류를 덮으며 말했음.`,"");
+        B.push(`'감독님, 저희도 최선입니다.'`,"");
+        B.push(`${mA}은/는 자리에서 일어나며 딱 한마디 했다고 함.`,"");
+        B.push(`'그럼 저도 최선을 다하겠습니다.'`,"");
+        B.push(`다음날 훈련량이 두 배가 됐다고 함`,"");
+        B.push(`선수들은 아직도 그 회의가 무슨 회의였는지 모른다고 함`,"","");
+      }
+      B.push(`출처: ${pick(["지인에게서 건너건너 얼핏들은 뇌피셜","건너건너 들은 뇌피셜","아는 형에게 들은 뇌피셜","그냥 제 뇌피셜입니다","꿈에서 봄"])}`);
+      _saga=1;
+    } else if(k==="bus"){
+      /* 🚌 목격담 — 「버스에 안 탔다」. 맞을 때도 있고 틀릴 때도 있다.
+         hit 이 붙은 글은 나중에 댓글로 «맞았다»가, 아니면 «선발 나왔는데요 ㅋㅋ» 가 달린다 */
+      ttl=pick([`${tn} 오늘 원정버스에 ${pn} 안탔음`, `${pn} 오늘 선발 빠질듯`,
+        `${tn} ${on}전 라인업 관련`, `방금 ${tn} 버스 봤는데`, `${tn} ${pn} 오늘 못나올듯`,
+        `${pn} 버스 안탄거 맞음 ?`]);
+      B.push(pick([`방금 호텔앞에서 버스 봤는데 ${pn} 안탐`,
+        `짐 싣는거 세봤는데 한명 비더라 ${pn} 없었음`,
+        `아까 공항에서 ${tn} 선수단 봤는데 ${pn} 안보였음`,
+        `버스 옆에서 담배피다가 봤는데 ${pn} 진짜 없었다`])+RT());
+      B.push(pick([`${pn} 따로 승용차로 이동했다는 얘기도 있음`,
+        `훈련장에서 혼자 러닝만 하고 있었다고 함`,
+        `어제 훈련도 통으로 빠졌다는 말 있음`,
+        `그냥 늦게 합류한걸수도 있는데 일단 씀`])+RT());
+      if(Math.random()<0.5) B.push(pick([`선발 명단에서 빠졌다고 보는게 맞을듯`,
+        `${on}전 못나온다고 보면 됨`, `로테일수도 있는데 느낌이 안좋다`])+RT());
+      _hit=(Math.random()<0.5)?1:0;
+    } else if(k==="stad"){
+      ttl=pick([`${tn} ${on} 경기 경기장 관련`, `${tn} 잔디`, `${tn} 홈경기 관련`]);
+      B.push(`잔디상태 진짜 심각하다는 제보 있음`+RT());
+      B.push(`연맹에서도 한번 본다는 얘기 돌음`+RT());
+    } else if(k==="feudPP"){
+      const cand=(_unh.length?_unh:_low.length?_low:ps);
+      const a1=pick(cand), a2=pick(ps.filter(x=>x!==a1))||a1;
+      ttl=pick([`${tn} ${a1.name} ${a2.name}`, `${a1.name} ${a2.name}`, `${tn} 라커룸 관련`]);
+      B.push(`둘이 사이 안좋다는 얘기 계속 나옴`+RT());
+      B.push(`지난경기 끝나고 라커룸에서 한번 붙었다는 썰`+RT());
+      B.push(`${a1.name} 쪽이 먼저 뭐라했다는데 확실친 않음`+RT());
+      B.push(`ㅅㅂ 이런건 성적으로 덮어야되는데`+RT());
+    } else if(k==="feudPM"){
+      const a1=pick(_unh.length?_unh:(_low.length?_low:ps));
+      ttl=pick([`${tn} ${a1.name} 감독이랑`, `${tn} ${a1.name}`, `${tn} 감독 ${a1.name} 관련`,
+        `${a1.name} 감독 관련`]);
+      B.push(`감독이랑 틀어졌다는 말이 돌음`+RT());
+      B.push(`요즘 훈련에서도 따로 노는게 보인다고`+RT());
+      B.push(`${a1.name} 측에서 겨울에 정리 원한다는 얘기까지 나옴`+RT());
+      B.push(`구단은 부인중이긴 한데 글쎄`+RT());
+    } else if(k==="feudMM"){
+      const o2=other, n1=_mn(t), n2=_mn(o2);
+      ttl=pick([`${n1} ${n2} 사이 관련`, `${n1} ${n2}`, `${tn} ${o2.short} 감독들`]);
+      B.push(`둘이 예전부터 안좋았다는건 아는사람은 다 앎`);
+      B.push(`지난번 ${tn} ${o2.short} 경기 끝나고 악수도 안했다던데`+RT());
+      B.push(`기자회견에서 서로 돌려까기 한것도 그래서임`+RT());
+      B.push(`다음 맞대결 벌써 기대된다 ㅋㅋ`);
+    } else if(k==="feudFO"){
+      const ct2=clubType(t);
+      ttl=pick([`${tn} 감독 프런트 갈등`, `${tn} 후런트 관련`, `${tn} 프런트`]);
+      /* 「사무국랑」이 나오지 않게 조사 마커를 쓴다 (fixJosa 가 과/와 를 받침에 맞춰 바꾼다) */
+      B.push(`감독이랑 ${ct2.k==="corp"?"이사회":"사무국"}과/와 완전히 틀어졌다고 함`+RT());
+      B.push(`영입요청 계속 반려됐다는 얘기가 있음`+RT());
+      B.push(`감독이 공개적으로 말 못하고있는거지 속으로는 터지기 직전이라는듯`+RT());
+      B.push(`이정도면 시즌끝나고 갈라서는 각 아님`+pick([" ?","?",""]));
+    } else {
+      ttl=pick([`${tn} 프런트 관련`, `${tn}`, `오늘도 ${tn}은 다이나믹 합니다`]);
+      B.push(`위에서 방향 정리중이라는 얘기가 있음`+RT());
+      B.push(`이번겨울에 크게 한번 움직인다는듯`+RT());
+    }
+    const _sc=pick(RUM_SRC); if(!_saga) B.push(_sc[0]);   // 📎 ㅊㅊ 한 줄 — 소설은 스스로 「뇌피셜」이라 적는다
+    /* 🔄 이름을 표식으로 — 여기서 굳히지 않아야 에디터에서 바꾼 이름이 옛 글에도 즉시 반영된다.
+       조사(이/가·은/는)도 표식 상태로 남겨 두고, 화면에 그릴 때 이름을 채운 뒤에 푼다.
+       그래야 「울산이」가 「대구가」로 바뀔 때 조사까지 따라간다. */
+    const REG=rumReg(t, other);
+    const TZ=(z)=>rumTokenize(z, REG);
+    return {ttl:TZ(ttl), body:B.map(TZ), tid:t.id, pid:P?P.id:null, kind:k,
+      src:(_saga?"none":_sc[1]), hit:_hit, saga:_saga,
+      pn:(P?`⟦p|${P.id}⟧`:""), tn:`⟦t|${t.id}⟧`, on:`⟦t|${other.id}⟧`};
+  }catch(e){ return null; }
+}
+/* ═══ 💬 댓글 — 글을 «읽고» 다는 댓글, 그리고 그 댓글에 «대답하는» 대댓글 ═══════
+   ⚠ 제보 — 「댓글이 게시글과 동떨어진 얘기가 많고, 대댓글도 서로 안 맞는다」. 맞다.
+      예전 구조는 ① 공용 문장 풀에서 뽑고 ② 대댓글도 별개 풀에서 뽑았다.
+      부상 글에 「재계약 안 할 확률」 소리가 달리고, "ㅊㅊ 어디임?" 밑에 "ㅇㅈ" 이 붙었다.
+   ─ 두 축으로 다시 짠다.
+       ① <b>글의 종류마다 댓글 풀이 따로다</b> — 이적설·부상·재계약·불화가 각각 다른 말을 한다.
+          문장에는 선수·구단 이름이 들어간다({p} {t} {o}).
+       ② <b>모든 댓글에 「입장(stance)」이 붙는다</b> — 의심·확신·걱정·분노·농담·정보·질문.
+          대댓글은 <b>부모의 입장을 보고</b> 고른다. 의심에는 출처를 대거나 같이 의심하고,
+          확신에는 동조하거나 찬물을 끼얹는다. 그 대댓글에도 입장이 있어 다음 대댓글이 이어진다.
+       ③ 입장이 부딪히면(확신↔의심, 분노↔진정) 그 자리에서 <b>싸움으로 번진다</b>.
+     그래서 댓글창이 「각자 혼잣말」이 아니라 「대화」가 된다.                        */
+const RUM_CM_KIND={
+ bus:[["몇시쯤 봤음 ?","ask"],["사진은 없음 ?","ask"],["버스에 없었다고 결장 확정은 아니지","doubt"],
+   ["따로 이동하는 경우도 종종 있음","cool"],["ㅅㅂ {p} 빠지면 오늘 어렵다","worry"],
+   ["{p} 어제 훈련도 안했다던데","info"],["이거 맞으면 진짜 대박","believe"],
+   ["버스 목격담은 반은 맞더라","cool"],["이분 눈 좋으시네 ㅋㅋ","joke"],
+   ["{t} 오늘 로테 돌린다는 얘기 있었음","info"],["라인업 뜨면 알겠지","cool"],
+   ["또 버스 얘기 ㅋㅋ 이 게시판 특징","joke"],["{p} 없으면 {o}전 힘든데","worry"],
+   ["몇명 탔는지 세는 사람 실화냐 ㅋㅋㅋ","joke"],["아프면 미리 좀 알려주지","angry"],
+   ["작년에도 버스글 하나 맞췄었음","believe"]],
+ market:[["ㅊㅊ 어디임","ask"],["지방구단 지방구단 하지말고 이름을 쓰라고 ㅋㅋ","mock"],
+   ["팀 이름 안 쓰는거 보니 뻔하다","doubt"],["이런식이면 29팀 다 해당됨","mock"],
+   ["또 기업구단이 빨아가네 ㅅㅂ","angry"],["돈으로 사는거 이제 지겹다","angry"],
+   ["{p} 이 정도면 갈만하지","cool"],["보내줄 때 됐다 잘 가라","cool"],
+   ["이적료나 제대로 받아라 제발","cool"],["대체자 없이 보내면 진짜 답없음","worry"],
+   ["시민구단은 매번 이런식임 ㅋㅋ","angry"],["선수 커리어 생각하면 맞는 선택","cool"],
+   ["이거 뜬 지 3일째인데 아직 발표 없음","doubt"],["겨울마다 나오는 레퍼토리","doubt"],
+   ["오퍼 온거랑 가는거랑은 다름","cool"],["에이전트가 값 올리려고 흘린듯","info"],
+   ["{t} 팬인데 솔직히 잡을 명분이 없다","cool"],["연봉 두배면 나라도 감","joke"],
+   ["수도권 가면 관중은 확실히 늘지","info"],["이번 시장 왜이렇게 시끄럽냐","cool"],
+   ["메디컬까지 나왔으면 거의 확정 아님 ?","believe"],["발표 나기 전엔 아무것도 아님","doubt"],
+   ["우리팀 얘기 아니길 빌면서 들어옴","joke"],["결국 또 우리팀이었음 ㅅㅂ","angry"],
+   ["{o}행이면 벤치 각인데","worry"],["이 이적 되면 다음 시장 판 다 흔들림","info"]],
+ wild:[["아 그 사건 ㅋㅋㅋㅋㅋ 아직도 회자되네","joke"],["그때 생중계로 봤는데 진짜 미친줄","joke"],
+   ["이걸 후일담까지 파는거 ㅋㅋ","joke"],["솔직히 그때 통쾌하긴 했음","agree"],
+   ["아무리 그래도 선은 넘었지","cool"],["우리 감독 진짜 대단하다 ㅋㅋㅋ","joke"],
+   ["이런 감독 밑에서 선수들 어떻게 뛰냐","worry"],["레전드 짤 아직도 돌아다님","joke"],
+   ["그날 이후로 팬 떨어져나간거 맞음","worry"],["뒷얘기가 더 웃기네 ㅋㅋㅋ","joke"],
+   ["구단 이미지 생각은 좀 하자","angry"],["근데 성적만 내면 다 용서됨 ㅋㅋ","joke"],
+   ["이거 다큐로 만들어야함","joke"],["당사자들 심정이 어땠을까","cool"],
+   ["징계 끝나고도 계속 회자되는게 더 문제","cool"],["난 그날 이후로 팬됨 ㅋㅋ","joke"],
+   ["ㅋㅋㅋㅋㅋ 저걸 실제로 함","joke"],["후일담 더 없냐 더 풀어봐","ask"],
+   ["당사자 아니면 알수 없는 얘기 같긴 한데","believe"],["ㅊㅊ 없으면 그냥 창작 아님 ?","doubt"],
+   ["이런거 쓰면 구단에서 연락 안오냐","worry"],["연맹에서 이거 보면 또 시끄러워짐","worry"],
+   ["그때 현장에 있었는데 저것보다 더했음","believe"],["다음 사건 언제임 ㅋㅋ","joke"]],
+ saga:[["이건 속일 의도조차 없어 보이는게 ㅈㄴ 웃기네 ㅋㅋㅋ","joke"],
+   ["진짜 몇 살이 올리는건지 진심 궁금. 극단적으로 적거나 극단적으로 많을 것 같은데 ㅋㅋ","joke"],
+   ["잡담탭이었음 문학으로 인기글갔을텐데 ㅅㅂㅋㅋㅋㅋ","joke"],["어휴 ㅅㅂ ㅋㅋㅋ","joke"],
+   ["소설 쓰지 마라 진짜 ㅋㅋ","mock"],["대사까지 있는거 실화냐","joke"],
+   ["'단호' 에 따옴표 친거에서 터짐","joke"],["뇌피셜을 ㅊㅊ에 적는 패기 ㅋㅋㅋ","joke"],
+   ["이분 시나리오 작가 하셔야될듯","mock"],["K리그 최고의 명문 ㅋㅋㅋㅋㅋ","joke"],
+   ["글 쓰는데 몇시간 걸렸냐","mock"],["장문인데 내용이 하나도 없음","mock"],
+   ["이거 읽고 있는 내가 더 부끄럽다","joke"],["드라마 극본 공모전 넣어라","mock"],
+   ["근데 재밌어서 추천 눌렀다 ㅋㅋ","joke"],["아 ㅋㅋㅋ 아침부터 뭐하는거야 진짜","joke"],
+   ["관계자 대사가 왜케 정중해 ㅋㅋㅋ","joke"],["'아뇨,' 에서 쉼표 찍는 디테일 봐라","joke"],
+   ["끝까지 읽은 내가 문제다","joke"],["문체가 은근 좋아서 더 화남","joke"],
+   ["이걸 진지하게 쓴거면 좀 무섭다","mock"],["다음편 언제 나옴","joke"],
+   ["ㅋㅋㅋㅋㅋㅋ 아 배아파","joke"],["이런 글 볼때마다 이 게시판 못 떠남","joke"],
+   ["대사 있는 루머는 100% 창작임","doubt"],["훈련장 불 안 꺼졌대 ㅋㅋㅋㅋㅋ","joke"]],
+ move:[["{p} 진짜 가는거임 ?","ask"],["{o} 갈 급은 아닌데","doubt"],["ㅅㅂ {p} 가면 우리 뭐 남냐","angry"],
+   ["이적료나 제대로 받자","cool"],["본인이 원하면 잡을 방법 없음","cool"],["{p} 대체자는 있고 ?","ask"],
+   ["또 {o}야 ㅋㅋ 우리 선수만 데려가네","angry"],["에이전트가 흘린 거 같은데","info"],
+   ["{p} 계약 몇 년 남았지","ask"],["가면 잘 가라고 해줄 사람 ㅇㅇ","cool"],
+   ["작년에도 {o} 간다더니 그대로 있었음","doubt"],["{p} SNS 팔로우 해제했다던데","info"]],
+ renew:[["{p} 재계약 이건 무조건 잡아야지","believe"],["연봉 얼마 부르는데 ?","ask"],
+   ["{t} 프런트 또 늦게 움직이다 놓친다","angry"],["FA로 나가면 진짜 손해임","worry"],
+   ["나이 생각하면 장기계약은 좀","cool"],["{p} 본인은 남고싶어한다던데","info"],
+   ["작년 재계약 때도 이 난리였음 ㅋㅋ","joke"],["ㅊㅊ 없으면 안믿음","doubt"],
+   ["{p} 없으면 우리 중원 누가 봄","worry"]],
+ form:[["{p} 최근 경기 보면 확실히 이상함","believe"],["몸 상태 문제 아님 ?","ask"],
+   ["폼은 원래 오르내리는거임","cool"],["{p} 요즘 표정부터가 안좋더라","info"],
+   ["감독이 자꾸 자리 바꿔서 그런 듯","believe"],["훈련장 얘기는 좀 조심하자","cool"],
+   ["ㅅㅂ 돈값 좀 해라","angry"],["다음 경기 보고 판단","cool"]],
+ injury:[["{p} 심각한거임 ??","ask"],["ㅅㅂ 하필 지금","angry"],["{o}전에는 뛸수 있겠지 ? ;;;","worry"],
+   ["구단 발표는 항상 짧게 나옴","info"],["무리시키지마라 진짜","worry"],["대체자들 있잖아 ?.... 아닌가","ask"],
+   ["작년에도 2주라더니 두달 갔음","doubt"],["재활 잘하고 오면 됨","cool"]],
+ frnOut:[["{p} 방출이면 대체 용병은 ?","ask"],["돈값 못한건 맞지","believe"],
+   ["{t} 용병 보는 눈 진짜 없다","angry"],["적응 시간을 안주잖아 ㅋㅋ","cool"],
+   ["{p} 정도면 다른팀 가면 잘할듯","cool"],["ㅊㅊ 어디임 ?","doubt"],
+   ["시즌 중에 용병 갈면 그게 더 손해임","worry"]],
+ sack:[["이미 늦었다 진작 했어야","angry"],["후임이 더 문제인데","worry"],
+   ["감독 탓만 할 상황은 아님","cool"],["ㅊㅊ 없이 이런거 쓰면 안되지","doubt"],
+   ["프런트가 사줘야 감독도 하지","cool"],["다음이 누군데 ?","ask"],
+   ["또 소방수 데려오겠네 ㅋㅋ","joke"],["성적 보면 할 말은 없다","believe"]],
+ owner:[["ㅅㅂ 이거 진짜면 큰일인데","worry"],["예산 깎이는건 확정이라고 봄","believe"],
+   ["모기업 주가 보고 왔는데 ㄷㄷ","info"],["설마 매각까지 가겠냐","doubt"],
+   ["선수부터 팔릴텐데","worry"],["구단만 불쌍하지","cool"]],
+ stad:[["잔디 그거 진짜 심각함 사진봄","info"],["연맹이 뭘 하겠냐 ㅋㅋ","joke"],
+   ["선수들 다치면 누가 책임짐","angry"],["원정 갔다왔는데 진짜 별로였음","info"],
+   ["돈 없다는 소리만 10년째","angry"]],
+ board:[["또 무슨 소리를 하려고","doubt"],["겨울에 크게 움직인다는건 매년 나옴","joke"],
+   ["방향이라도 있으면 다행이지","cool"],["ㅊㅊ 있으면 좀 풀어봐","ask"]],
+ feudPP:[["둘이 사이 안좋은건 유명함","believe"],["라커룸 갈라지면 성적은 끝임","worry"],
+   ["둘다 프로면 그라운드에서 풀어라","cool"],["누가 먼저 시작했는데 ?","ask"],
+   ["ㅊㅊ 없으면 이건 그냥 소설","doubt"],["감독이 정리해야지 뭐하냐","angry"],
+   ["겨울에 한명은 나가겠네","believe"],["근데 최근 경기 보면 확실히 이상하긴 했음","info"]],
+ feudPM:[["{p} 겨울에 나가겠네","believe"],["감독 스타일이 원래 그럼","cool"],
+   ["{p} 편도 좀 들어주자 ㅋㅋ","joke"],["누구 잘못인지는 알아야지","ask"],
+   ["이런 얘기가 나오는거 자체가 문제임","worry"],["구단 부인은 원래 다 함","doubt"],
+   ["ㅅㅂ 성적도 안좋은데 이런것까지","angry"]],
+ feudMM:[["둘이 원래 사이 안좋음 ㅇㅇ","believe"],["기자회견 다시보기 해봐라 진짜 웃김","joke"],
+   ["다음 맞대결 벌써 기대된다 ㅋㅋ","joke"],["어른들이 왜 저러냐","cool"],
+   ["악수 안한건 확인된거임 ?","ask"],["이런건 선수들만 피해봄","worry"]],
+ feudFO:[["영입 요청 반려는 진짜 많이 들리더라","info"],["감독이 무슨 힘이 있냐","cool"],
+   ["시즌 끝나고 갈라서는 각","believe"],["후런트가 문제라니까","angry"],
+   ["ㅊㅊ 어디임 ? 이건 좀 크다","ask"],["돈 안쓰면서 성적은 바라고","angry"]]};
+/* 어느 글에나 붙는 게시판 소음 — 15% 정도만 섞는다 */
+/* 🧊 상식적인 반응 — 게시판이 늘 과열되어 있는 건 아니다. 판단을 유보하고 말리는 사람들.
+     어떤 종류의 글에도 붙을 수 있어서 종류별 풀과 별개로 둔다 */
+const RUM_CM_SANE=[
+  ["일단 공식발표 나오기 전엔 판단 보류","cool"],["이런 얘기는 매년 이맘때 나옴","cool"],
+  ["가능성은 있는데 확정처럼 쓰진 말자","cool"],["사실이면 구단이 먼저 정리하겠지","cool"],
+  ["선수 입장도 생각해줘야지","cool"],["루머는 루머로만 보자","cool"],
+  ["ㅊㅊ이 애매하긴 한데 아예 근거 없진 않아 보임","cool"],["기사 하나만 떠도 정리될 얘기","cool"],
+  ["이 게시판 특성상 반은 걸러 들어야 함","cool"],["감정적으로 갈 사안은 아닌 것 같은데","cool"],
+  ["팩트만 놓고 보면 아직 아무것도 없음","doubt"],["시즌 중이라 확정 짓기 어려운 시기임","info"],
+  ["결과로 보면 되는거지 뭘 이렇게까지","cool"],["{p} 커리어 생각하면 이해되는 부분도 있음","cool"],
+  ["{t} 상황상 아주 무리한 얘기는 아님","believe"],["양쪽 다 일리는 있음","cool"],
+  ["일단 다음 경기 보고 얘기하자","cool"],["과열되지 말고 좀 지켜보자","cool"],
+  ["여기서 싸운다고 바뀌는거 없음","cool"],["나쁜 소식만은 아닐 수도 있음","cool"],
+  ["구단 공지 뜨면 그때 반응해도 늦지 않음","cool"],["댓글이 본문보다 앞서가고 있음","cool"],
+  ["아니면 말고 식이라도 정보는 정보지","cool"],["차분하게 봅시다 다들","cool"]];
+const RUM_CM_NOISE=[["ㅊㅊ 없으면 그냥 소설임 ㅋㅋ","doubt"],["이사람 예전에 하나 맞춘적 있음 ㅇㅇ","believe"],
+  ["작년에도 똑같은 글 봤다","doubt"],["댓글에 벌써 확정론자 등장 ㅋㅋㅋ","joke"],
+  ["확정 뜨면 다시 오겠음","cool"],["{t} 망함","joke"],["그래서 언제 발표되는데 ?","ask"]];
+/* 🔁 입장별 «대답» — 부모 댓글의 입장을 보고 고른다. 각 대답에도 입장이 있어 다음이 이어진다 */
+const RUM_REPLY={
+ ask:[["나도 그게 궁금함","ask"],["위에 본문에 써있잖아","cool"],["그건 아무도 모름","cool"],
+   ["기사 뜨면 알겠지","cool"],["나도 들은건 없음","cool"],["그걸 알면 내가 기자하지 ㅋㅋ","joke"]],
+ doubt:[["ㅊㅊ 못 밝힌다고 썼잖아","cool"],["나도 반신반의","doubt"],["이번엔 좀 구체적이긴 해","believe"],
+   ["의심은 하는데 아예 없는 얘긴 아닐듯","cool"],["그럼 안믿으면 되지 왜 화냄","angry"],
+   ["작년 그 글도 결국 맞았음","believe"]],
+ believe:[["아직 아무것도 확정 아님","doubt"],["ㅇㅈ","agree"],["근거가 뭔데 ?","ask"],
+   ["확신하는 이유가 궁금하다","ask"],["ㄹㅇ 이거임","agree"],["김칫국 좀 그만","mock"]],
+ worry:[["미리 걱정해서 뭐하냐","cool"],["나도 그게 제일 무섭다","worry"],["아직 아무것도 안 정해졌음","cool"],
+   ["걱정한다고 바뀌면 매일 하겠다","joke"],["ㅇㅈ 진짜 답답함","worry"]],
+ angry:[["진정 좀 해라 ㅋㅋ","mock"],["화날만 하지","agree"],["여기서 화내봐야 소용없음","cool"],
+   ["나도 같은 심정","agree"],["말이 너무 세다","cool"]],
+ joke:[["ㅋㅋㅋㅋㅋㅋ","agree"],["웃을 일이 아닌데","cool"],["ㄹㅇㅋㅋ","agree"],["센스 ㅋㅋ","agree"]],
+ info:[["오 이건 처음 듣네","agree"],["그거 어디서 봄 ?","ask"],["ㅊㅊ 좀","ask"],
+   ["나도 비슷한 얘기 들었음","agree"],["그건 좀 다른 얘기임","doubt"]],
+ cool:[["ㅇㅈ 그게 맞다","agree"],["너무 차분한거 아님 ?","mock"],["맞는 말임","agree"],["ㅇㅇ 기다려보자","agree"]],
+ agree:[["ㄹㅇ","agree"],["ㅇㅇ","agree"],["ㅋㅋㅋ ㅇㅈ","agree"]],
+ mock:[["니가 뭘 아는데 ?","angry"],["ㅋㅋ 그래 잘났다","angry"],["말 이쁘게 하자","cool"]]};
+/* 🚌 목격담의 «결말» — 라인업이 뜨면 판가름난다. 신뢰도는 글마다 다르다 */
+const RUM_CM_BUS_HIT=[["ㄹㅇ 진짜 빠졌네 이분 인정","believe"],["라인업 떴는데 진짜 없다","info"],
+  ["와 이건 맞췄네 ㅊㅊ 인정","believe"],["이분 다음에도 버스 좀 봐주세요 ㅋㅋ","joke"],
+  ["버스맨 이분 감사합니다","joke"],["선발 명단 나왔음 {p} 없음","info"]];
+const RUM_CM_BUS_MISS=[["선발 나왔는데요 ㅋㅋㅋ","mock"],["방금 라인업 떴는데 그대로 선발임","info"],
+  ["버스 잘못 본거 아님 ?","doubt"],["ㅋㅋㅋㅋ 또 틀렸네","mock"],["아 포 아깝다 진짜","mock"],
+  ["다음부터는 좀 확인하고 쓰셈","angry"],["{p} 풀타임 뛰는중 ㅋㅋ","mock"]];
+/* 💸 이적시장 루머의 «결말» — 발표가 나거나, 조용히 묻힌다 */
+const RUM_CM_MK_HIT=[["공홈 떴다 ㅋㅋ 진짜였네","info"],["오늘 발표남 ㅊㅊ 인정","believe"],
+  ["이사람 이번엔 맞췄다","believe"],["메디컬 통과했다고 기사 떴음","info"],
+  ["와 진짜 가네 ㅅㅂ","angry"],["떠난다 진짜로","worry"]];
+const RUM_CM_MK_MISS=[["시장 닫혔는데요 ㅋㅋ","mock"],["잔류 확정 기사 떴다","info"],
+  ["또 아니었네 ㅋㅋㅋ","mock"],["매년 간다간다 하고 남아있음","doubt"],
+  ["이새끼 ㅊㅊ 좀 바꿔라","mock"],["재계약 도장 찍었다는데 ?","info"]];
+/* ⚔️ 입장이 부딪히면 싸움이 된다 — 어느 조합에서 불이 붙는가 */
+const RUM_CLASH={"believe|doubt":1,"doubt|believe":1,"angry|mock":1,"mock|angry":1,
+  "believe|mock":1,"angry|cool":1,"worry|mock":1};
+const RUM_FIGHT=[
+  ["그래서 니가 아는게 뭔데 ?","적어도 너보단 안다","ㅋㅋ 그래 잘났다","됐고 결과로 보자"],
+  ["팬이면 좀 응원을 해라","응원이랑 비판은 다른거다","그게 비판이냐 그냥 욕이지","말 통하는 사람이랑 얘기하고싶다"],
+  ["또 니냐 ㅋㅋ","또 나다 왜","닉값하네 진짜","서로 시간아끼자"],
+  ["여기 우리팀 팬 맞음 ?","맞으니까 화내는거다","화낼데가 없어서 여기서 그러냐","..."],
+  ["ㅊㅊ 없으면 닥치는게 맞다","ㅊㅊ 달면 믿을거냐","믿을지는 보고 정한다","그럼 기다려라"],
+  ["님 저번 글도 틀렸잖아요","기억력 좋으시네요","틀린걸 틀렸다는데 뭐가 문제냐","네 다음 훈수"]];
+/* 🤬 작정하고 붙는 개싸움 — 위의 «투닥»과 달리 이건 서로 물어뜯는다.
+     길고, 욕이 섞이고, 비추천을 잔뜩 먹고, 끝에는 신고·차단 얘기가 나온다.
+     ⚠ 두 사람 사이의 핑퐁이므로 짝수/홀수 화자가 그대로 유지되어야 한다 */
+const RUM_FLAME=[
+  ["ㅋㅋ 진짜 개소리 오지네","ㅅㅂ 니가 뭔데 판단하냐","판단이 아니라 팩트인데 ㅄ아",
+   "ㅄ은 니 얼굴이고","어휴 수준 ㅉㅉ 대화가 안된다","먼저 시비 건건 니다 븅신아"],
+  ["이 새끼 또 왔네 ㅋㅋ","새끼 ? 야 너 신고했다","신고 ㅋㅋ 무서워 죽겠네 ㅋㅋㅋ",
+   "ㅅㅂ 진짜 어이가 없어서","어이 없으면 나가면 되잖아 ㅋㅋ","니가 나가라 좀 제발"],
+  ["글 좀 읽고 댓글 달아라 ㅄ아","읽었으니까 다는거지 ㅁㅊ놈아","읽고 저 소리면 더 문제 아니냐 ㅋㅋ",
+   "아 ㅅㅂ 진짜 말 섞기 싫다","먼저 싸지른건 너고","됐고 블라함 ㅅㄱ"],
+  ["팬질 좀 곱게 해라 진짜 ㅉㅉ","곱게 ? ㅅㅂ 이 팀 보고 곱게가 되냐","그럴거면 접어 그냥 ㅋㅋ",
+   "니가 뭔데 접으라 마라야 ㅄ아","어휴 또 시작이네 ㅋㅋㅋ","시작은 니가 했지 븅신아"],
+  ["ㅋㅋㅋ 이새끼 또 정신승리하네","정신승리는 ㅅㅂ 니가 하고 있고","거울 좀 봐라 진심으로",
+   "거울 얘기 나오는거 보니 밑천 떨어졌네 ㅋㅋ","아 진짜 ㅁㅊ 답답해서 블라한다","블라해라 ㅋㅋ 아쉬울거 없음"],
+  ["ㅅㅂ 이런 애들 때문에 팬들이 욕먹는거임","팬 대표 났네 ㅋㅋㅋ","대표는 무슨 상식 얘기하는거지 ㅄ아",
+   "상식 ㅋㅋ 니 댓글이 제일 비상식적임","어휴 됐다 니랑 말 섞은 내가 ㅄ 블라 ㅅㄱ","드디어 맞는 말 하네 ㅋㅋㅋ"],
+  ["ㅁㅊ 이걸 믿는 애가 있네","안 믿으면 조용히 지나가면 되잖아","조용히 넘어가기엔 너무 ㅄ같아서 ㅋㅋ",
+   "ㅅㅂ 말하는 뽄새 봐라","뽄새 타령할 시간에 축구나 봐라","블라 박는다 ㅅㄱ"],
+  ["여기 또 그 새끼네 ㅋㅋ 닉 외웠다","외우든 말든 ㅄ아","ㅋㅋㅋ 발작하는거 봐",
+   "발작은 ㅅㅂ 니가 하고있는데","어휴 노답 ㅉㅉ 블라 ㅅㄱ","블라 좋아하시네 ㅋㅋ 잘가라"]];
+/* 개싸움 구경꾼 — 말리는 게 아니라 즐긴다 */
+const RUM_FLAME_BY=["ㅋㅋㅋㅋ 팝콘각","둘 다 정지 좀","신고 넣었다 둘 다","관리자 어디감",
+  "루머글에서 왜 개싸움이냐","이거 캡쳐해야지","둘이 사귀냐 ㅋㅋ","아침부터 뭐하는거임 진짜",
+  "이 스크롤 뭔데 ㅋㅋㅋ","둘 다 블라함 ㅅㄱ","둘 다 블라 박았다","블라 목록 늘어나네 ㅋㅋ"];
+function rumMkC(txt, up, dn){
+  return {u:pick(FMK_NICK), rk:fmkRankRoll(0), t:txt,
+          up:(up!=null?up:R(9)), dn:(dn!=null?dn:R(4)), re:[]};
+}
+function rumComments(r){
+  /* 🏷️ 탭 잘못 단 글 — 「ㅌ」이 쫘르륵 달린다. 대화가 아니라 «집단 지적»이라 결이 다르다 */
+  if(r && r.off){
+    const outO=[], seenO=new Set();
+    const nO=8+R(8);                                    // 많이 달린다
+    const o2=(no)=>{ for(let z=0;z<12;z++){ const v=pick(FMK_NICK); if(v!==no) return v; } return pick(FMK_NICK); };
+    for(let i=0;i<nO;i++){
+      let c=null;
+      for(const x of sampleN(RUM_CM_TAB, RUM_CM_TAB.length)){ if(!seenO.has(x)){ seenO.add(x); c=x; break; } }
+      if(!c) c=pick(["ㅌ","ㅌㅌ","탭"]);                 // 바닥나면 짧은 것으로 계속 채운다
+      const C=rumMkC(c, (i<3?6+R(40):R(14)), R(3));
+      /* 글쓴이가 가끔 답한다 — 사과하거나 버틴다 */
+      if(i<3 && Math.random()<0.45){
+        const e=pick(RUM_CM_TAB_RE);
+        C.re.push({u:(e[1]==="op"?(r.u||"글쓴이"):o2(C.u)), rk:fmkRankRoll(0), to:C.u,
+                   t:e[0], up:R(20), dn:R(6)});
+      }
+      outO.push(C);
+    }
+    return outO;
+  }
+  /* 🤡 상주 인물의 글 — 댓글이 통째로 다르다 */
+  if(r && r.troll){
+    const src=(r.troll==="nr")?RUM_CM_NR:RUM_CM_BT;
+    const outT=[], seenT=new Set();
+    const nT=4+R(4);
+    const o2=(no)=>{ for(let z=0;z<12;z++){ const v=pick(FMK_NICK); if(v!==no) return v; } return pick(FMK_NICK); };
+    for(let i=0;i<nT;i++){
+      let c=null;
+      for(const x of sampleN(src, src.length)){ if(!seenT.has(x[0])){ seenT.add(x[0]); c=x; break; } }
+      if(!c) break;
+      const C=rumMkC(c[0], c[1]+R(30), R(4));
+      if(Math.random()<0.40)
+        C.re.push({u:o2(C.u), rk:fmkRankRoll(0), to:C.u,
+          t:pick(["ㄹㅇㅋㅋ","ㅇㅈ","이게 맞다","이분 말이 맞음","ㅋㅋㅋㅋㅋㅋ","팩트임"]), up:R(18), dn:R(3)});
+      outT.push(C);
+    }
+    return outT;
+  }
+  const out=[];
+  const V={p:(r&&r.pn)||"그 선수", t:(r&&r.tn)||"우리", o:(r&&r.on)||"상대"};
+  const F=(a)=>String(a).replace(/\{p\}/g,V.p).replace(/\{t\}/g,V.t).replace(/\{o\}/g,V.o);
+  const base=(RUM_CM_KIND[r&&r.kind]||RUM_CM_KIND.board);
+  const n=3+R(6);
+  const seen=new Set();
+  const o2=(no)=>{ for(let z=0;z<12;z++){ const v=pick(FMK_NICK); if(v!==no) return v; } return pick(FMK_NICK); };
+  /* 📎 ㅊㅊ은 반드시 한 번은 씹힌다 — 실제 게시판에서 제일 먼저 달리는 댓글이 이거다 */
+  const sp0=RUM_CM_SRC[(r&&r.src)||""]||null;
+  const srcAt=(sp0 && Math.random()<0.66) ? R(Math.min(n,3)) : -1;
+  for(let i=0;i<n;i++){
+    /* 지정된 자리엔 ㅊㅊ 저격, 나머지는 85% 주제 풀 · 15% 게시판 소음 */
+    /* 지정된 자리엔 ㅊㅊ 저격 · 나머지는 주제 62% · 상식적인 반응 23% · 게시판 소음 15% */
+    const _rr=Math.random();
+    const src=(i===srcAt&&sp0)?sp0 : (_rr<0.62?base : _rr<0.85?RUM_CM_SANE : RUM_CM_NOISE);
+    let e=null;
+    for(const x of sampleN(src, src.length)){ if(!seen.has(x[0])){ seen.add(x[0]); e=x; break; } }
+    if(!e){ for(const x of sampleN(base, base.length)){ if(!seen.has(x[0])){ seen.add(x[0]); e=x; break; } } }
+    if(!e) break;
+    const C=rumMkC(F(e[0]), i===0?8+R(30):R(8), i===0?R(3):R(5));
+    C.st=e[1];
+    /* ── 대댓글 — 부모의 «입장»에 대답한다 ── */
+    if(Math.random()<0.52){
+      let curSt=C.st, curU=C.u;
+      const speakers=[C.u];
+      const depth=1+ (Math.random()<0.45?1:0) + (Math.random()<0.20?1:0);
+      for(let d=0; d<depth; d++){
+        const rp=RUM_REPLY[curSt]||RUM_REPLY.cool;
+        const e2=pick(rp);
+        const who=o2(curU);
+        /* 입장이 부딪혔다 — 여기서 싸움으로 번진다 */
+        if(RUM_CLASH[curSt+"|"+e2[1]] && Math.random()<0.55){
+          /* 35% 는 그냥 투닥이 아니라 «작정한 개싸움»으로 번진다 */
+          const _flame=Math.random()<0.35;
+          const FG=_flame?pick(RUM_FLAME):pick(RUM_FIGHT);
+          /* ⚔️ 싸움의 당사자는 «지금 말을 주고받던 두 사람»이다.
+             예전엔 b 를 제3의 유저로 새로 뽑아서, 시비를 걸린 curU 는 가만히 있고
+             엉뚱한 사람이 대신 싸웠다 — 누가 누구랑 싸우는지 읽히지 않았다 */
+          const a=who, b=curU;
+          for(let m2=0;m2<FG.length;m2++){
+            const sp=(m2%2===0)?a:b, to=(m2%2===0)?b:a;
+            /* 개싸움 줄은 추천이 거의 없고 비추가 쌓인다 — 게시판이 싫어한다 */
+            C.re.push({u:sp, rk:fmkRankRoll(0), to, t:FG[m2],
+              up:_flame?R(6):R(14), dn:_flame?(8+R(60)):R(7), fl:_flame?1:0});
+          }
+          /* 구경꾼은 «마지막으로 떠든 사람»을 콕 집어 말린다 — 이것도 대상이 분명해야 한다 */
+          if(Math.random()<(_flame?0.75:0.35)){
+            const last=(FG.length%2===0)?b:a;
+            C.re.push({u:o2(last), rk:fmkRankRoll(0), to:last,
+              t:pick(_flame?RUM_FLAME_BY
+                           :["둘이 쪽지로 하셈","싸우지들 마라 ㅋㅋ","이게 뭔 난리냐","루머글에서 왜 싸움",
+                             "구경 재밌네 계속해라","서로 블라하면 될듯"]), up:5+R(30), dn:R(4)});
+          }
+          break;
+        }
+        C.re.push({u:who, rk:fmkRankRoll(0), to:curU, t:F(e2[0]), up:R(12), dn:R(4)});
+        curSt=e2[1]; curU=who; speakers.push(who);
+      }
+    }
+    out.push(C);
+  }
+  /* 🚌 목격담은 결말이 붙는다 — 맞으면 인정, 틀리면 조롱 */
+  if(r && (r.kind==="bus"||r.kind==="market") && out.length && Math.random()<(r.kind==="bus"?0.8:0.45)){
+    const e3=pick(r.kind==="bus" ? (r.hit?RUM_CM_BUS_HIT:RUM_CM_BUS_MISS)
+                                 : (r.hit?RUM_CM_MK_HIT:RUM_CM_MK_MISS));
+    const C3=rumMkC(F(e3[0]), r.hit?(10+R(60)):(2+R(20)), R(4));
+    C3.st=e3[1]; out.push(C3);
+  }
+  return out;
+}
+/* 🎭 후일담 — 예능 모드의 「그 사건」은 며칠 지나 게시판에서 다시 살아난다.
+     당사자가 아니라 «주변 사람»의 입을 통해 나온다. 그게 후일담의 문법이다. */
+const RUM_WILD_AFTER={
+ press:[`맞은 기자분 어깨에 스친 정도라고 함 병원 간건 뻥`,
+   `그날 기자실에서 그 얘기만 두시간 했다는듯`,
+   `카메라감독이 그 장면 따로 저장해놨다고 함`,
+   `그 기자분 다음날에도 취재 왔다고 ㅋㅋ 프로다`,
+   `기자단 회식에서 물병 건배사 나왔다는 얘기 있음`],
+ fans:[`그날 앞줄에 있던 사람이 그 물병 아직도 갖고있다고 함`,
+   `그 뒤로 간담회 앞줄은 스태프가 앉는다고 함`,
+   `당일 현장에 있던 사람 말로는 정적이 30초는 갔다고`,
+   `물병 맞은 자리 사진 찍어서 액자 해놨다는 사람도 있음`,
+   `구단에서 그날 참석자들한테 따로 연락 돌렸다고 함`],
+ locker:[`상대 라커룸 청소하시는 분이 제일 놀라셨다고 함`,
+   `그 팀 라커룸 문에 잠금장치 새로 달았다는 얘기`,
+   `양쪽 코칭스태프가 그날 이후로 인사도 안한다고 함`,
+   `말리던 스태프 한명이 안경 깨졌다고 함 ㅋㅋ`,
+   `상대 선수들은 아직도 그날 얘기하면서 웃는다고 함`,
+   `그날 복도 CCTV 원본 달라는 요청이 아직도 온다고 함`],
+ ref:[`그 심판 그 뒤로 우리 경기 안잡는다는 얘기 있음`,
+   `심판협회에서 그날 따로 회의 열었다고 함`,
+   `대기실에 있던 부심이 제일 당황했다고 함`,
+   `그 뒤로 우리팀 경기에 대기실 앞에 사람 세워둔다고 함`,
+   `그 심판분이 사석에서 「그럴 수도 있죠」 했다고 함 대인배`],
+ player:[`맞은 선수가 그날 밤에 짐 쌌다는데 다음날 훈련 나왔다고 함`,
+   `그 뒤로 라커룸에서 아무도 농담 안한다고 함`,
+   `선수들끼리 그날 이후로 감독 눈 안마주친다는 얘기`,
+   `주장이 따로 면담 신청했었다고 함`,
+   `그 선수 부모님이 구단에 전화하셨다는 얘기가 있음`],
+ gamble:[`그 사건 이후로 구단에서 폰 걷는다는 얘기까지 나왔다고 함`,
+   `프런트가 제일 먼저 안게 아니라 제일 나중에 알았다고 함`,
+   `그날 이후로 스폰서 미팅이 두번 밀렸다고 함`,
+   `구단 내부에서는 이미 다 알고 있었다는 얘기도 있음`],
+ etc:[`그날 이후로 구단 분위기가 확 달라졌다고 함`,
+   `그 일로 프런트에서 사람 한명 옷 벗었다는 얘기`,
+   `아직도 그 얘기 나오면 다들 웃는다고 함`,
+   `그날 현장에 있던 사람 몇명은 아직도 그 얘기 안한다고 함`]};
+const RUM_WILD_TAIL=[`근데 이거 어디까지가 진짜인지 모르겠음`,`아는 사람만 아는 얘기라 조심스럽긴 한데`,
+  `이거 쓴다고 잡혀가는건 아니겠지`,`더 있는데 이건 못쓰겠다`,`아직 안 알려진 게 하나 더 있음`];
+function rumWild(){
+  try{
+    const L=(G.wildLog||[]).filter(x=>x && (((G.day||0)-(x.d||0)+330)%330)<70);
+    if(!L.length) return null;
+    const e=pick(L);
+    const tn=e.tn||"우리팀";
+    const N=(RUM_WILD_AFTER[e.k]||RUM_WILD_AFTER.etc);
+    const ttl=pick([`[후일담] ${tn} 그 사건 뒷얘기 들었음`, `${tn} 그때 그 사건 후일담`,
+      `${tn} 감독 사건 후일담 하나 풀어봄`, `그 사건 후일담 (${tn})`,
+      `${tn} 그날 있었던 일 하나 더 있음`, `[후일담] 그때 그거 실제로는 이랬다고 함`]);
+    const B=[];
+    /* 장부에 적힌 문구는 회계용이다 — 「선수 체벌 — 구단 자체 징계금」에서 사건만 뽑아 쓴다 */
+    const ev=String(e.w||"").split("—")[0].split("(")[0]
+      .replace(/징계금|제재금|합의금|파문|중징계/g,"").replace(/\s+/g," ").trim() || "그 사건";
+    B.push(pick([`${ev} 그거 다들 기억하지`, `${ev} 그때 그 사건 말인데`,
+      `${ev} 뒷얘기 하나 들었음`, `${ev} 그거 아직도 뒷말 나온다`])+RT());
+    const two=sampleN(N, Math.min(2+R(2), N.length));
+    for(const x of two) B.push(x+RT());
+    if(Math.random()<0.5) B.push(`징계금만 ${(e.a||0).toFixed(1)}억 나갔다고 함`+RT());
+    B.push(pick(RUM_WILD_TAIL));
+    const _t=(G.teams&&e.tid)?G.teams[e.tid]:null;
+    const TK=e.tid?`⟦t|${e.tid}⟧`:tn;
+    const TZ=(z)=>String(z).split(tn).join(TK);   // 🔄 구단명은 표식으로 — 개명해도 따라온다
+    return {ttl:TZ(ttl), body:B.map(TZ), tid:e.tid||null, pid:null, kind:"wild",
+            wild:1, src:"nbr", hit:0, saga:0, pn:"", tn:TK, on:TK};
+  }catch(e){ return null; }
+}
+/* 하루에 한두 건 — 게시판이 살아 있게 */
+function rumTick(){
+  try{
+    if(Math.random()>0.55) return;
+    const n=1+(Math.random()<0.35?1:0);
+    for(let i=0;i<n;i++){
+      /* 🤡 상주 인물 — 벤투 8% · 노루막이 5%. 게시판에 가끔 등장해야 「또 얘야」가 된다 */
+      const _tr=Math.random();
+      const m = _tr<0.08 ? (rumTrollBenthu()||rumMake())
+              : _tr<0.13 ? (rumTrollNoru()||rumMake())
+              : _tr<0.20 ? (rumOffTopic()||rumMake())      // 🏷️ 탭 잘못 단 글 7%
+              : _tr<0.30 ? (rumWild()||rumMake())          // 🎭 후일담 — 사건이 있었을 때만
+              : rumMake();
+      if(!m) continue;
+      const L=rumList();
+      const id=(G.rumSeq=(G.rumSeq||0)+1);
+      /* 상주 인물의 글은 추천이 거의 없고 비추천이 압도적이다 */
+      const _up = m.troll ? R(4) : m.off ? R(6) : m.saga ? (12+R(90)) : m.wild ? (40+R(260)) : 5+R(110);
+      const _dn = m.troll ? (140+R(900)) : m.off ? (60+R(240))
+                : m.saga ? (30+R(180)) : R(24);   // 🏷️ 탭 글·📖 소설도 비추를 맞는다
+      const _row={id, fid:"rum"+id, ttl:m.ttl, body:m.body, tid:m.tid, pid:m.pid, kind:m.kind,
+        u:(m.troll?RUM_TROLL_NICK[m.troll]:pick(FMK_NICK)), rk:(m.troll?0:fmkRankRoll(0)),
+        troll:(m.troll||0), off:(m.off||0), src:(m.src||""), hit:(m.hit||0), saga:(m.saga||0), wild:(m.wild||0), pn:m.pn, tn:m.tn, on:m.on, d:G.day||0, s:G.season,
+        e:"🗞️", tone:-1, sd:"o",          // 고소 화면이 읽는 공통 필드 (아바타·논조·진영)
+        v:900+R(24000), up:_up, dn:_dn, conf:(m.troll?0:(Math.random()<RUM_CONF_P?1:0)),
+        cm:rumComments(m), txt:m.ttl+" — "+m.body.join(" ")};   // txt: 고소 판정이 읽는 본문
+      L.unshift(_row);
+      G.rum=L.slice(0, RUM_MAX);
+    }
+  }catch(e){}
+}
 let socSide="o";   // 소셜 탭에서 보고 있는 진영: o=우리 구단 팬 · r=타구단 팬
 function setSocSide(k){ socSide=k; show("media"); }
+/* 📋 루머 게시판 — 목록 · 글 보기 */
+let RUM_OPEN=null;
+function rumOpen(id){
+  RUM_OPEN=id;
+  try{ const r=rumById(id); if(r){ r.read=1; r.v=(r.v||0)+1+R(40); } }catch(e){}
+  show("media");
+}
+function rumClose(){ RUM_OPEN=null; show("media"); }
+/* 🍪 포텐 / 방출 — 게시글 추천·비추천. 한 글에 한 번만. */
+/* 🍪 포텐/방출 — ⚠ 제보 「내가 눌러도 숫자가 안 바뀐다」.
+     ① 가운데 숫자가 «추천»만 보여줘서 방출을 눌러도 화면에 변화가 없었다 → 양쪽을 다 띄운다.
+     ② 화면 전체를 다시 그리면(show) 스크롤이 글 맨 위로 튄다 → 그 자리에서 숫자만 고친다.
+     ③ 표를 저장하지 않아 새로고침하면 되돌아갔다 → 눌렀으면 저장한다. */
+function rumVote(id, dir){
+  const r=rumById(id); if(!r) return;
+  if(r._v){ try{ flash(r._v>0?"이미 포텐을 눌렀습니다.":"이미 방출을 눌렀습니다.","warn"); }catch(e){} return; }
+  r._v=dir>0?1:-1;
+  if(dir>0){ r.up=(r.up||0)+1; try{ flash("🍪 포텐을 눌렀습니다.","good"); }catch(e){} }
+  else     { r.dn=(r.dn||0)+1; try{ flash("🍪 방출을 눌렀습니다.","warn"); }catch(e){} }
+  let done=false;
+  try{
+    const w=document.querySelector(".rumPotenWrap");
+    if(w){
+      const nu=w.querySelector(".pnum.up"), nd=w.querySelector(".pnum.dn");
+      if(nu) nu.textContent=(r.up||0).toLocaleString();
+      if(nd) nd.textContent=(r.dn||0).toLocaleString();
+      const bu=w.querySelector(".pbtn.up"), bd=w.querySelector(".pbtn.dn");
+      if(bu) bu.classList.toggle("done", r._v===1);
+      if(bd) bd.classList.toggle("done", r._v===-1);
+      const hot=(r._v===1)?nu:nd;
+      if(hot){ hot.classList.remove("pop"); void hot.offsetWidth; hot.classList.add("pop"); }
+      done=true;
+    }
+  }catch(e){}
+  if(!done) show("media");
+  try{ saveGame(); }catch(e){}
+}
+/* 💬 댓글·대댓글 추천·비추천 — ri 가 null 이면 원댓글, 숫자면 그 대댓글 */
+function rumCVote(id, ci, ri, dir){
+  const r=rumById(id); if(!r) return;
+  const c=(r.cm||[])[ci]; if(!c) return;
+  const o=(ri==null)?c:((c.re||[])[ri]); if(!o) return;
+  if(o._v){ try{ flash("이미 눌렀습니다.","warn"); }catch(e){} return; }
+  o._v=dir>0?1:-1;
+  if(dir>0) o.up=(o.up||0)+1; else o.dn=(o.dn||0)+1;
+  /* 댓글도 같은 이유로 그 자리에서 고친다 — 긴 댓글창에서 스크롤이 튀면 어디를 눌렀는지 잃는다 */
+  let done=false;
+  try{
+    const key=`${id}_${ci}_${ri==null?"n":ri}`;
+    const bu=document.getElementById("cvu"+key), bd=document.getElementById("cvd"+key);
+    if(bu||bd){
+      if(bu){ const sp=bu.querySelector("span"); if(sp) sp.textContent=(o.up||0); bu.classList.toggle("on", o._v===1); }
+      if(bd){ const sp=bd.querySelector("span"); if(sp) sp.textContent=(o.dn||0); bd.classList.toggle("on", o._v===-1); }
+      const hot=(o._v===1)?bu:bd;
+      if(hot){ hot.classList.remove("pop"); void hot.offsetWidth; hot.classList.add("pop"); }
+      done=true;
+    }
+  }catch(e){}
+  if(!done) show("media");
+  try{ saveGame(); }catch(e){}
+}
+function rumViewCnt(v){ return v>=10000 ? Math.floor(v/10000)+"만" : (v||0).toLocaleString(); }
+function rumRankImg(rk){
+  const i=clamp(rk|0,0,FMK_RANK.length-1);
+  return `<img class="fmkRk" src="${FMK_RANK[i]}" alt="${FMK_RANK_N[i]}" title="${FMK_RANK_N[i]}">`;
+}
+function rumListCard(){
+  const L=rumList();
+  if(!L.length) return `<div class="card"><h3>🗞️ FM코리아 · 루머 게시판</h3>
+    <p class="small">아직 올라온 글이 없습니다. 시즌이 굴러가면 하나둘 올라옵니다.</p></div>`;
+  return `<div class="card"><h3>🗞️ FM코리아 · 루머 게시판 <span class="small">— 믿거나 말거나 (수위 주의)</span></h3>
+  <div class="rumList">${L.map(r=>`
+    <div class="rumRow" onclick="rumOpen(${r.id})">
+      <span class="rumTag">루머</span>
+      <span class="rumTtl${r.read?" read":""}">${rumFill(r.ttl)}</span>
+      <span class="rumCm">${(r.cm||[]).length}</span>
+      ${r.conf?`<span class="rumConf">정ㅋ벅ㅋ</span>`:""}
+      ${r.troll?`<span class="rumTrollTag">주의</span>`:""}
+      <span class="rumGap"></span>
+      <span class="rumU">${rumRankImg(r.rk)}${r.u}</span>
+      <span class="rumV">${rumViewCnt(r.v)}</span>
+      <span class="rumUp${((r.up||0)-(r.dn||0))<0?" neg":""}">${(r.up||0)-(r.dn||0)}</span>
+    </div>`).join("")}</div></div>`;
+}
+function rumPostCard(){
+  const r=rumById(RUM_OPEN);
+  if(!r) return rumListCard();
+  const cm=(r.cm||[]);
+  const mine=(function(){ try{ const ut=userTeam(); return !!(ut && !G.jobless && r.tid===ut.id); }catch(e){ return false; } })();
+  /* ⚖️ 고소는 «우리 구단 관련 글»만 — 남의 구단 이야기를 우리 법무팀이 들고 갈 수는 없다 (제보) */
+  const nickHtml=(u, sueable)=> sueable
+    ? `<span class="sueName" title="닉네임을 눌러 이 글을 고소할 수 있습니다" onclick="openSue('rum','${r.fid}')">${u}</span>`
+    : `<span class="rumNick" title="우리 구단과 관련된 글만 고소할 수 있습니다">${u}</span>`;
+  const vbtn=(on,dir,n,fn,key)=>`<button id="cv${dir>0?"u":"d"}${key}" class="rumVb${on===(dir>0?1:-1)?" on":""}" onclick="${fn}">${dir>0?"👍":"👎"}<span>${n||0}</span></button>`;
+  const cmHtml=(c,i)=>`
+    <div class="rumCm1${i===0?" best":""}">
+      <div class="rumCmTop">${i===0?`<span class="rumBest">BEST</span>`:""}${rumRankImg(c.rk)}
+        <b>${nickHtml(c.u, mine)}</b>
+        <span class="small">${1+R(5)}시간 전</span>
+        <span class="rumCmVote">
+          ${vbtn(c._v,+1,c.up,`rumCVote(${r.id},${i},null,1)`,`${r.id}_${i}_n`)}
+          ${vbtn(c._v,-1,c.dn,`rumCVote(${r.id},${i},null,-1)`,`${r.id}_${i}_n`)}
+        </span>
+      </div>
+      <div class="rumCmTxt">${rumFill(c.t)}</div>
+      ${(c.re||[]).map((q,j)=>`
+        <div class="rumRe">
+          <span class="rumReArrow">↳</span>
+          <div style="flex:1;min-width:0">
+            <div class="rumCmTop">${rumRankImg(q.rk)}<b>${nickHtml(q.u, mine)}</b>
+              <span class="small">${1+R(5)}시간 전</span>
+              <span class="rumCmVote">
+                ${vbtn(q._v,+1,q.up,`rumCVote(${r.id},${i},${j},1)`,`${r.id}_${i}_${j}`)}
+                ${vbtn(q._v,-1,q.dn,`rumCVote(${r.id},${i},${j},-1)`,`${r.id}_${i}_${j}`)}
+              </span>
+            </div>
+            <div class="rumCmTxt"><span class="rumTo">${q.to}</span> ${rumFill(q.t)}</div>
+          </div>
+        </div>`).join("")}
+    </div>`;
+  return `<div class="card">
+    <div class="rumHead">
+      <h3 style="margin:0">${rumFill(r.ttl)}</h3>
+      <span class="small">${dateLabel(r.d)}${r.s!=null&&r.s!==G.season?` · ${r.s}시즌`:""}</span>
+    </div>
+    <div class="rumMeta">
+      ${rumRankImg(r.rk)}${nickHtml(r.u, mine)}
+      <span>조회 수 <b>${(r.v||0).toLocaleString()}</b></span>
+      <span>추천 수 <b style="color:#f0883e">${r.up}</b></span>
+      <span>댓글 <b>${cm.length}</b></span>
+    </div>
+    ${r.troll?`<div class="msg warn" style="margin:10px 0 0">🤡 <b>게시판 상주 인물</b>의 글입니다 —
+      이 사람 글은 <b>맞은 적이 거의 없습니다.</b> 비추천 ${(r.dn||0).toLocaleString()}개.</div>`:""}
+    <div class="rumBody">${r.body.map(l=>l===""?`<div style="height:10px"></div>`:`<p>${rumFill(l)}</p>`).join("")}</div>
+    <div class="rumPotenWrap">
+      <div class="rumPotenTag">[포텐 허용된 글]</div>
+      <div class="rumPoten">
+        <button class="pbtn up${r._v===1?" done":""}" onclick="rumVote(${r.id},1)">🍪 포텐</button>
+        <span class="pnum up">${(r.up||0).toLocaleString()}</span>
+        <span class="pnum dn">${(r.dn||0).toLocaleString()}</span>
+        <button class="pbtn dn${r._v===-1?" done":""}" onclick="rumVote(${r.id},-1)">🍪 방출</button>
+      </div>
+    </div>
+    <div class="rumBtns"><button class="mini" onclick="rumClose()">목록으로</button></div>
+    ${mine?`<p class="small" style="margin:6px 2px 0;color:#a9b4c0">⚖️ 우리 구단 관련 글입니다 — <b>닉네임을 누르면</b> 고소할 수 있습니다.</p>`
+          :`<p class="small" style="margin:6px 2px 0;color:#8b949e">남의 구단 이야기라 우리 법무팀이 나설 수 없습니다.</p>`}
+    <div class="rumCmHead">댓글 ${cm.length}개</div>
+    ${cm.map(cmHtml).join("")}
+  </div>`;
+}
 function socialTabView(){
   const nOwn=socListOf("o").length+fmkListOf("o").length;
   const nRiv=socListOf("r").length+fmkListOf("r").length;
   const btn=(k,l,c)=>`<button class="mini socSideBtn ${socSide===k?"sel":""}" onclick="setSocSide('${k}')">${l} <b>${c}</b></button>`;
   if(G.jobless){
     /* 무직 — 우리 구단이라는 개념이 없다. 진영 구분 없이 리그 팬들의 반응을 한 줄기로 본다. */
-    return `<p class="small" style="margin:0 2px 8px;color:#a9b4c0">무직 중에는 각 구단 팬들이 자기 팀 경기를 두고 떠드는 소리가 흘러갑니다.</p>
-    ${socialCard("o")}${fmkCard("o")}`;
+    return `<div class="socSideBar">
+      ${btn("o","💬 팬 반응",socListOf("o").length+fmkListOf("o").length)}${btn("rum","🗞️ 펨코 루머",rumList().length)}
+    </div>
+    ${socSide==="rum"
+      ? `<p class="small" style="margin:0 2px 8px;color:#a9b4c0">무직이어도 루머 게시판은 돌아갑니다 — 남의 구단 이야기를 구경할 수 있습니다.</p>
+         ${RUM_OPEN?rumPostCard():rumListCard()}`
+      : `<p class="small" style="margin:0 2px 8px;color:#a9b4c0">무직 중에는 각 구단 팬들이 자기 팀 경기를 두고 떠드는 소리가 흘러갑니다.</p>
+         ${socialCard("o")}${fmkCard("o")}`}`;
   }
   return `<div class="socSideBar">
-    ${btn("o","🏠 우리 구단 팬",nOwn)}${btn("r","🌐 타구단 팬",nRiv)}
+    ${btn("o","🏠 우리 구단 팬",nOwn)}${btn("r","🌐 타구단 팬",nRiv)}${btn("rum","🗞️ 펨코 루머",rumList().length)}
   </div>
-  ${socSide==="r"
-    ? `<p class="small" style="margin:0 2px 8px;color:#a9b4c0">다른 구단 팬들이 우리 경기·영입·감독을 두고 하는 이야기입니다. 우리 팬 여론과 따로 굴러갑니다.</p>`
-    : ""}
-  ${socialCard(socSide)}${fmkCard(socSide)}`;
+  ${socSide==="rum"
+    ? `<p class="small" style="margin:0 2px 8px;color:#a9b4c0">펨코 유저들이 만들어 내는 이적·재계약·감독 거취 루머입니다.
+        <b>사실인 것도 있고 아닌 것도 있습니다.</b> 제목을 누르면 글이 열리고, 닉네임을 누르면 고소할 수 있습니다.</p>
+       ${RUM_OPEN?rumPostCard():rumListCard()}`
+    : `${socSide==="r"
+      ? `<p class="small" style="margin:0 2px 8px;color:#a9b4c0">다른 구단 팬들이 우리 경기·영입·감독을 두고 하는 이야기입니다. 우리 팬 여론과 따로 굴러갑니다.</p>`
+      : ""}
+    ${socialCard(socSide)}${fmkCard(socSide)}`}`;
 }
 function mediaView(){
   /* 💰 경제 탭도 읽음 처리를 한다 — 안 그러면 증권·은행 기사만 남아 NEW 배지가 안 꺼진다 */
@@ -44950,6 +46802,30 @@ function finance(){
   const barCol = pct>=100?"var(--red)" : pct>=90?"var(--gold)" : "var(--green)";
   const avg=t.players.length?Math.round(wage/t.players.length*100)/100:0;
   return `<h2>🏦 재정</h2>
+  ${(function(){ try{
+    /* 🏢 모기업 상태 — 기업구단이면 예산의 뿌리가 여기다. 삭감이 «갑자기» 오지 않게 미리 보여 준다 */
+    if(clubForSale(t)){
+      const _r=saleState()[t.id];
+      return `<div class="msg warn">🏳️ <b>구단 매각 절차 진행 중</b> — 모기업 <b>${_r.from}</b>이(가) 부도났습니다.<br>
+        <span class="small">인수 결론은 <b>${dateLabel(_r.due)}</b>에 나옵니다. 기업이 인수하면 새 모기업이 생기고,
+        아무도 나서지 않으면 <b>${cityOf(t)}</b>가 떠안아 <b>시민구단</b>이 됩니다.
+        그때까지 예산 증액 요청은 막힙니다.</span></div>`;
+    }
+    const ct=clubType(t); if(ct.k!=="corp") return "";
+    const st=ownStock(t), h=ownHealth(t), L=ownLabel(t), k=ownBudK(t);
+    if(!st) return `<div class="msg warn">🏢 <b>${ct.o}</b> — 상장폐지된 상태입니다.
+      구단 운영자금 조달 경로가 끊겨 <b>지원금이 대폭 삭감</b>됩니다.</div>`;
+    const H=(st.hist||[]).slice(-90);
+    const avg=H.length?Math.round(H.reduce((a2,b2)=>a2+b2,0)/H.length):st.p;
+    return `<div class="msg ${h<OWN_H_LO?"warn":h>OWN_H_HI?"good":"info"}">
+      🏢 <b>${ct.o}</b> — 모기업 상태 <b style="color:${L.c}">${L.t}</b>
+      <span class="small">(주가 ${stkWon(st.p)}원 · 90일 평균 ${stkWon(avg)}원 · <b>${Math.round(h*100)}%</b>)</span><br>
+      <span class="small">기업구단의 예산은 모기업 지원금에서 나옵니다 — 지금 이사회의 지갑은
+      평시의 <b>${Math.round(k*100)}%</b>입니다. ${h<OWN_H_LO
+        ? "실적이 더 나빠지면 <b>지원금이 삭감</b>되고 예산 증액 요청도 어려워집니다."
+        : h>OWN_H_HI ? "이 흐름이 이어지면 <b>특별 지원금</b>이 들어올 수 있습니다."
+        : "증액 요청과 이사회 판단에 그대로 반영됩니다."}</span></div>`;
+  }catch(e){ return ""; } })()}
   ${stadCard()}
   ${sponCard()}
   <div class="msg info">K리그는 <b>이적료 시장이 작고 연봉 규모가 큽니다.</b>
@@ -45254,6 +47130,11 @@ function reqChance(kind, arg, c, detail){
       p += add("구장 공사와 동시 진행 부담", -0.10);
   }
   p += add("구단주 신뢰", (c.ownTrust-55)/100*0.55);
+  /* 🏢 모기업 사정 — 기업구단이면 이사회의 지갑이 모기업 실적을 그대로 따라간다 */
+  try{ if(c.ct && c.ct.k==="corp"){
+    const _h=ownHealth(c.t);
+    if(Math.abs(_h-1)>0.04) p += add(`모기업 ${ownLabel(c.t).t} (${Math.round(_h*100)}%)`, clamp((_h-1)*0.60, -0.24, 0.20));
+  } }catch(e){}
   if(c.pre){
     // 성적이 없는 시기 — 대신 연습경기 내용과 목표의 무게를 본다
     const pr=c.preRec||{w:0,d:0,l:0}, pn=pr.w+pr.d+pr.l;
@@ -45317,6 +47198,11 @@ function reqOpenState(){
   const day=G.day||0;
   if(G.phase==="sacked") return {ok:false, why:"지휘할 팀이 없습니다."};
   if(G.phase==="seasonEnd") return {ok:false, why:"시즌이 끝났습니다. 다음 시즌 예산은 새로 편성됩니다."};
+  /* 🏳️ 매각 절차 중 — 결재할 주인이 없다 */
+  try{ if(clubForSale(userTeam())){
+    const _r=saleState()[userTeam().id];
+    return {ok:false, why:`구단이 <b>매각 절차</b> 중입니다 — 예산을 결재할 주인이 없습니다. 인수 결론은 <b>${dateLabel(_r.due)}</b>에 나옵니다.`};
+  } }catch(e){}
   if(day<REQ_MIN_DAY) return {ok:false,
     why:`구단은 이미 올해 예산을 확정해 둔 상태입니다. <b>${dateLabel(REQ_MIN_DAY)}</b>부터 증액을 요구할 수 있습니다. (D-${REQ_MIN_DAY-day})`};
   return {ok:true};
@@ -45449,7 +47335,7 @@ function aiBudgetChance(t){
   const ct=clubType(t);
   const tbl=tableOf(t.div), pos=tbl.findIndex(x=>x.id===t.id)+1, N=tbl.length||12;
   let w=1;
-  if(ct.k==="corp") w*=1.55;                       // 모기업이 있으면 훨씬 자주 움직인다
+  if(ct.k==="corp") w*=1.55*ownBudK(t);            // 🏢 모기업이 있으면 자주 움직인다 — 다만 그 «사정»을 탄다
   else if(ct.k==="army") w*=0.25;                  // 군경팀은 예산을 못 늘린다
   if(pos>0){
     if(pos<=3) w*=1.45;                            // 우승·승격 경쟁이면 지른다
@@ -45479,7 +47365,8 @@ function tickAiBudget(){
   for(let i=0;i<pool.length;i++){ r-=ws[i]; if(r<=0){ pick=pool[i]; break; } }
   const ct=clubType(pick);
   if(ct.k==="army") return null;
-  const amt=Math.round(Math.max(2, budPool(pick)*(0.10+Math.random()*0.14))*10)/10;
+  /* 🏢 모기업이 어려우면 증액 폭도 줄어든다 */
+  const amt=Math.round(Math.max(2, budPool(pick)*(0.10+Math.random()*0.14)*ownBudK(pick))*10)/10;
   pick.budget=Math.round((pick.budget+amt)*10)/10;
   pick._pool=budPool(pick)+amt;
   G.aiBud.last[pick.id]=G.day||0; G.aiBud.n++;
@@ -71165,16 +73052,92 @@ const AWAY_OPTS={
    d:"말 한마디 없는 시선에 상대 라커룸이 오히려 조용해졌습니다."}]
 };
 /* 상대 선수의 반응 대사 */
+/* 🎭 상대 라커룸 반응 — 리뉴얼.
+   예전엔 카테고리당 3~4줄뿐이라 세 명만 반응해도 같은 말이 겹쳤다.
+   ─ 카테고리당 10줄 안팎으로 늘리고, 「오늘 무슨 일이 있었는지」를 인용하는 줄을 섞는다.
+     {p}=선수 · {sc}=오늘 스코어 이야기 · {tn}=우리 팀 · {on}=상대 팀 */
 const AWAY_REACT={
- touched:  ["😭 {p}, 예상 못 한 인사에 잠시 말을 잇지 못합니다.","😭 {p}: \"…감사합니다. 진심으로요.\"","😭 {p}, 눈을 마주치며 깊게 고개를 숙입니다."],
- respectful:["🤝 {p}, 자리에서 일어나 악수를 청합니다.","🤝 {p}: \"좋은 경기였습니다, 감독님.\"","🤝 {p}, 고개를 끄덕이며 예의를 갖춥니다.","🤝 {p}, 조용히 박수를 보냅니다."],
- flattered:["😳 {p}, 자기 이름이 불리자 화들짝 놀랍니다.","😳 {p}: \"저… 저요?\" 하며 주변을 둘러봅니다.","😳 {p}, 귀까지 빨개진 채 고개를 숙입니다."],
- awkward:  ["😐 {p}, 뭐라 대꾸해야 할지 몰라 시선을 피합니다.","😐 {p}, 어색하게 유니폼만 만지작거립니다.","😐 {p}, 옆 선수와 눈빛을 주고받습니다."],
- indifferent:["🙄 {p}, 신경 쓰지 않는 듯 이어폰을 꽂습니다.","🙄 {p}, 별 반응 없이 짐을 챙깁니다.","🙄 {p}, 흘깃 보고는 다시 고개를 돌립니다."],
- annoyed:  ["😤 {p}, 혀를 차며 고개를 저었습니다.","😤 {p}: \"…지금 뭐 하시는 겁니까.\"","😤 {p}, 수건을 바닥에 내던집니다.","😤 {p}, 팔짱을 낀 채 노골적으로 노려봅니다."],
- furious:  ["🤬 {p}, 벌떡 일어나 감독 쪽으로 달려들려 합니다!","🤬 {p}: \"당신 지금 제정신입니까?!\"","🤬 {p}, 라커 문을 주먹으로 내리쳤습니다.","🤬 {p}, 동료들이 붙잡지 않았다면 큰일 날 뻔했습니다."],
- mocking:  ["😂 {p}, 대놓고 코웃음을 칩니다.","😂 {p}: \"지고 나서 하실 말씀은 아닌 것 같은데요.\"","😂 {p}, 옆 선수와 눈짓하며 낄낄댑니다.","😂 {p}, 전광판 쪽을 손가락으로 가리킵니다."],
- fired:    ["🔥 {p}, 이를 악뭅니다. \"다음엔 두고 봅시다.\"","🔥 {p}, 눈빛이 완전히 달라졌습니다.","🔥 {p}, 조용히 감독의 얼굴을 머릿속에 새깁니다."]
+ touched:  ["😭 {p}, 예상 못 한 인사에 잠시 말을 잇지 못합니다.",
+   "😭 {p}: \"…감사합니다. 진심으로요.\"",
+   "😭 {p}, 눈을 마주치며 깊게 고개를 숙입니다.",
+   "😭 {p}, 젖은 유니폼을 든 채 한참을 서 있었습니다.",
+   "😭 {p}: \"이런 말 들으려고 축구 하는 겁니다.\"",
+   "😭 {p}, 옆 동료의 어깨를 툭 치고는 조용히 웃었습니다.",
+   "😭 {p}, 목이 메어 말을 삼켰습니다.",
+   "😭 {p}: \"저희 감독님한테도 이런 말 좀 해주세요.\"",
+   "😭 {p}, 악수한 손을 한동안 놓지 못했습니다."],
+ respectful:["🤝 {p}, 자리에서 일어나 악수를 청합니다.",
+   "🤝 {p}: \"좋은 경기였습니다, 감독님.\"",
+   "🤝 {p}, 고개를 끄덕이며 예의를 갖춥니다.",
+   "🤝 {p}, 조용히 박수를 보냅니다.",
+   "🤝 {p}: \"{tn} 준비 많이 하셨더군요. 배웠습니다.\"",
+   "🤝 {p}, 스파이크를 내려놓고 자세를 고쳐 앉았습니다.",
+   "🤝 {p}: \"다음엔 저희 홈에서 뵙겠습니다.\"",
+   "🤝 {p}, 유니폼 교환을 먼저 제안했습니다.",
+   "🤝 {p}, 라커룸 문까지 따라 나와 배웅했습니다.",
+   "🤝 {p}: \"이런 건 흔치 않은 일이라 기억하겠습니다.\""],
+ flattered:["😳 {p}, 자기 이름이 불리자 화들짝 놀랍니다.",
+   "😳 {p}: \"저… 저요?\" 하며 주변을 둘러봅니다.",
+   "😳 {p}, 귀까지 빨개진 채 고개를 숙입니다.",
+   "😳 {p}, 동료들이 휘파람을 불자 더 어쩔 줄 몰라 합니다.",
+   "😳 {p}: \"제 이름을 아신다는 게 더 놀랍습니다.\"",
+   "😳 {p}, 웃음을 참지 못하고 수건으로 얼굴을 덮었습니다.",
+   "😳 {p}, 옆 선수가 등을 떠밀자 그제야 일어섰습니다.",
+   "😳 {p}: \"집에 가서 아버지한테 말해야겠는데요.\""],
+ awkward:  ["😐 {p}, 뭐라 대꾸해야 할지 몰라 시선을 피합니다.",
+   "😐 {p}, 어색하게 유니폼만 만지작거립니다.",
+   "😐 {p}, 옆 선수와 눈빛을 주고받습니다.",
+   "😐 {p}, 짐 정리를 하는 척하며 상황이 지나가길 기다립니다.",
+   "😐 {p}, 헛기침을 하고는 고개를 반쯤 끄덕였습니다.",
+   "😐 {p}: \"아… 네.\" 그게 전부였습니다.",
+   "😐 {p}, 감독이 나갈 때까지 고개를 들지 않았습니다.",
+   "😐 {p}, 물병 라벨만 계속 뜯고 있었습니다."],
+ indifferent:["🙄 {p}, 신경 쓰지 않는 듯 이어폰을 꽂습니다.",
+   "🙄 {p}, 별 반응 없이 짐을 챙깁니다.",
+   "🙄 {p}, 흘깃 보고는 다시 고개를 돌립니다.",
+   "🙄 {p}, 휴대폰 화면에서 눈을 떼지 않았습니다.",
+   "🙄 {p}, 스트레칭을 이어갔습니다. 들리긴 했을 겁니다.",
+   "🙄 {p}, 테이프를 뜯으며 \"네\" 한마디만 했습니다.",
+   "🙄 {p}, 샤워실 쪽으로 그냥 들어가 버립니다.",
+   "🙄 {p}, 표정 하나 바뀌지 않았습니다."],
+ annoyed:  ["😤 {p}, 혀를 차며 고개를 저었습니다.",
+   "😤 {p}: \"…지금 뭐 하시는 겁니까.\"",
+   "😤 {p}, 수건을 바닥에 내던집니다.",
+   "😤 {p}, 팔짱을 낀 채 노골적으로 노려봅니다.",
+   "😤 {p}: \"여기 저희 라커룸인데요.\"",
+   "😤 {p}, 라커 문을 쾅 닫고 등을 돌립니다.",
+   "😤 {p}: \"할 말 있으면 경기장에서 하시죠.\"",
+   "😤 {p}, 코치 쪽을 보며 «이 사람 좀 데려가라»는 눈짓을 합니다.",
+   "😤 {p}, 신발끈을 묶다 말고 손을 멈췄습니다.",
+   "😤 {p}: \"오늘 이긴 건 축하드립니다. 이제 나가주시죠.\""],
+ furious:  ["🤬 {p}, 벌떡 일어나 감독 쪽으로 달려들려 합니다!",
+   "🤬 {p}: \"당신 지금 제정신입니까?!\"",
+   "🤬 {p}, 라커 문을 주먹으로 내리쳤습니다.",
+   "🤬 {p}, 동료들이 붙잡지 않았다면 큰일 날 뻔했습니다.",
+   "🤬 {p}: \"나이 먹었다고 다 어른입니까?!\"",
+   "🤬 {p}, 의자를 걷어차며 소리를 질렀습니다.",
+   "🤬 {p}, 주장이 앞을 막아서자 그 어깨 너머로 계속 소리쳤습니다.",
+   "🤬 {p}: \"이거 다 찍히고 있는 거 압니까?!\"",
+   "🤬 {p}, 얼굴이 새빨개진 채 숨을 몰아쉽니다.",
+   "🤬 {p}, 코칭스태프 셋이 달라붙어 겨우 앉혔습니다."],
+ mocking:  ["😂 {p}, 대놓고 코웃음을 칩니다.",
+   "😂 {p}: \"지고 나서 하실 말씀은 아닌 것 같은데요.\"",
+   "😂 {p}, 옆 선수와 눈짓하며 낄낄댑니다.",
+   "😂 {p}, 전광판 쪽을 손가락으로 가리킵니다.",
+   "😂 {p}: \"감독님, 스코어 다시 확인해 보시죠.\"",
+   "😂 {p}, 박수를 세 번 치고는 등을 돌립니다.",
+   "😂 {p}: \"저희 라커룸 구경 오신 김에 사진도 찍으시죠.\"",
+   "😂 {p}, 휴대폰을 들어 대놓고 촬영을 시작했습니다.",
+   "😂 {p}: \"이런 건 다음 경기 전에 하시는 게 낫습니다.\"",
+   "😂 {p}, 동료들에게 «들었냐»는 손짓을 합니다."],
+ fired:    ["🔥 {p}, 이를 악뭅니다. \"다음엔 두고 봅시다.\"",
+   "🔥 {p}, 눈빛이 완전히 달라졌습니다.",
+   "🔥 {p}, 조용히 감독의 얼굴을 머릿속에 새깁니다.",
+   "🔥 {p}: \"오늘 이 말, 안 잊겠습니다.\"",
+   "🔥 {p}, 아무 말 없이 감독을 끝까지 쳐다봤습니다.",
+   "🔥 {p}, 라커에 붙은 다음 경기 일정을 손가락으로 짚었습니다.",
+   "🔥 {p}: \"{on}에서 다시 뵙죠.\"",
+   "🔥 {p}, 그날 이후 훈련장에 제일 먼저 나온다고 합니다."]
 };
 const AWAY_TONE_TABLE={
   respect: {good:["touched","respectful","respectful","awkward"], bad:["awkward","indifferent"]},
@@ -71211,7 +73174,11 @@ function awayReact(p, o, ctx){
   }
   // 선택지가 전용 대사 풀(rl)을 갖고 있으면 그쪽을 우선 쓴다 — 상황에 딱 맞는 반응이 나온다
   const pool=(o.rl && o.rl[cat]) ? o.rl[cat] : AWAY_REACT[cat];
-  const line=pick(pool).replace("{p}", p.name);
+  /* {tn}=우리 팀 · {on}=상대 팀 — 반응이 오늘 상대를 인용할 수 있게 */
+  let line=pick(pool).replace(/\{p\}/g, p.name);
+  try{ const _ut=userTeam();
+    line=line.replace(/\{tn\}/g, _ut?_ut.short:"상대팀")
+             .replace(/\{on\}/g, (ctx&&ctx.opp)?ctx.opp.short:"저희 홈"); }catch(e){}
   // 감독 개인 호감도 — 성격에 따라 같은 말도 다르게 남는다
   const k = cat==="touched"?1.4 : cat==="respectful"?1.0 : cat==="flattered"?1.2
           : cat==="furious"?1.5 : cat==="mocking"?0.8 : cat==="annoyed"?1.1 : 0.5;
@@ -81204,7 +83171,7 @@ function pvpView(){
    ─ 캐시를 확실히 비켜 가려고 매번 다른 질의문자열을 붙인다 (깃허브 페이지는 질의문자열을
      무시하고 같은 파일을 주지만, 캐시는 다른 주소로 본다).
    ─ 경기 중에는 절대 새로고침하지 않는다. 메뉴에 있고 대전 중이 아닐 때만 자동 적용한다. */
-const GAME_BUILD="20260913-5000";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
+const GAME_BUILD="20260913-5031";             // 🆕 이 파일의 빌드 표식 (파일 맨 앞 <!--B:…--> 와 같은 값)
 const UPD_EVERY=10*60*1000;        // 확인 주기
 const UPD_SNOOZE=30*60*1000;       // 「나중에」를 누르면 이만큼 조용히 있는다
 let UPD={tag:null, seen:null, at:0, snooze:0, timer:null, busy:false};
