@@ -1,0 +1,129 @@
+/* match sim */
+#matchLog{background:#0a0f14; border:1px solid var(--line); border-radius:8px; padding:12px; height:300px; overflow-y:auto; font-size:13px; line-height:1.8;}
+#matchLog .goal{color:var(--gold); font-weight:700;}
+#matchLog .info{color:var(--sub);}
+#matchLog .bad{color:var(--red);}
+/* live match */
+.lvBoard{background:linear-gradient(135deg,#101820,#182230); border:1px solid var(--line); border-radius:12px; padding:16px; text-align:center; margin-bottom:12px;}
+.lvTeams{display:flex; justify-content:center; align-items:center; gap:18px;}
+.lvTeam{padding:7px 14px; border-radius:8px; font-weight:800; color:#fff; font-size:15px; min-width:120px;}
+.lvScore{font-size:42px; font-weight:900; letter-spacing:2px; min-width:130px;}
+.lvScore.flash{animation:goalflash .9s ease 3;}
+@keyframes goalflash{0%{color:#fff}50%{color:var(--gold);text-shadow:0 0 18px #e3b341}100%{color:#fff}}
+.lvMin{font-size:15px; color:var(--gold); font-weight:700; margin-top:6px;}
+/* 2D 매치엔진 (바둑알 시각화) */
+#pitch2d,#pvpCv{width:100%; height:auto; display:block; border-radius:8px; border:none; background:#0d2418;
+  transition:opacity .22s, filter .22s; box-shadow:0 2px 10px rgba(0,0,0,.45);}   /* ⚔️ 게스트 캔버스도 같은 규칙 (제보: 화면 크기 동일) */
+/* ── FM식 경기 풀스크린 — 경기 중에는 메인 메뉴·상단 바를 감추고 경기창이 화면을 채운다 ── */
+/* 경기 중에도 메인 메뉴·날짜 바 모두 표시 (사용자 요청) — matchFS는 여백·레이아웃 조정만 담당 */
+body.matchFS #main{max-width:none; padding:8px 16px;}
+body.matchFS .fmPitchPane{max-width:none;}
+/* FM식 3칼럼 — 좌: 경기 통계 · 중앙: 경기장 · 우: 수석코치 조언 */
+.lvGrid{display:flex; gap:14px; align-items:flex-start; justify-content:center;}
+.lvSide{flex:1 1 220px; min-width:190px; max-width:330px;}
+.lvSide h3{margin-top:0;}
+.lvCenter{flex:0 1 880px; max-width:880px; position:relative;}
+@media (max-width:1080px){
+  .lvGrid{flex-wrap:wrap;}
+  .lvCenter{order:1; flex:1 1 100%; max-width:none;}
+  .lvSide{order:2; max-width:none;}
+}
+/* 스코어버그 — 경기장 좌상단 오버레이 (FM의 그것) */
+.lvHead{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; font-size:14px;}
+@media (max-width:640px){
+  .lvHead{gap:5px; font-size:12px; margin-bottom:6px;}
+  .lvHead .t{padding:3px 6px; font-size:11px;}
+  .lvHead #lvScore{font-size:16px;}
+  .lvHead #pitchMode{display:none;}          /* 좁은 화면 — 상태 문구는 생략 */
+  .lvGrid{gap:8px;}
+  .lvSide{min-width:0;}
+  .lvSpdPanel{width:min(230px, 80vw);}
+  body.matchFS #main{padding:6px 8px;}
+}
+.lvHead .t{font-weight:800; padding:4px 9px; border-radius:6px; font-size:13px;}
+.lvHead #lvScore{font-size:19px; font-weight:900; letter-spacing:1px;}
+.lvHead #lvMin{color:var(--gold); font-weight:700;}
+.lvSpdPanel{position:absolute; top:8px; left:8px; z-index:45; width:250px;
+  background:#0f141bf2; border:1px solid var(--line); border-radius:10px; padding:12px 14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.55);}
+.lvSpdPanel input[type=range]{width:100%;}
+.lvTopBtns{float:right; display:flex; gap:6px; align-items:center;}
+.lvDrop{position:absolute; top:44px; right:8px; z-index:650; width:min(400px,92vw);
+  max-height:74vh; overflow:auto; background:#0f141bf2; border:1px solid var(--line);
+  border-radius:10px; padding:12px 14px; box-shadow:0 14px 44px rgba(0,0,0,.6);}
+.lvDrop h3{margin-top:0;}
+.lvDrop .lvClose{float:right; margin-left:8px;}
+/* TEXT_MODE — 하이라이트가 없는 시간에는 캔버스를 흐리게 낮춰 "지금은 시간만 흐르는 중"임을 보여준다 */
+#pitch2d.dim,#pvpCv.dim{opacity:.4; filter:saturate(.45);}
+.pitchMode{float:right; font-size:11px; letter-spacing:.6px; color:var(--muted); font-weight:400;}
+.pitchMode.on{color:#f85149; font-weight:700;}
+/* 코멘터리 강조 — 골·선방 같은 중요한 순간에 CommentaryManager가 동적으로 붙인다 */
+.pitchCaption{transition:background .2s;}
+/* 🏟️ 구장 프레임 (요청 — 「경기장을 좀 더 고급스럽게」) — 캔버스 바깥을 스타디움처럼 감싼다 */
+.pitchWrap{position:relative;
+  padding:6px;border-radius:12px;
+  background:linear-gradient(160deg,#1a2a20,#0d1a13 45%,#0a1410);
+  box-shadow:0 10px 28px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+  border:1px solid #23372b}
+.pitchWrap::before{content:"";position:absolute;inset:6px;border-radius:8px;pointer-events:none;z-index:2;
+  box-shadow:inset 0 0 34px rgba(0,0,0,.55), inset 0 0 3px rgba(180,255,205,.10)}
+/* 조명탑 — 위쪽 두 곳에서 빛이 쏟아진다 */
+.pitchWrap::after{content:"";position:absolute;inset:6px;border-radius:8px;pointer-events:none;z-index:2;
+  background:radial-gradient(ellipse 42% 34% at 22% -6%, rgba(200,235,255,.13), transparent 70%),
+             radial-gradient(ellipse 42% 34% at 78% -6%, rgba(200,235,255,.13), transparent 70%)}
+.pitchWrap>*{position:relative;z-index:1}
+
+/* 💥 중요 순간 화면 흔들림 (요청) — 세기는 --shk 로 이벤트가 정한다 */
+.pitchWrap.shake{animation:pitchShake .46s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes pitchShake{
+  0%{transform:translate(0,0) rotate(0)}
+  12%{transform:translate(calc(var(--shk,2px)*-1), calc(var(--shk,2px)*.55)) rotate(calc(var(--shkR,.3deg)*-1))}
+  26%{transform:translate(var(--shk,2px), calc(var(--shk,2px)*-.7)) rotate(var(--shkR,.3deg))}
+  40%{transform:translate(calc(var(--shk,2px)*-.75), calc(var(--shk,2px)*-.35)) rotate(calc(var(--shkR,.3deg)*-.6))}
+  55%{transform:translate(calc(var(--shk,2px)*.6), calc(var(--shk,2px)*.5)) rotate(calc(var(--shkR,.3deg)*.5))}
+  72%{transform:translate(calc(var(--shk,2px)*-.35), calc(var(--shk,2px)*-.25)) rotate(calc(var(--shkR,.3deg)*-.25))}
+  88%{transform:translate(calc(var(--shk,2px)*.18), calc(var(--shk,2px)*.12)) rotate(0)}
+  100%{transform:translate(0,0) rotate(0)}}
+@media(prefers-reduced-motion:reduce){ .pitchWrap.shake{animation:none} }
+
+.pitchCaption.cmt-big{font-size:15.5px; font-weight:700; letter-spacing:.2px;}
+.pitchCaption.cmt-flash{animation:cmtFlash .5s ease-out 2;}
+@keyframes cmtFlash{0%{filter:brightness(2.2)} 60%{filter:brightness(1.15)} 100%{filter:brightness(1)}}
+.pitchCaption{background:linear-gradient(#0c141b,#0a0f14); border:1px solid #23372b; border-top:none; border-radius:0 0 10px 10px; padding:10px 12px; font-size:13.5px; line-height:1.6; min-height:44px;
+  border-left:4px solid var(--cbar,#30363d); transition:border-color .45s ease;}
+.pitchCaption.hot{border-left-color:#e3b341;}
+/* 🎬 흐름 알림 막대 — 「전술을 손볼 틈」을 알리되, 창을 대신 열어 주지는 않는다 (제보) */
+.lvNudge{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:#141a10;border:1px solid #3d4a24;border-top:none;padding:8px 12px;font-size:12.5px;
+  color:#dbe3ea;animation:lvNudgeIn .18s ease-out}
+.lvNudge .lvNudgeTxt{flex:1;min-width:180px;line-height:1.5}
+.lvNudge button{padding:5px 11px;font-size:12px}
+.lvNudge .lvNudgeGo{border-color:var(--gold);color:var(--gold);font-weight:800}
+@keyframes lvNudgeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.evt-goal{color:var(--goalc, var(--gold)); font-weight:700; border-radius:5px; padding:2px 4px; margin:-2px -4px;}
+.evt-goal.goal-pop{animation:goalPop 1.4s ease-out 2;}
+@keyframes goalPop{
+  0%{ text-shadow:0 0 0 transparent; background:transparent; }
+  20%{ text-shadow:0 0 10px var(--goalc, #e3b341), 0 0 22px var(--goalc, #e3b341); background:color-mix(in srgb, var(--goalc, #e3b341) 18%, transparent); }
+  55%{ text-shadow:0 0 2px var(--goalc, #e3b341); background:color-mix(in srgb, var(--goalc, #e3b341) 5%, transparent); }
+  80%{ text-shadow:0 0 10px var(--goalc, #e3b341), 0 0 20px var(--goalc, #e3b341); background:color-mix(in srgb, var(--goalc, #e3b341) 16%, transparent); }
+  100%{ text-shadow:0 0 0 transparent; background:transparent; }
+}
+.evt-red{color:#ff7b72; font-weight:700;}
+.evt-card{color:#e3b341;}
+.evt-sub{color:#79c0ff;}
+.evt-bad{color:#ff7b72;}
+.evt-info{color:var(--sub); font-weight:600;}
+.evt-big{color:#ffa657; font-weight:700;}
+.evt-txt{color:#dbe3ea;}
+.statbar{display:flex; align-items:center; gap:8px; margin:3px 0; font-size:12px;}
+.statbar .bg{flex:1; height:8px; background:var(--bg3); border-radius:4px; overflow:hidden; display:flex;}
+.statbar .fh{background:var(--acc); height:100%;}
+.statbar .fa{background:var(--red); height:100%;}
+/* 통계 범례 — 막대 색이 어느 팀인지 */
+.statLg{display:flex;align-items:center;gap:8px;justify-content:space-between;margin:0 0 7px;font-size:12px;}
+.statLg span{display:flex;align-items:center;gap:5px;}
+.statLg i{width:11px;height:11px;border-radius:3px;display:inline-block;
+  border:1px solid rgba(255,255,255,.28);flex:0 0 auto;}
+.scoreBig{font-size:30px; font-weight:900; text-align:center; margin:8px 0;}
+.vsRow{display:flex; justify-content:space-between; align-items:center; font-size:16px; font-weight:700; margin-bottom:4px;}

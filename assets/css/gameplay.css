@@ -1,0 +1,743 @@
+/* pitch */
+/* 🎨 전술판 리마스터 (제보 — 「포메이션 위치 변경하면 카드가 늘어났다 줄었다 한다」).
+   원인: 칸 높이가 내용물을 따라갔다(빈 칸 58px vs 카드 ~90px) — 카드를 옮길 때마다 그 줄만
+   커지고 줄어 판 전체가 출렁였다. 모든 칸을 같은 높이로 고정해 레이아웃을 못 박는다. */
+.pitch{background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0 46px, rgba(0,0,0,0) 46px 92px),
+    radial-gradient(130% 95% at 50% 0%, #1d5434 0%, #164028 58%, #113220 100%);
+  border:1px solid #2f7a49; border-radius:14px; padding:12px 8px;
+  display:flex; flex-direction:column; gap:7px; min-height:330px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04), inset 0 12px 44px rgba(0,0,0,.30);}
+.pline{display:flex; justify-content:space-evenly; gap:4px; min-height:108px; align-items:center; border-radius:8px; transition:background .15s;}
+.pline.zoneDrop{background:#3fb95022;}
+.prow{display:flex; gap:4px;}
+.prow.thin .pslot{min-height:24px; height:24px;}
+.prow.thin .pslotLabel{opacity:.4;}
+.pslot.dropReady{outline:2px dashed var(--gold); outline-offset:-4px; cursor:pointer;
+  background:rgba(227,179,65,.07); animation:slotPulse 1.1s ease-in-out infinite;}
+@keyframes slotPulse{50%{background:rgba(227,179,65,.15);}}
+.pslot.empty{pointer-events:none; background:transparent;}
+/* 전술판 — 콤팩트가 기본이다 (PC·모바일 공통, 제보로 확정) */
+.pslot{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  min-height:108px; border-radius:8px; padding:2px 1px; transition:background .15s; min-width:0;}   /* 라벨+카드 실높이(~105px)보다 크게 — 카드 유무와 무관하게 모든 줄이 같은 높이 */
+.pitch{font-size:11px;}
+.fmPitchPane{max-width:620px; margin-left:auto; margin-right:auto;}
+.pitch .pslotLabel{font-size:9px;}
+.pslot.zoneDrop{background:#3fb95022;}
+.pslotLabel{font-size:8.5px; color:#87b89a; letter-spacing:1px; font-weight:800; opacity:.55;}
+/* 빈 칸 — 은은한 자리 표시(고스트 링). 칸 높이는 카드 칸과 동일해 판이 출렁이지 않는다 */
+.pslot:not(:has(.fmCard)):not(.empty) .pslotLabel{
+  border:1px dashed rgba(255,255,255,.14); border-radius:99px; padding:3px 9px;
+  background:rgba(0,0,0,.14);}
+/* ── 선수 검색 (PC·모바일 공용) ───────────────────────────────────────
+   모바일에서 input 글꼴이 16px 미만이면 iOS 사파리가 화면을 확대해 버린다. 그래서 16px 고정.
+   결과는 표가 아니라 flex 행으로 그린다 — 좁은 화면에서 가로 스크롤 없이 접히게 하기 위해서다. */
+.psWrap{position:sticky; top:0; z-index:6; background:var(--bg2); padding:8px 0 10px; margin:-4px 0 6px;}
+/* ⚠ 모바일에서는 #side(상단 탭 바)가 position:sticky; top:0; z-index:900 으로 이미 붙어 있다.
+   검색바를 같은 자리에 붙이면 그 뒤로 들어가 보이지 않는다 — 그냥 흘러가게 둔다. */
+@media (max-width:760px){ .psWrap{position:static;} }
+.psBar{display:flex; gap:6px; align-items:center;}
+.psInput{flex:1; min-width:0; background:var(--bg3); color:var(--txt); border:1px solid var(--line);
+  border-radius:10px; padding:12px 38px 12px 38px; font-size:16px; font-weight:600; outline:none;
+  -webkit-appearance:none; appearance:none;}
+.psInput:focus{border-color:var(--gold); box-shadow:0 0 0 2px #d2992233;}
+.psIcon{position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:.6; font-size:15px; pointer-events:none;}
+.psClr{position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#30363d; color:var(--txt);
+  border:none; border-radius:50%; width:24px; height:24px; font-size:13px; line-height:1; cursor:pointer;}
+.psField{position:relative; flex:1; display:flex; min-width:0;}
+.psChips{display:flex; flex-wrap:wrap; gap:5px; margin-top:7px;}
+.psChip{background:var(--bg3); border:1px solid var(--line); color:var(--txt); border-radius:999px;
+  padding:7px 13px; font-size:13px; font-weight:700; cursor:pointer; min-height:34px;}
+.psChip.on{background:#d2992233; border-color:var(--gold); color:var(--gold);}
+.psCount{font-size:12px; opacity:.75; margin:8px 2px 4px;}
+.psRow{display:flex; align-items:center; gap:8px; padding:9px 8px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+.psRow:hover{background:#ffffff08;}
+.psMain{flex:1 1 150px; min-width:0;}
+.psName{font-weight:800; font-size:14.5px;}
+.psSub{font-size:11.5px; opacity:.8; margin-top:2px;}
+.psVal{flex:0 0 auto; text-align:right; font-size:12px; line-height:1.5;}
+.psAct{flex:0 0 auto; display:flex; align-items:center; gap:5px;}
+.psAct .mini{padding:9px 14px; font-size:13px;}
+/* ⭐ 관심 목록 토글 — 넓은 액션 버튼과 달리 늘 정사각형으로 붙어 있게 */
+.psAct .mini.slStar, button.mini.slStar{padding:8px 9px; font-size:14px; line-height:1; flex:0 0 auto; width:auto;}
+.mini.slStar.on{color:var(--gold); border-color:var(--gold);}
+.psHit{color:var(--gold); font-weight:900;}
+.psFit{font-size:11.5px; margin-top:3px; padding:3px 6px; background:#0d1117; border-left:2px solid #2a3441;
+  border-radius:0 5px 5px 0; line-height:1.5;}
+.psFitK{color:var(--acc); font-weight:800;}
+.psChip.sm{padding:6px 11px; font-size:12.5px; min-height:31px;}
+.aqWrap{margin:6px 0;}
+.aqBody{margin-top:5px; background:#0d1117; border:1px solid var(--line); border-radius:8px; padding:7px 8px;}
+.aqRow{display:flex; align-items:center; gap:4px; margin-bottom:4px;}
+.aqN{width:13px; text-align:center; font-size:10.5px; font-weight:800; color:var(--sub); flex:0 0 auto;}
+.aqSel{flex:1 1 auto; min-width:0; background:var(--bg3); color:var(--txt); border:1px solid var(--line);
+  border-radius:6px; padding:5px 6px; font-size:12.5px; height:29px;}
+.aqNum{flex:0 0 50px; width:50px; background:var(--bg3); color:var(--txt); border:1px solid var(--line);
+  border-radius:6px; padding:5px 4px; font-size:12.5px; font-weight:800; text-align:center;
+  height:29px; -webkit-appearance:none; appearance:none; -moz-appearance:textfield;}
+.aqNum::-webkit-outer-spin-button,.aqNum::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+.aqOp{flex:0 0 66px; background:var(--bg3); color:var(--txt); border:1px solid var(--line);
+  border-radius:6px; padding:5px 3px; font-size:12px; height:29px;}
+.aqWrap .psChip{padding:5px 10px; font-size:12px; min-height:27px;}
+.aqWrap .psChip.sm{padding:4px 9px; font-size:11.5px; min-height:24px;}
+/* 손가락으로 쓰는 화면에서는 조금만 키운다 — 16px 미만이면 iOS가 입력 시 화면을 확대한다 */
+@media(hover:none){ .aqSel,.aqOp{height:33px; font-size:13px;} .aqNum{height:33px; font-size:16px; flex:0 0 54px; width:54px;} }
+.psSubRow{display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:7px;
+  padding-top:7px; border-top:1px dashed var(--line);}
+.psSubK{font-size:11.5px; color:var(--sub); font-weight:800; margin-right:2px;}
+.psSubN{display:inline-block; margin-left:5px; font-size:10.5px; opacity:.65; font-weight:700;}
+.psPager{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px; padding:12px 2px 4px;}
+.psPg{min-width:36px; height:36px; padding:0 9px; border-radius:8px; background:var(--bg3); color:var(--txt);
+  border:1px solid var(--line); font-size:13.5px; font-weight:800; cursor:pointer;}
+.psPg.on{background:#d2992233; border-color:var(--gold); color:var(--gold);}
+.psPg:disabled{opacity:.28; cursor:default;}
+.psPgGap{opacity:.45; padding:0 2px;}
+.psPgInfo{flex:1 1 100%; text-align:center; font-size:11.5px; color:var(--sub); margin-top:5px;}
+@media(max-width:560px){ .psVal{flex:1 1 100%; text-align:left; margin-top:2px;} .psAct{flex:1 1 100%;} .psAct .mini{width:100%;}
+  .psAct .mini.slStar{width:44px; flex:0 0 44px;} }
+/* ── 전체화면 토글 버튼 ─────────────────────────────────────────
+   브라우저 주소창·탭 막대를 없애는 유일한 방법이 Fullscreen API 다. 사용자가 직접 누른
+   동작에서만 호출할 수 있어(브라우저 정책) 버튼이 필요하다. 화면 구석에 작게 띄운다. */
+.fsBtn{position:fixed; right:10px; bottom:10px; z-index:400; width:38px; height:38px; border-radius:10px;
+  background:#161b22cc; color:var(--txt); border:1px solid var(--line); font-size:16px; line-height:1;
+  cursor:pointer; opacity:.5; transition:opacity .15s; -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; padding:0;}
+.fsBtn:hover,.fsBtn:active{opacity:1; border-color:var(--gold);}
+.fsBtn.hidden{display:none;}
+@media (display-mode: standalone){ .fsBtn{display:none;} }
+/* ⚔️ ⚠ 제보 — 「모바일에서는 온라인 대전 메뉴에서는 진행 버튼이 안보이게 해줘」.
+   좁은 화면에서는 하단 버튼이 크게 자리를 차지해, 대전 메뉴에서는 눌릴 일도 없는 버튼이
+   화면 절반을 먹었다. 넓은 화면에서는 종전대로 둔다. */
+@media (max-width:760px){ body.pvpMenu #advBtn{display:none !important;} }
+/* ⚠ 760px 이하에서는 '진행 ▶' 버튼이 화면 하단에 고정(bottom:10px, z-index:950)된다.
+   전체화면 버튼을 같은 자리에 두면 진행 버튼 밑에 깔려 안 보이거나 오조작이 난다. 위로 띄운다. */
+@media (max-width:760px){ .fsBtn{bottom:78px; right:8px; width:34px; height:34px; font-size:15px; opacity:.35;} }
+/* ── 눕힌 폰 (가로 모드) ──────────────────────────────────────
+   가로로 돌리면 폭은 넉넉해지지만 높이가 350~430px밖에 안 된다. 세로용 규칙(하단 고정 버튼,
+   큰 여백, 두꺼운 헤더)을 그대로 쓰면 화면의 절반을 껍데기가 먹는다. 높이를 아끼는 쪽으로 짠다. */
+@media (orientation:landscape) and (max-height:520px){
+  #app{flex-direction:row;}
+  #side{width:148px; height:100vh; height:100dvh; padding:8px 7px; position:sticky; top:0;
+        display:block; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+        border-right:1px solid var(--line); border-bottom:none; box-shadow:none;
+        padding-bottom:40px;}   /* 주소창에 가려도 마지막 메뉴까지 스크롤로 닿게 여유를 준다 */
+  #side h1{font-size:13px; margin:0 0 4px;}
+  #side .sub{display:none;}
+  #clubBadge{padding:6px; font-size:11.5px; margin-bottom:7px;}
+  #clubBadge small{font-size:10px; margin-top:1px;}
+  #navScroll{display:block; overflow:visible;}
+  #side .navbtn{display:block; width:100%; text-align:left; margin:0 0 1px; padding:6px 8px;
+                font-size:12.5px; border-radius:5px; background:none; white-space:nowrap;}
+  #side .navbtn.on{background:var(--acc); color:#fff;}
+  /* 진행 버튼은 하단 고정 대신 사이드바 안으로 돌려보낸다 — 가로에서는 하단 띠가 아깝다 */
+  #advBtn{position:static; width:100%; margin:7px 0 4px; padding:10px; font-size:13.5px;
+          border-radius:8px; box-shadow:none;}
+  body{padding-bottom:0;}
+  #dateBox{font-size:10.5px; line-height:1.45;}
+  #dateBox br{display:inline;}
+  #main{padding:9px 12px; max-width:none;}
+  #topBar{padding:5px 12px; font-size:12px;}
+  h2{font-size:15.5px; margin-bottom:7px;} h3{font-size:13.5px;}
+  .card{padding:9px 11px; margin-bottom:8px;}
+  .msg{padding:7px 10px; font-size:12.5px;}
+  .fsBtn{bottom:8px; right:8px;}
+  .socFeed,.nwList{max-height:none;}
+}
+/* 인트로 잠금 — 눌리지 않는 이유가 보이도록 흐리게 처리한다 */
+.navbtn.navLocked{opacity:.32; cursor:not-allowed; filter:grayscale(.6);}
+/* 🔍 경기 일시정지 둘러보기 — 보기만 되고 어떤 조작도 통하지 않는다.
+   ⚠ 제보 — 「둘러보기의 순위표에서 리그 순위만 볼 수 있다. EACL·CWC·득점·도움·관중도 보게 해 달라」.
+     탭 버튼까지 한꺼번에 잠가서 다른 표로 넘어갈 수가 없었다. 경기 상태를 바꾸지 않는
+     「보는 자리를 옮기는」 버튼은 .peekOK 를 달아 열어 둔다. */
+#main.peekOnly button:not(.peekOK), #main.peekOnly select:not(.peekOK),
+#main.peekOnly input:not(.peekOK), #main.peekOnly textarea,
+#main.peekOnly a:not(.peekOK), #main.peekOnly .clickable:not(.peekOK),
+#main.peekOnly [onclick]:not(.peekOK), #main.peekOnly [onchange]:not(.peekOK){
+  pointer-events:none !important; cursor:default !important; opacity:.72;
+}
+#main.peekOnly .peekOK{opacity:1;}
+#peekBar{position:fixed; left:0; right:0; bottom:0; z-index:9000; display:flex; gap:10px; align-items:center;
+  justify-content:center; padding:9px 12px; background:#1b1f27; border-top:2px solid var(--gold);
+  box-shadow:0 -4px 18px rgba(0,0,0,.45); font-size:13px;}
+#peekBar b{color:var(--gold)}
+#peekBar .pkBtn{background:var(--gold); color:#111; border:none; border-radius:7px; padding:7px 16px;
+  font-weight:800; font-size:13.5px; cursor:pointer;}
+.bigbtn.navLocked{opacity:.4; cursor:not-allowed;}
+/* ⚔️ 대전 시작 버튼 — ⚠ 제보 「좀 고급스럽게 바꾸자. 줄 라인도 엉망이고」.
+   초록 덩어리 셋에 부제를 한 줄에 욱여넣어 「전력 비슷한 상 / 대」처럼 단어가 잘렸다.
+   제목과 부제를 각자 줄에 놓고, 폭이 좁아지면 칸이 줄바꿈되게 격자로 세운다. */
+.pvpStart{display:grid; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); gap:10px; margin-top:4px;}
+/* ⏳ 매칭 대기 배너 — 돌아가는 스피너 (제보 — 메뉴 위에서 큐가 돌아가게) */
+.pvpWait{border-color:var(--gold)!important; background:linear-gradient(180deg,#1d1a10,#15130c)!important;
+  animation:pvpWaitIn .25s ease;}
+@keyframes pvpWaitIn{ from{transform:translateY(-6px); opacity:0;} to{transform:none; opacity:1;} }
+.pvpSpin{width:26px; height:26px; flex:0 0 auto; border-radius:50%;
+  border:3px solid rgba(227,179,65,.22); border-top-color:var(--gold);
+  animation:pvpSpin 0.9s linear infinite;}
+@keyframes pvpSpin{ to{transform:rotate(360deg);} }
+.pvpBtn{position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+  width:100%; padding:14px 16px 13px 19px; border-radius:12px; cursor:pointer; text-align:left;
+  background:linear-gradient(158deg,#1a2432 0%,#121926 100%); border:1px solid #2a3646; color:var(--txt);
+  font-family:inherit; overflow:hidden;
+  transition:transform .13s ease, border-color .13s ease, box-shadow .13s ease, background .13s ease;}
+.pvpBtn::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--pbC,var(--acc));}
+.pvpBtn::after{content:""; position:absolute; right:-30px; top:-30px; width:96px; height:96px; border-radius:50%;
+  background:var(--pbC,var(--acc)); opacity:.07; transition:opacity .13s ease;}
+.pvpBtn:hover:not(:disabled){transform:translateY(-2px); border-color:var(--pbC,var(--acc));
+  background:linear-gradient(158deg,#1f2c3c 0%,#141d2c 100%); box-shadow:0 7px 20px rgba(0,0,0,.45);}
+.pvpBtn:hover:not(:disabled)::after{opacity:.14;}
+.pvpBtn:active:not(:disabled){transform:translateY(0); box-shadow:none;}
+.pvpBtn:disabled{opacity:.38; cursor:default;}
+.pvpBtnH{display:flex; align-items:center; gap:8px; position:relative; z-index:1;}
+.pvpBtnIc{font-size:18px; line-height:1;}
+.pvpBtnT{font-size:15.5px; font-weight:800; letter-spacing:-.2px; white-space:nowrap; color:var(--pbC,var(--acc));}
+.pvpBtnS{font-size:11.5px; color:var(--sub); line-height:1.5; position:relative; z-index:1;
+  overflow-wrap:break-word; word-break:keep-all;}
+/* 방 코드 입력 — 버튼들과 같은 결로 */
+.pvpCode{display:flex; gap:7px; align-items:center; margin-top:11px; padding-top:11px; border-top:1px solid var(--line);}
+.pvpCode input{flex:0 1 158px; min-width:0; padding:10px 12px; font-size:15px; letter-spacing:2px; font-weight:700;
+  background:var(--bg); border:1px solid #2a3646; border-radius:9px; color:var(--txt); text-transform:uppercase; text-align:center;}
+.pvpCode input::placeholder{letter-spacing:normal; font-weight:600; color:var(--sub); opacity:.75;}
+.pvpCode input:focus{outline:none; border-color:var(--acc);}
+.pvpCode button{padding:10px 18px; border-radius:9px; white-space:nowrap;}
+.pvpCode .pvpCodeHint{white-space:nowrap;}
+@media (max-width:520px){ .pvpCode .pvpCodeHint{display:none;} }
+@media (max-width:400px){ .pvpStart{grid-template-columns:1fr;} }
+/* 🌐 실시간 전적 — 방금 끝난 남의 경기 (제보) */
+.prList{display:flex; flex-direction:column;}
+.prRow{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px;
+  padding:7px 8px; border-bottom:1px solid #1b222b; border-radius:7px;}
+.prRow:last-child{border-bottom:none;}
+.prMine{background:rgba(227,179,65,.07);}
+.prSide{display:flex; align-items:center; gap:6px; min-width:0; font-size:12.5px;}
+.prR{justify-content:flex-end;}
+.prNick{font-weight:800; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.prTeam{font-size:10.5px; font-weight:700; padding:1.5px 7px; border-radius:999px; white-space:nowrap;}
+.prWin .prNick{color:var(--gold);}
+.prScore{font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1px; white-space:nowrap;}
+.prMeta{grid-column:1/-1; font-size:10.5px; color:var(--sub); opacity:.8; text-align:center; margin-top:-2px;}
+@media (max-width:520px){ .prSide{font-size:11.5px;} .prTeam{display:none;} }
+#side.introLock #navScroll{position:relative;}
+.introBar{display:flex; align-items:center; flex-wrap:wrap; gap:6px; background:#161b22; border:1px solid var(--gold);
+  border-radius:10px; padding:10px 12px; margin-bottom:12px;}
+.introStep{font-size:12.5px; font-weight:800; color:var(--sub); opacity:.55; white-space:nowrap;}
+.introStep.on{color:var(--gold); opacity:1; text-shadow:0 0 8px #e3b34155;}
+.introStep.done{color:var(--green); opacity:.9;}
+.introArr{color:var(--sub); opacity:.4;}
+.introNote{flex:1 1 100%; font-size:11.5px; color:var(--sub); margin-top:2px;}
+.pchip{background:#0d1117cc; border:1px solid var(--line); border-radius:8px; padding:4px 6px; font-size:11px; text-align:center; min-width:74px; cursor:grab; user-select:none;}
+.pslot .pchip{min-width:0; width:100%; padding:3px 2px; font-size:9px;}
+.pslot .pchip b{font-size:14px;}
+.pslot .stars{font-size:11px;}
+/* 벤치·미등록 칩 — 클릭·드래그를 계속 하는 곳이라 눌리는 면적을 넉넉히 잡는다 */
+.benchChip{display:inline-block; margin:4px; min-width:104px; padding:9px 10px 8px; font-size:12px; border-radius:10px; line-height:1.35;}
+.benchChip b{font-size:14px; margin-bottom:2px;}
+.benchChip .benchSub{margin-top:3px; font-size:10px; color:var(--sub); letter-spacing:.4px;}
+.benchChip:hover{background:#131b24cc;}
+/* FM식 해설 자막 바 — 공을 가진 팀 색이 배경으로 깔린다 */
+.commBar{margin-top:8px; padding:11px 14px; border-radius:8px; min-height:44px;
+  display:flex; align-items:center; font-size:14px; line-height:1.45; font-weight:600;
+  background:linear-gradient(90deg, var(--cbar,#1b2129), #10151b);
+  border:1px solid var(--line); border-left:4px solid var(--cbar,#30363d);
+  transition:background .45s ease, border-color .45s ease;}
+.commBar #commTxt{text-shadow:0 1px 2px rgba(0,0,0,.6);}
+/* FM처럼 자막을 경기 화면 안쪽 하단에 얹는다 */
+.commBar.inPitch{position:absolute; left:8px; right:8px; bottom:8px; margin:0; z-index:3;
+  min-height:38px; padding:8px 12px; font-size:13.5px; border-radius:7px;
+  background:linear-gradient(90deg, color-mix(in srgb, var(--cbar,#1b2129) 88%, transparent), rgba(8,12,16,.86));
+  backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,.10); border-left:4px solid var(--cbar,#30363d);
+  box-shadow:0 4px 14px rgba(0,0,0,.45);}
+@media (max-width:640px){ .commBar.inPitch{font-size:12px; padding:6px 9px; min-height:32px; left:5px; right:5px; bottom:5px;} }
+.commBar.hot{border-left-color:#e3b341;}
+/* 경기 배속 슬라이더 (FM식) */
+.lvSpd{display:inline-flex; align-items:center; gap:8px; margin-left:14px; vertical-align:middle;}
+.lvSpd input[type=range]{-webkit-appearance:none; appearance:none; width:150px; height:5px; border-radius:3px;
+  background:linear-gradient(90deg,var(--acc),#e3b341); outline:none; cursor:pointer;}
+.lvSpd input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:15px; height:15px;
+  border-radius:50%; background:#e8eef5; border:2px solid var(--acc); cursor:grab;}
+.lvSpd input[type=range]::-moz-range-thumb{width:15px; height:15px; border-radius:50%;
+  background:#e8eef5; border:2px solid var(--acc); cursor:grab;}
+.lvSpd b{min-width:34px; color:var(--gold); font-size:12px;}
+/* 전술 반영 중 표시 */
+.tacApply{display:inline-flex; align-items:center; gap:10px; padding:9px 14px; border-radius:8px;
+  background:#1a2430; border:1px solid var(--acc); color:#dbe6f2; font-size:13px;
+  animation:tacPulse 1.1s ease-in-out infinite;}
+@keyframes tacPulse{0%,100%{opacity:1}50%{opacity:.62}}
+/* 등번호 배지 */
+.sqNo{display:inline-block; min-width:22px; padding:1px 5px; border-radius:4px; text-align:center;
+  background:#1b2129; border:1px solid var(--line); color:#cbd5e1; font-size:11px; font-weight:700;}
+.pchip:hover{border-color:var(--acc);}
+.pchip.picked{border-color:var(--gold); box-shadow:0 0 0 2px #e3b34155; background:#2a2410cc;}
+.pchip:active{cursor:grabbing;}
+.pchip b{display:block; font-size:12px;}
+.msg{padding:10px 12px; border-radius:8px; margin-bottom:10px; font-size:13px;}
+.msg.warn{background:#f8514922; border:1px solid #f8514966;}
+.msg.good{background:#3fb95022; border:1px solid #3fb95066;}
+.msg.info{background:#2ea8ff22; border:1px solid #2ea8ff66;}
+.split-a td{border-left:2px solid transparent;}
+/* 🏁 순위표 구역 — 우승(금) · EACL(파랑) · 플레이오프(보라) · 강등(빨강).
+   ⚠ 제보 — 우승 #e3b341 과 PO #d29922 가 사실상 같은 색이라 구분이 안 됐다.
+      색상환에서 멀리 떨어진 네 색으로 갈라 놓고, 왼쪽 띠를 굵게 + 행 배경까지 옅게 물들인다. */
+.rank-champ{border-left:5px solid #e3b341!important; background:linear-gradient(90deg,rgba(227,179,65,.16),rgba(227,179,65,0) 55%);}
+.rank-acl  {border-left:5px solid #2f81f7!important; background:linear-gradient(90deg,rgba(47,129,247,.15),rgba(47,129,247,0) 55%);}
+.rank-po   {border-left:5px solid #a371f7!important; background:linear-gradient(90deg,rgba(163,113,247,.17),rgba(163,113,247,0) 55%);}
+.rank-rel  {border-left:5px solid #f85149!important; background:linear-gradient(90deg,rgba(248,81,73,.16),rgba(248,81,73,0) 55%);}
+/* 🌍 세계 클럽 월드컵 조별 순위표 — 네 조를 같은 크기로 놓는다
+   ⚠ 제보 원문 — 「순위표 탭의 CWC 항목에서 각 조의 박스가 A, B, C 조는 조그마한데 D 조만 커서
+      A, B, C, D 조의 조별 상황 박스를 균등하게 크기를 맞춰주시면 감사하겠습니다」.
+   ─ 예전에는 flex-wrap + flex-grow 였다. A·B·C 가 한 줄에 들어가고 D 만 다음 줄로 밀리면
+     그 줄에 혼자인 D 가 남은 폭을 전부 차지해 혼자 커졌다. 칸을 미리 나누는 grid 로 바꾼다. */
+.cwcGrpGrid{display:grid; gap:10px; align-items:start;
+  grid-template-columns:repeat(auto-fit, minmax(min(250px,100%), 1fr));}
+.cwcGrpBox{min-width:0;}                     /* 표가 칸을 밀어 넓히지 못하게 */
+.cwcGrpBox .tblScroll{overflow-x:auto;}
+/* 🎯 개인 훈련 — 스쿼드 전원이 한 줄씩 깔려 카드가 화면을 통째로 먹었다(요청).
+   세로 스크롤 상자로 가두고, 표 머리줄은 스크롤해도 위에 붙어 있게 한다. */
+.vScroll{max-height:var(--vsh,420px); overflow-y:auto; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  border:1px solid #21262d; border-radius:8px;}
+.vScroll table{margin:0;}
+.vScroll thead th, .vScroll tr:first-child th{position:sticky; top:0; z-index:2; background:#161b22;}
+.vScroll::-webkit-scrollbar{width:10px;height:10px}
+.vScroll::-webkit-scrollbar-track{background:#0d1117;border-radius:8px}
+.vScroll::-webkit-scrollbar-thumb{background:#30363d;border-radius:8px;border:2px solid #0d1117}
+.vScroll::-webkit-scrollbar-thumb:hover{background:#3f4854}
+/* ⚠ 모바일 .tblScroll 은 음수 마진으로 화면 끝까지 밀어내는데, 스크롤 상자 테두리와 부딪힌다.
+   두 클래스를 같이 쓰는 자리에서는 마진을 되돌린다(선택자 두 개라 미디어 규칙보다 우선한다). */
+.vScroll.tblScroll{margin:0;padding:0;}
+@media (max-width:640px){ .vScroll{max-height:var(--vsh,320px);} }
+.cardFold{cursor:pointer;user-select:none}
+/* 🎩 스태프 능력치 줄 */
+.acGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); gap:4px 12px; margin:7px 0;}
+.acAt{display:flex; justify-content:space-between; align-items:center; gap:8px; min-width:0;}
+.acAtN{font-size:12.5px; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+/* 스태프 카드 안의 버튼은 폭을 다 먹지 않는다 — 「영입」한 개가 카드 전체를 가로지르면 촌스럽다 */
+.stItem .acBtns{display:flex; gap:6px; flex-wrap:wrap;}
+.stItem .acBtns .mini{flex:0 0 auto; min-width:0; padding:8px 16px;}
+@media (max-width:520px){ .acGrid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));} }
+.cardFold:hover{color:var(--gold)}
+/* 네 조를 한 줄에 놓으려면 클럽 이름이 접히지 않을 만큼 넓어야 한다 — 아니면 2×2 가 낫다 */
+@media (min-width:1400px){ .cwcGrpGrid{grid-template-columns:repeat(4, minmax(0,1fr));} }
+@media (max-width:1399px) and (min-width:620px){ .cwcGrpGrid{grid-template-columns:repeat(2, minmax(0,1fr));} }
+@media (max-width:619px){ .cwcGrpGrid{grid-template-columns:minmax(0,1fr);} }
+/* 구역 딱지 — 색맹·작은 화면에서도 글자로 읽힌다 */
+.rkTag{display:inline-block;font-size:9.5px;font-weight:900;line-height:1.5;padding:0 4px;
+  border-radius:4px;margin-left:4px;vertical-align:middle;white-space:nowrap;border:1px solid;}
+.rkTag.champ{color:#f0c860;border-color:#8b6914;background:#2a2109;}
+.rkTag.acl  {color:#79c0ff;border-color:#1f4b8f;background:#0c1a2e;}
+.rkTag.po   {color:#c9a4ff;border-color:#5a3a96;background:#1b1230;}
+.rkTag.rel  {color:#ff9d95;border-color:#8b2a25;background:#2a0f0d;}
+/* 🅰️🅱️ 파이널 라운드 — 순위표에서 두 스플릿을 눈으로 갈라 놓는다 (2026 한정) */
+.splHead td{background:#0d1117; font-weight:800; font-size:12.5px; letter-spacing:.4px;
+  padding:8px 8px; border-bottom:1px solid var(--acc);}
+.splHead.splA td{color:#79c0ff; border-top:2px solid #2f81f7;}
+.splHead.splB td{color:#ff9d5c; border-top:2px solid #d2691e;}
+.splHead .small{font-weight:600; opacity:.8; margin-left:6px}
+tr.inA td:first-child{box-shadow:inset 3px 0 0 #2f81f7;}
+tr.inB td:first-child{box-shadow:inset 3px 0 0 #d2691e;}
+tr.splLast td{border-bottom:2px solid #d2691e;}
+.lcArmy{color:#c9a227; font-weight:700;}      /* 🎖️ 병역 이행 중 — 임대와 눈으로 갈린다 */
+.lcCall{color:#e3b341; font-weight:700;}      /* 📨 입영 통지 — 아직 우리 팀이지만 곧 떠난다 */
+.rkLegend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:7px;font-size:11.5px;}
+.rkLegend span{display:inline-flex;align-items:center;gap:4px;}
+.rkLegend i{width:13px;height:13px;border-radius:3px;display:inline-block;border:1px solid rgba(255,255,255,.22);}
+.hidden{display:none!important;}
+.small{font-size:12.5px; color:var(--sub);}
+.money{color:var(--gold); font-weight:700;}
+/* 모바일에서 탭·롱프레스가 텍스트 선택으로 새면서 복사 메뉴가 뜨는 걸 막는다.
+   입력이 필요한 곳(input/textarea/select)만 선택을 허용한다. */
+html,body{-webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none;
+  -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;}
+input,textarea,select,[contenteditable="true"]{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default;}
+.clickable{cursor:pointer; text-decoration:none; text-underline-offset:3px;}
+.clickable:hover{text-decoration:underline dotted;}
+/* 선수 이름 팝업 메뉴 */
+/* max-height+스크롤 — 게임 창이 메뉴보다 낮은 극단(가로폰 등)에서도 짤리는 대신 안에서 굴러가게 (밑 짤림 제보의 안전벨트) */
+.pmenu{position:fixed; z-index:999; background:var(--bg2); border:1px solid var(--acc); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.55); min-width:160px; overflow:hidden; max-height:calc(100vh - 12px); overflow-y:auto;}
+.pmenu .pmHead{padding:8px 12px; font-weight:700; font-size:13px; border-bottom:1px solid var(--line); background:var(--bg3); white-space:nowrap;}
+.pmenu button{display:block; width:100%; text-align:left; background:none; border:none; color:var(--txt); padding:9px 12px; cursor:pointer; font-size:13px;}
+.pmenu button:hover{background:var(--bg3); color:var(--acc);}
+.pmenu .pInfoBody{padding:10px 12px; font-size:13px; line-height:1.8; min-width:180px; white-space:nowrap;}
+.pInfoSep{margin:8px 0 4px; padding-top:7px; border-top:1px solid var(--line); font-size:11px; color:var(--sub);}
+.pInfoList{max-height:250px; overflow-y:auto;}
+.pInfoRow{display:flex; align-items:center; gap:7px; line-height:1.5; font-size:12px; padding:1px 0;}
+.pInfoRow.pref{background:#1a2430; border-radius:5px; padding:1px 5px; margin:0 -5px;}
+.piDot{width:8px; height:8px; border-radius:50%; flex:0 0 8px;}
+.piPos{width:34px; color:var(--sub); font-size:11px;}
+.piStar{flex:0 0 auto;}
+.piFam{width:26px; text-align:right; font-size:10.5px;}
+/* 능력치 바 */
+/* ── FM식 선수 카드 (피치 위) ── */
+/* 카드가 커서 LCM·CM·RCM 처럼 세 칸이 붙는 라인에서 서로 겹쳤다 — 폭과 글자를 줄인다 */
+.fmCard{position:relative; background:linear-gradient(180deg,#17222e 0%,#0d151d 100%);
+  border:1px solid #2e3f52; border-radius:11px; overflow:hidden;
+  min-width:0; max-width:100%; user-select:none; cursor:pointer; text-align:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  transition:transform .12s ease, box-shadow .15s ease, border-color .15s ease;}
+.fmCard:hover{transform:translateY(-2px); border-color:#4a6a8c;
+  box-shadow:0 7px 18px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);}
+.fmCardName b{letter-spacing:-.3px;}
+.fmCard:active{cursor:grabbing; transform:translateY(0);}
+.fmCard.picked{border-color:var(--gold);
+  box-shadow:0 0 0 2px #e3b34166, 0 6px 16px rgba(0,0,0,.5); transform:translateY(-1px);}
+.fmCardRole{display:flex; align-items:center; justify-content:center; gap:4px; width:100%; border:0; cursor:pointer;
+  background:linear-gradient(180deg,#1c5040,#153a2c); color:#8df0bd;
+  font-size:10px; font-weight:800; letter-spacing:.2px; padding:0 3px; line-height:1.15;
+  /* 긴 역할명(전진형 플레이메이커 등)도 높이가 변하지 않게 — 두 줄 공간을 항상 확보(고정 30px) */
+  white-space:normal; overflow:hidden; word-break:keep-all; height:30px; min-height:30px;
+  border-bottom:1px solid rgba(255,255,255,.06);}
+.fmCardRole:hover{background:linear-gradient(180deg,#27684f,#1c4a38); color:#c8ffe4;}
+.fmCardRole .rd{color:#ffd479; font-weight:800; font-size:8.5px; background:rgba(227,179,65,.13);
+  border:1px solid rgba(227,179,65,.28); border-radius:99px; padding:1px 6px; white-space:nowrap;}
+.fmCardRole .cw{opacity:.55; margin-left:2px; font-size:8px;}
+/* 이름이 놓인 검은 띠 = 카드를 집는 손잡이다. 모바일에서 손끝으로 누르기엔 얇아서
+   세로로 늘렸다. .pslot 이 min-height:96px 라 카드가 커져도 줄이 밀리지 않는다. */
+.fmCardName{padding:0 3px; height:38px; background:rgba(4,9,14,.62); display:flex; align-items:center; justify-content:center; gap:4px;}
+.fmCardName b{font-size:11.5px;}
+.fmCardRole .cw{display:none;}
+@media (max-width:900px){ .fmCardName b{font-size:11px;} .fmCardRole{font-size:9px;} }
+/* 이름 생략 금지(제보) — 긴 이름은 …로 자르지 않고 두 줄로 접는다. 이름 띠 38px 에 12.5px 두 줄이 들어간다 */
+.fmCardName b{font-size:13.5px; color:#fff; white-space:normal; word-break:normal; overflow-wrap:anywhere;
+  line-height:1.12; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden; text-overflow:clip; max-width:100%;}
+.fmDot{display:inline-block; width:7px; height:7px; border-radius:50%; flex:0 0 auto;
+  box-shadow:0 0 5px currentColor;}
+.fmCardSub{font-size:10px; color:var(--sub); height:20px; display:flex; align-items:center; justify-content:center;
+  gap:5px; padding:0 7px; background:rgba(4,9,14,.62);}
+.condBar{flex:1 1 auto; max-width:44px; height:4px; border-radius:99px; background:#26303b; overflow:hidden;}
+.condBar i{display:block; height:100%; border-radius:99px;}
+.fmCardSub .stars{font-size:10.5px; letter-spacing:.4px;}
+/* 열람 전용 카드(선발 라인업 프리뷰) — 손맛 없는 정적 카드 */
+.fmCard.view{cursor:default;}
+.fmCard.view:hover{transform:none; border-color:#2e3f52; box-shadow:0 4px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);}
+.fmCardRole.asDiv{cursor:default;}
+.fmCardRole.asDiv:hover{background:linear-gradient(180deg,#1c5040,#153a2c); color:#8df0bd;}
+/* 🎚️ 카드 하단 정보 전환 바 */
+.fmSubBar{display:flex; align-items:center; gap:6px; margin:8px 2px 2px; flex-wrap:wrap;}
+.fmSubBtn{border:1px solid #2e3f52; background:linear-gradient(180deg,#141d27,#0d141c); color:#9fb0c0;
+  border-radius:99px; padding:5px 13px; font-size:11.5px; font-weight:700; cursor:pointer;
+  transition:border-color .15s, color .15s, background .15s;}
+.fmSubBtn:hover{border-color:#4a6a8c; color:#dbe6f0;}
+.fmSubBtn.on{background:linear-gradient(180deg,#1c5040,#153a2c); border-color:#3fb950; color:#8df0bd;}
+.fmCardWrap.gap .fmCard{opacity:.62; border-color:var(--red);}
+/* 골키퍼 카드도 필드 플레이어와 같은 폭 — 한 줄에 혼자 있다고 가로로 늘어지면 어색하다.
+   필드 슬롯이 한 줄(5칸)의 1/5이므로 골키퍼도 20%로 맞춘다. */
+.pline .fmCard{min-width:0; width:20%; max-width:none; margin:0 auto;}
+.pslot{min-width:0; overflow:visible;}
+.prow{overflow:visible; gap:4px;}
+/* 🎨 리마스터 2차 (제보 — 「선수카드 레이어가 겹친다」) — 겹침의 뿌리는
+   「칸보다 6px 넓게 + min-width 96px + 음수 마진」이었다. 5칸 줄에서 칸 폭이 96px 아래로
+   내려가면 이웃 카드 위로 올라탔다. 카드는 자기 칸에 정확히 맞춘다 — 어떤 폭에서도 안 겹친다 */
+.pslot .fmCard{min-width:0; width:100%; margin-left:0;}
+/* 경기 중 화면은 카드를 .fmCardWrap 으로 감싼다(공백 표시용) — 래퍼에 폭이 없으면
+   GK 줄의 width:20% 가 래퍼 기준으로 무너져 카드가 세로로 찌부러졌다 */
+.fmCardWrap{width:100%; display:flex; justify-content:center;}
+.fmCardWrap .fmCard{width:100%;}
+.pline .fmCardWrap{width:20%; min-width:0;}
+.pline .fmCardWrap .fmCard{width:100%;}
+.fmCard b{font-size:13px;}
+/* 피치 열이 좁아도 이름이 잘리지 않게, 전술판 좌측 칸을 넉넉히 준다 */
+.fmPitchPane{min-width:430px;}
+@media (max-width:1250px){ .fmCard b{font-size:12.5px;} }
+@media (max-width:1050px){ .fmCard b{font-size:11.5px;} .fmCardRole{font-size:10px;} }
+@media (max-width:760px){ .fmCard b{font-size:11px;} .fmCardRole{font-size:9px; height:30px; min-height:30px; padding:0 2px;} .fmCard{min-width:0;} .fmPitchPane{min-width:0;} .pline .fmCard{min-width:0;} .pslot .fmCard{min-width:0;}
+  /* 손가락으로 누르는 환경 — 이름 띠를 더 두툼하게 (권장 터치 영역 44px) · 칸도 같이 고정 확대 */
+  .fmCardName{padding:0 2px; height:44px;} .pslot{min-height:114px;} .pline{min-height:114px;} }
+/* ── 역할 패널 (FM 2단) ── */
+.rpHead{display:flex; align-items:center; gap:8px; padding:9px 11px; border-bottom:1px solid #2a3441;
+  background:#141a2a; position:sticky; top:0; z-index:2; flex-wrap:wrap;}
+.rpHead b{color:#fff;}
+.rpTag{background:#2b2140; color:#c9b6ff; border-radius:5px; padding:2px 8px; font-size:11px; font-weight:700;}
+.rpFam{margin-left:auto; font-size:11px; color:var(--sub); display:flex; align-items:center; gap:4px;}
+.rpHead .mini{padding:2px 8px;}
+.rpSay{padding:7px 11px; font-size:12px; color:#dbe3ea; border-bottom:1px solid #21262d;}
+.rpBody{display:flex; gap:0; align-items:stretch;}
+.rpLeft{flex:0 0 300px; max-height:52vh; overflow:auto; padding:5px; border-right:1px solid #21262d;}
+.rpRight{flex:1; min-width:190px; padding:8px 10px;}
+.rpItem{display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12.5px;}
+.rpItem:hover{background:rgba(255,255,255,.06);}
+.rpItem.on{background:#4a2f8f; color:#fff; font-weight:700;}
+.rpStars{font-size:9.5px; letter-spacing:-.5px;}
+/* ⚠ 제보 — 「전진형 플레이메이커 같은 정식 명칭이 …로 줄어서 나온다」.
+   칸이 좁아 잘라 내고 있었다. 칸을 넓히고, 그래도 모자라면 줄여 쓰지 말고 두 줄로 접는다. */
+.rpName{flex:1 1 auto; min-width:0; white-space:normal; word-break:keep-all;
+  overflow-wrap:break-word; line-height:1.25; text-overflow:clip;}
+.rfBar{margin-left:auto; width:30px; height:4px; border-radius:3px; background:#30363d; overflow:hidden; flex:none;}
+.rfBar i{display:block; height:100%; border-radius:3px;}
+.rfTag{font-size:10.5px; font-weight:800; white-space:nowrap;}
+.rpDuties{display:flex; gap:5px; flex-wrap:wrap; margin-bottom:9px;}
+.rpDuty{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:66px;
+  background:#161b22; border:1px solid #2a3441; border-radius:6px; padding:5px 9px; cursor:pointer;
+  color:#dbe3ea; font-size:12px;}
+.rpDuty:hover{border-color:var(--acc);}
+.rpDuty.sel{background:#4a2f8f; border-color:#7b5cd6; color:#fff; font-weight:700;}
+.rpDesc{background:#0d1117; border:1px solid #21262d; border-radius:7px; padding:8px 10px; font-size:12.5px; color:#e6edf3;}
+.rpHint{margin-top:9px;}
+.rpH{display:inline-block; background:#1c2b1e; color:#7ee2a8; border-radius:5px;
+  padding:2px 7px; font-size:11px; margin:3px 4px 0 0;}
+.rumRep2{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 4px;}
+.rumRepChip{background:#0d1117; border:1px solid #21262d; border-radius:6px; padding:3px 8px; font-size:11.5px;}
+.rumItem{border:1px solid #21262d; border-radius:8px; padding:9px 11px; margin-bottom:7px; background:rgba(255,255,255,.02);}
+.rumItem.mine{border-color:#3d2b1f; background:rgba(255,180,80,.05);}
+.rumTop{display:flex; align-items:center; gap:7px; margin-bottom:4px; flex-wrap:wrap;}
+.rumKind{font-size:11px; font-weight:700; color:#9ecbff; background:#132029; border-radius:5px; padding:2px 7px;}
+.rumMine{font-size:10.5px; font-weight:700; color:#ffb454; background:#2b1f10; border-radius:5px; padding:2px 7px;}
+.rumDate{margin-left:auto; font-size:11px; color:var(--sub);}
+.rumTxt{font-size:13.5px; color:#e6edf3; line-height:1.45;}
+.rumBot{display:flex; align-items:center; gap:9px; margin-top:5px; flex-wrap:wrap;}
+.rumRep{font-size:11.5px; color:#dbe3ea;}
+.rumTrust{font-size:11.5px; font-weight:700; margin-left:auto;}
+.rpFoot{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:11px;
+  padding-top:9px; border-top:1px solid #21262d;}
+.rpChg{font-size:11.5px; color:var(--sub);}
+.rpChg b{color:#c9b6ff;}
+.rpBtns{margin-left:auto; display:flex; gap:6px;}
+.rpApply{opacity:.45; cursor:not-allowed;}
+.rpApply.on{opacity:1; cursor:pointer; background:#4a2f8f; border-color:#7b5cd6; color:#fff; font-weight:700;}
+.rpApply.on:hover{background:#5b3ba8;}
+@media (max-width:640px){ .rpBody{flex-direction:column;} .rpLeft{flex:auto; max-height:38vh; border-right:0; border-bottom:1px solid #21262d;} }
+.rmenu{position:fixed; z-index:9000; width:min(680px,94vw); max-height:80vh; overflow:auto;
+  background:#0d1117; border:1px solid var(--bd); border-radius:10px; box-shadow:0 12px 34px rgba(0,0,0,.6);}
+.rmenu.hidden{display:none;}
+.rmHead{display:flex; align-items:center; gap:6px; padding:8px 10px; border-bottom:1px solid var(--bd); position:sticky; top:0; background:#0d1117;}
+.rmHead .mini{margin-left:auto;}
+.rmBody{padding:4px;}
+.rItem{padding:6px 8px; border-radius:6px; margin:2px 0;}
+.rItem:hover{background:rgba(255,255,255,.05);}
+.rItem.on{background:rgba(88,166,255,.14); outline:1px solid var(--acc);}
+.rHead{font-size:12.5px;}
+.rFit{font-size:11px; margin:1px 0 3px;}
+.rDuty{display:flex; gap:4px; flex-wrap:wrap;}
+.rdBtn{font-size:11px; padding:2px 8px; border-radius:5px; border:1px solid var(--bd);
+  background:var(--bg3); color:var(--fg); cursor:pointer;}
+.rdBtn:hover{border-color:var(--acc);}
+.rdBtn.sel{background:var(--acc); border-color:var(--acc); color:#04121f; font-weight:700;}
+.roleTag{font-size:9.5px; color:var(--sub); letter-spacing:.2px; margin-top:1px;}
+.roleTag .rd{color:var(--acc); margin-left:3px;}
+.fpWrap{display:flex; justify-content:center;}
+.fpBox{width:236px; padding:10px 8px; border-radius:10px; border:2px solid #1f5c34;
+  background:repeating-linear-gradient(0deg,#2f7d43 0 26px,#2a7440 26px 52px);}
+.fpRow{display:flex; justify-content:space-around; align-items:center; height:40px;}
+.fpCell{width:62px; text-align:center;}
+.fpCell.fpHit{cursor:pointer; border-radius:8px; transition:background .12s;}
+.fpCell.fpHit:hover{background:#ffffff10;}
+.txpBar{position:relative; height:20px; background:#0d1117; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+.txpFill{height:100%; background:linear-gradient(90deg,#2ea8ff,#7ee787); transition:width .3s;}
+.txpBar span{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:11.5px; font-weight:800; color:#fff; text-shadow:0 1px 2px #000a;}
+.trHead{margin:10px 0 3px; font-size:12px; font-weight:800; color:var(--gold);}
+.trCat{margin:7px 0 2px; font-size:11px; color:var(--sub);}
+.trRow{display:flex; align-items:center; gap:7px; padding:5px 2px; border-bottom:1px solid #21262d;}
+.trRow:last-child{border-bottom:none;}
+.trN{flex:1 1 auto; min-width:0; font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.trC{flex:0 0 auto; font-size:10.5px; color:var(--sub); max-width:38%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.trBuy,.trDel{flex:0 0 auto; padding:5px 9px; font-size:11.5px;}
+/* 습득 줄 — 효과 설명이 "1P 습득" 버튼에 가려지던 문제. 설명을 이름 아래(왼쪽)로 내린다 */
+.trTxt{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; padding-right:6px;}
+.trTxt .trN{flex:none; white-space:normal;}
+.trTxt .trC{max-width:100%; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.35;}
+.trRow.trOff .trN{opacity:.62;}
+.trCatIn{margin-left:6px; font-size:10px; color:var(--sub); font-weight:600;}
+.trPager{display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding:8px 0 2px;}
+.trPg{min-width:28px; height:28px; padding:0 7px; border-radius:6px; background:var(--bg3); color:var(--txt);
+  border:1px solid var(--line); font-size:12px; font-weight:800; cursor:pointer;}
+.trPg.on{background:#d2992233; border-color:var(--gold); color:var(--gold);}
+.trPg:disabled{opacity:.3; cursor:default;}
+.trPgGap{opacity:.45;}
+.trPgInfo{margin-left:auto; font-size:11px; color:var(--sub);}
+.pkNote{max-width:760px; margin:22px auto 30px; padding:12px 14px; font-size:11px; line-height:1.75;
+  color:#6b7480; text-align:center; border-top:1px solid #21262d;}
+.pkNote b{color:#8b949e;}
+/* ©️ 저작권 고지 — 면책 문구 아래에 한 칸 띄워 붙인다 */
+.pkCopy{max-width:760px; margin:0 auto 34px; padding:10px 14px 0; font-size:11px; line-height:1.75;
+  color:#7d8590; text-align:center; letter-spacing:.1px;}
+.pkCopy b{color:#c9d1d9;}
+/* ⚖️ 선수 비교 — FM처럼 좌우 대칭 */
+.cmpRow{display:flex; align-items:center; gap:8px; padding:4px 2px; border-bottom:1px solid #1a2027; font-size:12.5px;}
+.cmpVa{flex:1; text-align:right; color:var(--sub);}
+.cmpVb{flex:1; text-align:left; color:var(--sub);}
+.cmpK{flex:0 0 110px; text-align:center; font-size:11.5px; color:var(--gold); font-weight:700;}
+.cmpSec{margin:12px 0 4px; font-size:12.5px; font-weight:800; color:var(--gold); text-align:center;}
+.cmpAttr{display:flex; align-items:center; gap:6px; padding:2px 0; border-bottom:1px solid #151a20;}
+.cmpN{flex:0 0 22px; text-align:center; font-size:12px; font-weight:700; color:var(--sub);}
+.cmpN.win{color:var(--txt);}
+.cmpLbl{flex:0 0 128px; text-align:center; font-size:11.5px; color:var(--sub); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+.cmpBarL,.cmpBarR{flex:1; height:9px; background:#0d1117; border:1px solid #21262d; border-radius:4px; overflow:hidden;}
+.cmpBarL{display:flex; justify-content:flex-end;}
+.cmpBarL .cmpFill{height:100%; background:#2b4a6b;}
+.cmpBarR .cmpFill{height:100%; background:#2b4a6b;}
+.cmpFill.win{background:#3d7ecf;}
+@media (max-width:640px){ .cmpLbl{flex-basis:96px;} .cmpK{flex-basis:84px;} }
+.edRow{display:flex; align-items:center; gap:10px; padding:6px 2px; border-bottom:1px solid #21262d; flex-wrap:wrap;}
+.edL{flex:0 0 210px; font-size:12.5px; color:var(--sub);}
+.edSec{margin:14px 0 4px; font-size:12.5px; font-weight:800; color:var(--gold);}
+.edGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:4px 10px; margin:4px 0;}
+.edAttr{display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 2px; border-bottom:1px solid #1a2027; font-size:12px;}
+.edAttr input{width:44px; text-align:center; padding:3px 4px;}
+@media (max-width:640px){ .edL{flex-basis:100%;} }
+th.sortTh{cursor:pointer; user-select:none; white-space:nowrap;}
+th.sortTh:hover{color:var(--gold);}
+th.sortTh.on{color:var(--gold);}
+.sortHint{opacity:.28; font-size:10px;}
+.sortSel{margin-left:auto; font-size:12px;}
+.meRow{display:flex; align-items:center; gap:9px; padding:8px 4px; border-bottom:1px solid #21262d;}
+.meRow:last-child{border-bottom:none;}
+.meRow.on{background:#d2992215; border-radius:8px;}
+.meIc{flex:0 0 auto; font-size:20px; width:26px; text-align:center;}
+.meN{flex:1 1 auto; min-width:0; font-size:13px; line-height:1.45;}
+.meV{flex:0 0 auto; text-align:right; font-size:12.5px; font-weight:700; color:#fff; min-width:74px;}
+.meRow .mini{flex:0 0 auto; padding:7px 12px;}
+.giftPick{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:4px;}
+.giftBox{max-height:300px; overflow-y:auto; border:1px solid var(--line); border-radius:9px;
+  background:#0d1117; padding:2px 8px; margin-top:4px;}
+.giftRow{display:flex; align-items:center; gap:8px; padding:7px 2px; border-bottom:1px solid #21262d;}
+.giftRow:last-child{border-bottom:none;}
+.giftN{flex:1 1 auto; min-width:0; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.giftV{flex:0 0 auto; color:var(--sub);}
+.giftGo{flex:0 0 auto; padding:6px 11px; font-size:12px;}
+.giftGo:disabled{opacity:.35; cursor:default;}
+.meRow.meLux{background:linear-gradient(90deg,#d2992212,transparent); border-radius:8px;}
+@media(max-width:560px){ .giftV{flex:1 1 100%; order:3;} .giftRow{flex-wrap:wrap;} .giftGo{order:2;} }
+@media(max-width:560px){ .meRow{flex-wrap:wrap;} .meN{flex:1 1 100%; order:2;} .meV{order:3;} .meRow .mini{order:4; margin-left:auto;} }
+.trBuy:disabled,.trDel:disabled{opacity:.3; cursor:default;}
+@media(max-width:560px){ .trC{display:none;} }
+.srBox{margin:6px 0 8px; background:#0d1117; border:1px solid var(--line); border-radius:9px; padding:4px 8px; max-height:46vh; overflow-y:auto;}
+.srRow{display:flex; align-items:center; gap:8px; padding:6px 2px; border-bottom:1px solid #21262d;}
+.srRow:last-child{border-bottom:none;}
+.srN{flex:1 1 auto; min-width:0; font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.srStar{flex:0 0 auto; font-size:13px; white-space:nowrap;}
+.srD{flex:0 0 auto; font-size:11px; color:var(--sub); min-width:74px; text-align:right;}
+@media(max-width:560px){ .srD{min-width:0; flex:1 1 100%; text-align:left; padding-left:2px;} .srRow{flex-wrap:wrap;} }
+.fpCell.fpEmpty{visibility:hidden;}
+.fpDot{width:24px;height:24px;border-radius:50%;margin:0 auto;background:#1e4a2c;
+  display:flex;align-items:center;justify-content:center;}
+.fpDot.off{background:rgba(0,0,0,.22); box-shadow:none;}
+.fpDot span{font-size:10px;font-weight:700;color:#04240f;}
+.fpLb{font-size:10px;font-weight:700;color:#eafaef;text-shadow:0 1px 2px rgba(0,0,0,.7);margin-top:1px;}
+.fmAttrs{display:grid; grid-template-columns:repeat(3,1fr); gap:0 18px; background:#0d1117; border:1px solid var(--bd); border-radius:8px; padding:10px 12px;}
+.fmAttrs.gk{grid-template-columns:repeat(3,1fr);}
+.fmCol h4{margin:0 0 6px; font-size:12px; color:var(--sub); font-weight:600; letter-spacing:.3px;}
+.fmA{display:flex; justify-content:space-between; align-items:center; font-size:12.5px; padding:2.5px 6px; border-radius:4px;}
+.fmA:nth-child(even){background:rgba(255,255,255,.028);}
+.fmA .n{color:#dbe3ea;}
+.fmA .v{font-weight:700; font-variant-numeric:tabular-nums;}
+/* 스태프 회의는 "읽는 화면"이다 — 기본 small(회색·12px)로는 눈이 아프다 */
+#main .stCard p, #main .stCard .small{font-size:13.5px; color:#e6edf3;}
+#main .stCard .small b{color:#fff;}
+/* ── FM 스타일 전술판 ─────────────────────────────────────── */
+.fmBar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  background:#10181f;border:1px solid #21262d;border-radius:10px;padding:8px 12px;margin:8px 0;}
+.fmBarL{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.fmBarR{display:flex;align-items:center;gap:14px;}
+.fmStep{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;
+  background:#0d1117;border:1px solid #21262d;color:#a9b4c0;font-size:12px;font-weight:700;}
+.fmStep{cursor:pointer;}
+.fmStep:hover{border-color:var(--acc);color:#e6edf3;}
+.fmStep.has{color:#dbe3ea;border-color:#3a4553;}
+.fmStep.on{background:var(--acc);color:#fff;border-color:var(--acc);}
+.fmSel{background:#0d1117;color:#e6edf3;border:1px solid #2a3441;border-radius:7px;padding:5px 8px;font-size:12.5px;max-width:150px;}
+.fmSel.wide{max-width:180px;font-weight:700;color:#fff;}
+.fmSelLbl{color:#a9b4c0;font-size:12px;margin-left:4px;}
+.fmDetailBtn{background:#132029;color:#9ecbff;border:1px solid #2a3a52;border-radius:7px;
+  padding:5px 11px;font-size:12.5px;cursor:pointer;font-weight:600;}
+.fmDetailBtn:hover{border-color:var(--acc);}
+.fmDetailBtn.on{background:var(--acc);color:#fff;border-color:var(--acc);}
+.fmDetailPane{margin:0 0 10px;animation:fmSlide .16s ease-out;}
+.fmDetailPane .card{margin-bottom:0;}
+@keyframes fmSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.fmMeter{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#a9b4c0;
+  border:1px solid #21262d;border-radius:7px;padding:4px 9px;background:#0d1117;}
+.fmGauge{display:inline-flex;gap:2px;}
+.fmGauge i{display:block;width:13px;height:4px;border-radius:2px;background:#21262d;}
+.fmGauge i.g{background:#3fb950;}
+.fmGauge i.o{background:#d29922;}
+.fmBody{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;}
+.fmPitchPane{flex:1 1 380px;min-width:320px;background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:10px;}
+.fmTableWrap{flex:2 1 520px;min-width:340px;background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:10px;}
+.fmTabs{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.fmTab{background:#161b22;border:1px solid #2a3441;border-radius:7px;padding:5px 12px;font-size:12.5px;color:#e6edf3;}
+.fmTab.on{border-color:var(--acc);}
+.fmChip{border:1px solid #21262d;border-radius:6px;padding:4px 9px;font-size:11.5px;color:#a9b4c0;}
+table.fmTable{width:100%;border-collapse:collapse;font-size:12px;}
+table.fmTable th{background:#0a0f14;color:#a9b4c0;font-weight:600;font-size:11px;padding:6px 5px;text-align:left;white-space:nowrap;}
+table.fmTable td{padding:9px 6px;border-bottom:1px solid #1c222b;vertical-align:middle;white-space:nowrap;}
+/* 행 전체가 누르는 자리 — 손가락으로도 빗나가지 않게 높이와 굵기를 준다 */
+.fmTr.rowPick{cursor:pointer;}
+.fmTr.rowPick td{font-weight:600;}
+.fmTr.rowPick:active{background:rgba(88,166,255,.18);}
+@media (max-width:900px){
+  table.fmTable td{padding:12px 6px;font-size:13.5px;}
+  .fmTr.rowPick td{font-weight:700;}
+}
+.fmTr:hover{background:rgba(88,166,255,.07);}
+.fmTr.picked{background:rgba(63,185,80,.20); outline:2px solid #3fb950; outline-offset:-2px;}
+/* 🔁 교체 궁합 — 선수를 고르면 바꿀 수 있는 상대가 색으로 뜬다 */
+.fmTr.swapOk{background:rgba(63,185,80,.10); box-shadow:inset 4px 0 0 #3fb950;}
+.fmTr.swapMid{background:rgba(210,153,34,.09); box-shadow:inset 4px 0 0 #d29922;}
+.fmTr.swapBad{opacity:.42;}
+.pchip.swapOk{border-color:#3fb95088; box-shadow:0 0 0 2px #3fb95033;}
+.pchip.swapMid{border-color:#d2992288; box-shadow:0 0 0 2px #d2992233;}
+.pchip.swapBad{opacity:.40;}
+.fmCard.swapOk{border-color:#3fb95099; box-shadow:0 0 0 2px #3fb95033;}
+.fmCard.swapMid{border-color:#d2992299; box-shadow:0 0 0 2px #d2992233;}
+.fmCard.swapBad{opacity:.42;}
+.fmTr.sub td{opacity:.82;}
+.fmDiv td{border-bottom:1px solid #2a3441;border-top:1px solid #2a3441;background:#0a0f14;padding:4px 6px !important;}
+.fmSecLbl{font-size:11.5px;font-weight:700;color:#a9b4c0;}
+.fmTr.rest td{opacity:.9;}
+.fmTr.out td{opacity:.5;}
+.fmTr.out .fmSlot{background:#2a1414;color:#ff8080;}
+/* ⚠ 역할 <select> 의 기본 폭이 가장 긴 항목("전진형 플레이메이커")에 맞춰져서, 좁은 화면에서는
+   표가 옆으로 길게 늘어나고 그 뒤에 있던 '선수' 열이 가로 스크롤 밖으로 밀려났다.
+   교체하려고 표를 봐도 이름이 보이지 않던 원인이다.
+   ① 이름을 맨 앞으로 옮기고 ② 스크롤해도 왼쪽에 붙어 있게 하고 ③ select 폭을 묶는다. */
+.fmTable .fmName{position:sticky; left:0; z-index:2; background:#0d1117; min-width:112px;
+  box-shadow:2px 0 6px rgba(0,0,0,.45);}
+.fmTr:hover .fmName{background:#111a24;}
+.fmTr.picked .fmName{background:#132a19;}
+.fmRoleSel{max-width:190px;}
+/* 📱 모바일 — 「좌우로 왔다 갔다 하며 교체한다」는 제보.
+   역할·임무 드롭다운이 폭을 다 먹어 컨디션이 화면 밖으로 밀렸다.
+   ① 드롭다운은 역할 코드가 읽히는 최소 폭으로 ② 후순위 열(경고·반응·카드·골·평점)은 접는다
+   ③ 셀 여백을 줄여, 이름부터 컨디션까지 한 화면에 들어오게 한다.
+   ⚠ 제보 — 「폰에서 교체·벤치 창의 전술 능력치(별)가 안 보인다」.
+      별점이 접히는 열(fmOpt)에 묶여 있었다. 교체를 고르는 기준 그 자체이므로 접으면 안 된다.
+      ─ 별은 항상 남기고, 대신 별 글자를 줄이고 드롭다운을 더 좁혀 자리를 만든다. */
+@media (max-width:760px){
+  /* ⚠ 이 미디어 쿼리보다 「뒤에」 있는 .fmRoleSel{max-width:176px} 이 같은 무게로 덮어써서,
+     폰에서 드롭다운이 전혀 안 좁아졌다(실측 420px 화면에서 역할 열 폭 178px).
+     그 바람에 표가 582px로 벌어져 능력·포지션·나이가 화면 밖으로 밀렸다 — 제보의 뿌리. */
+  .fmRoleSel{max-width:84px !important; font-size:10px !important; padding:2px 2px !important;}
+  .fmRoleSel.duty{max-width:44px !important;}
+  .fmTable .fmName{min-width:74px; font-size:11.5px;}
+  table.fmTable td, table.fmTable th{padding:8px 2px !important; font-size:12px;}
+  .fmTable .fmOpt{display:none;}
+  .fmTable .fmStars{font-size:9px; letter-spacing:-.5px;}
+  .fmSlot{font-size:10.5px; padding:4px 3px !important;}
+  .fmCond{font-size:12.5px; font-weight:800;}
+  .fmAge{font-size:11px;}
+  /* ⚠ 제보(화면에 「교체 대기대기」) — .fmSubLbl(0,1,0) 이 위의
+     table.fmTable td(0,1,2) 에 밀려 font-size:0 이 안 먹었다. 같은 무게로 올린다. */
+  table.fmTable td.fmSubLbl{font-size:0 !important;}
+  table.fmTable td.fmSubLbl::after{content:"대기"; font-size:10.5px; color:#8b949e;}
+}
+/* 🎂 나이 — 「어느 자리에 누가 몇 살이라 몇 년 안에 보강해야 하는가」를 전술판에서 바로 읽는다(제보) */
+.fmAge{text-align:center;font-weight:600;font-size:12px;color:var(--sub);}   /* 나이는 참고값 — 색·굵기로 눈길을 끌지 않는다 */
+.fmSlot{background:#1b2530;border-radius:5px;text-align:center;font-weight:800;color:#fff;font-size:11.5px;padding:5px 6px !important;}
+.fmSlot.sub{background:#141b22;color:#a9b4c0;}
+.fmRoleSel{background:#132029;color:#7ee2a8;border:1px solid #24404f;border-radius:5px;padding:3px 5px;font-size:11px;max-width:176px;}
+.fmRoleSel.duty{background:#1b2330;color:#9ecbff;border-color:#2a3a52;max-width:82px;}
+.fmName b{color:#fff;font-weight:700;}
+.fmName{cursor:pointer;}
+.fmPos{font-size:11px;color:#a9b4c0;}
+.fmStars{font-size:10.5px;}
+.fmCond{font-size:11px;}
+.fmG,.fmRt{text-align:center;font-weight:700;}
+.fmReact{font-size:11px;border-radius:5px;padding:2px 6px;background:#1b2330;color:#dbe3ea;}
+.fmReact.good{background:#12331d;color:#7ee2a8;}
+.fmReact.warn{background:#33280f;color:#e3b341;}
+.fmReact.bad{background:#3a1414;color:#ff8080;}
+@media (max-width:900px){
+  .fmBody{flex-direction:column;}
+  .fmTableWrap,.fmPitchPane{width:100%;}
+  table.fmTable{font-size:11px;}
+}

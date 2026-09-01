@@ -1,0 +1,210 @@
+/* ═══ 🗣️ 커뮤니티 게시판 (요청: 「스쿼드를 유저들과 자랑할 수 있는 공간」) ═════ */
+.cmBar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.cmGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px;margin-top:14px}
+.cmCard{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;
+  cursor:pointer;transition:border-color .15s, transform .12s, box-shadow .15s;
+  display:flex;flex-direction:column;min-height:172px}
+.cmCard:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.28)}
+.cmCard.cmHid{opacity:.5}
+.cmWho{display:flex;gap:7px;align-items:baseline;margin-bottom:5px;min-width:0}
+.cmWho b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmWho .small{opacity:.5;white-space:nowrap;flex:none}
+.cmTi{font-weight:700;font-size:14.5px;line-height:1.35;margin-bottom:8px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cmEx{font-size:12.5px;line-height:1.55;opacity:.78;flex:1;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.cmTags{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}
+.cmTag{display:inline-block;border:1px solid;border-radius:20px;padding:1px 8px;font-size:11px;line-height:1.6}
+.cmFoot{display:flex;gap:12px;margin-top:8px;padding-top:7px;border-top:1px solid var(--line);
+  font-size:12px;opacity:.75}
+.cmSqMini{flex:1;border-radius:8px;border:1px solid var(--line);
+  background:linear-gradient(150deg, color-mix(in srgb, var(--c) 42%, #0d1117), #0d1117);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;padding:12px 6px}
+.cmSqMiniTop{font-weight:800;font-size:16px;letter-spacing:.5px;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.cmSqMiniMid{font-size:12.5px;opacity:.85;font-family:monospace;letter-spacing:1px}
+.cmSqMiniBot{font-size:11.5px;opacity:.8}
+.cmSq{margin-top:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg2)}
+/* 📜 경력 카드 (요청: 「감독 경력의 대회성적도 게시글에 올릴 수 있게」) */
+.cmCv{margin-top:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg2)}
+.cmCvHead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:9px 13px;
+  background:var(--bg3);border-left:4px solid var(--gold)}
+.cmCvHead b{font-size:14.5px}
+.cmCvSum{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;
+  background:var(--line);border-bottom:1px solid var(--line)}
+.cmCvCell{background:var(--bg2);padding:9px 12px;display:flex;flex-direction:column;gap:2px}
+.cmCvCell span{font-size:11px;opacity:.55}
+.cmCvCell b{font-size:14px}
+.cmCvTro{display:flex;gap:5px;flex-wrap:wrap;padding:11px 13px}
+.cmCvChip{border:1px solid;border-radius:8px;padding:3px 9px;font-size:11.5px;line-height:1.6;white-space:nowrap}
+.cmCvSec{padding:2px 13px 13px}
+.cmCvSec h4{margin:6px 0 7px;font-size:12.5px;opacity:.85;font-weight:700}
+.cmCvSec h4 .small{opacity:.5;font-weight:400;margin-left:5px}
+.cmCvTbl{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap}
+.cmCvTbl th{text-align:left;padding:4px 9px 4px 0;opacity:.5;font-weight:600;font-size:11px;
+  border-bottom:1px solid var(--line)}
+.cmCvTbl td{padding:4px 9px 4px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.cmCvSp{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,.05)}
+.cmCvMini{flex:1;border-radius:8px;border:1px solid var(--line);
+  background:linear-gradient(150deg, rgba(227,179,65,.20), #0d1117);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;padding:11px 6px}
+.cmCvMiniIc{font-size:19px;line-height:1}
+.cmAttGrp{display:flex;flex-direction:column;gap:9px}
+.cmTierB{margin-left:5px;font-size:11px;opacity:.9;white-space:nowrap}
+.cmTierB svg{vertical-align:-2px}
+.cmOn{margin-left:5px;color:#3fb950;font-size:9px;vertical-align:2px;
+  text-shadow:0 0 5px #3fb950;animation:cmPulse 2s ease-in-out infinite}
+@keyframes cmPulse{0%,100%{opacity:1}50%{opacity:.35}}
+.cmWhoL{cursor:pointer}
+.cmWhoL:hover b{text-decoration:underline}
+/* ⭐ 스쿼드 별점 평가 */
+.cmRate{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;padding:10px 13px;
+  border:1px solid var(--line);border-radius:10px;background:var(--bg3)}
+.cmStarSet{display:inline-flex;gap:1px}
+.cmStarBtn{background:none;border:none;cursor:pointer;color:#464d5b;font-size:20px;line-height:1;
+  padding:0 1px;transition:color .12s, transform .1s}
+.cmStarBtn:hover:not(:disabled){transform:scale(1.18)}
+.cmStarSet:hover .cmStarBtn:not(:disabled){color:#e3b34188}
+.cmStarBtn.on{color:#e3b341}
+.cmStarBtn:disabled{cursor:default}
+/* 🗳️ 투표 */
+.cmPoll{margin-top:12px;padding:12px 13px;border:1px solid var(--line);border-radius:10px;background:var(--bg3)}
+.cmPollQ{font-weight:700;font-size:14px;margin-bottom:9px}
+.cmPollOpt{position:relative;display:block;width:100%;text-align:left;background:var(--bg2);
+  border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:6px;cursor:pointer;
+  color:var(--txt);font-size:13.5px;font-family:inherit;overflow:hidden;transition:border-color .14s}
+.cmPollOpt:hover{border-color:var(--acc)}
+.cmPollOpt.on{border-color:var(--acc)}
+.cmPollFill{position:absolute;left:0;top:0;bottom:0;background:color-mix(in srgb, var(--acc) 26%, transparent);
+  transition:width .35s ease}
+.cmPollTx{position:relative}
+.cmPollN{position:relative;float:right;font-size:12px;opacity:.85}
+.cmPollEd{margin-top:9px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg3)}
+.cmPollRow{display:flex;align-items:center;gap:7px;margin-top:7px}
+.cmPollIx{width:19px;height:19px;line-height:19px;text-align:center;border-radius:50%;
+  background:var(--bg2);border:1px solid var(--line);font-size:11px;flex:none;opacity:.7}
+.cmPollEd .cmIn{padding:8px 11px;font-size:13px}
+.cmSel{margin-left:auto;background:var(--bg2);color:var(--txt);border:1px solid var(--line);
+  border-radius:7px;padding:7px 9px;font-size:12.5px;font-family:inherit;max-width:230px}
+/* ⚽ 경기 결과 카드 */
+.cmMt{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg2)}
+.cmMtHead{display:flex;align-items:center;padding:8px 13px;background:var(--bg3);font-size:12.5px;font-weight:700}
+.cmMtBody{display:flex;align-items:center;gap:14px;padding:14px 13px}
+.cmMtSide{flex:1;display:flex;align-items:center;gap:7px;min-width:0}
+.cmMtSide:last-of-type{justify-content:flex-end}
+.cmMtSide b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmMtDot{width:11px;height:11px;border-radius:3px;flex:none}
+.cmMtScore{display:flex;gap:7px;align-items:center;font-size:24px;font-weight:800;flex:none}
+.cmMtScore span{opacity:.35;font-size:17px}
+.cmMtScs{display:flex;gap:16px;padding:0 13px 11px;font-size:12.5px}
+.cmMtCol{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cmMtCol.a{text-align:right}
+.cmMtSc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmMtMom{padding:9px 13px;border-top:1px solid var(--line);font-size:13px}
+/* 🌱 선수 카드 */
+.cmPc{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  background:linear-gradient(160deg, color-mix(in srgb, var(--c) 16%, var(--bg2)), var(--bg2))}
+.cmPcHead{display:flex;align-items:center;gap:11px;padding:12px 13px;border-bottom:1px solid var(--line)}
+.cmPcNo{width:34px;height:34px;line-height:34px;text-align:center;border-radius:8px;flex:none;
+  background:var(--c);color:#fff;font-weight:800;font-size:15px;border:1px solid rgba(0,0,0,.4)}
+.cmPcName{display:flex;flex-direction:column;line-height:1.4;min-width:0}
+.cmPcName b{font-size:15.5px}
+.cmPcTags{margin-left:auto;display:flex;gap:5px;flex:none}
+.cmPcRow{display:flex;align-items:center;gap:10px;padding:7px 13px;font-size:13px;
+  border-bottom:1px solid rgba(255,255,255,.05)}
+.cmPcRow>span:first-child{width:76px;flex:none;opacity:.6;font-size:12px}
+.cmPcRow .stars{margin-left:0;font-size:14px;vertical-align:-1px}
+.cmPcTr{display:flex;gap:5px;flex-wrap:wrap;padding:9px 13px}
+/* 👤 감독 프로필 */
+.cmPfHead{display:flex;align-items:center;gap:14px;margin-top:14px}
+.cmPfAv{width:56px;height:56px;line-height:56px;text-align:center;border-radius:50%;flex:none;
+  background:linear-gradient(150deg,var(--acc),#1f6feb);color:#fff;font-weight:800;font-size:20px}
+.cmSqHead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:9px 12px;background:var(--bg3)}
+.cmSqBody{display:flex;gap:14px;flex-wrap:wrap;padding:12px}
+.cmSqBody.cmSqOne{justify-content:center}
+.cmSqTbl{flex:1;min-width:230px;border-collapse:collapse;font-size:12.5px;align-self:flex-start}
+.cmSqTbl th{text-align:left;padding:3px 7px;opacity:.55;font-weight:600;font-size:11.5px;border-bottom:1px solid var(--line)}
+.cmSqTbl td{padding:3px 7px;border-bottom:1px solid rgba(255,255,255,.05)}
+.cmSqTbl .cmStarTd{white-space:nowrap}
+.cmSqTbl .cmStarTd .stars{margin-left:0;font-size:12.5px;vertical-align:-1px}
+.cmStarWrap .stars{margin-left:3px;font-size:13px;vertical-align:-1px}
+.cmSqMiniBot .stars{margin-left:0;font-size:13px}
+.cmAttB .stars{margin-left:2px;font-size:12px;vertical-align:-1px}
+.cmBody{margin-top:6px;line-height:1.75;font-size:14px;word-break:break-word}
+.cmCmBox{max-height:340px;overflow-y:auto}
+.cmCm{padding:5px 0;line-height:1.6;border-bottom:1px solid rgba(255,255,255,.05)}
+@media (max-width:560px){ .cmGrid{grid-template-columns:1fr 1fr;gap:9px} .cmCard{min-height:150px;padding:10px} }
+/* ── ✍️ 글쓰기 화면 (요청: 「글쓰기 화면 스타일 좀 예쁘게 꾸며줘라.. 너무 투박해..」)
+   기본 <input>/<textarea> 에는 게임 스타일이 하나도 걸려 있지 않아 브라우저 기본 흰 상자가
+   그대로 나왔다. 칸마다 라벨·글자수·도움말을 가진 「필드」로 다시 짠다. */
+.cmWrite{max-width:820px}
+.cmHead{display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  padding-bottom:13px;border-bottom:1px solid var(--line)}
+.cmHeadT{display:flex;flex-direction:column;line-height:1.3}
+.cmHeadT b{font-size:16.5px}
+.cmHeadT span{opacity:.6;font-size:12px}
+.cmWho2{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;
+  background:var(--bg3);border:1px solid var(--line);border-radius:20px;padding:4px 12px}
+.cmWho2.no{border-color:#e3b34155;color:var(--gold)}
+.cmFld{margin-top:19px}
+.cmLbl{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.cmLbl>span:first-child{font-size:12.5px;font-weight:700;letter-spacing:.3px;opacity:.9}
+.cmLbl .hint{font-size:11.5px;opacity:.5;font-weight:400}
+.cmCnt{margin-left:auto;font-size:11.5px;opacity:.45;font-family:monospace}
+.cmCnt.hot{color:var(--gold);opacity:.95}
+.cmIn,.cmTa{width:100%;box-sizing:border-box;background:var(--bg3);color:var(--txt);
+  border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:14px;
+  font-family:inherit;line-height:1.6;transition:border-color .15s, box-shadow .15s, background .15s}
+.cmIn::placeholder,.cmTa::placeholder{color:var(--sub);opacity:.55}
+.cmIn:focus,.cmTa:focus{outline:none;border-color:var(--acc);background:var(--bg2);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--acc) 22%, transparent)}
+.cmInBig{font-size:16px;font-weight:700;padding:12px 14px}
+.cmTa{resize:vertical;min-height:150px}
+.cmPills{display:flex;gap:7px;flex-wrap:wrap}
+.cmPill{display:inline-flex;align-items:center;gap:5px;border:1px solid;border-radius:20px;
+  padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;background:transparent;
+  transition:background .14s, transform .1s, box-shadow .14s}
+.cmPill:hover{transform:translateY(-1px)}
+.cmPill.on{color:#0d1117 !important;box-shadow:0 2px 9px rgba(0,0,0,.3)}
+.cmPill .tick{display:none;font-size:11px}
+.cmPill.on .tick{display:inline}
+.cmAttach{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:11px;
+  border:1px solid var(--line);background:var(--bg3);cursor:pointer;
+  transition:border-color .15s, background .15s}
+.cmAttach:hover{border-color:var(--acc)}
+.cmAttach.on{border-color:var(--acc);background:color-mix(in srgb, var(--acc) 11%, var(--bg3))}
+.cmAttach.off{opacity:.55;cursor:not-allowed;border-style:dashed}
+.cmAttach.off:hover{border-color:var(--line)}
+.cmSw{width:40px;height:22px;border-radius:20px;background:var(--bg2);border:1px solid var(--line);
+  position:relative;flex:none;transition:background .18s, border-color .18s}
+.cmSw i{position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;
+  background:var(--sub);transition:left .18s, background .18s}
+.cmAttach.on .cmSw{background:var(--acc);border-color:var(--acc)}
+.cmAttach.on .cmSw i{left:20px;background:#fff}
+.cmAttT{display:flex;flex-direction:column;line-height:1.45;min-width:0}
+.cmAttT b{font-size:13.5px}
+.cmAttT span{font-size:11.5px;opacity:.65}
+.cmAttB{margin-left:auto;display:flex;align-items:center;gap:7px;flex:none;
+  border-left:3px solid var(--c,#2a6ee8);padding-left:9px;line-height:1.35}
+.cmAttB b{font-size:13px}
+.cmAttB .small{opacity:.7}
+.cmActs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.cmSend{background:var(--acc);color:#fff;border:none;border-radius:9px;padding:11px 28px;
+  font-size:14.5px;font-weight:700;cursor:pointer;transition:filter .14s, transform .1s;
+  box-shadow:0 3px 12px color-mix(in srgb, var(--acc) 35%, transparent)}
+.cmSend:hover{filter:brightness(1.09);transform:translateY(-1px)}
+.cmGhost{background:none;color:var(--sub);border:1px solid var(--line);border-radius:9px;
+  padding:11px 20px;font-size:13.5px;cursor:pointer;transition:color .14s, border-color .14s}
+.cmGhost:hover{color:var(--txt);border-color:var(--sub)}
+.cmRule{margin-left:auto;font-size:11.5px;opacity:.45;text-align:right;line-height:1.5}
+@media(max-width:560px){
+  .cmFld{margin-top:15px}
+  .cmAttB{margin-left:0;flex-basis:100%;border-left:none;padding-left:0;
+    border-top:1px solid var(--line);padding-top:7px}
+  .cmAttach{flex-wrap:wrap}
+  .cmActs{flex-direction:column;align-items:stretch}
+  .cmSend,.cmGhost{width:100%}
+  .cmRule{margin-left:0;text-align:left}
+}
+

@@ -1,0 +1,91 @@
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#21262d; --line:#30363d;
+  --txt:#e6edf3; --sub:#a9b4c0; --acc:#2ea8ff; --gold:#e3b341;
+  --green:#3fb950; --red:#f85149; --pitch:#1a4a2e;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--txt); font-family:'Segoe UI','Malgun Gothic',sans-serif; font-size:14px;}
+#app{display:flex; min-height:100vh;}
+/* ---------- sidebar ---------- */
+#side{width:210px; background:var(--bg2); border-right:1px solid var(--line); padding:14px 10px; position:sticky; top:0; height:100vh; height:100dvh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; flex-shrink:0;}
+#navScroll{display:contents;}
+#side h1{font-size:17px; color:var(--gold); margin-bottom:2px;}
+#side .sub{font-size:11px; color:var(--sub); margin-bottom:14px;}
+#clubBadge{padding:10px; border-radius:8px; margin-bottom:12px; font-weight:700; text-align:center; border:1px solid var(--line);}
+#clubBadge small{display:block; font-weight:400; font-size:11px; opacity:.85; margin-top:3px;}
+.navbtn{display:block; width:100%; text-align:left; background:none; border:none; color:var(--txt); padding:9px 10px; border-radius:6px; cursor:pointer; font-size:14px; margin-bottom:2px; position:relative;}
+.navbtn:hover{background:var(--bg3);}
+.navbtn.on{background:var(--acc); color:#fff; font-weight:600;}
+.navbtn.hasNotif::after{content:"";position:absolute;top:50%;transform:translateY(-50%);right:10px;width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 4px var(--red);}
+#dateBox{margin-top:14px; padding:10px; background:var(--bg3); border-radius:8px; font-size:12px; color:var(--sub); line-height:1.7;}
+#dateBox b{color:var(--txt);}
+#dateBox .dbDate{color:var(--gold); font-size:14px;}
+/* 🎨 사용자 요청 — 「좌측 메인화면 녹색 진행 버튼들도 다 고급스럽게」.
+   팀 선택의 「이어하기」와 같은 계열 — 깊은 초록 유리 + 안쪽 하이라이트 + 지나가는 빛 */
+.bigbtn{display:block; width:100%; padding:13px 12px; margin-top:12px; position:relative; overflow:hidden;
+  background:linear-gradient(160deg,#1f7c37 0%,#166529 46%,#0e4d1e 100%);
+  color:#eafff0; border:1px solid #3fae5c66; border-radius:11px;
+  font-size:15px; font-weight:800; letter-spacing:-.2px; cursor:pointer;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.13) inset, 0 -10px 22px rgba(0,0,0,.20) inset,
+             0 4px 14px rgba(46,160,67,.24), 0 2px 5px rgba(0,0,0,.30);
+  transition:filter .16s, box-shadow .16s, border-color .16s, transform .08s;}
+.bigbtn::after{content:""; position:absolute; top:-40%; bottom:-40%; width:42px; left:-64px;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.14), transparent);
+  transform:skewX(-18deg); animation:pkSheen 5.2s ease-in-out infinite; pointer-events:none;}
+.bigbtn:hover:not(:disabled){filter:brightness(1.12); border-color:#4ec96299;
+  box-shadow:0 1px 0 rgba(255,255,255,.17) inset, 0 -10px 22px rgba(0,0,0,.16) inset,
+             0 7px 22px rgba(46,160,67,.38), 0 2px 5px rgba(0,0,0,.30);}
+.bigbtn:active:not(:disabled){transform:translateY(1px);}
+.bigbtn:disabled{background:var(--bg3); color:var(--sub); cursor:default;
+  border-color:var(--line); text-shadow:none; box-shadow:none;}
+.bigbtn:disabled::after{display:none;}
+/* ---------- main ---------- */
+#mainWrap{flex:1; min-width:0; display:flex; flex-direction:column;}
+#main{padding:20px 24px; max-width:1100px;}
+/* ── 상단 날짜 바 — FM처럼 지금이 며칠인지 늘 보이게 ── */
+#topBar{
+  position:sticky; top:0; z-index:800; display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:9px 24px; background:#11161d; border-bottom:1px solid var(--line);
+  box-shadow:0 1px 6px rgba(0,0,0,.35);
+}
+#tbDate{display:flex; align-items:baseline; gap:10px; min-width:0;}
+#tbD{font-size:16px; font-weight:800; color:var(--gold); white-space:nowrap; letter-spacing:.3px;}
+#tbSub{color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+#tbRight{color:var(--sub); display:flex; gap:12px; white-space:nowrap; overflow-x:auto; scrollbar-width:none;}
+#tbRight::-webkit-scrollbar{display:none;}
+#tbRight b{color:var(--txt);}
+#tbRight .tbTag{color:var(--gold);}
+h2{font-size:19px; margin-bottom:12px;} h3{font-size:15px; margin:14px 0 8px; color:var(--gold);}
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th{color:var(--sub); font-weight:600; text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); font-size:12px;}
+td{padding:6px 8px; border-bottom:1px solid #21262d;}
+tr:hover td{background:#1c2129;}
+.card{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:14px;}
+.row{display:flex; gap:14px; flex-wrap:wrap;}
+.row .card{flex:1; min-width:260px;}
+.pos-GK{color:#fff;} .pos-DF{color:#fff;} .pos-MF{color:#fff;} .pos-FW{color:#fff;}
+.stars{position:relative; display:inline-block; color:#464d5b; letter-spacing:1px; font-size:11px; white-space:nowrap; margin-left:5px;}
+.stars::before{content:'★★★★★'; position:absolute; left:0; top:0; width:var(--pct,0%); overflow:hidden; color:#e3b341; white-space:nowrap;}
+/* 은색 별 — 1군 눈금 아래를 재는 보조 눈금. 은색 5개 = 금색 0.5개다.
+   한눈에 "금색보다 확실히 아래"로 보이도록 금색보다 작고 채도 없이 그린다. */
+.stars.silver{color:#23272e; font-size:9px; letter-spacing:0.5px; opacity:.9;}
+.stars.silver::before{color:#aab4c0;}
+.tag{display:inline-block; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:700;}
+.tag.u22{background:#1f6feb33; color:#79c0ff;}
+.tag.frn{background:#8957e533; color:#d2a8ff;}
+/* 외국인 선수 — 아이콘 대신 이름 자체를 밝은 보라색으로 */
+.hgN{color:#3fb950;}
+/* 🔁 임대 선수 — 시즌이 끝나면 돌아간다. 스쿼드를 짤 때 먼저 보여야 할 사실이라 이름 색으로 알린다 */
+.loanN{color:#f0a05a !important;}
+.frnN{color:#d2a8ff !important;}
+/* 전술판 하단 안내 — 회색이면 잘 안 읽힌다 */
+.tacHint{margin-top:6px;font-size:13px;line-height:1.6;color:#e6edf3}
+.tag.inj{background:#f8514933; color:#ff7b72;}
+.tag.star{background:#e3b34133; color:#e3b341;}
+.ovr{font-weight:800;}
+.ovr.s{color:#e3b341;} .ovr.a{color:#3fb950;} .ovr.b{color:#58a6ff;} .ovr.c{color:#a9b4c0;}
+button.mini{background:var(--bg3); color:var(--txt); border:1px solid var(--line); border-radius:5px; padding:4px 9px; cursor:pointer; font-size:12px;}
+button.mini:hover{border-color:var(--acc); color:var(--acc);}
+button.mini.sel{background:var(--acc); color:#fff; border-color:var(--acc);}
+select,input[type=number]{background:var(--bg3); color:var(--txt); border:1px solid var(--line); border-radius:5px; padding:5px 8px; font-size:13px;}

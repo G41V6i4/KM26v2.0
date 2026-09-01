@@ -1,0 +1,176 @@
+/* ── 뉴스 피드 (FM Inbox) ─────────────────────────── */
+.nwChips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.nwChip{background:#161b22;border:1px solid #30363d;color:#dbe3ea;border-radius:14px;
+  padding:4px 11px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.nwChip b{color:#a9b4c0;font-weight:600;margin-left:2px}
+.nwChip:hover{border-color:#a9b4c0}
+.nwChip.on{background:var(--nwc,#58a6ff);border-color:var(--nwc,#58a6ff);color:#0d1117;font-weight:700}
+.nwChip.on b{color:#0d1117}
+.nwList{display:flex;flex-direction:column;gap:6px;max-height:640px;overflow-y:auto;padding-right:2px}
+.nwRow{display:flex;gap:10px;background:#0d1117;border:1px solid #21262d;
+  border-left:3px solid var(--nwc,#30363d);border-radius:8px;padding:9px 11px}
+.nwRow.mine{background:#10161f;border-color:#2b3440}
+.nwRow.fresh{box-shadow:inset 0 0 0 1px rgba(88,166,255,.18)}
+.nwIc{font-size:18px;line-height:1.3;flex:0 0 auto}
+.nwBody{min-width:0;flex:1}
+.nwHead{font-size:14px;font-weight:700;color:#f0f6fc;line-height:1.45}
+.nwSub{margin-top:3px;font-size:12.5px;line-height:1.55;color:#c9d4e0}
+.nwMeta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:5px;font-size:11px;color:#a9b4c0}
+.nwCat{border:1px solid;border-radius:9px;padding:1px 7px;font-weight:700;font-size:10.5px}
+.nwTeam{padding-left:5px;color:#dbe3ea;font-weight:600}
+.nwNew{display:inline-block;background:var(--red);color:#fff;font-size:9.5px;font-weight:800;
+  border-radius:4px;padding:1px 4px;margin-right:5px;vertical-align:2px;letter-spacing:.4px}
+.nwDate{margin-left:auto;color:#8d97a3}
+@media (max-width:760px){ .nwList{max-height:none} .nwHead{font-size:14.5px} .nwDate{margin-left:0} }
+/* ── 소셜미디어 피드 ─────────────────────────────── */
+.socFeed{display:flex;flex-direction:column;gap:7px;max-height:420px;overflow-y:auto}
+.socPost{background:#0d1117;border:1px solid #21262d;border-left:3px solid #30363d;
+  border-radius:8px;padding:8px 10px}
+.socPost.pos{border-left-color:var(--green)}
+.socPost.neg{border-left-color:var(--red)}
+/* 타구단 팬 글 — 우리 집 글과 한눈에 구분되게 살짝 다른 바탕 */
+.socPost.riv{background:#0c1016;border-style:dashed}
+.socPost.riv .socHead b{color:#d2a8ff}
+/* 닉네임 — 눌러서 고소할 수 있다는 걸 알려 준다 */
+.sueName{cursor:pointer; border-bottom:1px dotted #58627055; padding-bottom:1px;}
+.sueName:hover{color:var(--gold)!important; border-bottom-color:var(--gold);}
+.socSideBar{display:flex;gap:8px;margin:0 0 10px}
+.socSideBtn{padding:8px 18px;font-size:14px}
+.socSideBtn b{color:#a9b4c0;font-weight:700;margin-left:3px}
+.socSideBtn.sel b{color:inherit}
+.sideTag{display:inline-block;font-size:11px;font-weight:700;border-radius:9px;
+  padding:1px 8px;vertical-align:2px;margin-left:4px;border:1px solid}
+.sideTag.own{color:#7ee787;border-color:#2ea04366;background:#2ea04322}
+.sideTag.riv{color:#d2a8ff;border-color:#8957e566;background:#8957e522}
+.socHead{display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--sub)}
+.socHead b{color:#79c0ff;font-weight:600}
+.socAv{font-size:14px}
+.socTxt{margin-top:3px;font-size:13px;line-height:1.55;color:#e6edf3}
+@media (max-width:760px){ .socFeed{max-height:340px} .socTxt{font-size:13.5px} }
+/* ── FM코리아 게시판 ─────────────────────────────── */
+.fmkList{display:flex;flex-direction:column}
+.fmkRow{padding:7px 8px;border-bottom:1px solid #1b2129}
+.fmkRow:last-child{border-bottom:none}
+.fmkRow.pos .fmkTitle{color:#7ee787}
+.fmkRow.neg .fmkTitle{color:#ff9d95}
+.fmkTitle{font-size:13.5px;line-height:1.45;font-weight:600}
+.fmkMeta{display:flex;gap:10px;margin-top:2px;font-size:11px;color:var(--sub);align-items:center}
+/* 🐶 등급 아이콘 — 실제 게시판처럼 닉네임 왼쪽에 붙는다 */
+.fmkRk{width:16px;height:16px;flex:0 0 16px;margin-right:-5px;image-rendering:auto;vertical-align:middle}
+/* 📑 라인업 팬 반응 탭 */
+.luTabs{display:flex;gap:6px;margin:2px 0 9px}
+.luTab{flex:1;padding:7px 8px;font-size:12.5px;font-weight:700;cursor:pointer;
+  background:var(--bg3);color:var(--sub);border:1px solid var(--line);border-radius:8px;
+  transition:background .14s,color .14s,border-color .14s}
+.luTab:hover{background:#242c36;color:var(--txt)}
+.luTab.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.luTab .luN{opacity:.75;font-weight:600;font-size:11px;margin-left:2px}
+@media (max-width:760px){ .fmkRk{width:18px;height:18px;flex-basis:18px} }
+.fmkUp{color:#f0883e}
+.fmkDn{color:#8d97a3}
+@media (max-width:760px){ .fmkTitle{font-size:14px} }
+.fmkDate{color:#a9b4c0}
+/* ── 🗞️ FM코리아 루머 게시판 ───────────────────────── */
+.rumList{display:flex;flex-direction:column;border-top:1px solid #1b2129}
+.rumRow{display:flex;align-items:center;gap:7px;padding:8px 6px;border-bottom:1px solid #1b2129;
+  cursor:pointer;font-size:13px;transition:background .12s}
+.rumRow:hover{background:#131a22}
+.rumTag{flex:0 0 auto;color:#8b949e;font-size:11.5px;font-weight:700}
+.rumGap{flex:1 1 auto;min-width:8px}
+.rumTtl{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-weight:600;color:#e6edf3}
+.rumTtl.read{color:#8b949e;font-weight:400}
+.rumCm{flex:0 0 auto;color:#e5534b;font-weight:800;font-size:12px}   /* 제목 바로 뒤 — 실제 게시판과 같은 자리 */
+.rumConf{flex:0 0 auto;color:#f85149;font-weight:900;font-size:12px;letter-spacing:-.5px;
+  transform:rotate(-4deg);display:inline-block}
+.rumU{flex:0 0 auto;display:flex;align-items:center;gap:4px;color:#a9b4c0;font-size:12px;
+  max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rumV{flex:0 0 42px;text-align:right;color:#8b949e;font-size:11.5px}
+.rumUp{flex:0 0 44px;text-align:right;color:#58a6ff;font-size:12px;font-weight:700}
+.rumUp.neg{color:#f85149}
+.rumTrollTag{flex:0 0 auto;background:#3d1418;color:#ff8b80;font-size:10.5px;font-weight:800;
+  padding:1px 5px;border-radius:3px}
+.rumHead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:8px}
+.rumMeta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--sub);
+  padding-bottom:10px;border-bottom:1px solid #1b2129}
+.rumBody{padding:14px 2px;font-size:14px;line-height:1.9;color:#e6edf3}
+.rumBody p{margin:0 0 6px}
+.rumBtns{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px;border-bottom:1px solid #1b2129}
+.rumCmHead{font-size:13px;font-weight:700;color:var(--sub);padding:10px 0 6px}
+.rumCm1{padding:8px 6px;border-bottom:1px solid #161c24}
+.rumCm1.best{background:#0f1620;border-left:3px solid #58a6ff}
+.rumCmTop{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--sub)}
+.rumCmTop b{color:#e6edf3;font-weight:700;font-size:13px}   /* 작성자 — 진하고 살짝 크게 */
+.rumBest{background:#1f6feb;color:#fff;font-size:10.5px;font-weight:800;padding:1px 5px;border-radius:3px}
+.rumCmUp{margin-left:auto;color:#8b949e;font-size:11.5px}
+.rumCmTxt{margin-top:3px;font-size:13.5px;line-height:1.6;color:#dbe3ea}
+.rumNick{color:#a9b4c0;cursor:default}
+/* 💬 댓글 추천·비추천 */
+.rumCmVote{margin-left:auto;display:flex;gap:4px;align-items:center}
+.rumVb{background:none;border:1px solid #2a323c;color:#8b949e;border-radius:5px;
+  padding:1px 6px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;
+  transition:border-color .12s,color .12s,background .12s}
+.rumVb:hover{border-color:#4b5663;color:#dbe3ea}
+.rumVb.on{border-color:#1f6feb;color:#79c0ff;background:#0d1b2c}
+.rumVb span{font-weight:700}
+/* ↳ 대댓글 */
+.rumRe{display:flex;gap:6px;margin:6px 0 0 14px;padding:6px 8px;background:#0f141a;
+  border-left:2px solid #232b34;border-radius:0 6px 6px 0}
+.rumReArrow{color:#4b5663;font-size:12px;flex:0 0 auto}
+.rumTo{color:#6e7781;font-weight:400;margin-right:3px}   /* 답글 대상 — 흐리게 */
+/* 🍪 포텐 / 방출 — 실제 게시판처럼 글 아래 가운데 */
+.rumPotenWrap{text-align:center;padding:16px 0 12px;border-top:1px solid #1b2129}
+.rumPotenTag{font-size:11.5px;color:#8b949e;margin-bottom:7px}
+.rumPoten{display:inline-flex;align-items:stretch;gap:0}
+.rumPoten .pbtn{background:#fff;border:2px solid #4a90d9;color:#1f6feb;font-weight:800;
+  font-size:13.5px;padding:7px 16px;cursor:pointer;border-radius:7px 0 0 7px;
+  display:inline-flex;align-items:center;gap:5px;transition:filter .12s}
+.rumPoten .pbtn.dn{border-color:#e06c5a;color:#d1442f;border-radius:0 7px 7px 0}
+.rumPoten .pbtn:hover{filter:brightness(.94)}
+.rumPoten .pbtn.done{opacity:.5;cursor:default}
+.rumPoten .pnum{background:#fff;border-top:2px solid #c8ced6;border-bottom:2px solid #c8ced6;
+  font-weight:900;font-size:15px;padding:7px 16px;min-width:52px;
+  display:inline-flex;align-items:center;justify-content:center}
+.rumPoten .pnum.up{color:#1f6feb}
+.rumPoten .pnum.dn{color:#d1442f;border-left:1px solid #dfe3e8}
+/* 눌렀을 때 숫자가 «튀어» 오른다 — 반영됐다는 게 눈에 보여야 한다 */
+@keyframes rumPop{0%{transform:scale(1)}35%{transform:scale(1.28)}100%{transform:scale(1)}}
+.rumPoten .pnum.pop{animation:rumPop .32s ease-out}
+.rumVb.pop{animation:rumPop .32s ease-out}
+@media (max-width:760px){
+  .rumV,.rumU{display:none}
+  .rumTtl{font-size:13.5px}
+  .rumPoten .pbtn{padding:7px 12px;font-size:12.5px}
+  .rumPoten .pnum{padding:7px 14px;min-width:50px}
+}
+/* ── 득점자 패널 (FM식) ───────────────────────────── */
+.goalPanel{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  pointer-events:none; z-index:5}
+.goalPanel.hidden{display:none}
+.gpBox{background:rgba(8,12,17,.88); border:2px solid var(--gpCol,#2ea8ff);
+  border-left:10px solid var(--gpCol,#2ea8ff); border-radius:12px; padding:14px 30px 13px;
+  text-align:center; box-shadow:0 10px 34px rgba(0,0,0,.65);
+  animation:gpIn .32s cubic-bezier(.2,1.5,.4,1)}
+@keyframes gpIn{from{transform:scale(.72) translateY(10px); opacity:0}
+                to{transform:scale(1) translateY(0); opacity:1}}
+.gpTag{font-size:26px; font-weight:900; letter-spacing:4px; color:var(--gpCol,#2ea8ff);
+  text-shadow:0 0 18px var(--gpCol,#2ea8ff); line-height:1}
+.gpName{font-size:24px; font-weight:800; color:#fff; margin-top:6px; letter-spacing:.5px}
+.gpMeta{font-size:13px; color:#dbe3ea; margin-top:4px}
+.gpMeta b{color:var(--gold); font-size:15px}
+.gpSub{color:#ff7b72; margin-left:4px}
+.gpPos{display:inline-block; font-size:13px; font-weight:900; letter-spacing:.5px;
+  padding:2px 7px; border-radius:6px; margin-right:7px; vertical-align:middle;
+  background:#0d1117aa; border:1px solid currentColor}
+@media (max-width:760px){
+  .gpBox{padding:11px 20px 10px}
+  .gpTag{font-size:21px} .gpName{font-size:19px} .gpMeta{font-size:12px}
+}
+.gpBox.gpOff{animation:gpShake .42s ease-out}
+@keyframes gpShake{0%{transform:translateX(0)}20%{transform:translateX(-7px)}
+  40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}100%{transform:translateX(0)}}
+.gpStrike{text-decoration:line-through; text-decoration-thickness:3px;
+  text-decoration-color:#f85149; opacity:.8}
+.gpOff .gpTag{letter-spacing:3px}
+

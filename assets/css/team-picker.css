@@ -1,0 +1,211 @@
+/* team select screen */
+/* ── 팀 선택 화면 — 🎨 사용자 요청: 「팀선택 화면을 좀 더 고급스럽게, 이어하기 버튼도 고급스럽게」 ── */
+#teamPick{padding:34px 30px 30px; max-width:1100px; margin:0 auto; position:relative;}
+/* 상단을 은은한 경기장 조명처럼 — 금빛 광원 두 개 + 아래로 갈수록 어둡게 */
+#teamPick::before{content:""; position:absolute; left:0; right:0; top:0; height:340px; pointer-events:none;
+  background:
+    radial-gradient(520px 200px at 18% -40px, rgba(227,179,65,.13), transparent 70%),
+    radial-gradient(680px 240px at 82% -70px, rgba(47,129,247,.10), transparent 70%);}
+/* ⚠ 제보 — 「팀 정보 패널이 자리를 차지하면서 뜬다」. #teamPick > * 가 ID 특이도로
+   .pkOverlay 의 position:fixed 를 덮어써 팝업이 문서 흐름에 끼어 있었다 — 오버레이는 제외한다. */
+#teamPick > *:not(.pkOverlay){position:relative;}
+#teamPick > .pkOverlay{position:fixed;}
+#teamPick h1{margin-bottom:6px; font-size:34px; letter-spacing:-.5px; line-height:1.15;}
+/* ⚠ 그라데이션을 h1 전체에 걸면 ⚽ 이모지가 투명 처리되어 금색 원판으로 뭉개진다 — 글자에만 건다 */
+#teamPick h1 .pkTitle{
+  background:linear-gradient(115deg,#f6d47c 0%,#e3b341 34%,#fff2cd 52%,#d99c20 74%,#f6d47c 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:#e3b341;
+  filter:drop-shadow(0 2px 10px rgba(227,179,65,.18));}
+.pkSeason{display:inline-block; font-size:11px; font-weight:800; letter-spacing:2.5px; color:#e3b341cc;
+  border:1px solid #e3b34144; border-radius:20px; padding:3px 12px; margin-bottom:10px;
+  background:linear-gradient(180deg,#e3b3411a,#e3b34108); text-transform:uppercase;}
+/* 특징 칩 — 밋밋한 한 줄 설명 대신 */
+.pkFeats{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 20px; max-width:760px;}
+.pkFeats span{font-size:11.5px; color:#c9d4e0; background:#11161d; border:1px solid #232c37;
+  border-radius:20px; padding:3.5px 11px; white-space:nowrap;}
+/* 리그 구분 머리말 — 배지 + 가는 금선 */
+.pkDivHead{display:flex; align-items:center; gap:10px; margin:26px 0 0;}
+.pkDivHead .pkDivBadge{font-size:12.5px; font-weight:900; letter-spacing:.5px; padding:4px 13px;
+  border-radius:8px; white-space:nowrap;}
+.pkDivHead.k1 .pkDivBadge{color:#0d1117; background:linear-gradient(180deg,#f0c860,#d99c20); box-shadow:0 2px 8px rgba(227,179,65,.25);}
+.pkDivHead.k2 .pkDivBadge{color:#dbe6f2; background:linear-gradient(180deg,#3b4654,#2a333f); border:1px solid #46525f;}
+.pkDivHead .pkDivNm{font-weight:800; font-size:15.5px; color:#f0f6fc; white-space:nowrap;}
+.pkDivHead .pkDivSub{font-size:12px; color:var(--sub); white-space:nowrap;}
+.pkDivHead::after{content:""; flex:1; height:1px;
+  background:linear-gradient(90deg, rgba(227,179,65,.35), rgba(227,179,65,.06) 60%, transparent);}
+.pkDivHead.k2::after{background:linear-gradient(90deg, rgba(139,148,158,.35), rgba(139,148,158,.06) 60%, transparent);}
+/* ── 예산 증액 요청 ── */
+.reqBtn{display:block; width:100%; margin-top:10px; padding:11px 12px; text-align:left;
+  border-color:var(--gold); color:var(--gold);}
+.reqBtn:hover:not(:disabled){background:#e3b34118;}
+.reqBtn:disabled{opacity:.45; border-color:#30363d; color:var(--sub);}
+.reqBox{max-width:600px;}
+.reqStat{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--sub);
+  border:1px solid #21262d; border-radius:8px; padding:8px 10px; margin:8px 0 4px; background:#0b1016;}
+.reqStat b{color:#f0f6fc;}
+.reqList{display:flex; flex-direction:column; gap:6px; margin-bottom:4px;}
+.reqOpt{display:block; width:100%; text-align:left; padding:9px 11px; line-height:1.5;}
+.reqOpt.sel{border-color:var(--gold); background:#e3b34114;}
+.reqOpt.danger{border-color:#8b3a36; color:#ff9d95;}
+.reqOpt:disabled{opacity:.45;}
+.reqAmt{float:right; color:var(--green); font-weight:800;}
+.reqFit{font-size:10.5px; font-weight:700; border-radius:8px; padding:1px 7px; margin-left:5px;}
+.reqFit.ok{background:#2ea04322; color:#7ee787; border:1px solid #2ea04355;}
+.reqFit.no{background:#8b949e22; color:var(--sub); border:1px solid #8b949e44;}
+.reqSay{color:#c9d4e0; font-style:italic; margin-top:3px;}
+.reqFit.mid{background:#d2992222; color:var(--gold); border:1px solid #d2992255;}
+.reqWhy{display:flex; flex-wrap:wrap; gap:4px; margin-top:5px;}
+.reqWhy span{font-size:10.5px; background:#161b22; border:1px solid #2a3441; border-radius:6px;
+  padding:1px 7px; color:#c9d4e0;}
+.reqWhy span.dim{color:var(--sub); border-style:dashed;}
+.reqBreak{display:flex; flex-wrap:wrap; gap:4px 8px; margin-top:5px; font-size:11px;}
+.reqBreak .up{color:#7ee787;} .reqBreak .dn{color:#ff9d95;}
+.gcBtns button:disabled{opacity:.4; cursor:default;}
+/* ── 팀 선택 — 구단 명함 ── */
+.teamcard.sel{outline:2px solid var(--gold); outline-offset:1px;}
+.pkOverlay{position:fixed; inset:0; background:rgba(4,7,11,.78); z-index:120;
+  display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto;}
+/* 🎨 구단 상세 팝업 — 사용자 요청 「팀 선택하면 나오는 팝업창도 고급스럽게」.
+   구단색이 스며드는 머리 그림 + 유리질 패널 + 부드러운 등장 애니메이션 */
+.pkPanel{position:relative; overflow:hidden;
+  background:linear-gradient(180deg,#131922,#0d1117 46%);
+  border:1px solid #2c3644; border-radius:16px; padding:0 0 20px;
+  width:100%; max-width:450px; text-align:left;
+  box-shadow:0 24px 80px rgba(0,0,0,.66), 0 1px 0 rgba(255,255,255,.05) inset;
+  animation:pkPop .22s cubic-bezier(.2,.9,.3,1.15);}
+@keyframes pkPop{ from{transform:translateY(14px) scale(.97); opacity:0;} to{transform:none; opacity:1;} }
+.pkPanel > *:not(.pkHero){margin-left:22px; margin-right:22px;}
+/* 머리 그림 — 구단색 투톤 광원 + 큰 엠블럼 (색은 인라인 --tc/--tc2 로 받는다) */
+.pkHero{position:relative; padding:22px 22px 14px; margin-bottom:12px;
+  background:
+    radial-gradient(150% 130% at 12% -30%, var(--tcGlow,rgba(47,129,247,.30)), transparent 58%),
+    radial-gradient(130% 120% at 95% -40%, var(--tc2Glow,rgba(139,148,158,.20)), transparent 55%),
+    linear-gradient(180deg,#161d27,#131922 80%,transparent);
+  border-bottom:1px solid #232c37;}
+/* 🎨 세 번째 구단색 — 청·백·적처럼 삼색기를 쓰는 구단이 있다(수원 블루스타).
+   --tcBand / --tcCrest 를 주면 그 그림을, 안 주면 예전 두 색 그대로 쓴다. */
+.pkHero::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:2.5px;
+  background:var(--tcBand, linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e) 60%, transparent));}
+.pkCrest{width:52px; height:52px; border-radius:50%; float:right; margin:-2px 0 0 12px;
+  display:flex; align-items:center; justify-content:center; font-weight:900; font-size:17px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,.30), rgba(255,255,255,0) 46%),
+    var(--tcCrest, linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%));
+  box-shadow:0 0 0 2.5px #0d1117, 0 0 0 4px var(--tcLine,#2a3441), 0 6px 16px rgba(0,0,0,.5);}
+.pkHead{padding-left:0; margin-bottom:0;}
+.pkName{font-size:24px; font-weight:900; line-height:1.22; letter-spacing:-.4px;
+  text-shadow:0 2px 12px rgba(0,0,0,.45);}
+.pkTier{display:inline-block; font-size:11px; font-weight:800; letter-spacing:1.6px; color:#a9b4c0;
+  text-transform:uppercase; margin-bottom:5px;}
+.pkBadge{display:inline-block; border:1px solid; border-radius:14px; padding:3px 12px;
+  font-size:12.5px; font-weight:700; margin:9px 0 0; background:rgba(255,255,255,.03);}
+.pkDesc{color:#c9d4e0; line-height:1.55; margin:0 0 12px; font-size:12.5px;}
+.pkRow{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  padding:7.5px 2px; border-bottom:1px solid #1a212b; font-size:13.5px;}
+.pkRow:last-of-type{border-bottom:none;}
+.pkRow:hover{background:linear-gradient(90deg,transparent,rgba(255,255,255,.025),transparent);}
+.pkK{color:#8f9bab; flex:0 0 auto; font-size:12.5px;}
+.pkV{color:#f0f6fc; font-weight:700; text-align:right;}
+.pkAsk{margin:16px 0 10px; font-size:15px; font-weight:800; text-align:center; color:#f0f6fc;}
+/* ⚠ 예전에는 "예" 버튼이 .bigbtn 이었다. 모바일에서 .bigbtn 은 화면 하단 고정(진행 ▶ 전용)이라
+   확인 창 안에 있어야 할 버튼이 화면 맨 아래로 떨어져 나갔다 — "아니오"와 완전히 떨어져 보였다.
+   전용 클래스를 줘서 항상 나란히 붙어 있게 한다. */
+.pkBtns{display:flex; gap:8px; align-items:stretch;}
+/* ⚙️ 설정 패널 — 항목이 많아 화면을 넘긴다. 머리말과 닫기 버튼은 붙박이로 두고 가운데만 스크롤한다. */
+.pkPanel.pkOptP{max-width:520px; padding:16px 18px; max-height:82vh; max-height:82dvh;
+  display:flex; flex-direction:column;}
+.pkOptP .pkHead{margin-bottom:8px; flex:0 0 auto;}
+.pkOptP .pkName{font-size:20px;}
+.pkOptP .pkBtns{flex:0 0 auto; margin-top:10px; padding-top:10px; border-top:1px solid #1b2129;}
+.pkOptBody{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; padding-right:6px; margin-right:-4px;}
+.pkOptBody::-webkit-scrollbar{width:9px;}
+.pkOptBody::-webkit-scrollbar-track{background:#11161d; border-radius:8px;}
+.pkOptBody::-webkit-scrollbar-thumb{background:#39424d; border-radius:8px; border:2px solid #11161d;}
+.pkOptBody::-webkit-scrollbar-thumb:hover{background:#4d5866;}
+.pkOptBody{scrollbar-width:thin; scrollbar-color:#39424d #11161d;}
+/* 설정 패널 안의 카드는 조금 더 촘촘하게 — 세로를 아낀다 */
+.pkOptBody .card{padding:10px 12px; margin-bottom:8px;}
+.pkOptBody .card:last-child{margin-bottom:0;}
+.pkOptBody .card h3{font-size:14px; margin-bottom:2px;}
+.pkOptBody .card p.small{margin-bottom:7px !important; line-height:1.5;}
+/* 시작 화면 상단 — 이어하기 / 세이브파일 불러오기 */
+.pkResume{display:flex; gap:9px; align-items:stretch; margin:0 0 16px; max-width:560px;}
+/* 세 버튼의 위계를 색이 아니라 「무게」로 잡는다 —
+   이어하기(주 동작)만 채워진 버튼, 나머지는 테두리만, 설정은 아이콘 크기. */
+.pkGo{flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:7px;
+  padding:13px 16px; border-radius:11px; font-size:14.5px; font-weight:700; letter-spacing:-.2px;
+  cursor:pointer; white-space:nowrap; border:1px solid transparent;
+  transition:background .14s, border-color .14s, color .14s, transform .08s;}
+/* 이어하기 — 🎨 사용자 요청 「고급스럽게」. 깊은 초록 유리 + 금테 하이라이트 + 지나가는 빛 */
+.pkGo.pkMain{
+  flex-direction:column; gap:2px; line-height:1.22; position:relative; overflow:hidden;
+  padding:15px 18px; font-size:15.5px; font-weight:900; letter-spacing:-.2px;
+  background:linear-gradient(160deg,#1f7c37 0%,#166529 46%,#0e4d1e 100%);
+  color:#eafff0; border:1px solid #3fae5c66; border-radius:12px;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+  box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 -12px 26px rgba(0,0,0,.22) inset,
+             0 6px 20px rgba(46,160,67,.28), 0 2px 6px rgba(0,0,0,.35);
+  transition:box-shadow .18s, border-color .18s, filter .18s, transform .08s;}
+/* 지나가는 빛 — 가만히 있어도 은은하게 한 번씩 훑는다 */
+.pkGo.pkMain::after{content:""; position:absolute; top:-40%; bottom:-40%; width:46px; left:-70px;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.16), transparent);
+  transform:skewX(-18deg); animation:pkSheen 4.6s ease-in-out infinite;}
+@keyframes pkSheen{ 0%,62%{left:-70px; opacity:0;} 68%{opacity:1;} 84%,100%{left:calc(100% + 40px); opacity:0;} }
+.pkGo.pkMain:hover{filter:brightness(1.12); border-color:#4ec96299;
+  box-shadow:0 1px 0 rgba(255,255,255,.18) inset, 0 -12px 26px rgba(0,0,0,.18) inset,
+             0 9px 28px rgba(46,160,67,.40), 0 2px 6px rgba(0,0,0,.35);}
+.pkGo.pkMain .pkSub{font-size:11px; font-weight:700; color:#bff3cd; opacity:.85; letter-spacing:.2px;}
+/* 불러오기 — 조용한 보조 동작 */
+.pkGo.pkLoad{flex:0 1 auto; background:transparent; color:var(--sub); border-color:var(--line);}
+.pkGo.pkLoad:hover{background:var(--bg2); color:var(--txt); border-color:#4a545f;}
+/* 설정 — 아이콘 버튼. 자리를 거의 차지하지 않는다 */
+.pkGo.pkCog{flex:0 0 auto; width:46px; padding:0; font-size:17px; color:var(--sub);
+  background:transparent; border-color:var(--line);}
+.pkGo.pkCog:hover{background:var(--bg2); color:var(--gold); border-color:#4a545f; transform:rotate(35deg);}
+.pkGo:active{transform:translateY(1px);}
+.pkGo.pkCog:active{transform:translateY(1px) rotate(35deg);}
+.pkYes,.pkNo{flex:1 1 0; min-width:0; padding:13px 10px; border:none; border-radius:10px;
+  font-size:15px; font-weight:800; cursor:pointer; white-space:nowrap;
+  transition:filter .14s, box-shadow .14s;}
+.pkYes{background:linear-gradient(160deg,#2ea043,#1d7c33 60%,#156327); color:#eafff0;
+  text-shadow:0 1px 2px rgba(0,0,0,.3); border:1px solid #3fae5c55;
+  box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 4px 14px rgba(46,160,67,.26);}
+.pkNo{background:linear-gradient(180deg,#1c232d,#161c24); color:#c9d4e0; border:1px solid #2c3644;}
+.pkYes:hover{filter:brightness(1.12); box-shadow:0 1px 0 rgba(255,255,255,.16) inset, 0 6px 18px rgba(46,160,67,.36);}
+.pkNo:hover{background:linear-gradient(180deg,#232b36,#1b222b); color:#f0f6fc;}
+.pkYes:active,.pkNo:active{transform:translateY(1px);}
+@media (max-width:520px){ .pkPanel{padding:16px} .pkName{font-size:20px} }
+.teamgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:11px; margin:14px 0 30px;}
+/* 구단 명함 — 유리질 카드. 위쪽에 구단색 띠, 호버 시 구단색으로 은은하게 빛난다 */
+.teamcard{position:relative; overflow:hidden; text-align:center; cursor:pointer;
+  background:linear-gradient(180deg,#151b23,#10151c 60%,#0e131a);
+  border:1px solid #232c37; border-radius:13px; padding:15px 12px 13px;
+  transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 2px 10px rgba(0,0,0,.28);}
+/* 구단색 상단 띠 + 배경으로 스미는 빛 — 인라인 CSS 변수(--tc, --tc2)로 칠한다 */
+.teamcard::before{content:""; position:absolute; left:0; right:0; top:0; height:3.5px;
+  background:var(--tcBand, linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e)));}
+.teamcard::after{content:""; position:absolute; left:0; right:0; top:0; height:74px; pointer-events:none;
+  background:radial-gradient(120% 100% at 50% -35%, var(--tcGlow,rgba(47,129,247,.14)), transparent 72%);
+  opacity:.8; transition:opacity .16s;}
+.teamcard:hover{transform:translateY(-3px); border-color:#3a4654;
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 26px rgba(0,0,0,.42), 0 4px 18px var(--tcGlow,rgba(47,129,247,.16));}
+.teamcard:hover::after{opacity:1;}
+.teamcard.sel{outline:none; border-color:var(--gold);
+  box-shadow:0 0 0 1px var(--gold), 0 6px 22px rgba(227,179,65,.22);}
+.teamcard .crest{width:38px; height:38px; border-radius:50%; margin:1px auto 8px; position:relative;
+  display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13.5px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,.28), rgba(255,255,255,0) 46%),
+    var(--tcCrest, linear-gradient(145deg, var(--tc,#2f81f7) 0 52%, var(--tc2,#8b949e) 52% 100%));
+  box-shadow:0 0 0 2px #0d1117, 0 0 0 3.5px var(--tcLine,#2a3441), 0 3px 9px rgba(0,0,0,.45);}
+.teamcard .nm{font-weight:800; font-size:14px; letter-spacing:-.2px;}
+.teamcard .st{font-size:11.5px; color:var(--sub); margin-top:6px; line-height:1.55;}
+/* 팀 선택 화면에서는 별점이 곧 전력 표시라 조금 키운다 */
+.teamcard .stars{font-size:13px; margin-left:0; vertical-align:-1px;}
+.pkV .stars{font-size:15px; margin-left:0; vertical-align:-1px;}
+.teamcard .bar{height:4px; border-radius:3px; margin-top:10px; background:#1b222b; overflow:hidden;}
+.teamcard .bar i{display:block; height:100%; border-radius:3px;
+  background:var(--tcBand, linear-gradient(90deg, var(--tc,#2f81f7), var(--tc2,#8b949e)));
+  box-shadow:0 0 7px var(--tcGlow,rgba(47,129,247,.35));}

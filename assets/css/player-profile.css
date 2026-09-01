@@ -1,0 +1,32 @@
+/* 이름을 눌러 정보 패널을 여는 곳 — 누를 수 있다는 걸 밑줄로 알린다 */
+/* 🏅 티어 미니 배지 — 접속 목록 칩·랭킹 표에 들어가는 작은 등급 표시 (요청) */
+.tierMini{ display:inline-block; padding:0 4px; border-radius:5px; border:1px solid;
+  font-size:10.5px; font-weight:800; line-height:15px; vertical-align:middle; background:rgba(0,0,0,.22); }
+.tierMini b{ font-weight:800; margin-left:1px; }
+.tierIc{ vertical-align:-.22em; }
+.fmNmLink{ text-decoration:underline; text-decoration-style:dotted; text-decoration-thickness:1px;
+  text-underline-offset:3px; cursor:pointer; }
+.fmNmLink:hover{ color:var(--gold); text-decoration-style:solid; }
+/* 👤 빠른 프로필 팝업 */
+.qpBox{ max-width:820px; width:min(96vw,820px); text-align:left; max-height:88vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.qpHead{ display:flex; gap:12px; align-items:flex-start; margin-bottom:8px; }
+.qpName{ font-size:19px; font-weight:800; }
+.qpTr{ margin:2px 0 10px; display:flex; flex-wrap:wrap; gap:4px; }
+.qpH{ font-size:12px; font-weight:800; color:var(--sub); letter-spacing:.04em; margin-bottom:5px; }
+.qpCols{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px 18px; }
+.qpAt{ display:flex; justify-content:space-between; align-items:center; gap:8px;
+  font-size:13.5px; padding:2px 0; border-bottom:1px solid rgba(255,255,255,.045); }
+.qpAt span{ color:var(--fg); opacity:.92; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qpAt b{ font-family:monospace; font-size:14.5px; }
+.qpFamWrap{ display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:5px; }
+.qpFam{ border:1px solid var(--acc); border-radius:7px; padding:5px 4px; text-align:center; cursor:pointer; }
+.qpFam.off{ opacity:.38; }
+.qpFam:hover{ border-color:var(--gold); }
+.qpFamL{ font-size:10.5px; color:var(--sub); line-height:1.2; }
+.qpFamV{ font-size:15px; font-weight:800; font-family:monospace; }
+@media (max-width:640px){
+  .qpCols{ grid-template-columns:1fr; gap:0 0; }
+  .qpCols>div{ margin-bottom:10px; }
+  .qpAt{ font-size:14px; }
+  .qpFamWrap{ grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); }
+}
